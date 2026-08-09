@@ -43,6 +43,44 @@ def _room_match(prop_id: int, room_id: str | None = None, room_label: str | None
     return query
 
 
+def _sync_expense_invoice_link(
+    db: Any,
+    *,
+    invoice_id: ObjectId,
+    task_id: str,
+    prop_id: int,
+    attach: bool,
+) -> None:
+    """Maintain a non-stale, same-hotel reverse link for maintenance tasks.
+
+    Older documents used singular ``maintenance_task_id``. The canonical
+    representation is the list because one vendor invoice can cover multiple
+    work orders. The singular field remains as a compatibility alias pointing
+    to the first linked task.
+    """
+    invoice = db.expense_invoices.find_one({"_id": invoice_id, "prop_id": prop_id})
+    if not invoice:
+        return
+    linked = list(invoice.get("maintenance_task_ids") or [])
+    legacy = invoice.get("maintenance_task_id")
+    if legacy and legacy not in linked:
+        linked.append(str(legacy))
+    task_id = str(task_id)
+    if attach and task_id not in linked:
+        linked.append(task_id)
+    if not attach:
+        linked = [value for value in linked if str(value) != task_id]
+    update: dict[str, Any] = {
+        "maintenance_task_ids": linked,
+        "updated_at": now_iso(),
+    }
+    if linked:
+        update["maintenance_task_id"] = linked[0]
+    else:
+        update["maintenance_task_id"] = None
+    db.expense_invoices.update_one({"_id": invoice_id, "prop_id": prop_id}, {"$set": update})
+
+
 def _auto_block_room(db: Any, prop_id: int, room_id: str, room_label: str, scheduled_date: str) -> None:
     """Mark the room as 'maintenance' in room_status_log and create blackout_date.
 
@@ -51,21 +89,21 @@ def _auto_block_room(db: Any, prop_id: int, room_id: str, room_label: str, sched
     """
     if not room_id and not room_label:
         return
-    # Update room status to 'maintenance' — prefer hotel_room_id
-    db.room_status_log.update_one(
-        _room_match(prop_id, room_id=room_id, room_label=room_label),
-        {
-            "$set": {
-                "status": "maintenance_requested",
-                "note": "Mantenimiento programado",
-                "updated_at": now_iso(),
-                "hotel_room_id": room_id,
-                "room_label": room_label,
-            },
-            "$setOnInsert": {"created_at": now_iso()},
-        },
-        upsert=True,
+    # Route the state change through the canonical transition writer instead
+    # of forcing maintenance_requested over an incompatible current state.
+    from src.app.modules.housekeeping.schemas import RoomStatusLogCreate
+    from src.app.modules.housekeeping.service.lifecycle.status import upsert_room_status
+    room = db.hotel_rooms.find_one(
+        {"prop_id": prop_id, "hotel_room_id": room_id},
+        {"room_type_id": 1},
     )
+    upsert_room_status(RoomStatusLogCreate(
+        prop_id=prop_id,
+        room_type_id=(room or {}).get("room_type_id", ""),
+        room_label=room_label,
+        status="maintenance_requested",
+        note="Mantenimiento programado",
+    ))
     # Create blackout date entry for the scheduled date
     if scheduled_date:
         existing = db.blackout_dates.find_one({
@@ -100,10 +138,25 @@ def _unblock_room(db: Any, prop_id: int, room_id: str, room_label: str, schedule
     current = db.room_status_log.find_one(match, {"status": 1})
     if current and current.get("status") in ("maintenance_requested", "out_of_service", "out_of_order"):
         # Restore to vacant_clean (the new housekeeping status)
-        db.room_status_log.update_one(
-            match,
-            {"$set": {"status": "vacant_clean", "note": "", "updated_at": now_iso()}},
+        from src.app.modules.housekeeping.schemas import RoomStatusLogCreate
+        from src.app.modules.housekeeping.service.lifecycle.status import upsert_room_status
+        room = db.hotel_rooms.find_one(
+            {"prop_id": prop_id, "hotel_room_id": room_id},
+            {"room_type_id": 1},
         )
+        try:
+            upsert_room_status(RoomStatusLogCreate(
+                prop_id=prop_id,
+                room_type_id=(room or {}).get("room_type_id", ""),
+                room_label=room_label,
+                status="vacant_clean",
+                note="",
+            ))
+        except ValueError:
+            logger.warning(
+                "Room %s changed while maintenance was active; leaving current status intact",
+                room_id or room_label,
+            )
     # Remove blackout dates created by maintenance
     if scheduled_date:
         db.blackout_dates.delete_many({
@@ -116,6 +169,88 @@ def _unblock_room(db: Any, prop_id: int, room_id: str, room_label: str, schedule
             "end_date": scheduled_date,
             "source": "maintenance",
         })
+
+
+def reconcile_no_cost_maintenance(
+    task_id: str,
+    *,
+    changed_by: str = "historical_reconciliation",
+) -> dict[str, Any] | None:
+    """Classify a maintenance task with no recorded financial impact.
+
+    This does not invent a vendor, invoice, journal, or cost. It makes the
+    absence explicit (`actual_cost=0`, `no_cost_recorded`) and stores one
+    immutable reconciliation record so operational and reporting projections
+    converge on retries.
+    """
+    db = get_database()
+    try:
+        task_oid = ObjectId(task_id)
+    except Exception:
+        return None
+    task = db[MAINTENANCE_COLLECTION].find_one({"_id": task_oid, "status": {"$ne": "deleted"}})
+    if not task:
+        return None
+    if (
+        float(task.get("actual_cost") or 0) > 0
+        or task.get("expense_invoice_id")
+        or task.get("vendor_id")
+        or task.get("vendor_name")
+        or task.get("ledger_journal_id")
+        or float(task.get("estimated_cost") or 0) > 0
+    ):
+        return None
+
+    now = now_iso()
+    reconciliation = {
+        "action": "classified_no_cost_recorded",
+        "reason": "no_actual_cost_vendor_invoice_or_ledger_evidence",
+        "changed_by": changed_by,
+        "changed_at": now,
+    }
+    db[MAINTENANCE_COLLECTION].update_one(
+        {"_id": task_oid},
+        {"$set": {
+            "actual_cost": 0.0,
+            "financial_link_status": "no_cost_recorded",
+            "financial_link_error": None,
+            "ledger_status": "not_applicable",
+            "ledger_posting_status": "not_applicable",
+            "ledger_posting_error": None,
+            "metadata.reconciliation": reconciliation,
+            "updated_at": now,
+        }},
+    )
+    db.maintenance_financial_reconciliations.update_one(
+        {"task_id": str(task_oid)},
+        {"$setOnInsert": {
+            "task_id": str(task_oid),
+            "prop_id": task.get("prop_id", 0),
+            "action": "classified_no_cost_recorded",
+            "reason": reconciliation["reason"],
+            "changed_by": changed_by,
+            "changed_at": now,
+        }},
+        upsert=True,
+    )
+    refreshed = db[MAINTENANCE_COLLECTION].find_one({"_id": task_oid})
+    if refreshed:
+        try:
+            from src.app.modules.financial_reconciliation.domain_events import append_domain_event
+            append_domain_event(
+                prop_id=int(refreshed.get("prop_id", 0) or 0),
+                event_type="operations.maintenance.no_cost_recorded",
+                aggregate_type="operations",
+                aggregate_id=str(task_oid),
+                idempotency_key=f"live:maintenance:no-cost:{task_oid}",
+                payload={"actual_cost": 0.0, "financial_link_status": "no_cost_recorded"},
+                source_collection=MAINTENANCE_COLLECTION,
+                source_id=str(task_oid),
+                actor_id=changed_by,
+            )
+        except Exception:
+            logger.exception("Failed to emit maintenance reconciliation event %s", task_oid)
+    return _enrich_mt_task(refreshed) if refreshed else None
 
 
 def create_maintenance_task(payload: MaintenanceTaskCreate) -> dict[str, Any]:
@@ -141,18 +276,80 @@ def create_maintenance_task(payload: MaintenanceTaskCreate) -> dict[str, Any]:
         "priority": payload.priority,
         "scheduled_date": payload.scheduled_date,
         "auto_block": payload.auto_block,
+        "estimated_cost": payload.estimated_cost,
+        "actual_cost": payload.actual_cost,
+        "currency": payload.currency,
+        "vendor_name": payload.vendor_name,
+        "vendor_id": payload.vendor_id,
+        "expense_invoice_id": payload.expense_invoice_id,
+        "ledger_journal_id": payload.ledger_journal_id,
+        "inventory_consumption_ids": payload.inventory_consumption_ids,
         "created_at": now,
         "completed_at": completed_at,
     }
     result = db[MAINTENANCE_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
+
+    # Link the maintenance work order to the vendor bill without creating or
+    # paying a bill implicitly. The expense invoice remains the AP source of
+    # truth; this only validates same-hotel ownership and records a stable
+    # reverse link for reconciliation.
+    if payload.expense_invoice_id:
+        try:
+            invoice_id = ObjectId(payload.expense_invoice_id)
+        except Exception as exc:
+            db[MAINTENANCE_COLLECTION].update_one(
+                {"_id": result.inserted_id},
+                {"$set": {"financial_link_status": "invalid_invoice", "financial_link_error": str(exc)}},
+            )
+        else:
+            invoice = db.expense_invoices.find_one({"_id": invoice_id, "prop_id": room["prop_id"]}, {"_id": 1})
+            if invoice:
+                db[MAINTENANCE_COLLECTION].update_one(
+                    {"_id": result.inserted_id},
+                    {"$set": {
+                        "expense_invoice_id": str(invoice_id),
+                        "ledger_status": "pending",
+                        "financial_link_status": "linked",
+                        "financial_link_error": None,
+                    }},
+                )
+                _sync_expense_invoice_link(
+                    db,
+                    invoice_id=invoice_id,
+                    task_id=str(result.inserted_id),
+                    prop_id=room["prop_id"],
+                    attach=True,
+                )
+            else:
+                db[MAINTENANCE_COLLECTION].update_one(
+                    {"_id": result.inserted_id},
+                    {"$set": {"financial_link_status": "invoice_not_found_or_foreign", "financial_link_error": "La factura no pertenece al hotel"}},
+                )
     # RF-002: Auto-block room availability if auto_block is True and not completed
     if payload.auto_block and status != "completed":
         try:
             _auto_block_room(db, room["prop_id"], room["hotel_room_id"], room_label, payload.scheduled_date)
         except Exception:
             logger.exception("Failed to auto-block room for maintenance task")
-    return _enrich_mt_task(doc)
+    # Reload after financial linking so the response cannot claim ``not_linked``
+    # while Mongo already contains the vendor invoice relationship.
+    persisted = db[MAINTENANCE_COLLECTION].find_one({"_id": result.inserted_id}) or doc
+    try:
+        from src.app.modules.financial_reconciliation.domain_events import append_domain_event
+        append_domain_event(
+            prop_id=int(persisted.get("prop_id", 0) or 0),
+            event_type=f"operations.maintenance.{status}",
+            aggregate_type="operations",
+            aggregate_id=str(result.inserted_id),
+            idempotency_key=f"live:maintenance:created:{result.inserted_id}",
+            payload={"status": status, "actual_cost": persisted.get("actual_cost"), "expense_invoice_id": persisted.get("expense_invoice_id")},
+            source_collection=MAINTENANCE_COLLECTION,
+            source_id=str(result.inserted_id),
+        )
+    except Exception:
+        logger.exception("Failed to emit maintenance event %s", result.inserted_id)
+    return _enrich_mt_task(persisted)
 
 
 def list_maintenance_tasks(
@@ -203,6 +400,14 @@ def update_maintenance_task(task_id: str, payload: MaintenanceTaskCreate) -> dic
         "priority": payload.priority,
         "scheduled_date": payload.scheduled_date,
         "auto_block": payload.auto_block,
+        "estimated_cost": payload.estimated_cost,
+        "actual_cost": payload.actual_cost,
+        "currency": payload.currency,
+        "vendor_name": payload.vendor_name,
+        "vendor_id": payload.vendor_id,
+        "expense_invoice_id": payload.expense_invoice_id,
+        "ledger_journal_id": payload.ledger_journal_id,
+        "inventory_consumption_ids": payload.inventory_consumption_ids,
         "status": status,
         "updated_at": now,
     }
@@ -211,11 +416,56 @@ def update_maintenance_task(task_id: str, payload: MaintenanceTaskCreate) -> dic
     else:
         set_data["completed_at"] = None
 
+    if payload.expense_invoice_id:
+        try:
+            invoice_id = ObjectId(payload.expense_invoice_id)
+        except Exception as exc:
+            raise ValueError(f"Factura de proveedor inválida: {exc}") from exc
+        invoice = db.expense_invoices.find_one({"_id": invoice_id, "prop_id": room["prop_id"]}, {"_id": 1})
+        if not invoice:
+            raise ValueError("La factura de proveedor no existe o pertenece a otro hotel")
+        set_data["expense_invoice_id"] = str(invoice_id)
+        set_data["ledger_status"] = prev.get("ledger_status", "pending") if prev else "pending"
+        set_data["financial_link_status"] = "linked"
+        set_data["financial_link_error"] = None
+
     doc = db[MAINTENANCE_COLLECTION].find_one_and_update(
         {"_id": ObjectId(task_id)},
         {"$set": set_data},
         return_document=ReturnDocument.AFTER,
     )
+    if doc:
+        previous_invoice_id = prev.get("expense_invoice_id") if prev else None
+        next_invoice_id = payload.expense_invoice_id
+        if previous_invoice_id and previous_invoice_id != next_invoice_id:
+            try:
+                _sync_expense_invoice_link(
+                    db,
+                    invoice_id=ObjectId(str(previous_invoice_id)),
+                    task_id=task_id,
+                    prop_id=int(prev.get("prop_id", room["prop_id"])),
+                    attach=False,
+                )
+            except Exception:
+                logger.exception("Failed to detach maintenance %s from prior expense invoice", task_id)
+        if next_invoice_id:
+            _sync_expense_invoice_link(
+                db,
+                invoice_id=ObjectId(str(next_invoice_id)),
+                task_id=task_id,
+                prop_id=room["prop_id"],
+                attach=True,
+            )
+        else:
+            db[MAINTENANCE_COLLECTION].update_one(
+                {"_id": ObjectId(task_id)},
+                {"$set": {
+                    "ledger_status": "not_linked",
+                    "ledger_journal_id": None,
+                    "financial_link_status": "not_linked",
+                    "financial_link_error": None,
+                }},
+            )
     if doc:
         # If auto_block was enabled on prev, unblock old first
         if prev and prev.get("auto_block"):
@@ -267,11 +517,23 @@ def complete_maintenance_task(task_id: str, note: str = "") -> dict[str, Any] | 
 def delete_maintenance_task(task_id: str) -> dict[str, Any] | None:
     db = get_database()
     now = now_iso()
+    previous = db[MAINTENANCE_COLLECTION].find_one({"_id": ObjectId(task_id)})
     doc = db[MAINTENANCE_COLLECTION].find_one_and_update(
         {"_id": ObjectId(task_id), "status": {"$ne": "deleted"}},
         {"$set": {"status": "deleted", "deleted_at": now}},
         return_document=True,
     )
+    if doc and previous and previous.get("expense_invoice_id"):
+        try:
+            _sync_expense_invoice_link(
+                db,
+                invoice_id=ObjectId(str(previous["expense_invoice_id"])),
+                task_id=task_id,
+                prop_id=int(previous.get("prop_id", 0) or 0),
+                attach=False,
+            )
+        except Exception:
+            logger.exception("Failed to detach deleted maintenance %s from expense invoice", task_id)
     if doc and doc.get("auto_block"):
         try:
             _unblock_room(
@@ -301,6 +563,20 @@ def _enrich_mt_task(doc: dict) -> dict:
     doc["taskType"] = doc.get("task_type", "")
     doc["scheduledDate"] = doc.get("scheduled_date", "")
     doc["autoBlock"] = doc.get("auto_block", False)
+    doc["estimatedCost"] = doc.get("estimated_cost")
+    doc["actualCost"] = doc.get("actual_cost")
+    doc["currency"] = doc.get("currency", "USD")
+    doc["vendorName"] = doc.get("vendor_name")
+    doc["vendorId"] = doc.get("vendor_id")
+    doc["inventoryConsumptionIds"] = list(doc.get("inventory_consumption_ids") or [])
+    doc["expenseInvoiceId"] = doc.get("expense_invoice_id")
+    doc["ledgerJournalId"] = doc.get("ledger_journal_id")
+    doc["ledgerStatus"] = doc.get("ledger_status", "pending" if doc.get("expense_invoice_id") else "not_linked")
+    doc["ledgerPostingStatus"] = doc.get("ledger_posting_status")
+    doc["ledgerPostingError"] = doc.get("ledger_posting_error")
+    doc["financialLinkStatus"] = doc.get("financial_link_status", "not_linked")
+    doc["financialLinkError"] = doc.get("financial_link_error")
+    doc["costStatus"] = doc.get("cost_status") or doc.get("financial_link_status")
     for f in ("created_at", "completed_at"):
         if f in doc:
             doc[f] = _fmt(doc[f])

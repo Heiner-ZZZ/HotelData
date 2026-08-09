@@ -1,8 +1,9 @@
-import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
+import { getErrorStatus } from '../../../../shared/utils/http-error.util';
 import { catchAndToastWarning } from '../../../../shared/utils/catch-and-toast';
 
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
@@ -42,7 +43,17 @@ export class CheckInDetailPageComponent {
   private readonly opMode = inject(OperationModeService);
 
   readonly viewState = signal<ViewState>('loading');
-  readonly data = computed(() => this.detailResource.value() ?? null);
+  /**
+   * Degradación elegante: httpResource.value() LANZA cuando el request falló
+   * (ej. 403 check-ins.read) y todos los computeds derivados (_opMode,
+   * totalPrice, assignedRoomsStatuses…) lo re-leerían → spam de consola en
+   * cada recomputación. Con error presente devolvemos null y la vista pasa a
+   * 'forbidden'/'error' sin lanzar.
+   */
+  readonly data = computed(() => {
+    if (this.detailResource.error()) return null;
+    return this.detailResource.value() ?? null;
+  });
   readonly successMessage = signal('');
   readonly errorMessage = signal('');
 
@@ -167,14 +178,20 @@ export class CheckInDetailPageComponent {
     // user-edited wizard fields. The backend already received those edits via
     // completeCheckInWithDetail() call below.
     effect(() => {
-      const detail = this.detailResource.value();
+      // Leer error() ANTES de value(): value() lanza cuando el request falló
+      // (ej. 403) y este efecto se re-ejecuta durante el change detection →
+      // el throw rompería la vista y spamearía la consola.
       const err = this.detailResource.error();
-
       if (err) {
-        const status = err instanceof HttpErrorResponse ? err.status : undefined;
-        this.viewState.set(status === 404 ? 'empty' : 'error');
+        // getErrorStatus cubre HttpErrorResponse (tests) y ApiError del
+        // interceptor (app en vivo) — ver shared/utils/http-error.util.ts.
+        const status = getErrorStatus(err);
+        // 403 check-ins.read → el rol no tiene permiso; no es un error del server.
+        this.viewState.set(status === 403 ? 'forbidden' : (status === 404 ? 'empty' : 'error'));
         return;
       }
+
+      const detail = this.detailResource.value();
       if (!detail) {
         this.viewState.set('loading');
         return;

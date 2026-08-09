@@ -431,7 +431,7 @@ Todas las FKs son lógicas (sin constraints en MongoDB). Patrones:
 
 ## 9. Roles y matriz de permisos
 
-Roles definidos en `roles` collection (bootstrap vía `seed_roles_users.py`):
+Roles definidos en `roles` collection. Fuente canónica: `server/scripts/init_security_model_ga03.py` (`BASE_ROLES` + `ROLE_PERMISSION_CODES`). `seed_roles_users.py` solo añade usuarios demo y es CONVERGENTE con el canónico (migrado 2026-08; ya no define listas propias que pisaban permisos con `$set`):
 
 | Rol | Scope principal |
 |---|---|

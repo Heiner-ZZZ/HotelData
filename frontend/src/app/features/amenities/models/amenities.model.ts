@@ -20,6 +20,15 @@ export interface RoomTypeOption {
   capacityLabel: string;
 }
 
+export interface SpecialRequestOptionView {
+  label: string;
+  unitPrice: number;
+  chargeable: boolean;
+  petRelated: boolean;
+  highFloor: boolean;
+  lateArrival: boolean;
+}
+
 export interface AmenitiesViewModel {
   propId: number;
   hotelName: string;
@@ -34,4 +43,6 @@ export interface AmenitiesViewModel {
   categories: AmenityCategoryViewModel[];
   roomTypes: RoomTypeOption[];
   roomAmenities: Record<string, string[]>;
+  specialRequests: SpecialRequestOptionView[];
+  highFloorFrom: number;
 }

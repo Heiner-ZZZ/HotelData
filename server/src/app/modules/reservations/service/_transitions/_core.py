@@ -38,7 +38,29 @@ def _transition_status(
     # Use central StateMachine for validation
     booking_sm.validate_transition(current, target_status)
 
+    # Confirmation is only valid when every stay night has inventory. Perform
+    # this preflight before changing booking status; the old flow marked the
+    # booking confirmed first and merely returned an ``inventory_conflict``
+    # warning afterwards, leaving a reservation that consumed no inventory but
+    # looked sellable/confirmed.
     if target_status == "confirmed":
+        prop_id = int(booking.get("prop_id", 0))
+        room_type = (booking.get("room_type_id") or "").strip()
+        check_in = (booking.get("check_in_date") or "").strip()
+        check_out = (booking.get("check_out_date") or "").strip()
+        rooms_count = int(booking.get("rooms", 1) or 1)
+        if room_type and prop_id > 0 and check_in and check_out:
+            from src.app.modules.reservations.service.lifecycle.create._availability import _check_availability
+            avail_error = _check_availability(prop_id, check_in, check_out, rooms_count, room_type)
+            if avail_error:
+                raise ValueError(avail_error)
+            try:
+                _deduct_inventory(prop_id, check_in, check_out, rooms_count, room_type)
+            except ValueError:
+                raise
+            except Exception as exc:
+                raise ValueError("No se pudo reservar el inventario nocturno; inténtalo de nuevo") from exc
+
         if extra_updates is None:
             extra_updates = {}
         extra_updates["self_check_in_token"] = secrets.token_urlsafe(24)
@@ -101,23 +123,9 @@ def _transition_status(
             except Exception:
                 logger.exception("Failed to auto-assign rooms for booking %s", booking_id)
 
-        if check_in and check_out and prop_id > 0:
-            from src.app.modules.reservations.service.lifecycle.create._availability import _check_availability
-            avail_error = _check_availability(prop_id, check_in, check_out, rooms_count, room_type)
-            if avail_error:
-                result["inventory_conflict"] = True
-                result["inventory_warning"] = avail_error
-                logger.warning("Inventory conflict when confirming %s: %s", booking_id, avail_error)
-            else:
-                try:
-                    _deduct_inventory(prop_id, check_in, check_out, rooms_count, room_type)
-                    logger.info("Inventory deducted for booking %s", booking_id)
-                except ValueError as inv_err:
-                    result["inventory_conflict"] = True
-                    result["inventory_warning"] = str(inv_err)
-                    logger.warning("Inventory conflict for booking %s: %s", booking_id, inv_err)
-                except Exception:
-                    logger.exception("Failed to deduct inventory for booking %s", booking_id)
+        # Inventory was preflighted and deducted before the status mutation.
+        # Keep this section focused on physical-room assignment so a confirmed
+        # booking never gets a second nightly decrement.
 
         # Auto-generate invoice
         try:

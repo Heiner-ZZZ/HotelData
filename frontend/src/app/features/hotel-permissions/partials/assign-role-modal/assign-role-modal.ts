@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { getErrorMessage } from '../../../../shared/utils/http-error.util';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -123,9 +123,8 @@ export class AssignRoleModalComponent implements OnInit {
   }
 
   private errorMessage(err: unknown): string {
-    const httpErr = err as HttpErrorResponse;
-    const detail = httpErr?.error?.detail;
-    return typeof detail === 'string' && detail ? detail : 'Error al guardar la asignación.';
+    // getErrorMessage cubre HttpErrorResponse (tests) y ApiError del interceptor (vivo).
+    return getErrorMessage(err) || 'Error al guardar la asignación.';
   }
 
   onBackdropClick(event: MouseEvent): void {

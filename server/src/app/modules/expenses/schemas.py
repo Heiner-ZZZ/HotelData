@@ -60,11 +60,20 @@ class InvoiceUpdate(BaseModel):
     notes: str | None = None
 
 
+class InvoicePayCreate(BaseModel):
+    method: str = Field(min_length=1)
+    payment_reference: str = Field(min_length=1)
+
+
 class BudgetCreate(BaseModel):
     department: str
     period: str  # Q1-2026, Q2-2026, etc.
     amount: float = Field(gt=0)
     description: str = ""
+    # Budgets are operational allocations of one hotel. Keep this optional
+    # for legacy global budgets, but persist it whenever the UI has a hotel
+    # context so queries cannot mix properties.
+    prop_id: int | None = Field(default=None, ge=1)
 
 
 class LedgerTransactionCreate(BaseModel):
@@ -117,6 +126,10 @@ class InvoiceResponse(BaseModel):
     prop_id: int | None = None
     created_at: str | None = None
     updated_at: str | None = None
+    payment_method: str | None = None
+    payment_reference: str | None = None
+    payment_journal_id: str | None = None
+    paid_at: str | None = None
 
 
 class InvoiceListResponse(BaseModel):
@@ -130,6 +143,22 @@ class InvoiceListResponse(BaseModel):
     has_prev: bool = False
 
 
+class VendorBillResponse(InvoiceResponse):
+    """Explicit Vendor AP wire contract; never use this for guest AR."""
+
+
+class VendorBillListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    items: list[VendorBillResponse] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 0
+    total_pages: int = 1
+    has_next: bool = False
+    has_prev: bool = False
+    prop_id: int
+
+
 class BudgetResponse(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
     id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
@@ -139,6 +168,7 @@ class BudgetResponse(BaseModel):
     spent: float | None = None
     remaining: float | None = None
     description: str | None = None
+    prop_id: int | None = None
     created_at: str | None = None
 
 
@@ -189,6 +219,7 @@ class LedgerListResponse(BaseModel):
 
 class LedgerFolioResponse(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
+    prop_id: int | None = None
     folio_id: str | None = None
     folio_ref: str | None = None
     guest_name: str | None = None

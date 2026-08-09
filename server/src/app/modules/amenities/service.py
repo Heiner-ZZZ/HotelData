@@ -91,6 +91,32 @@ def _check_amenity_availability(
     return True, ""
 
 
+def _release_amenity(
+    prop_id: int,
+    room_type_id: str,
+    amenity_label: str,
+    quantity: int,
+) -> bool:
+    """Return a previously reserved unit to the same scoped stock bucket."""
+    db = get_database()
+    query = {
+        "prop_id": prop_id,
+        "amenity_label": amenity_label,
+        "room_type_id": room_type_id,
+    }
+    result = db[STOCK_COLLECTION].update_one(
+        query,
+        {"$inc": {"available_stock": quantity}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+    )
+    if result.modified_count:
+        return True
+    result = db[STOCK_COLLECTION].update_one(
+        {"prop_id": prop_id, "amenity_label": amenity_label, "room_type_id": {"$in": ["", None]}},
+        {"$inc": {"available_stock": quantity}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+    )
+    return bool(result.modified_count)
+
+
 def _reserve_amenity(
     prop_id: int,
     room_type_id: str,
@@ -263,13 +289,15 @@ def request_amenities(
     prop_id = booking["prop_id"]
     room_type_id = booking.get("room_type_id", "")
 
-    # ── Pre-check stock for ALL items before processing ──
-    stock_errors: list[str] = []
+    # ── Pre-check aggregated stock for ALL items before processing ──
+    # Duplicate lines are one reservation, not independent availability checks.
+    requested: dict[str, int] = {}
     for req in items:
         label = normalize_label(req.get("label", ""))
-        qty = max(1, int(req.get("quantity", 1)))
-        if not label:
-            continue
+        if label:
+            requested[label] = requested.get(label, 0) + max(1, int(req.get("quantity", 1)))
+    stock_errors: list[str] = []
+    for label, qty in requested.items():
         ok, reason = _check_amenity_availability(prop_id, room_type_id, label, qty)
         if not ok:
             stock_errors.append(reason)
@@ -297,6 +325,7 @@ def request_amenities(
     )
 
     created: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
     total = 0.0
 
     for req in items:
@@ -305,16 +334,23 @@ def request_amenities(
         if not label:
             continue
 
-        # Reserve stock (best-effort; stock was pre-checked but could have changed)
+        # Reserve stock atomically. A tracked stock bucket returning False is
+        # a hard failure; only a missing bucket means unlimited service.
         try:
+            has_room_bucket = db[STOCK_COLLECTION].find_one({
+                "prop_id": prop_id, "amenity_label": label, "room_type_id": room_type_id,
+            }, {"_id": 1})
+            has_hotel_bucket = db[STOCK_COLLECTION].find_one({
+                "prop_id": prop_id, "amenity_label": label, "room_type_id": {"$in": ["", None]},
+            }, {"_id": 1})
             reserved = _reserve_amenity(prop_id, room_type_id, label, qty)
-            if not reserved:
-                logger.warning(
-                    "Stock reservation failed for '%s' on booking %s — stock may have been depleted between pre-check and reserve.",
-                    label, booking_id,
-                )
+            if (has_room_bucket or has_hotel_bucket) and not reserved:
+                failed.append({"label": label, "quantity": qty, "reason": "stock_reservation_failed"})
+                continue
         except Exception:
             logger.exception("Failed to reserve stock for %s", label)
+            failed.append({"label": label, "quantity": qty, "reason": "stock_reservation_failed"})
+            continue
 
         unit_price = stored_prices.get(label.lower(), _amenity_unit_price(label))
         if unit_price <= 0:
@@ -331,7 +367,7 @@ def request_amenities(
                 note="Solicitado por huésped durante la estancia.",
             )
             charge_result = create_additional_charge(charge_payload)
-            if charge_result:
+            if charge_result and charge_result.get("posting_status") == "posted":
                 line_total = round(unit_price * qty, 2)
                 total += line_total
                 created.append({
@@ -342,10 +378,29 @@ def request_amenities(
                     "free": False,
                     "charge_id": charge_result.get("id"),
                 })
+            else:
+                _release_amenity(prop_id, room_type_id, label, qty)
+                failed.append({"label": label, "quantity": qty, "reason": "folio_posting_failed"})
         except Exception:
+            _release_amenity(prop_id, room_type_id, label, qty)
+            failed.append({"label": label, "quantity": qty, "reason": "charge_creation_failed"})
             logger.exception(
-                "Failed to create charge for amenity %s on booking %s", label, booking_id
+                "Failed to create charge for amenity %s on booking %s",
+                label, booking_id
             )
+
+
+    # The request contract is all-or-nothing. Compensate every item that was
+    # already committed when a later item failed; otherwise the response says
+    # failure while stock, charges, and folio postings remain partially sold.
+    if failed:
+        from src.app.modules.housekeeping.service.lifecycle.charges import delete_additional_charge
+        for item in created:
+            _release_amenity(prop_id, room_type_id, item["label"], item["quantity"])
+            if item.get("charge_id"):
+                delete_additional_charge(item["charge_id"])
+        created = []
+        total = 0.0
 
     # ── Notify staff about the amenity request ──
     if created:
@@ -397,8 +452,9 @@ def request_amenities(
             )
 
     return {
-        "ok": True,
+        "ok": not failed,
         "charges_created": len([c for c in created if not c.get("free")]),
         "total": round(total, 2),
         "items": created,
+        "failed_items": failed,
     }

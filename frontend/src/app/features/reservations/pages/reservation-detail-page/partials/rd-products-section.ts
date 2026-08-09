@@ -7,14 +7,14 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   imports: [CurrencyPipe, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (canAddProducts() && productsState() !== 'loading') {
+    @if (productsState() !== 'idle' && (canAddProducts() || productsState() === 'forbidden' || lineItemsState() === 'success')) {
       <section class="surface-card panel products-panel">
         <div class="panel-head">
           <div class="panel-head-left">
             <span class="material-symbols-outlined panel-icon">shopping_cart</span>
             <h2>Servicios adicionales</h2>
           </div>
-          @if (productsState() === 'success' || productsState() === 'empty') {
+          @if ((productsState() === 'success' || productsState() === 'empty') && canAddProducts()) {
             <button type="button" class="btn-add-product" (click)="openProductModal.emit()">
               <span class="material-symbols-outlined">add</span>
               Agregar servicio
@@ -22,6 +22,15 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
           }
         </div>
 
+        @if (productsState() === 'forbidden') {
+          <div class="products-forbidden">
+            <span class="material-symbols-outlined">lock</span>
+            <div>
+              <strong>Sin permiso para ver servicios adicionales</strong>
+              <span>Solicitá el permiso <code>properties.read</code> a tu administrador para ver y gestionar los servicios de esta reserva.</span>
+            </div>
+          </div>
+        } @else {
         @switch (lineItemsState()) {
           @case ('loading') {
             <div class="products-loading">
@@ -68,6 +77,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
               </div>
             }
           }
+        }
         }
       </section>
     }

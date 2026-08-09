@@ -133,7 +133,7 @@ def dashboard_overview() -> dict[str, Any]:
         "content_pages": int(db.hotel_content_pages.count_documents({})),
         "images": int(db.hotel_images.count_documents({})),
         "campaigns": int(db.promotion_campaigns.count_documents({})),
-        "coupons": int(db.coupon_codes.count_documents({})),
+        "coupons": int(db.coupon_codes.count_documents({"is_deleted": {"$ne": True}})),
     }
     booking_rate = round((total_reservations / total_events) * 100, 2) if total_events else 0
     click_rate = round((total_clicks / total_events) * 100, 2) if total_events else 0

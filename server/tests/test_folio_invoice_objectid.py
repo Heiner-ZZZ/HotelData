@@ -92,7 +92,12 @@ class TestCloseFolioInvoiceIdObjectIdFk:
         inv_id = _seed_invoice(db, booking_id)
         _seed_folio(db, booking_id, status="open")
 
-        result = close_folio(booking_id, invoice_id=str(inv_id), closed_by="tester")
+        result = close_folio(
+            booking_id,
+            invoice_id=str(inv_id),
+            closed_by="tester",
+            close_reason="approved_external_settlement: test",
+        )
 
         assert result is not None
         assert result["status"] == "closed"
@@ -114,7 +119,11 @@ class TestCloseFolioInvoiceIdObjectIdFk:
         booking_id = _seed_booking(db, booking_id="BK-TESTFOLIO-NOINV")
         _seed_folio(db, booking_id, status="open")
 
-        result = close_folio(booking_id, closed_by="tester")
+        result = close_folio(
+            booking_id,
+            closed_by="tester",
+            close_reason="approved_external_settlement: test",
+        )
 
         assert result is not None
         doc = db.guest_folios.find_one({"booking_id": booking_id})
@@ -130,7 +139,10 @@ class TestCloseFolioInvoiceIdObjectIdFk:
 
         resp = await client.post(
             f"/api/billing/folios/{booking_id}/close",
-            json={"invoice_id": str(inv_id)},  # hex string from the client
+            json={
+                "invoice_id": str(inv_id),
+                "close_reason": "approved_external_settlement: test",
+            },  # hex string from the client
         )
         assert resp.status_code == 200, resp.text
 

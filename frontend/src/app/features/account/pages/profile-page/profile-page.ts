@@ -13,11 +13,13 @@ import {
   viewChild,
   ViewEncapsulation,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../../../core/auth/auth.service';
+import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
+import { ModeHighlightDirective } from '../../../../core/directives/mode-highlight.directive';
 import { ToastService } from '../../../../shared/services/toast.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -94,7 +96,8 @@ function formToPayload(formValue: Record<string, unknown>): Record<string, unkno
   selector: 'app-profile-page',
   imports: [ErrorStateComponent, LoadingStateComponent, ReactiveFormsModule,
     PpHeroComponent, PpTabBarComponent, PpPersonalFormComponent, PpContactFormComponent,
-    PpPreferencesFormComponent, PpAvatarSectionComponent, ImageLightboxComponent, PpTravelSectionComponent],
+    PpPreferencesFormComponent, PpAvatarSectionComponent, ImageLightboxComponent, PpTravelSectionComponent,
+    ModeHighlightDirective],
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -108,6 +111,7 @@ export class ProfilePageComponent {
   private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly opMode = inject(OperationModeService);
 
   protected readonly Math = Math;
 
@@ -227,6 +231,62 @@ export class ProfilePageComponent {
     return options.find(o => o.value === value)?.icon;
   }
 
+  /** Snapshot reactivo del form para derivar el modo CRUD (patrón de promotion-form). */
+  private readonly formValues = toSignal(this.form.valueChanges, {
+    initialValue: this.form.getRawValue(),
+  });
+
+  /**
+   * ¿Hay cambios sin guardar respecto al perfil cargado? Compara por valor
+   * (editar y revertir no cuenta), sobre los mismos campos que patchForm().
+   */
+  readonly hasUnsavedChanges = computed<boolean>(() => {
+    const p = this.profile();
+    const v = this.formValues();
+    if (!p || !v) return false;
+    return v.displayName !== p.displayName
+      || v.dateOfBirth !== p.dateOfBirth
+      || v.nationality !== p.nationality
+      || v.idDocumentType !== p.idDocumentType
+      || v.idDocumentNumber !== p.idDocumentNumber
+      || v.phone !== p.phone
+      || v.notificationEmail !== p.notificationEmail
+      || v.addressStreet !== p.addressStreet
+      || v.addressCity !== p.addressCity
+      || v.addressState !== p.addressState
+      || v.addressCountry !== p.addressCountry
+      || v.addressPostalCode !== p.addressPostalCode
+      || v.preferredLanguage !== p.preferredLanguage
+      || v.marketingOptIn !== p.marketingOptIn
+      || v.notificationEmailEnabled !== p.notificationEmailEnabled
+      || v.notificationSmsEnabled !== p.notificationSmsEnabled
+      || v.avatarUrl !== p.avatarUrl
+      || v.socialInstagram !== p.socialInstagram
+      || v.socialFacebook !== p.socialFacebook
+      || v.socialTwitter !== p.socialTwitter
+      || v.socialLinkedin !== p.socialLinkedin
+      || v.travelPurpose !== p.travelPurpose
+      || v.travelBudget !== p.travelBudget
+      || v.travelCompanions !== p.travelCompanions
+      || v.travelAccommodation !== p.travelAccommodation
+      || v.travelDestinationType !== p.travelDestinationType
+      || v.travelInterests !== p.travelInterests
+      || v.travelFrequentFlyer !== p.travelFrequentFlyer
+      || v.travelLoyaltyPrograms !== p.travelLoyaltyPrograms
+      || v.travelNotes !== p.travelNotes;
+  });
+
+  /**
+   * Modo CRUD de la página de perfil: es un form de edición explícita — Solo
+   * lectura cuando el form coincide con el perfil cargado, Editando en cuanto
+   * hay cambios sin guardar (el detail es 'Perfil' para el chip del nav).
+   */
+  private readonly _opMode = computed<{ mode: OperationMode; detail: string }>(() =>
+    this.hasUnsavedChanges()
+      ? { mode: 'update', detail: 'Perfil' }
+      : { mode: 'read', detail: '' },
+  );
+
   constructor() {
     // React when profile data arrives from httpResource
     effect(() => {
@@ -264,6 +324,13 @@ export class ProfilePageComponent {
       } else if (tab === 'personal' && current) {
         void this.router.navigate([], { queryParams: { tab: null }, queryParamsHandling: 'merge', replaceUrl: true });
       }
+    });
+
+    // Modo CRUD reactivo en el nav: Solo lectura ↔ Editando según haya o no
+    // cambios sin guardar. Persiste al cambiar de pestaña (es un solo form).
+    effect(() => {
+      const m = this._opMode();
+      this.opMode.setMode(m.mode, m.detail);
     });
   }
 

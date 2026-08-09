@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
-
 import secrets
 import string
+from typing import Any
 
 from pymongo import ReturnDocument
 
+from src.app.core.timezone import local_today
 from src.app.modules.revenue.services.common import (
     _active_fact_collection,
     _clean_text,
@@ -17,7 +17,6 @@ from src.app.modules.revenue.services.common import (
     _safe_int,
     _slugify,
 )
-from src.app.core.timezone import local_today
 from src.database.connection import get_database
 
 
@@ -82,7 +81,11 @@ def promotions_overview() -> dict[str, Any]:
 def promotions_management_overview(limit: int = 60) -> dict[str, Any]:
     db = get_database()
     campaigns = list(db.promotion_campaigns.find({}, {"_id": 0}).sort([("updated_at", -1)]).limit(limit))
-    coupons = list(db.coupon_codes.find({}, {"_id": 0}).sort([("updated_at", -1)]).limit(limit))
+    # Solo inventario activo: los cupones retirados (is_deleted) son trazabilidad,
+    # no operativos.
+    coupons = list(
+        db.coupon_codes.find({"is_deleted": {"$ne": True}}, {"_id": 0}).sort([("updated_at", -1)]).limit(limit)
+    )
     coupon_lookup: dict[str, list[dict[str, Any]]] = {}
     for coupon in coupons:
         coupon_lookup.setdefault(coupon["campaign_id"], []).append(coupon)
@@ -163,13 +166,19 @@ def update_promotion_campaign(
         raise ValueError("No se puede editar una campaña que ya ha vencido.")
 
     # ── Guard 2: Used coupons exist ──
-    used_count = db.coupon_codes.count_documents({"campaign_id": campaign_id, "used": True})
+    used_count = db.coupon_codes.count_documents(
+        {"campaign_id": campaign_id, "used": True, "is_deleted": {"$ne": True}}
+    )
     if used_count > 0:
         raise ValueError(
             f"No se puede modificar esta campaña porque tiene {used_count} cupón(es) ya utilizado(s) en reservas."
         )
 
     update: dict[str, Any] = {"updated_at": _now()}
+    # Cupones retirados en ESTE edit (borrado lógico por reducción de coupon_count).
+    # Se expone en la respuesta para que la UI confirme cuántos cupones se
+    # retiraron al guardar (p.ej. el toast).
+    retired = 0
 
     if name is not None:
         clean_name = _clean_text(name)
@@ -195,35 +204,52 @@ def update_promotion_campaign(
     if is_active is not None:
         active = _safe_bool(is_active)
         update["is_active"] = active
-        # Sincronizar cupones con el estado de la campaña
+        # Sincronizar cupones con el estado de la campaña (los retirados quedan
+        # como están: ya no participan operativamente).
         db.coupon_codes.update_many(
-            {"campaign_id": campaign_id},
+            {"campaign_id": campaign_id, "is_deleted": {"$ne": True}},
             {"$set": {"is_active": active, "updated_at": _now()}},
         )
 
     # ── coupon_count adjustment ──
     if coupon_count is not None:
         new_count = max(1, min(coupon_count, 1000))
-        current_total = db.coupon_codes.count_documents({"campaign_id": campaign_id})
+        # Inventario ACTIVO: los retirados (is_deleted) no cuentan para el target.
+        current_total = db.coupon_codes.count_documents(
+            {"campaign_id": campaign_id, "is_deleted": {"$ne": True}}
+        )
         if new_count < current_total:
-            # Reduce: delete unused coupons first (oldest first)
+            # Reduce: retirar (borrado LÓGICO) los sobrantes sin usar, los más
+            # antiguos primero. La trazabilidad exige conservar el documento con
+            # is_deleted=True + deleted_at — jamás un delete físico.
             to_delete = current_total - new_count
             unused = list(db.coupon_codes.find(
-                {"campaign_id": campaign_id, "used": {"$ne": True}},
+                {"campaign_id": campaign_id, "used": {"$ne": True}, "is_deleted": {"$ne": True}},
                 {"coupon_code": 1, "_id": 0},
             ).sort([("created_at", 1)]).limit(to_delete))
             if len(unused) < to_delete:
                 raise ValueError(
                     f"No se puede reducir a {new_count} cupones: solo hay {len(unused)} "
-                    f"sin usar de los {to_delete} que se necesitan eliminar."
+                    f"sin usar de los {to_delete} que se necesitan retirar."
                 )
+            now_val = _now()
             for doc in unused:
-                db.coupon_codes.delete_one({"coupon_code": doc["coupon_code"]})
+                db.coupon_codes.update_one(
+                    {"coupon_code": doc["coupon_code"], "is_deleted": {"$ne": True}},
+                    {"$set": {"is_deleted": True, "deleted_at": now_val, "updated_at": now_val}},
+                )
+            retired = to_delete
         elif new_count > current_total:
-            # Increase: generate additional coupons
+            # Increase: generate additional coupons. Si el MISMO edit también
+            # cambia is_active, los nuevos cupones heredan el nuevo estado
+            # (misma prioridad que `disc` con discount_percent).
             prop_id = int(existing.get("prop_id", 0))
             disc = int(update.get("discount_percent") or existing.get("discount_percent", 0))
-            active = bool(existing.get("is_active", True))
+            active = (
+                bool(update["is_active"])
+                if "is_active" in update
+                else bool(existing.get("is_active", True))
+            )
             _generate_coupon_codes(db, campaign_id, prop_id, disc, active, new_count - current_total)
         update["coupon_count"] = new_count
 
@@ -231,10 +257,11 @@ def update_promotion_campaign(
         {"campaign_id": campaign_id},
         {"$set": update},
     )
-    return db.promotion_campaigns.find_one(
+    saved = db.promotion_campaigns.find_one(
         {"campaign_id": campaign_id},
         {"_id": 0},
     )
+    return {**saved, "coupons_retired": retired}
 
 
 def toggle_promotion_campaign(campaign_id: str) -> dict[str, Any]:
@@ -253,7 +280,9 @@ def toggle_promotion_campaign(campaign_id: str) -> dict[str, Any]:
         raise ValueError("No se puede activar/desactivar una campaña que ya ha vencido.")
 
     # Guard: Used coupons
-    used_count = db.coupon_codes.count_documents({"campaign_id": campaign_id, "used": True})
+    used_count = db.coupon_codes.count_documents(
+        {"campaign_id": campaign_id, "used": True, "is_deleted": {"$ne": True}}
+    )
     if used_count > 0:
         raise ValueError(
             f"No se puede cambiar el estado de esta campaña porque tiene {used_count} cupón(es) ya utilizado(s) en reservas."
@@ -264,9 +293,9 @@ def toggle_promotion_campaign(campaign_id: str) -> dict[str, Any]:
         {"campaign_id": campaign_id},
         {"$set": {"is_active": new_active, "updated_at": _now()}},
     )
-    # Sincronizar cupones
+    # Sincronizar cupones (los retirados quedan como están)
     db.coupon_codes.update_many(
-        {"campaign_id": campaign_id},
+        {"campaign_id": campaign_id, "is_deleted": {"$ne": True}},
         {"$set": {"is_active": new_active, "updated_at": _now()}},
     )
     return {
@@ -282,14 +311,17 @@ def list_property_campaigns(prop_id: int) -> dict[str, Any]:
         db.promotion_campaigns.find({"prop_id": prop_id}, {"_id": 0})
         .sort([("updated_at", -1)])
     )
-    # Agregar conteo de cupones por campaña
+    # Agregar conteo de cupones por campaña: los retirados (is_deleted) son
+    # trazabilidad y se exponen por separado — nunca inflan el inventario activo.
     for campaign in campaigns:
         cid = campaign["campaign_id"]
-        total = db.coupon_codes.count_documents({"campaign_id": cid})
-        used = db.coupon_codes.count_documents({"campaign_id": cid, "used": True})
+        total = db.coupon_codes.count_documents({"campaign_id": cid, "is_deleted": {"$ne": True}})
+        used = db.coupon_codes.count_documents({"campaign_id": cid, "used": True, "is_deleted": {"$ne": True}})
+        deleted = db.coupon_codes.count_documents({"campaign_id": cid, "is_deleted": True})
         campaign["coupon_total"] = total
         campaign["coupon_used"] = used
         campaign["coupon_available"] = total - used
+        campaign["coupon_deleted"] = deleted
         campaign["discount_percent_label"] = f"{campaign.get('discount_percent', 0)}%"
         campaign["hotel_label"] = _hotel_label(prop_id)
     return {

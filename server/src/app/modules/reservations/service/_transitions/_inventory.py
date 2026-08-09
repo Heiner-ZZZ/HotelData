@@ -72,15 +72,15 @@ def _auto_assign_rooms(
         room_label = room.get("room_label", "")
         if room_label:
             try:
-                db.room_status_log.update_one(
-                    {"prop_id": prop_id, "room_label": room_label},
-                    {
-                        "$set": {"status": "occupied", "note": f"Auto-asignada desde reserva {booking_id}", "updated_at": now_iso},
-                        "$setOnInsert": {"created_at": now_iso, "prop_id": prop_id, "room_type_id": room_type_id,
-                                         "room_label": room_label, "hotel_room_id": room["hotel_room_id"]},
-                    },
-                    upsert=True,
-                )
+                from src.app.modules.housekeeping.service.lifecycle.status import upsert_room_status
+                from src.app.modules.housekeeping.schemas import RoomStatusLogCreate
+                upsert_room_status(RoomStatusLogCreate(
+                    prop_id=prop_id,
+                    room_type_id=room_type_id,
+                    room_label=room_label,
+                    status="occupied_clean",
+                    note=f"Auto-asignada desde reserva {booking_id}",
+                ))
             except Exception:
                 logger.exception("Failed to update room_status_log for %s", room_label)
 
@@ -110,28 +110,57 @@ def _deduct_inventory(
 
     db = get_database()
     dates = [(check_in + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((check_out - check_in).days)]
-    for date_str in dates:
-        result = db.room_inventory_calendar.find_one_and_update(
-            {"prop_id": prop_id, "room_type_id": room_type_id, "date": date_str, "available_rooms": {"$gte": rooms}},
-            {"$inc": {"available_rooms": -rooms}},
-            projection={"_id": 0, "available_rooms": 1},
-        )
-        if result is None:
-            existing = db.room_inventory_calendar.find_one(
-                {"prop_id": prop_id, "room_type_id": room_type_id, "date": date_str},
-                {"_id": 0, "available_rooms": 1},
-            )
-            if existing is None:
-                raise ValueError(
-                    f"No hay datos de inventario para la fecha {date_str}. "
-                    f"No se puede confirmar la reserva sin inventario disponible."
+    if rooms < 1 or not dates:
+        return
+
+    # Reservation inventory is a nightly projection. Validate the COMPLETE
+    # stay before changing any night, then deduct all nights in one Mongo
+    # transaction. The old loop mutated the first nights and only afterwards
+    # discovered a missing/insufficient night, leaving a reservation that could
+    # not be confirmed but had already consumed availability.
+    with db.client.start_session() as session:
+        with session.start_transaction():
+            for date_str in dates:
+                existing = db.room_inventory_calendar.find_one(
+                    {
+                        "prop_id": prop_id,
+                        "room_type_id": room_type_id,
+                        "date": date_str,
+                        "is_deleted": {"$ne": True},
+                    },
+                    {"_id": 0, "available_rooms": 1},
+                    session=session,
                 )
-            else:
-                current_avail = existing.get("available_rooms", 0)
-                raise ValueError(
-                    f"Inventario insuficiente para {date_str}: "
-                    f"se requieren {rooms} habitación(es) pero solo hay {current_avail} disponible(s)."
+                if existing is None:
+                    raise ValueError(
+                        f"No hay datos de inventario para la fecha {date_str}. "
+                        f"No se puede confirmar la reserva sin inventario disponible."
+                    )
+                current_avail = existing.get("available_rooms", 0) or 0
+                if current_avail < rooms:
+                    raise ValueError(
+                        f"Inventario insuficiente para {date_str}: "
+                        f"se requieren {rooms} habitación(es) pero solo hay {current_avail} disponible(s)."
+                    )
+
+            for date_str in dates:
+                result = db.room_inventory_calendar.find_one_and_update(
+                    {
+                        "prop_id": prop_id,
+                        "room_type_id": room_type_id,
+                        "date": date_str,
+                        "is_deleted": {"$ne": True},
+                        "available_rooms": {"$gte": rooms},
+                    },
+                    {"$inc": {"available_rooms": -rooms}},
+                    projection={"_id": 0, "available_rooms": 1},
+                    session=session,
                 )
+                if result is None:
+                    raise ValueError(
+                        f"Inventario cambió durante la confirmación para {date_str}; "
+                        "la reserva debe reintentarse."
+                    )
 
 
 def _restore_inventory(
@@ -152,6 +181,11 @@ def _restore_inventory(
     dates = [(check_in + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((check_out - check_in).days)]
     for date_str in dates:
         db.room_inventory_calendar.update_one(
-            {"prop_id": prop_id, "room_type_id": room_type_id, "date": date_str},
+            {
+                "prop_id": prop_id,
+                "room_type_id": room_type_id,
+                "date": date_str,
+                "is_deleted": {"$ne": True},
+            },
             {"$inc": {"available_rooms": rooms}},
         )

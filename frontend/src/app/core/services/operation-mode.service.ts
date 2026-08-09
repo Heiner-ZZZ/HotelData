@@ -3,8 +3,9 @@ import { NavigationEnd, NavigationStart, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 
-/** Modo CRUD actual mostrado en el nav superior. */
-export type OperationMode = 'read' | 'insert' | 'update' | 'delete';
+/** Modo CRUD actual mostrado en el nav superior. `execute` cubre acciones
+ * fuera del flujo CRUD normal (ETL, validaciones, detención de procesos). */
+export type OperationMode = 'read' | 'insert' | 'update' | 'delete' | 'execute';
 
 export interface OperationModeInfo {
   mode: OperationMode;
@@ -44,6 +45,12 @@ const MODE_INFO: Record<OperationMode, Omit<OperationModeInfo, 'mode' | 'detail'
     description: 'Estás eliminando información. Es un borrado lógico, pero afecta de forma permanente.',
     color: 'var(--danger)',
     severity: 3,
+  },
+  execute: {
+    label: 'Ejecutando',
+    description: 'Estás ejecutando una acción fuera del flujo CRUD normal (ETL, validación o detención de procesos).',
+    color: '#8b5cf6',
+    severity: 2,
   },
 };
 

@@ -1,4 +1,4 @@
-import { KeyValuePipe } from '@angular/common';
+import { DecimalPipe, KeyValuePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy, Component, computed, effect, inject, signal,
 } from '@angular/core';
@@ -89,7 +89,7 @@ function toErrorMessage(err: unknown, fallback: string): string {
 @Component({
   selector: 'app-maintenance-page',
   imports: [
-    KeyValuePipe, ReactiveFormsModule,
+    DecimalPipe, KeyValuePipe, ReactiveFormsModule,
     PropertySelectorComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
     HousekeepingSubNavComponent, ConfirmDialogComponent,
   ],
@@ -441,6 +441,25 @@ export class MaintenancePageComponent {
       this.errorMessage.set(toErrorMessage(err, 'Error al completar mantenimiento'));
       this.message.set('');
     }
+  }
+
+  async classifyNoCost(item: MaintenanceTaskItem): Promise<void> {
+    try {
+      await lastValueFrom(this.api.reconcileNoCostMaintenance(item.id));
+      this.message.set(`Sin costo registrado: ${item.title}`);
+      this.errorMessage.set('');
+      this.maintenanceResource.reload();
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'No se pudo clasificar el mantenimiento'));
+      this.message.set('');
+    }
+  }
+
+  canClassifyNoCost(item: MaintenanceTaskItem): boolean {
+    return !item.actualCost
+      && !item.expenseInvoiceId
+      && !item.vendorId
+      && item.financialLinkStatus !== 'no_cost_recorded';
   }
 
   async deleteMaintenanceItem(taskId: string, title: string): Promise<void> {

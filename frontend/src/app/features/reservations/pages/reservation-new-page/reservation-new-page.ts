@@ -20,7 +20,7 @@ import type { RatePlanOption, ReservationCreateInput, ReservationHotelOption, Re
 import type { ReservationOptionsDto } from '../../models/reservations.dto';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { GuestAmenityService } from '../../../amenities/services/guest-amenity.service';
-import type { GuestAmenityCategoryDto } from '../../../amenities/models/guest-amenity.dto';
+import type { GuestAmenityCategoryDto, GuestSpecialRequestDto } from '../../../amenities/models/guest-amenity.dto';
 
 /**
  * Raw shape returned by `GET /reservations/rate-plans` — the route returns
@@ -41,6 +41,31 @@ interface RatePlanRaw {
 interface RatePlansResponseDto {
   rate_plans?: RatePlanRaw[];
 }
+
+/** One selectable special request in "Peticiones especiales". */
+export interface SpecialRequestOption {
+  value: string;
+  label: string;
+  unit_price: number;
+  chargeable: boolean;
+  pet_related: boolean;
+  high_floor: boolean;
+  late_arrival: boolean;
+}
+
+/**
+ * Fallback catalog used while the per-hotel catalog loads (or on error).
+ * Mirrors the backend defaults so prices/flags stay consistent until the
+ * real catalog arrives.
+ */
+const DEFAULT_SPECIAL_REQUEST_OPTIONS: SpecialRequestOption[] = [
+  { value: 'Cama extra', label: 'Cama extra', unit_price: 15, chargeable: true, pet_related: false, high_floor: false, late_arrival: false },
+  { value: 'Cuna para bebé', label: 'Cuna para bebé', unit_price: 10, chargeable: true, pet_related: false, high_floor: false, late_arrival: false },
+  { value: 'Accesibilidad', label: 'Accesibilidad', unit_price: 0, chargeable: false, pet_related: false, high_floor: false, late_arrival: false },
+  { value: 'Mascotas (Pet friendly)', label: 'Mascotas (Pet friendly)', unit_price: 20, chargeable: true, pet_related: true, high_floor: false, late_arrival: false },
+  { value: 'Piso alto', label: 'Piso alto', unit_price: 0, chargeable: false, pet_related: false, high_floor: true, late_arrival: false },
+  { value: 'Llegada tarde', label: 'Llegada tarde', unit_price: 0, chargeable: false, pet_related: false, high_floor: false, late_arrival: true },
+];
 
 function validateStayDates(control: AbstractControl): ValidationErrors | null {
   const checkIn = String(control.get('checkInDate')?.value || '');
@@ -99,6 +124,9 @@ export class ReservationNewPageComponent {
     // hotel's configured policy hours.
     checkInTime: ['', [Validators.required]],
     checkOutTime: ['', [Validators.required]],
+    // Hora estimada de llegada (opcional, HH:MM). Al superar las 20:00 (o al
+    // marcar la petición "Llegada tarde") la reserva se marca como late check-in.
+    estimatedArrivalTime: [''],
     adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
     children: [0, [Validators.required, Validators.min(0), Validators.max(10)]],
     rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
@@ -170,7 +198,7 @@ export class ReservationNewPageComponent {
   }, { parse: (dto) => mapRatePlans(dto as RatePlansResponseDto) });
 
   /** Amenity catalog per hotel — re-fires when propId changes. */
-  readonly amenityResource = httpResource<{ catalog: GuestAmenityCategoryDto[] }>(() => {
+  readonly amenityResource = httpResource<{ catalog: GuestAmenityCategoryDto[]; special_requests?: GuestSpecialRequestDto[] }>(() => {
     const propId = this.propIdSignal();
     if (!propId) return undefined;
     return {
@@ -235,6 +263,23 @@ export class ReservationNewPageComponent {
   readonly amenityCatalogLoading = signal(false);
   readonly selectedAmenities = signal<Set<string>>(new Set());
   readonly amenityCatalogError = signal('');
+  readonly specialRequestsCatalog = signal<GuestSpecialRequestDto[]>([]);
+
+  /** label → unit_price for the review step chips (special requests). */
+  readonly specialRequestPriceMap = computed(() => {
+    const map = new Map<string, number>();
+    for (const r of this.specialRequestOptions()) map.set(r.label, r.unit_price);
+    return map;
+  });
+
+  /** label → unit_price for the review step chips (amenities). */
+  readonly amenityPriceMap = computed(() => {
+    const map = new Map<string, number>();
+    for (const cat of this.amenityCatalog()) {
+      for (const item of cat.items) map.set(item.label, item.unit_price);
+    }
+    return map;
+  });
 
   /** Hotel whose policy times were last auto-filled (0 = never). */
   private lastPolicyPropId = 0;
@@ -297,14 +342,29 @@ export class ReservationNewPageComponent {
     }
   }
 
-  readonly specialRequestOptions = [
-    { value: 'Cama extra', label: 'Cama extra' },
-    { value: 'Cuna para bebé', label: 'Cuna para bebé' },
-    { value: 'Accesibilidad (silla de ruedas)', label: 'Accesibilidad' },
-    { value: 'Mascotas (Pet friendly)', label: 'Pet friendly' },
-    { value: 'Piso alto', label: 'Piso alto' },
-    { value: 'Llegada tarde', label: 'Llegada tarde' },
-  ];
+  /**
+   * Special-request options shown in "Peticiones especiales".
+   *
+   * Loaded from the per-hotel catalog (``/amenities/guest/catalog/by-prop``
+   * → ``special_requests``) with prices and behavior flags; falls back to the
+   * legacy hardcoded list while the catalog is loading or when it fails, so
+   * the form never loses the section.
+   */
+  readonly specialRequestOptions = computed<SpecialRequestOption[]>(() => {
+    const catalog = this.specialRequestsCatalog();
+    if (catalog.length > 0) {
+      return catalog.map((r) => ({
+        value: r.label,
+        label: r.label,
+        unit_price: r.unit_price,
+        chargeable: r.chargeable,
+        pet_related: r.pet_related,
+        high_floor: r.high_floor,
+        late_arrival: r.late_arrival,
+      }));
+    }
+    return DEFAULT_SPECIAL_REQUEST_OPTIONS;
+  });
 
   readonly today = new Date().toISOString().split('T')[0];
 
@@ -389,11 +449,12 @@ export class ReservationNewPageComponent {
       this.ratePlansLoading.set(this.ratePlansResource.isLoading());
     });
 
-    // amenityResource.value() → amenityCatalog (success).
+    // amenityResource.value() → amenityCatalog + specialRequestsCatalog (success).
     effect(() => {
       const r = this.amenityResource.value();
       if (!r) return;
       this.amenityCatalog.set(r.catalog || []);
+      this.specialRequestsCatalog.set(r.special_requests || []);
       this.amenityCatalogLoading.set(false);
     });
 
@@ -633,6 +694,7 @@ export class ReservationNewPageComponent {
       checkOutDate: v.checkOutDate,
       checkInTime: v.checkInTime || undefined,
       checkOutTime: v.checkOutTime || undefined,
+      estimatedArrivalTime: v.estimatedArrivalTime || undefined,
       adults: v.adults,
       children: v.children,
       rooms: v.rooms,
@@ -867,6 +929,17 @@ export class ReservationNewPageComponent {
       this.form.controls.specialRequests.setValue(current.filter(r => r !== request));
     }
     this.form.controls.specialRequests.markAsDirty();
+    // Al marcar la petición "Llegada tarde" sin hora estimada, se sugiere la
+    // hora convencional de late check-in (20:00) para que el marcador aplique.
+    if (isChecked && this._isLateArrivalRequest(request) && !this.form.controls.estimatedArrivalTime.value) {
+      this.form.controls.estimatedArrivalTime.setValue('20:00');
+    }
+  }
+
+  /** True si la petición marcada está flaggeada como late_arrival en el catálogo. */
+  private _isLateArrivalRequest(request: string): boolean {
+    const r = this.specialRequestOptions().find((opt) => opt.value === request);
+    return !!r?.late_arrival;
   }
 
   onStartDateChange(date: string): void {

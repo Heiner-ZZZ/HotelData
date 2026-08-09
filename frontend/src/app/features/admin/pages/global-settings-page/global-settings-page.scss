@@ -12,35 +12,38 @@
     padding: 4px;
     margin-bottom: 24px;
 
+    /* Misma convención de tabs que settings-page: activo tintado de accent,
+       hover con tinte accent — visible en light y dark. */
     .tab-btn {
       flex: 1;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 12px 16px;
-      border: none;
+      gap: 0.4rem;
+      padding: 0.55rem 0.5rem;
+      border: 0;
       border-radius: 8px;
       background: transparent;
       color: var(--muted-text);
-      font-size: 0.9rem;
-      font-weight: 500;
+      font-size: 0.82rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background 160ms ease, color 160ms ease;
 
       .material-symbols-outlined {
-        font-size: 18px;
+        font-size: 1.05rem;
+        --icon-opsz: 20;
       }
 
       &:hover {
-        color: var(--gray-700);
-        background: rgba(255, 255, 255, 0.04);
+        background: color-mix(in srgb, var(--accent) 6%, transparent);
+        color: color-mix(in srgb, var(--accent-strong) 35%, var(--gray-700));
       }
 
       &.active {
-        color: var(--gray-900);
-        background: var(--gray-100);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
+        color: var(--accent);
+        box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 12%, transparent);
       }
     }
   }
@@ -88,36 +91,23 @@
     input {
       width: 100%;
       padding: 10px 12px 10px 40px;
-      background: var(--gray-50);
+      background: color-mix(in srgb, var(--surface) 95%, var(--app-text));
       border: 1px solid var(--app-border);
       border-radius: 8px;
       color: var(--app-text);
       font-size: 0.9rem;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
       box-sizing: border-box;
 
       &:focus {
         border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
       }
 
       &::placeholder {
         color: var(--muted-text);
       }
-    }
-  }
-
-  .message {
-    padding: 8px 16px;
-    border-radius: 8px;
-    background: var(--success-light);
-    color: var(--success);
-    font-size: 0.85rem;
-    margin-bottom: 12px;
-
-    &.error {
-      background: var(--danger-light);
-      color: var(--danger);
     }
   }
 
@@ -143,7 +133,7 @@
       transition: background 0.15s;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.02);
+        background: color-mix(in srgb, var(--accent) 2%, transparent);
       }
 
       td {
@@ -174,7 +164,7 @@
     .edit-input {
       width: 120px;
       padding: 6px 8px;
-      background: var(--gray-50);
+      background: color-mix(in srgb, var(--surface) 95%, var(--app-text));
       border: 1px solid var(--app-border);
       border-radius: 6px;
       color: var(--app-text);
@@ -183,6 +173,7 @@
 
       &:focus {
         border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
       }
 
       &.small {
@@ -191,6 +182,8 @@
     }
   }
 
+  /* Icon-buttons de fila con hovers semánticos (accent/success/danger-light),
+     visibles en light y dark — convención de _su-actions.scss. */
   .btn-edit, .btn-save, .btn-cancel, .btn-delete {
     display: inline-flex;
     align-items: center;
@@ -200,17 +193,19 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: var(--gray-500);
+    color: var(--muted-text);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.15s, color 0.15s;
 
     .material-symbols-outlined {
       font-size: 16px;
     }
+  }
 
+  .btn-edit {
     &:hover {
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--gray-700);
+      background: var(--accent-light);
+      color: var(--accent);
     }
   }
 
@@ -219,37 +214,14 @@
     &:hover { background: var(--success-light); }
   }
 
-  .btn-cancel {
-    color: var(--danger);
-    &:hover { background: var(--danger-light); }
-  }
-
+  .btn-cancel,
   .btn-delete {
     color: var(--danger);
     &:hover { background: var(--danger-light); }
   }
 
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 20px;
-    background: var(--accent);
-    color: var(--gray-900);
-    border: none;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-
-    &:hover { background: var(--accent-strong); }
-    &:disabled {
-      background: var(--gray-100);
-      color: var(--muted-text);
-      cursor: not-allowed;
-    }
-  }
+  /* .btn-primary vive en styles/_scss-forms.scss (global) — variante canónica
+     con --on-accent para contraste correcto en light mode. */
 
   .inline-form {
     display: flex;
@@ -260,14 +232,17 @@
 
     .form-input {
       padding: 8px 12px;
-      background: var(--gray-50);
+      background: color-mix(in srgb, var(--surface) 95%, var(--app-text));
       border: 1px solid var(--app-border);
       border-radius: 8px;
       color: var(--app-text);
       font-size: 0.85rem;
       outline: none;
 
-      &:focus { border-color: var(--accent); }
+      &:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+      }
 
       &.small { width: 80px; }
     }
@@ -298,8 +273,8 @@
 
       .material-symbols-outlined { font-size: 18px; }
 
-      &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: var(--gray-700); }
-      &.active { background: var(--accent); color: var(--gray-900); }
+      &:hover:not(:disabled) { background: var(--surface-hover); color: var(--app-text); }
+      &.active { background: var(--accent); color: var(--on-accent); }
       &:disabled { opacity: 0.3; cursor: not-allowed; }
     }
   }
@@ -333,7 +308,7 @@
       .form-input {
         width: 100%;
         padding: 10px 12px;
-        background: var(--gray-50);
+        background: color-mix(in srgb, var(--surface) 95%, var(--app-text));
         border: 1px solid var(--app-border);
         border-radius: 8px;
         color: var(--app-text);
@@ -341,7 +316,10 @@
         outline: none;
         box-sizing: border-box;
 
-        &:focus { border-color: var(--accent); }
+        &:focus {
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+        }
       }
     }
   }
@@ -349,7 +327,7 @@
   .current-values {
     margin-top: 24px;
     padding: 16px;
-    background: var(--gray-50);
+    background: color-mix(in srgb, var(--surface) 96%, var(--app-text));
     border-radius: 8px;
 
     h4 {
@@ -379,7 +357,7 @@
   .info-footer {
     margin-top: 20px;
     padding: 12px 16px;
-    background: var(--gray-50);
+    background: color-mix(in srgb, var(--surface) 96%, var(--app-text));
     border: 1px solid var(--app-border);
     border-radius: 8px;
 

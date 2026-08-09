@@ -169,6 +169,7 @@ async def test_create_ownership_user_scoped_to_hotels(db):
     assert result["ok"] is True
     user = db.users.find_one({"username": "owner_hotel1"})
     assert user is not None
+    assert user["primary_role"] == "hotel_partner"
     assert user["assigned_hotels"] == [3]
     assert hotel_filter_from_user(user) == {"prop_id": {"$in": [3]}}
     assert user_can_access_hotel(user, 3) is True

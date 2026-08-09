@@ -10,19 +10,6 @@
     (propIdChange)="onPropSelected($event)"
   />
 
-  @if (message()) {
-    <section class="notification success">
-      <span class="material-symbols-outlined notif-icon">check_circle</span>
-      <span>{{ message() }}</span>
-    </section>
-  }
-  @if (errorMessage()) {
-    <section class="notification error">
-      <span class="material-symbols-outlined notif-icon">error</span>
-      <span>{{ errorMessage() }}</span>
-    </section>
-  }
-
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando servicios..." />
@@ -39,6 +26,19 @@
     }
     @default {
       @if (amenitiesResource.value(); as vm) {
+        <!-- Tab switcher: Servicios | Peticiones especiales -->
+        <nav class="amenity-tabs" aria-label="Secciones del catálogo">
+          <button type="button" class="amenity-tab" [class.is-active]="activeTab() === 'amenities'" (click)="activeTab.set('amenities')">
+            <span class="material-symbols-outlined">spa</span>
+            Servicios
+          </button>
+          <button type="button" class="amenity-tab" [class.is-active]="activeTab() === 'requests'" (click)="activeTab.set('requests')">
+            <span class="material-symbols-outlined">room_service</span>
+            Peticiones especiales
+          </button>
+        </nav>
+
+        @if (activeTab() === 'amenities') {
         <!-- Expedia-inspired Hero Stats -->
         <section class="hero-grid">
           <article class="surface-card hero-card">
@@ -134,7 +134,7 @@
             </button>
           </section>
         } @else {
-          <section class="surface-card mode-chrome mode-chrome--edit">
+          <section class="surface-card mode-chrome mode-chrome--edit" appModeHighlight>
             <div class="mode-chrome-copy">
               <span class="material-symbols-outlined mode-chrome-icon">edit</span>
               <div>
@@ -398,6 +398,172 @@
         }
 
 
+        }
+
+        <!-- ═══ Peticiones especiales tab ═══ -->
+        @if (activeTab() === 'requests') {
+          <section class="surface-card mode-chrome" [class.mode-chrome--edit]="requestsEditing()" appModeHighlight>
+            <div class="mode-chrome-copy">
+              <span class="material-symbols-outlined mode-chrome-icon">room_service</span>
+              <div>
+                <h3>Catálogo de peticiones especiales</h3>
+                <p>
+                  Las peticiones que el huésped puede solicitar al reservar. Precio 0 = sin cargo.
+                  @if (requestsDirty()) {
+                    <strong class="dirty-hint">· Cambios sin guardar</strong>
+                  }
+                </p>
+              </div>
+            </div>
+            <div class="mode-chrome-actions">
+              @if (!requestsEditing()) {
+                <button type="button" class="btn-primary" (click)="startRequestsEditing()">
+                  <span class="material-symbols-outlined">edit</span>
+                  Editar peticiones
+                </button>
+              } @else {
+                <button type="button" class="btn-secondary" (click)="cancelRequestsEditing()">
+                  <span class="material-symbols-outlined">close</span>
+                  Descartar
+                </button>
+                <button type="button" class="btn-primary" [disabled]="!requestsDirty() || requestsSaving()" (click)="saveRequests()">
+                  <span class="material-symbols-outlined">{{ requestsSaving() ? 'sync' : 'save' }}</span>
+                  Guardar cambios
+                </button>
+              }
+            </div>
+          </section>
+
+          <!-- high_floor_from threshold -->
+          <section class="surface-card requests-threshold-card">
+            <div class="panel-header">
+              <span class="material-symbols-outlined icon-blue">floor</span>
+              <div>
+                <h3>Piso alto — desde qué piso</h3>
+                <p>La petición "Piso alto" solo se puede cumplir en habitaciones en o por encima de este piso. Se valida al reservar contra el piso real de la habitación.</p>
+              </div>
+            </div>
+            <div class="requests-threshold-body">
+              <label class="field requests-threshold-field">
+                <span class="field-label">Pisos altos desde el piso</span>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-prefix">stairs</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    [value]="highFloorFrom()"
+                    (input)="setHighFloorFrom($any($event.target).value)"
+                    [readonly]="!requestsEditing()"
+                  />
+                </div>
+              </label>
+              <p class="requests-threshold-note">
+                Actualmente: pisos altos desde el <strong>piso {{ highFloorFrom() }}</strong>.
+              </p>
+            </div>
+          </section>
+
+          <!-- Request editor list -->
+          <section class="surface-card requests-editor-card">
+            <div class="panel-header">
+              <span class="material-symbols-outlined icon-blue">checklist</span>
+              <div>
+                <h3>Peticiones disponibles</h3>
+                <p>{{ requestOptions().length }} petición(es) configurada(s) para este hotel.</p>
+              </div>
+            </div>
+
+            @if (requestOptions().length === 0) {
+              <app-empty-state icon="room_service" title="Sin peticiones" description="Agrega la primera petición con el formulario de abajo." />
+            } @else {
+              <div class="requests-list">
+                @for (req of requestOptions(); track req.label) {
+                  <div class="request-row" [class.is-editing]="requestsEditing()">
+                    <span class="material-symbols-outlined request-row-icon">check_circle</span>
+                    <div class="request-row-main">
+                      <strong class="request-row-label">{{ req.label }}</strong>
+                      <div class="request-row-flags">
+                        <button
+                          type="button"
+                          class="request-flag"
+                          [class.is-on]="req.petRelated"
+                          [disabled]="!requestsEditing()"
+                          (click)="toggleRequestFlag(req.label, 'petRelated')"
+                          [title]="'Valida contra la política de mascotas del hotel y usa su cargo'">
+                          <span class="material-symbols-outlined">pets</span>
+                          Mascotas
+                        </button>
+                        <button
+                          type="button"
+                          class="request-flag"
+                          [class.is-on]="req.highFloor"
+                          [disabled]="!requestsEditing()"
+                          (click)="toggleRequestFlag(req.label, 'highFloor')"
+                          [title]="'Exige piso alto: bloquea la reserva si la habitación está por debajo del umbral'">
+                          <span class="material-symbols-outlined">stairs</span>
+                          Piso alto
+                        </button>
+                        <button
+                          type="button"
+                          class="request-flag"
+                          [class.is-on]="req.lateArrival"
+                          [disabled]="!requestsEditing()"
+                          (click)="toggleRequestFlag(req.label, 'lateArrival')"
+                          [title]="'El huésped llegará tarde: alimenta el marcador de late check-in'">
+                          <span class="material-symbols-outlined">schedule</span>
+                          Llegada tarde
+                        </button>
+                      </div>
+                    </div>
+                    <div class="request-row-price">
+                      <span class="field-label">Precio ($)</span>
+                      <div class="input-wrap request-price-input">
+                        <span class="material-symbols-outlined input-prefix">payments</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          [value]="req.unitPrice"
+                          (input)="updateRequestPrice(req.label, $any($event.target).value)"
+                          [readonly]="!requestsEditing()"
+                        />
+                      </div>
+                    </div>
+                    @if (requestsEditing()) {
+                      <button type="button" class="request-remove" (click)="removeRequest(req.label)" title="Quitar petición">
+                        <span class="material-symbols-outlined">delete</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            @if (requestsEditing()) {
+              <div class="requests-add">
+                <div class="field requests-add-label">
+                  <span class="field-label">Nueva petición</span>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-prefix">add_circle</span>
+                    <input [value]="newRequestLabel()" (input)="newRequestLabel.set($any($event.target).value)" placeholder="Ej: Almohada extra" />
+                  </div>
+                </div>
+                <div class="field requests-add-price">
+                  <span class="field-label">Precio ($)</span>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-prefix">payments</span>
+                    <input type="number" min="0" step="0.5" [value]="newRequestPrice()" (input)="newRequestPrice.set($any($event.target).value)" placeholder="0 = gratis" />
+                  </div>
+                </div>
+                <button type="button" class="btn-secondary requests-add-btn" [disabled]="!newRequestLabel().trim()" (click)="addRequest()">
+                  <span class="material-symbols-outlined">add</span>
+                  Agregar
+                </button>
+              </div>
+            }
+          </section>
+        }
       }
     }
   }

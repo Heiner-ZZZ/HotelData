@@ -18,6 +18,7 @@ import { ThemeService } from '../../../core/theme/theme.service';
 import { OperationModeIndicatorComponent } from '../operation-mode-indicator/operation-mode-indicator';
 import { ReservationsApiService } from '../../../features/reservations/services/reservations-api.service';
 import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
+import { ClientNotificationsService } from '../../../features/notifications/services/notifications.service';
 
 interface TopNavItem {
   label: string;
@@ -51,6 +52,7 @@ export class TopNavComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly notificationsApi = inject(NotificationsApiService);
+  private readonly clientNotifications = inject(ClientNotificationsService);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
@@ -63,6 +65,9 @@ export class TopNavComponent implements OnInit {
   readonly activeMenu = signal<string | null>(null);
   readonly showNotifications = signal(false);
   readonly notifications = signal<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }[]>([]);
+  /** La campana se muestra para todo usuario autenticado — huéspedes incluidos. */
+  readonly showNotificationBell = computed(() => this.authState().authenticated && !!this.currentUser());
+  /** Roles de sistema leen de la API de notificaciones del admin; el resto (huésped, staff) de /notifications/my. */
   readonly canViewNotifications = computed(() => {
     const role = this.currentUser()?.primaryRole;
     return role === 'super_admin' || role === 'admin_sistema';
@@ -116,6 +121,16 @@ export class TopNavComponent implements OnInit {
     }
   ];
 
+  /** En la vista de huésped las opciones de Explorar se reparten como enlaces directos en el nav. */
+  readonly guestNavItems: TopNavItem[] = [
+    { label: 'Buscar hoteles', href: '/search', icon: 'search' },
+    { label: 'Hotel destacado', href: '/hotels/partner-1', icon: 'star' },
+    { label: 'Mis Favoritos', href: '/search/favorites', icon: 'favorite' },
+    { label: 'Reservas del viajero', href: '/account/bookings', icon: 'book_online' }
+  ];
+
+  readonly isGuest = computed(() => this.currentUser()?.primaryRole === 'cliente');
+
   readonly visibleGroups = computed(() => {
     const role = this.currentUser()?.primaryRole;
     return this.navGroups
@@ -148,25 +163,52 @@ export class TopNavComponent implements OnInit {
       return;
     }
 
-    if (!this.canViewNotifications()) {
+    if (!this.authState().authenticated || !this.currentUser()) {
       this.notifications.set([]);
       return;
     }
 
-    this.notificationsApi.getNotifications(1, undefined, undefined, undefined)
+    if (this.canViewNotifications()) {
+      this.notificationsApi.getNotifications(1, undefined, undefined, undefined)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (viewModel) => {
+            const currentUserEmail = this.currentUser()?.email?.toLowerCase() || '';
+            const filteredItems = viewModel.items.filter(item =>
+              item.recipientEmail?.toLowerCase() === currentUserEmail
+            );
+            const mapped = filteredItems.map((item, idx) => ({
+              id: idx + 1,
+              title: item.typeLabel,
+              description: `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
+              time: this._timeAgo(item.createdAt),
+              unread: item.status === 'sent',
+              bookingId: item.bookingId || '',
+              propId: item.propId || 0,
+            }));
+            this.notifications.set(mapped);
+          },
+          error: (err) => {
+            if (err?.status === 403 || err?.status === 401) {
+              this._notifPollingStopped = true;
+              this._stopNotifPolling();
+            }
+          }
+        });
+      return;
+    }
+
+    // Huéspedes y staff no-admin: notificaciones propias vía /notifications/my.
+    this.clientNotifications.getMyNotifications(1, 5)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (viewModel) => {
-          const currentUserEmail = this.currentUser()?.email?.toLowerCase() || '';
-          const filteredItems = viewModel.items.filter(item =>
-            item.recipientEmail?.toLowerCase() === currentUserEmail
-          );
-          const mapped = filteredItems.map((item, idx) => ({
+        next: (result) => {
+          const mapped = result.items.map((item, idx) => ({
             id: idx + 1,
             title: item.typeLabel,
-            description: `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
+            description: item.message || `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
             time: this._timeAgo(item.createdAt),
-            unread: item.status === 'sent',
+            unread: item.isUnread,
             bookingId: item.bookingId || '',
             propId: item.propId || 0,
           }));

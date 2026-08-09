@@ -1,8 +1,9 @@
-import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { getErrorStatus } from '../../../../shared/utils/http-error.util';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { EmployeeDetailDto } from '../../models/hr.dto';
@@ -292,6 +293,8 @@ export class EmployeeDetailPageComponent {
   });
 
   readonly emp = computed(() => {
+    // value() LANZA cuando el request falló — leer error() antes para degradar.
+    if (this.detailResource.error()) return null;
     const dto = this.detailResource.value();
     if (!dto) return null;
     const mapped = mapEmployeeDetail(dto);
@@ -314,11 +317,11 @@ export class EmployeeDetailPageComponent {
   });
 
   readonly viewState = computed<'loading' | 'success' | 'error' | 'empty'>(() => {
+    // error() ANTES de value(): value() lanza cuando el request falló.
+    const error = this.detailResource.error();
+    if (error) return getErrorStatus(error) === 404 ? 'empty' : 'error';
     const value = this.detailResource.value();
     if (this.detailResource.isLoading() && !value) return 'loading';
-    const error = this.detailResource.error();
-    if (error instanceof HttpErrorResponse) return error.status === 404 ? 'empty' : 'error';
-    if (error) return 'error';
     return value ? 'success' : 'loading';
   });
 

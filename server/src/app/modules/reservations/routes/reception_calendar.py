@@ -168,6 +168,8 @@ def reception_calendar_api(
                 "assigned_rooms": 1,
                 "total_price": 1,
                 "currency": 1,
+                "estimated_arrival_time": 1,
+                "late_checkin": 1,
             },
         )
     )
@@ -202,6 +204,8 @@ def reception_calendar_api(
             "children": int(b.get("children") or 0),
             "check_in_date": (b.get("check_in_date") or "")[:10],
             "check_in_time": check_in_time_str,
+            "estimated_arrival_time": b.get("estimated_arrival_time", ""),
+            "late_checkin": bool(b.get("late_checkin", False)),
             "check_out_date": (b.get("check_out_date") or "")[:10],
             "check_out_time": check_out_time_str,
             "total_nights": int(b.get("total_nights") or 0),

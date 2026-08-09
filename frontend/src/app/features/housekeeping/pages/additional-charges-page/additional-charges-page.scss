@@ -46,10 +46,6 @@
 .toast-success { background: var(--success-light); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 25%, transparent); }
 .toast-error { background: var(--danger-light); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent); }
 
-@keyframes slide-in {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 
 .bar-actions {
   display: flex;
@@ -198,9 +194,6 @@
   .material-symbols-outlined { font-size: 1.1rem; }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 .total-display {
   padding: 0.45rem 0.6rem;
@@ -279,6 +272,33 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 3%, transparent); 
 }
 
 .text-muted { color: var(--muted-text); }
+
+.charge-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted-text);
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.charge-status-posted {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.charge-status-failed {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.charge-status-reversed {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+}
 
 .cell-time { white-space: nowrap; font-size: 0.78rem; color: var(--muted-text); font-variant-numeric: tabular-nums; }
 

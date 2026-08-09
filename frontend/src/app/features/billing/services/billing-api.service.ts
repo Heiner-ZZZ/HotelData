@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map } from 'rxjs';
+import { map, throwError } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapBillableServices, mapInvoiceDashboard, mapInvoiceDetail, mapInvoicesList, mapPaymentsList, mapPaymentDashboard } from '../mappers/billing.mapper';
@@ -12,6 +12,9 @@ export class BillingApiService {
   private readonly apiConfig = inject(API_CONFIG);
 
   getInvoices(page: number, filters?: { prop_id?: number; status?: string; q?: string; date_from?: string; date_to?: string }) {
+    if (!filters?.prop_id || filters.prop_id < 1) {
+      return throwError(() => new Error('Selecciona un hotel para consultar Guest AR.'));
+    }
     let params = new HttpParams().set('page', String(page));
     if (filters?.prop_id) params = params.set('prop_id', String(filters.prop_id));
     if (filters?.status) params = params.set('status', filters.status);
@@ -23,10 +26,14 @@ export class BillingApiService {
       .pipe(map(dto => mapInvoicesList(dto)));
   }
 
-  getInvoiceStats() {
+  getInvoiceStats(propId: number) {
+    if (!propId || propId < 1) {
+      return throwError(() => new Error('Selecciona un hotel para consultar Guest AR.'));
+    }
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.get<InvoiceStatsDto>(
       `${this.apiConfig.baseUrl}/billing/invoices/stats`,
-      { withCredentials: true },
+      { params, withCredentials: true },
     );
   }
 
@@ -39,8 +46,10 @@ export class BillingApiService {
     page?: number;
     page_size?: number;
   }) {
-    let hp = new HttpParams();
-    if (params.prop_id) hp = hp.set('prop_id', String(params.prop_id));
+    if (!params.prop_id || params.prop_id < 1) {
+      return throwError(() => new Error('Selecciona un hotel para consultar Guest AR.'));
+    }
+    let hp = new HttpParams().set('prop_id', String(params.prop_id));
     if (params.date_from) hp = hp.set('date_from', params.date_from);
     if (params.date_to) hp = hp.set('date_to', params.date_to);
     if (params.status) hp = hp.set('status', params.status);
@@ -51,14 +60,37 @@ export class BillingApiService {
       .pipe(map(dto => mapInvoiceDashboard(dto)));
   }
 
-  getInvoiceDetail(invoiceId: string) {
+  getInvoiceDetail(invoiceId: string, propId: number) {
+    if (!propId || propId < 1) {
+      return throwError(() => new Error('Selecciona un hotel para consultar Guest AR.'));
+    }
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http
-      .get<InvoiceDetailDto>(`${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}`, { withCredentials: true })
+      .get<InvoiceDetailDto>(`${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}`, { params, withCredentials: true })
       .pipe(map(dto => mapInvoiceDetail(dto)));
   }
 
-  cancelInvoice(invoiceId: string) {
-    return this.http.post(`${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/cancel`, {}, { withCredentials: true });
+  cancelInvoice(invoiceId: string, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.post(`${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/cancel`, {}, { params, withCredentials: true });
+  }
+
+  createCreditNote(invoiceId: string, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.post<InvoiceDetailDto>(
+      `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/credit-note`,
+      {},
+      { params, withCredentials: true },
+    ).pipe(map(dto => mapInvoiceDetail(dto)));
+  }
+
+  repairInvoiceSettlement(invoiceId: string, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.post<InvoiceDetailDto>(
+      `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/repair-settlement`,
+      {},
+      { params, withCredentials: true },
+    ).pipe(map(dto => mapInvoiceDetail(dto)));
   }
 
   /** Tactical F1.5 dashboard: payments by method + outstanding balance (ClickHouse). */
@@ -71,8 +103,10 @@ export class BillingApiService {
     page?: number;
     page_size?: number;
   }) {
-    let hp = new HttpParams();
-    if (params.prop_id) hp = hp.set('prop_id', String(params.prop_id));
+    if (!params.prop_id || params.prop_id < 1) {
+      return throwError(() => new Error('Selecciona un hotel para consultar Guest AR.'));
+    }
+    let hp = new HttpParams().set('prop_id', String(params.prop_id));
     if (params.date_from) hp = hp.set('date_from', params.date_from);
     if (params.date_to) hp = hp.set('date_to', params.date_to);
     if (params.method) hp = hp.set('method', params.method);
@@ -85,6 +119,9 @@ export class BillingApiService {
   }
 
   getPayments(page: number, filters?: { prop_id?: number }) {
+    if (!filters?.prop_id || filters.prop_id < 1) {
+      return throwError(() => new Error('Selecciona un hotel para consultar Guest AR.'));
+    }
     let params = new HttpParams().set('page', String(page));
     if (filters?.prop_id) params = params.set('prop_id', String(filters.prop_id));
     return this.http
@@ -110,27 +147,30 @@ export class BillingApiService {
   }
 
   /** Add a line item to an invoice (only if status='issued'). */
-  addLineItem(invoiceId: string, payload: { name: string; quantity?: number; unit_price?: number; category?: string }) {
+  addLineItem(invoiceId: string, payload: { name: string; quantity?: number; unit_price?: number; category?: string }, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.post<InvoiceDetailDto>(
       `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/items`,
       payload,
-      { withCredentials: true },
+      { params, withCredentials: true },
     ).pipe(map(dto => mapInvoiceDetail(dto)));
   }
 
   /** Remove a line item from an invoice (only if status='issued'). Cannot remove room charge. */
-  removeLineItem(invoiceId: string, itemId: string) {
+  removeLineItem(invoiceId: string, itemId: string, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.delete<InvoiceDetailDto>(
       `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/items/${itemId}`,
-      { withCredentials: true },
+      { params, withCredentials: true },
     ).pipe(map(dto => mapInvoiceDetail(dto)));
   }
 
-  payInvoice(invoiceId: string) {
+  payInvoice(invoiceId: string, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.post<{ ok: boolean; message: string; payment: Record<string, unknown> }>(
       `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/pay`,
       {},
-      { withCredentials: true },
+      { params, withCredentials: true },
     );
   }
 
@@ -143,11 +183,12 @@ export class BillingApiService {
     );
   }
 
-  refundPayment(paymentId: string) {
-    return this.http.post(
+  refundPayment(paymentId: string, propId: number, refundId?: string) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.post<PaymentDto>(
       `${this.apiConfig.baseUrl}/billing/payments/${paymentId}/refund`,
-      {},
-      { withCredentials: true },
+      refundId ? { refund_id: refundId } : {},
+      { params, withCredentials: true },
     );
   }
 

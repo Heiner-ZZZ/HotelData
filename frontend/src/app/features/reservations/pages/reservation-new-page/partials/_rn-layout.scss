@@ -16,3 +16,12 @@
 .review-container > * {
   min-width: 0;
 }
+
+/* The guest section renders several <section class="surface-card"> siblings
+   (datos del huésped, peticiones, servicios adicionales, comentario). The
+   host element is a plain block, so the cards were stacked with zero
+   spacing — give it the same rhythm as the rest of the form. */
+app-rn-guest-section {
+  display: grid;
+  gap: 1rem;
+}

@@ -1,5 +1,5 @@
 <article class="hotel-card surface-card" (mouseenter)="startRotation()" (mouseleave)="stopRotation()">
-  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="!fallbackImg()" aria-label="Abrir detalle del hotel" (click)="trackClick()">
+  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="galleryImages().length > 0" aria-label="Abrir detalle del hotel" (click)="trackClick()">
     <!-- Favorite button — top-right corner of the image -->
     <button
       class="favorite-btn"
@@ -10,12 +10,30 @@
     >
       <span class="material-symbols-outlined">{{ isFavorited() ? 'favorite' : 'favorite_border' }}</span>
     </button>
-    @if (!fallbackImg() && galleryImages().length) {
+    @if (galleryImages().length > 1) {
       <div class="card-img-strip" [style.transform]="stripOffset()" [style.transition]="noTransition() ? 'none' : ''">
         @for (img of galleryImages(); track $index) {
-          <img class="card-bg-img" [src]="img" alt="" loading="lazy" (error)="onImgError()" />
+          <img class="card-bg-img" [src]="img" alt="" loading="lazy" (error)="onImgError($any($event.target))" />
         }
       </div>
+      @if (galleryImages().length > 1) {
+        <button
+          class="gallery-arrow gallery-prev"
+          type="button"
+          aria-label="Imagen anterior"
+          (click)="prevImage(); $event.preventDefault(); $event.stopPropagation()"
+        >
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <button
+          class="gallery-arrow gallery-next"
+          type="button"
+          aria-label="Imagen siguiente"
+          (click)="nextImage(); $event.preventDefault(); $event.stopPropagation()"
+        >
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      }
       <div class="card-dots">
         @for (i of dotIndices(); track i) {
           <button
@@ -27,7 +45,7 @@
         }
       </div>
     } @else {
-      <img class="card-bg-img card-bg-single" [src]="imageUrl()" alt="" loading="lazy" (error)="onImgError()" />
+      <img class="card-bg-img card-bg-single" [src]="imageUrl()" alt="" loading="lazy" (error)="onImgError($any($event.target))" />
     }
     <div class="media-overlay">
       @if (hotel().minNightlyRate) {
@@ -55,7 +73,6 @@
           }
         </div>
         <p class="meta-line">{{ headlineMeta }}</p>
-        <p class="summary">{{ summaryText }}</p>
 
         <div class="tag-row">
           <!-- No `(?? []).slice(…)` here. The mapper is the single canonical
@@ -101,10 +118,34 @@
           <div class="price-box">
             <p class="price-label">Precio por noche</p>
             <strong>{{ hotel().minNightlyRateLabel }}</strong>
-            @if (hotel().totalEstimated) {
-              <p class="price-meta">Total estimado: {{ hotel().totalEstimatedLabel }}</p>
+            @if (displayTotalLabel(); as totalLabel) {
+              <p class="price-meta">
+                @if (nights(); as n) {
+                  Total por {{ n }} {{ n === 1 ? 'noche' : 'noches' }}:
+                } @else {
+                  Total estimado:
+                }
+                {{ totalLabel }}
+              </p>
+            }
+            @if (availableRoomsLabel(); as roomsLabel) {
+              <p class="price-rooms">
+                <span class="material-symbols-outlined">meeting_room</span>
+                {{ roomsLabel }}
+              </p>
             }
           </div>
+        }
+
+        @if (showChooseDates()) {
+          <button
+            type="button"
+            class="choose-dates-btn"
+            (click)="chooseDates.emit()"
+          >
+            <span class="material-symbols-outlined">calendar_month</span>
+            Elegir fechas
+          </button>
         }
 
         <a [routerLink]="['/hotels', hotel().id]" class="primary-link" (click)="trackClick()">Ver disponibilidad</a>

@@ -29,6 +29,7 @@ export interface LedgerTransaction {
 }
 
 export interface LedgerFolio {
+  propId: number;
   folioId: string;
   folioRef: string;
   guestName: string;

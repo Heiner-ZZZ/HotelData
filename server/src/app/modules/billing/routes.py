@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from bson import ObjectId
@@ -12,9 +13,13 @@ from src.app.modules.billing.service import (
     add_line_item,
     cancel_invoice,
     close_folio,
+    reopen_folio_with_balance,
+    settle_folio,
+    is_historical_cash_shift_eligible,
     cleanup_expired_folios,
     create_invoice,
     create_payment,
+    classify_failed_payment_informational,
     get_folio,
     get_invoice,
     get_invoice_stats,
@@ -26,6 +31,8 @@ from src.app.modules.billing.service import (
     post_to_folio,
     refund_payment,
     remove_line_item,
+    repair_cancelled_or_refunded_invoice,
+    create_credit_note_for_invoice,
     FOLIO_CATEGORIES,
 )
 from src.app.modules.billing.service.services import get_billable_services
@@ -38,6 +45,46 @@ from src.database.connection import get_database
 router = APIRouter(prefix="/modules/billing", tags=["modules-billing"])
 api_router = APIRouter(prefix="/api/billing", tags=["billing-api"])
 
+
+def _require_billing_scope(value: Any) -> int:
+    """Fail closed when a legacy billing read omits its hotel scope."""
+    from fastapi.params import Param
+
+    if isinstance(value, Param):
+        value = value.default
+    try:
+        prop_id = int(value)
+    except (TypeError, ValueError):
+        prop_id = 0
+    if prop_id < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="prop_id es obligatorio para consultar datos de Guest AR del hotel",
+        )
+    return prop_id
+
+
+
+def _scoped_invoice(invoice_id: str, prop_id: int | None) -> dict[str, Any]:
+    """Load a Guest AR invoice only inside the requested hotel scope."""
+    prop_id = _require_billing_scope(prop_id)
+    try:
+        oid = ObjectId(invoice_id)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada") from exc
+    invoice = get_database().reservation_invoices.find_one({"_id": oid, "prop_id": prop_id})
+    if not invoice:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada en este hotel")
+    return invoice
+
+
+def _scoped_payment(payment_id: str, prop_id: int | None) -> dict[str, Any]:
+    """Load a Guest AR payment only inside the requested hotel scope."""
+    prop_id = _require_billing_scope(prop_id)
+    payment = get_payment(payment_id)
+    if not payment or int(payment.get("prop_id", 0) or 0) != prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago no encontrado en este hotel")
+    return payment
 
 
 # ─── Pydantic *Response models (Fase 5/6 API-boundary convention) ────────────
@@ -67,6 +114,16 @@ class InvoiceResponse(BaseModel):
     taxes: float | None = None
     total: float | None = None
     total_paid_amount: float | None = None
+    original_total: float | None = None
+    recognized_total: float | None = None
+    net_total: float | None = None
+    accounting_status: str | None = None
+    ledger_posting_status: str | None = None
+    ledger_posting_error: str | None = None
+    ledger_references: list[str] = Field(default_factory=list)
+    accounting_reversal_journal_id: str | None = None
+    credit_note_id: ObjectIdStr | None = None
+    credit_note_number: str | None = None
     guest_name: str | None = None
     guest_email: str | None = None
     notes: str | None = None
@@ -114,6 +171,14 @@ class PaymentResponse(BaseModel):
     id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
     booking_id: str | None = None
     invoice_id: ObjectIdStr | None = Field(default=None, validation_alias="invoice_id", serialization_alias="invoice_id")
+    refund_id: str | None = None
+    refund_document_id: ObjectIdStr | None = None
+    refund_document_number: str | None = None
+    reconciliation_status: str | None = None
+    reconciliation_reason: str | None = None
+    evidence_type: str | None = None
+    evidence_reference: str | None = None
+    payment_source: str | None = None
     # Post-FK migration: prop_id may now arrive as ObjectId string. Same transitional
     # pattern as InvoiceResponse.prop_id + BookingResponse.prop_id (Fase 5/6).
     prop_id: int | ObjectIdStr | None = Field(
@@ -146,6 +211,19 @@ class PaymentListResponse(BaseModel):
     has_prev: bool = False
 
 
+class FolioSettlementRequest(BaseModel):
+    settlement_type: str
+    idempotency_key: str = Field(min_length=1)
+    amount: float | None = Field(default=None, gt=0)
+    method: str | None = None
+    reason: str | None = None
+    approval_reference: str | None = None
+    external_reference: str | None = None
+    settlement_at: datetime | None = None
+    evidence_type: str | None = None
+    evidence_reference: str | None = None
+
+
 class FolioResponse(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
     id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
@@ -165,8 +243,28 @@ class FolioResponse(BaseModel):
     total_charges: float | None = None
     total_payments: float | None = None
     total_due: float | None = None
+    reopened_at: str | None = None
+    reopened_by: str | None = None
     posting_count: int | None = None
     closed_by: str | None = None
+    settlement_type: str | None = None
+    settlement_amount: float | None = None
+    settlement_reason: str | None = None
+    approval_reference: str | None = None
+    external_reference: str | None = None
+    settlement_evidence_type: str | None = None
+    settlement_evidence_reference: str | None = None
+    settlement_payment_id: ObjectIdStr | None = None
+    settlement_payment_ids: list[ObjectIdStr] = Field(default_factory=list)
+    settlement_event_id: ObjectIdStr | None = None
+    settlement_event_ids: list[ObjectIdStr] = Field(default_factory=list)
+    settlement_shift_id: ObjectIdStr | None = None
+    settlement_shift_ids: list[ObjectIdStr] = Field(default_factory=list)
+    settlement_invoice_id: ObjectIdStr | None = None
+    settled_at: str | None = None
+    settled_recorded_at: str | None = None
+    settled_by: str | None = None
+    settled_by_user_id: ObjectIdStr | None = None
     created_at: str | None = None
     updated_at: str | None = None
     closed_at: str | None = None
@@ -213,6 +311,7 @@ InvoiceListResponse.model_rebuild()
 InvoiceStatsResponse.model_rebuild()
 PaymentResponse.model_rebuild()
 PaymentListResponse.model_rebuild()
+FolioSettlementRequest.model_rebuild()
 FolioResponse.model_rebuild()
 FolioListResponse.model_rebuild()
 BillableServicesResponse.model_rebuild()
@@ -281,6 +380,7 @@ def list_invoices_api(
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
     current_user: dict = Depends(require_permission("billing.read")),
 ):
+    prop_id = _require_billing_scope(prop_id)
     result = list_invoices(
         booking_id=booking_id, prop_id=prop_id, status=status_filter, q=q,
         date_from=date_from, date_to=date_to, page=page, page_size=page_size,
@@ -322,9 +422,11 @@ def invoice_dashboard_api(
 ):
     """Dashboard táctico F1.4: monto facturado por período (ClickHouse).
 
+
     Lee exclusivamente ``kpi_invoice_daily`` (agregado por día × hotel ×
     estado). Devuelve resumen, evolución diaria y filas paginadas.
     """
+    prop_id = _require_billing_scope(prop_id)
     from src.app.modules.billing.service.lifecycle.analytics import get_invoice_dashboard
 
     try:
@@ -370,10 +472,12 @@ def payments_dashboard_api(
 ):
     """Dashboard táctico F1.5: pagos por método/estado y saldo pendiente.
 
+
     Lee ``kpi_payment_daily`` (agregado por día × hotel × método × estado) que
     ya incluye el cruce facturado/cobrado. El saldo pendiente nunca se calcula
     solo con pagos: ``invoiced_amount`` proviene de las facturas no anuladas.
     """
+    prop_id = _require_billing_scope(prop_id)
     from src.app.modules.billing.service.lifecycle.analytics import get_payments_dashboard
 
     try:
@@ -408,18 +512,20 @@ def payments_dashboard_api(
 @api_router.get("/invoices/stats", response_model=InvoiceStatsResponse)
 def invoice_stats_api(
     request: Request,
+    prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_permission("billing.read")),
 ):
     """Return aggregate counts and totals grouped by invoice status."""
-    result = get_invoice_stats()
+    prop_id = _require_billing_scope(prop_id)
+    result = get_invoice_stats(prop_id=prop_id)
     register_action(
-        prop_id=0,
+        prop_id=prop_id,
         entity_type="billing_invoice",
         entity_id="stats",
         action="read",
         summary="Consulta de estadísticas de facturación",
         changed_by=current_user.get("username", "system"),
-        metadata={"url": str(request.url)},
+        metadata={"prop_id": prop_id, "url": str(request.url)},
     )
     return InvoiceStatsResponse.model_validate(result)
 
@@ -428,15 +534,17 @@ def invoice_stats_api(
 def get_invoice_api(
     request: Request,
     invoice_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_permission("billing.read")),
 ):
+    prop_id = _require_billing_scope(prop_id)
     result = get_invoice(invoice_id)
     if result is not None:
         result = to_json_safe(result)
-    if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+    if result is None or int(result.get("prop_id", 0) or 0) != prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada en este hotel")
     register_action(
-        prop_id=(result.get("prop_id") or 0),
+        prop_id=prop_id,
         entity_type="billing_invoice",
         entity_id=invoice_id,
         action="read",
@@ -450,6 +558,7 @@ def get_invoice_api(
 @api_router.post("/invoices/{invoice_id}/items", status_code=201, response_model=InvoiceResponse)
 def add_line_item_api(
     invoice_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
     payload: dict = Body(...),
     current_user: dict = Depends(require_permission("billing.manage")),
 ):
@@ -465,11 +574,7 @@ def add_line_item_api(
     """
     from bson import ObjectId
     from bson.errors import InvalidId
-    db = get_database()
-    try:
-        before_raw = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
-    except (InvalidId, Exception):
-        before_raw = None
+    before_raw = _scoped_invoice(invoice_id, prop_id)
     result = add_line_item(
         invoice_id,
         name=payload.get("name", ""),
@@ -504,6 +609,7 @@ def add_line_item_api(
 def remove_line_item_api(
     invoice_id: str,
     item_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Remove a line item from an invoice (only if status='issued').
@@ -512,11 +618,7 @@ def remove_line_item_api(
     """
     from bson import ObjectId
     from bson.errors import InvalidId
-    db = get_database()
-    try:
-        before_raw = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
-    except (InvalidId, Exception):
-        before_raw = None
+    before_raw = _scoped_invoice(invoice_id, prop_id)
     result = remove_line_item(invoice_id, item_id)
     if result is None:
         raise HTTPException(
@@ -541,18 +643,70 @@ def remove_line_item_api(
     return InvoiceResponse.model_validate(result)
 
 
+@api_router.post("/invoices/{invoice_id}/repair-settlement", response_model=InvoiceResponse)
+def repair_invoice_settlement_api(
+    invoice_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_permission("billing.manage")),
+):
+    """Reconcile a cancelled/refunded invoice without erasing its original value."""
+    _scoped_invoice(invoice_id, prop_id)
+    result = repair_cancelled_or_refunded_invoice(
+        invoice_id,
+        changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La factura no es reparable o no tiene importe positivo")
+    result = to_json_safe(result)
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="repair",
+        summary=f"Conciliación de factura anulada/reembolsada {result.get('invoice_number', invoice_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff={"recognized_total": {"old": None, "new": result.get("recognized_total", 0)}},
+    )
+    return InvoiceResponse.model_validate(result)
+
+
+@api_router.post("/invoices/{invoice_id}/credit-note", response_model=InvoiceResponse)
+def create_credit_note_api(
+    invoice_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_permission("billing.manage")),
+):
+    """Issue/reuse the formal credit note for a cancelled/refunded invoice."""
+    _scoped_invoice(invoice_id, prop_id)
+    result = create_credit_note_for_invoice(
+        invoice_id,
+        changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La factura no tiene un reverso contable válido")
+    invoice = get_invoice(invoice_id)
+    if invoice is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+    invoice = to_json_safe(invoice)
+    register_action(
+        prop_id=invoice.get("prop_id") or 0,
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="repair",
+        summary=f"Documento compensatorio emitido {result.get('document_number', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff={"credit_note_number": {"old": None, "new": result.get("document_number")}},
+    )
+    return InvoiceResponse.model_validate(invoice)
+
+
 @api_router.post("/invoices/{invoice_id}/cancel", response_model=InvoiceResponse)
 def cancel_invoice_api(
     invoice_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_permission("billing.manage")),
 ):
-    from bson import ObjectId
-    from bson.errors import InvalidId
-    db = get_database()
-    try:
-        before_raw = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
-    except (InvalidId, Exception):
-        before_raw = None
+    before_raw = _scoped_invoice(invoice_id, prop_id)
     result = cancel_invoice(invoice_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo cancelar la factura")
@@ -574,6 +728,7 @@ def cancel_invoice_api(
 @api_router.post("/invoices/{invoice_id}/pay", response_model=ActionResponse)
 def pay_invoice_api(
     invoice_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Staff-side: simulate payment for any invoice. No ownership check."""
@@ -581,10 +736,7 @@ def pay_invoice_api(
     from bson import ObjectId
     from src.database.connection import get_database
 
-    db = get_database()
-    inv = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
-    if not inv:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+    inv = _scoped_invoice(invoice_id, prop_id)
 
     if inv.get("status") != "issued":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La factura no está pendiente de pago")
@@ -596,7 +748,10 @@ def pay_invoice_api(
         amount=float(inv.get("total", 0)),
         method="simulated",
     )
-    result = create_payment(pay_payload)
+    try:
+        result = create_payment(pay_payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
     result = to_json_safe(result)
@@ -625,20 +780,15 @@ def pay_invoice_api(
 @api_router.post("/invoices/{invoice_id}/email", response_model=ActionResponse)
 def send_invoice_email_api(
     invoice_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_any_permission("billing.manage", "check-outs.manage")),
 ):
     """Send the invoice to the guest by email."""
     from bson import ObjectId
     from src.app.modules.reservations.notifications.guest import notify_guest_invoice
 
+    inv = _scoped_invoice(invoice_id, prop_id)
     db = get_database()
-    try:
-        inv = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
-
-    if not inv:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
 
     booking_id = inv.get("booking_id", "")
     booking = db.booking_orders.find_one(
@@ -710,7 +860,10 @@ def create_payment_api(
                 ),
             )
 
-    result = create_payment(payload, shift_id=shift_id)
+    try:
+        result = create_payment(payload, shift_id=shift_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -745,6 +898,7 @@ def list_payments_api(
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
     current_user: dict = Depends(require_permission("payments.read")),
 ):
+    prop_id = _require_billing_scope(prop_id)
     result = list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size)
     # Belt-and-suspenders: defensive JSON-safe wrap (same rationale as list_invoices)
     result = to_json_safe(result)
@@ -760,19 +914,47 @@ def list_payments_api(
     return PaymentListResponse.model_validate(to_json_safe(result))
 
 
+@api_router.post("/payments/{payment_id}/classify-informational", response_model=PaymentResponse)
+def classify_failed_payment_informational_api(
+    payment_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_permission("payments.manage")),
+):
+    """Mark a failed payment without invoice as an informational attempt."""
+    _scoped_payment(payment_id, prop_id)
+    result = classify_failed_payment_informational(
+        payment_id,
+        changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El pago no es un intento fallido sin factura")
+    result = to_json_safe(result)
+    register_action(
+        prop_id=result.get("prop_id") or 0,
+        entity_type="billing_payment",
+        entity_id=payment_id,
+        action="repair",
+        summary=f"Pago fallido clasificado como informativo {result.get('reference', payment_id)}",
+        changed_by=current_user.get("username", "system"),
+    )
+    return PaymentResponse.model_validate(result)
+
+
 @api_router.get("/payments/{payment_id}", response_model=PaymentResponse)
 def get_payment_api(
     request: Request,
     payment_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_permission("payments.read")),
 ):
+    prop_id = _require_billing_scope(prop_id)
     result = get_payment(payment_id)
     if result is not None:
         result = to_json_safe(result)
-    if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago no encontrado")
+    if result is None or int(result.get("prop_id", 0) or 0) != prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago no encontrado en este hotel")
     register_action(
-        prop_id=(result.get("prop_id") or 0),
+        prop_id=prop_id,
         entity_type="billing_payment",
         entity_id=payment_id,
         action="read",
@@ -786,10 +968,15 @@ def get_payment_api(
 @api_router.post("/payments/{payment_id}/refund", response_model=PaymentResponse)
 def refund_payment_api(
     payment_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
+    payload: dict = Body(default={}),
     current_user: dict = Depends(require_permission("payments.manage")),
 ):
-    before = get_payment(payment_id)
-    result = refund_payment(payment_id)
+    before = _scoped_payment(payment_id, prop_id)
+    if not isinstance(payload, dict):
+        payload = {}
+    refund_id = str(payload.get("refund_id") or "").strip() or None
+    result = refund_payment(payment_id, refund_id=refund_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo reembolsar el pago")
     result = to_json_safe(result)
@@ -1021,6 +1208,98 @@ def post_to_folio_api(
     return FolioResponse.model_validate(result)
 
 
+@api_router.post("/folios/{booking_id}/reopen", response_model=FolioResponse)
+def reopen_folio_api(
+    booking_id: str,
+    current_user: dict = Depends(require_permission("billing.manage")),
+):
+    """Reopen a closed folio with a collectible positive balance."""
+    result = reopen_folio_with_balance(
+        booking_id,
+        changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El folio no tiene un saldo positivo cobrable o no existe")
+    result = to_json_safe(result)
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_folio",
+        entity_id=booking_id,
+        action="repair",
+        summary=f"Reapertura de folio cobrable {result.get('folio_number', booking_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff={"status": {"old": "closed", "new": result.get("status")}},
+    )
+    return FolioResponse.model_validate(result)
+
+
+@api_router.post("/folios/{booking_id}/settle", response_model=FolioResponse)
+def settle_folio_api(
+    booking_id: str,
+    payload: FolioSettlementRequest = Body(...),
+    current_user: dict = Depends(require_permission("billing.manage")),
+):
+    """Resolve a folio balance with a payment or an approved exception."""
+    settlement_shift_id: str | None = None
+    if payload.settlement_type.strip().lower() == "payment" and (payload.method or "").strip().lower() in {"cash", "efectivo"}:
+        db = get_database()
+        booking = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1, "shift_id": 1})
+        prop_id = int((booking or {}).get("prop_id", 0) or 0)
+        if payload.settlement_at is not None:
+            # Historical cash may use only the reconstructed closed shift tied
+            # to this booking; it must never be redirected to today's drawer.
+            historical_shift_id = booking.get("shift_id") if booking else None
+            try:
+                historical_shift = db.reception_shifts.find_one({"_id": historical_shift_id, "prop_id": prop_id}) if historical_shift_id else None
+            except Exception:
+                historical_shift = None
+            if not is_historical_cash_shift_eligible(historical_shift or {}, booking_id):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="El pago histórico requiere el turno reconstruido del checkout.",
+                )
+            settlement_shift_id = str(historical_shift["_id"])
+        else:
+            settlement_shift_id = get_active_shift_id(prop_id)
+            if settlement_shift_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="No hay un turno de caja activo para registrar el pago en efectivo.",
+                )
+    try:
+        result = settle_folio(
+            booking_id,
+            payload.model_dump(exclude_none=True),
+            changed_by=current_user.get("username", "system"),
+            actor_user_id=current_user.get("_id"),
+            shift_id=settlement_shift_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El folio no está abierto con saldo cobrable")
+    result = to_json_safe(result)
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_folio",
+        entity_id=booking_id,
+        action="settle",
+        summary=f"Liquidación explícita de folio {result.get('folio_number', booking_id)} ({result.get('settlement_type', '')})",
+        changed_by=current_user.get("username", "system"),
+        diff={
+            "status": {"old": "open", "new": result.get("status")},
+            "total_due": {"old": None, "new": result.get("total_due")},
+        },
+        metadata={
+            "settlement_type": result.get("settlement_type"),
+            "settlement_amount": result.get("settlement_amount"),
+            "idempotency_key": payload.idempotency_key,
+            "actor_user_id": str(current_user.get("_id")) if current_user.get("_id") else None,
+        },
+    )
+    return FolioResponse.model_validate(result)
+
+
 @api_router.post("/folios/{booking_id}/close", response_model=FolioResponse)
 def close_folio_api(
     booking_id: str,
@@ -1030,13 +1309,18 @@ def close_folio_api(
     """Close a folio at check-out."""
     before = get_folio(booking_id)
     invoice_id = payload.get("invoice_id")
+    close_reason = payload.get("close_reason")
     result = close_folio(
         booking_id,
         invoice_id=invoice_id,
         closed_by=str(current_user.get("_id", "")),
+        close_reason=close_reason,
     )
     if result is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo cerrar el folio")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede cerrar un folio con saldo sin close_reason aprobado",
+        )
     # Belt-and-suspenders: defensive JSON-safe wrap (ObjectId → str, datetime →
     # ISO) before the wire model — close_folio returns the raw Mongo doc whose
     # updated_at/closed_at are native datetimes and invoice_id is an ObjectId.
@@ -1143,7 +1427,10 @@ def my_invoice_pay_api(
         amount=float(inv.get("total", 0)),
         method="bank_transfer",
     )
-    result = create_payment(pay_payload)
+    try:
+        result = create_payment(pay_payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
     result = to_json_safe(result)

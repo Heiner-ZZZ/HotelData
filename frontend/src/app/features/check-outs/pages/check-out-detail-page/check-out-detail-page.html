@@ -4,6 +4,15 @@
     @case ('loading') { <app-loading-state label="Cargando..." /> }
     @case ('error')   { <app-error-state title="Error" description="No se pudo cargar la liquidación." /> }
     @case ('empty')   { <app-empty-state title="No encontrada" description="La reserva no existe o no está checked in." /> }
+    @case ('forbidden') {
+      <div class="co-forbidden">
+        <span class="material-symbols-outlined">lock</span>
+        <div>
+          <strong>Sin permiso para ver este check-out</strong>
+          <span>Solicitá el permiso <code>check-outs.read</code> a tu administrador para ver y gestionar la liquidación de esta reserva.</span>
+        </div>
+      </div>
+    }
     @default {
       @if (data(); as vm) {
 

@@ -163,9 +163,6 @@
   animation: btn-spin 0.8s linear infinite;
 }
 
-@keyframes btn-spin {
-  to { transform: rotate(360deg); }
-}
 
 .btn-primary {
   display: inline-flex;

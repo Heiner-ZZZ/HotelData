@@ -1,4 +1,6 @@
-import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
+
+import { getErrorMessage } from '../../../../shared/utils/http-error.util';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -236,10 +238,7 @@ export class RegistrationStatusPageComponent {
         },
         error: (err: unknown) => {
           this.editSaving.set(false);
-          const detail = (err as HttpErrorResponse)?.error?.detail;
-          this.editError.set(
-            typeof detail === 'string' && detail ? detail : 'No se pudieron guardar los cambios.',
-          );
+          this.editError.set(getErrorMessage(err) || 'No se pudieron guardar los cambios.');
         },
       });
   }

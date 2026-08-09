@@ -309,7 +309,7 @@
                       <input id="blk-empty-count" type="number" formControlName="blockedRooms" min="1" />
                     </div>
                     <span class="field-hint">Mínimo 1. Se guardará como cantidad.</span>
-                    @if ((store.blackoutForm.controls.blockedRooms.value ?? 0) > 0) {
+                    @if (store.blackoutForm.controls.blockedRooms.value > 0) {
                       <span class="block-qty-summary" role="status">
                         <span class="material-symbols-outlined">meeting_room</span>
                         Se bloquearán

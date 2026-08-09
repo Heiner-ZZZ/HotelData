@@ -1,6 +1,7 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+
+import { getErrorStatus } from './http-error.util';
 
 /**
  * Augments a 401 error with an `authRequired` flag so components can
@@ -19,10 +20,11 @@ export function catchAuthError<T>() {
   return (source: Observable<T>): Observable<T> =>
     source.pipe(
       catchError((err: unknown) => {
-        if (err instanceof HttpErrorResponse && err.status === 401) {
-          const augmented = err as HttpErrorResponse & { authRequired: boolean };
-          augmented.authRequired = true;
-          return throwError(() => augmented);
+        // getErrorStatus cubre HttpErrorResponse (tests) y ApiError del
+        // interceptor (vivo) — el 401 debe marcar authRequired en ambos.
+        if (getErrorStatus(err) === 401) {
+          (err as { authRequired?: boolean }).authRequired = true;
+          return throwError(() => err);
         }
         return throwError(() => err);
       }),

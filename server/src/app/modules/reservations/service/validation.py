@@ -41,6 +41,8 @@ def validate_booking_form_requirements(payload: ReservationInput) -> list[str]:
         errors.append("check_out_time is required")
     elif not TIME_RE.fullmatch(payload.check_out_time):
         errors.append("check_out_time must use HH:MM format")
+    if payload.estimated_arrival_time and not TIME_RE.fullmatch(payload.estimated_arrival_time):
+        errors.append("estimated_arrival_time must use HH:MM format")
     if payload.check_in_date and payload.check_out_date and payload.check_out_date <= payload.check_in_date:
         errors.append("check_out_date must be after check_in_date for an overnight booking")
     return errors
@@ -154,6 +156,7 @@ def build_reservation_input(form_data: dict[str, Any], *, source: str, is_test: 
         check_out_date=_clean_text(form_data.get("check_out_date")),
         check_in_time=_clean_text(form_data.get("check_in_time")),
         check_out_time=_clean_text(form_data.get("check_out_time")),
+        estimated_arrival_time=_clean_text(form_data.get("estimated_arrival_time")),
         adults=_safe_int(form_data.get("adults"), 1),
         children=_safe_int(form_data.get("children"), 0),
         rooms=_safe_int(form_data.get("rooms"), 1),

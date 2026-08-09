@@ -512,6 +512,7 @@ def staff_create_request(
             {"dnd": 1},
         )
         if dnd_state and dnd_state.get("dnd"):
+            # DND is metadata only; do not create a second status event.
             db.room_status_log.update_one(
                 {"prop_id": prop_id, "room_label": room_label},
                 {"$set": {"dnd": False, "dnd_updated_at": utc_now()}},
@@ -984,12 +985,14 @@ def guest_toggle_dnd(payload: dict = Body(...)):
     current = db.room_status_log.find_one({"prop_id": prop_id, "room_label": room_label}, {"dnd": 1})
     current_dnd = current.get("dnd", False) if current else False
     new_dnd = not current_dnd
-
+    # DND is metadata on the canonical room status document; preserve the
+    # status transition rules while updating only the DND fields.
     db.room_status_log.update_one(
         {"prop_id": prop_id, "room_label": room_label},
         {"$set": {"dnd": new_dnd, "dnd_updated_at": utc_now()}},
         upsert=True,
     )
+
 
     # Push SSE notification to staff
     try:
@@ -1051,6 +1054,7 @@ def guest_create_request(payload: dict = Body(...)):
         )
         if dnd_state and dnd_state.get("dnd"):
             dnd_was_active = True
+            # DND is metadata only; do not create a second status event.
             db.room_status_log.update_one(
                 {"prop_id": prop_id, "room_label": room_label},
                 {"$set": {"dnd": False, "dnd_updated_at": utc_now()}},

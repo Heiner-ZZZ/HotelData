@@ -44,9 +44,10 @@ from scripts.init_security_model_ga03 import PERMISSION_CATALOG
 BOOKINGS_CODE = "account.bookings.read"
 
 # Roles que deben ver el ítem "Mis Reservas" — paridad con ROLE_PERMISSION_CODES.
-# "Mis Reservas" es auto-servicio del huésped: solo cliente y super_admin.
+# "Mis Reservas" es auto-servicio del huésped: solo cliente (super_admin lo perdió
+# en 2026-08 — los permisos de huésped no se otorgan al administrador del sistema).
 # Cualquier otro rol que lo tenga (p. ej. tras un grant manual) se revoca con $pull.
-BOOKINGS_HOLDER_ROLES = ("cliente", "super_admin")
+BOOKINGS_HOLDER_ROLES = ("cliente",)
 
 # Ítem de navegación que pasa de reservations.read a account.bookings.read.
 BOOKINGS_NAV_HREF = "/account/bookings"

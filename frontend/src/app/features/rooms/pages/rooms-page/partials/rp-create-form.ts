@@ -1,14 +1,21 @@
-import { ReactiveFormsModule } from '@angular/forms';
+import { ReactiveFormsModule, type FormGroup } from '@angular/forms';
 import { ChangeDetectionStrategy, Component, ElementRef, input, output, viewChild } from '@angular/core';
 import { AiSuggestDirective } from '../../../../../core/directives/ai-suggest.directive';
+import { ModeHighlightDirective } from '../../../../../core/directives/mode-highlight.directive';
+
+/** Tipo de habitación existente reutilizable en el selector del form. */
+interface RoomTypeOption {
+  id: string;
+  name: string;
+}
 
 @Component({
   selector: 'app-rp-create-form',
   standalone: true,
-  imports: [ReactiveFormsModule, AiSuggestDirective],
+  imports: [ReactiveFormsModule, AiSuggestDirective, ModeHighlightDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="surface-card form-panel create-form-panel">
+    <section class="surface-card form-panel create-form-panel" appModeHighlight>
       <div class="panel-head">
         <span class="material-symbols-outlined panel-head-icon create-entry-icon">add_business</span>
         <div>
@@ -173,7 +180,7 @@ import { AiSuggestDirective } from '../../../../../core/directives/ai-suggest.di
           <input type="checkbox" formControlName="isActive">
         </label>
         <div class="form-actions">
-          <button type="button" class="btn-outline" (click)="cancel.emit()">
+          <button type="button" class="btn-outline" (click)="cancelCreate.emit()">
             <span class="material-symbols-outlined btn-icon">close</span>
             Cancelar
           </button>
@@ -187,9 +194,9 @@ import { AiSuggestDirective } from '../../../../../core/directives/ai-suggest.di
   `
 })
 export class RpCreateFormComponent {
-  readonly createForm = input<any>(null);
+  readonly createForm = input.required<FormGroup>();
   readonly createMode = input<string>('new');
-  readonly existingRoomTypes = input<any[]>([]);
+  readonly existingRoomTypes = input<RoomTypeOption[]>([]);
   readonly selectedExistingId = input<string>('');
   readonly imagePreviewUrl = input('');
   readonly uploading = input(false);
@@ -198,7 +205,7 @@ export class RpCreateFormComponent {
   readonly setMode = output<'existing' | 'new'>();
   readonly selectExisting = output<string>();
   readonly createRoomType = output<void>();
-  readonly cancel = output<void>();
+  readonly cancelCreate = output<void>();
   readonly imageUrlChange = output<string>();
   readonly fileSelected = output<File>();
 

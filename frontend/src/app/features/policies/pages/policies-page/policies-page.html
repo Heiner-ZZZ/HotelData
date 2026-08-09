@@ -43,13 +43,6 @@
     }
   }
 
-  @if (message()) {
-    <section class="surface-card message success">{{ message() }}</section>
-  }
-  @if (errorMessage()) {
-    <section class="surface-card message error">{{ errorMessage() }}</section>
-  }
-
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando politicas..." />
@@ -86,7 +79,7 @@
           </article>
         </section>
 
-        <section class="surface-card form-panel" [class.form-panel--editing]="editing()">
+        <section class="surface-card form-panel" appModeHighlight [class.form-panel--editing]="editing()">
           <div class="panel-head">
             <span class="material-symbols-outlined panel-head-icon icon-policy-amber">gavel</span>
             <div class="panel-head-copy">

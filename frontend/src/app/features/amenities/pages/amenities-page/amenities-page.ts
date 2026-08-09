@@ -7,6 +7,8 @@ import { distinctUntilChanged, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { ModeHighlightDirective } from '../../../../core/directives/mode-highlight.directive';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -14,7 +16,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { mapAmenities, mapAmenitiesPayload } from '../../mappers/amenities.mapper';
 import type { AmenitiesDto } from '../../models/amenities.dto';
-import type { AmenitiesViewModel } from '../../models/amenities.model';
+import type { AmenitiesViewModel, SpecialRequestOptionView } from '../../models/amenities.model';
 import { AmenitiesApiService } from '../../services/amenities-api.service';
 import { ActiveAmenitiesSummaryComponent } from '../../components/active-amenities-summary/active-amenities-summary';
 import { AmenityCategoryPanelComponent } from '../../components/amenity-category-panel/amenity-category-panel';
@@ -32,6 +34,7 @@ import { DestroyRef } from '@angular/core';
     LoadingStateComponent,
     PageHeaderComponent,
     PropertySelectorComponent,
+    ModeHighlightDirective,
   ],
   templateUrl: './amenities-page.html',
   styleUrl: './amenities-page.scss',
@@ -43,6 +46,7 @@ export class AmenitiesPageComponent {
   private readonly api = inject(AmenitiesApiService);
   private readonly http = inject(HttpClient);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly toast = inject(ToastService);
   private readonly opMode = inject(OperationModeService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
@@ -83,8 +87,6 @@ export class AmenitiesPageComponent {
   // ── Mutable state ──
   readonly selectedAmenities = signal<string[]>([]);
   readonly amenityPrices = signal<Map<string, number>>(new Map());
-  readonly message = signal('');
-  readonly errorMessage = signal('');
 
   // ═══ Explicit editing mode (mode-aware UI) ═══
   /** True while the user is actively editing services/prices. */
@@ -165,14 +167,22 @@ export class AmenitiesPageComponent {
     return vm.roomTypes.find((rt) => rt.roomTypeId === rtId)?.name ?? rtId;
   });
 
+  /** Last resource payload we seeded the editable state from — prevents a
+   *  save (which flips editing flags and re-runs the effect below) from
+   *  clobbering freshly-persisted values with stale resource data. */
+  private lastSeededVm: unknown = null;
+
   constructor() {
-    // Sync active amenities when fresh data arrives from httpResource
+    // Sync active amenities when fresh data arrives from httpResource.
+    // Only reseeds when the resource actually delivers a NEW payload; the
+    // editing flags are read so the effect re-runs on edit/save transitions,
+    // but a save must not overwrite its own fresh result with stale data.
     effect(() => {
       const vm = this.amenitiesResource.value();
-      if (vm && !this.editing()) {
+      if (vm && vm !== this.lastSeededVm && !this.editing() && !this.requestsEditing()) {
+        this.lastSeededVm = vm;
         this.selectedAmenities.set(vm.activeAmenities ?? []);
-        this.message.set('');
-        this.errorMessage.set('');
+        this._seedRequestsFromCatalog();
         const label = this.selectedLabel();
         if (label) this.propertyCtx.setProperty(this.selectedPropId(), label);
         this._initPricesFromCatalog();
@@ -355,8 +365,7 @@ export class AmenitiesPageComponent {
         next: (fresh) => {
           this.selectedAmenities.set(fresh.activeAmenities);
           this.selectedRoomTypeId.set('');
-          this.message.set('Servicios actualizados');
-          this.errorMessage.set('');
+          this.toast.success('Servicios actualizados');
           // End the edit session: snapshot becomes the new persisted state.
           this.baseAmenities.set([...fresh.activeAmenities]);
           this.basePrices.set(new Map(this.amenityPrices()));
@@ -366,10 +375,140 @@ export class AmenitiesPageComponent {
           this.opMode.reset();
         },
         error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible guardar los servicios.');
-          this.message.set('');
+          this.toast.error(error.message || 'No fue posible guardar los servicios.');
         }
       });
+  }
+
+  // ═══ Peticiones especiales tab ═══
+  readonly activeTab = signal<'amenities' | 'requests'>('amenities');
+
+  /** Editable copy of the per-hotel special-requests catalog. */
+  readonly requestOptions = signal<SpecialRequestOptionView[]>([]);
+  readonly highFloorFrom = signal(3);
+  readonly requestsEditing = signal(false);
+  readonly requestsSaving = signal(false);
+  readonly newRequestLabel = signal('');
+  readonly newRequestPrice = signal('');
+  private baseRequestOptions = signal<SpecialRequestOptionView[]>([]);
+  private baseHighFloorFrom = signal(3);
+
+  /** Seed the requests tab from the catalog when the resource loads. */
+  private _seedRequestsFromCatalog() {
+    const vm = this.amenitiesResource.value();
+    if (!vm) return;
+    const opts = vm.specialRequests.map((r) => ({ ...r }));
+    this.requestOptions.set(opts);
+    this.highFloorFrom.set(vm.highFloorFrom);
+    // Keep the base snapshot in sync while in read mode so the dirty hint
+    // only appears once the user actually edits the catalog.
+    if (!this.requestsEditing()) {
+      this.baseRequestOptions.set(opts.map((r) => ({ ...r })));
+      this.baseHighFloorFrom.set(vm.highFloorFrom);
+    }
+  }
+
+  readonly requestsDirty = computed(() => {
+    const cur = this.requestOptions();
+    const base = this.baseRequestOptions();
+    if (cur.length !== base.length || this.highFloorFrom() !== this.baseHighFloorFrom()) return true;
+    return cur.some((r, i) => {
+      const b = base[i];
+      return !b || r.label !== b.label || r.unitPrice !== b.unitPrice
+        || r.petRelated !== b.petRelated || r.highFloor !== b.highFloor || r.lateArrival !== b.lateArrival;
+    });
+  });
+
+  startRequestsEditing(): void {
+    if (this.requestsEditing()) return;
+    this.baseRequestOptions.set(this.requestOptions().map((r) => ({ ...r })));
+    this.baseHighFloorFrom.set(this.highFloorFrom());
+    this.requestsEditing.set(true);
+    this.opMode.setMode('update', 'Peticiones especiales');
+  }
+
+  cancelRequestsEditing(): void {
+    if (!this.requestsEditing()) {
+      this.opMode.reset();
+      return;
+    }
+    this.requestOptions.set(this.baseRequestOptions().map((r) => ({ ...r })));
+    this.highFloorFrom.set(this.baseHighFloorFrom());
+    this.requestsEditing.set(false);
+    this.opMode.reset();
+  }
+
+  updateRequestPrice(label: string, value: string): void {
+    const num = parseFloat(value);
+    this.requestOptions.set(this.requestOptions().map((r) =>
+      r.label === label ? { ...r, unitPrice: Number.isNaN(num) ? 0 : Math.max(0, num) } : r
+    ));
+  }
+
+  toggleRequestFlag(label: string, flag: 'petRelated' | 'highFloor' | 'lateArrival'): void {
+    this.requestOptions.set(this.requestOptions().map((r) =>
+      r.label === label ? { ...r, [flag]: !r[flag] } : r
+    ));
+  }
+
+  removeRequest(label: string): void {
+    this.requestOptions.set(this.requestOptions().filter((r) => r.label !== label));
+  }
+
+  addRequest(): void {
+    const label = this.newRequestLabel().trim();
+    if (!label) return;
+    const price = parseFloat(this.newRequestPrice());
+    if (this.requestOptions().some((r) => r.label.toLowerCase() === label.toLowerCase())) return;
+    this.requestOptions.set([
+      ...this.requestOptions(),
+      { label, unitPrice: Number.isNaN(price) ? 0 : Math.max(0, price), chargeable: !Number.isNaN(price) && price > 0, petRelated: false, highFloor: false, lateArrival: false },
+    ]);
+    this.newRequestLabel.set('');
+    this.newRequestPrice.set('');
+  }
+
+  setHighFloorFrom(value: string): void {
+    const num = parseInt(value, 10);
+    this.highFloorFrom.set(Number.isNaN(num) ? 1 : Math.max(1, num));
+  }
+
+  saveRequests(): void {
+    const current = this.amenitiesResource.value();
+    if (!current) return;
+    this.requestsSaving.set(true);
+    this.api.saveSpecialRequests({
+      prop_id: current.propId,
+      special_requests: this.requestOptions().map((r) => ({
+        label: r.label,
+        unit_price: r.unitPrice,
+        flags: [
+          ...(r.petRelated ? ['pet_related'] : []),
+          ...(r.highFloor ? ['high_floor'] : []),
+          ...(r.lateArrival ? ['late_arrival'] : []),
+          ...(r.chargeable ? ['chargeable'] : []),
+        ],
+      })),
+      high_floor_from: this.highFloorFrom(),
+    }).subscribe({
+      next: (fresh) => {
+        this.requestOptions.set((fresh.special_requests ?? []).map((r) => ({
+          label: r.label, unitPrice: r.unit_price, chargeable: r.chargeable,
+          petRelated: r.pet_related, highFloor: r.high_floor, lateArrival: r.late_arrival,
+        })));
+        this.highFloorFrom.set(fresh.high_floor_from ?? 3);
+        this.baseRequestOptions.set(this.requestOptions().map((r) => ({ ...r })));
+        this.baseHighFloorFrom.set(this.highFloorFrom());
+        this.requestsEditing.set(false);
+        this.requestsSaving.set(false);
+        this.opMode.reset();
+        this.toast.success('Peticiones especiales actualizadas');
+      },
+      error: (error: ApiError) => {
+        this.requestsSaving.set(false);
+        this.toast.error(error.message || 'No fue posible guardar las peticiones.');
+      },
+    });
   }
 
   // ═══ Photo upload ═══

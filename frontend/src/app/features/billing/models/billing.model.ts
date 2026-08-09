@@ -45,6 +45,11 @@ export interface PaymentItem {
   id: string;
   bookingId: string;
   invoiceId: string | null;
+  refundId: string | null;
+  refundDocumentId: string | null;
+  refundDocumentNumber: string | null;
+  reconciliationStatus: string | null;
+  reconciliationReason: string | null;
   amount: number;
   method: string;
   status: string;
@@ -62,6 +67,13 @@ export interface InvoiceDetailViewModel {
   extrasTotal: number;
   taxes: number;
   total: number;
+  originalTotal: number;
+  recognizedTotal: number;
+  netTotal: number;
+  accountingStatus: string | null;
+  accountingReversalJournalId: string | null;
+  creditNoteId: string | null;
+  creditNoteNumber: string | null;
   totalPaidAmount: number;
   totalPendingAmount: number;
   status: string;
@@ -84,6 +96,9 @@ export interface InvoiceDetailViewModel {
   payments: PaymentItem[];
   folioId: string | null;
   folioNumber: string | null;
+  ledgerPostingStatus: 'posted' | 'failed' | string;
+  ledgerPostingError: string | null;
+  ledgerReferences: string[];
 }
 
 export interface PaymentsListViewModel {
@@ -100,6 +115,11 @@ export interface PaymentListItem {
   id: string;
   bookingId: string;
   invoiceId: string | null;
+  refundId: string | null;
+  refundDocumentId: string | null;
+  refundDocumentNumber: string | null;
+  reconciliationStatus: string | null;
+  reconciliationReason: string | null;
   amount: number;
   method: string;
   status: string;

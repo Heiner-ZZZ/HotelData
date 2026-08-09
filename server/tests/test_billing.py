@@ -239,15 +239,15 @@ class TestCreatePayment:
         fetched = get_payment(pay["id"])
         assert fetched["status"] == "rejected"
 
-    def test_create_payment_malformed_invoice_id_ignored(self, db, seeded_booking):
-        """A non-hex invoice_id must be ignored (no 500) — reachable via the UI modal."""
-        pay = create_payment(PaymentCreate(
-            booking_id=seeded_booking,
-            invoice_id="factura-1",  # not a valid ObjectId
-            amount=25.0,
-        ))
-        assert pay is not None
-        assert pay["invoice_id"] is None
+    def test_create_payment_malformed_invoice_id_is_rejected(self, db, seeded_booking):
+        """A malformed invoice link must be rejected, not silently orphaned."""
+        with pytest.raises(ValueError, match="Factura"):
+            create_payment(PaymentCreate(
+                booking_id=seeded_booking,
+                invoice_id="factura-1",  # not a valid ObjectId
+                amount=25.0,
+            ))
+        assert db.reservation_payments.count_documents({"booking_id": seeded_booking}) == 0
 
 
 class TestListGetPayment:

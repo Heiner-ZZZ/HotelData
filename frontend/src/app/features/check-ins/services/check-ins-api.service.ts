@@ -75,6 +75,10 @@ export interface CheckInDetailDto {
   check_in_date: string;
   check_in_date_actual: string | null;
   check_in_time_actual: string | null;
+  /** Hora estimada de llegada declarada por el huésped (HH:MM). */
+  estimated_arrival_time: string;
+  /** Marcador de late check-in (llegada tarde). */
+  late_checkin: boolean;
   check_out_date: string;
   total_price: number | null;
   currency: string;

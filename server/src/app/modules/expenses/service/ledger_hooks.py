@@ -4,15 +4,35 @@ from billing events (invoice creation, payment, etc.).
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from src.database.connection import get_database
 from src.app.modules.expenses.service.collections import LEDGER_COLLECTION
 
+logger = logging.getLogger(__name__)
 
-def _journal_seq() -> int:
-    """Return the next journal entry sequence number."""
-    db = get_database()
+
+def _emit_ledger_domain_event(*, prop_id: int, journal_id: str, source: str, source_id: str, amount: float) -> None:
+    try:
+        from src.app.modules.financial_reconciliation.domain_events import append_domain_event
+        append_domain_event(
+            prop_id=int(prop_id),
+            event_type=f"general_ledger.{source}",
+            aggregate_type="general_ledger",
+            aggregate_id=journal_id,
+            idempotency_key=f"live:ledger:{source}:{source_id or journal_id}",
+            payload={"source": source, "source_id": source_id, "amount": round(amount, 2), "journal_entry_id": journal_id},
+            source_collection=LEDGER_COLLECTION,
+            source_id=source_id or journal_id,
+        )
+    except Exception:
+        logger.exception("Failed to emit canonical ledger event %s", journal_id)
+
+
+def _journal_seq(db=None) -> int:
+    """Return the next journal entry sequence number for the supplied DB."""
+    db = db if db is not None else get_database()
     last = db[LEDGER_COLLECTION].find_one(
         {"journal_entry_id": {"$regex": "^JE-"}},
         sort=[("journal_entry_id", -1)],
@@ -52,7 +72,7 @@ def _insert_entry(db, journal_id, tx_date, account_code, account_name, descripti
     })
 
 
-def generate_ledger_from_invoice(invoice: dict) -> int:
+def generate_ledger_from_invoice(invoice: dict, *, db=None) -> int:
     """Generate double-entry journal entries from an invoice.
 
     Returns the number of entries created (typically 3-4).
@@ -63,7 +83,7 @@ def generate_ledger_from_invoice(invoice: dict) -> int:
       Credit 4030  Ingresos Servicios   ← extras_total (if > 0)
       Credit 2020  Impuestos por Pagar  ← taxes
     """
-    db = get_database()
+    db = db if db is not None else get_database()
 
     # Prevent duplicates: check if entries already exist for this invoice
     invoice_ref = invoice.get("invoice_number", "")
@@ -96,7 +116,7 @@ def generate_ledger_from_invoice(invoice: dict) -> int:
         return 0
 
     tx_date = issued_at if isinstance(issued_at, datetime) else datetime.now(timezone.utc)
-    seq = _journal_seq()
+    seq = _journal_seq(db)
     journal_id = f"JE-{tx_date.strftime('%Y%m%d')}-{seq:04d}"
 
     # Resolve guest name
@@ -170,7 +190,7 @@ def generate_ledger_from_invoice(invoice: dict) -> int:
     return entries_count
 
 
-def generate_reversal_from_invoice(invoice: dict) -> int:
+def generate_reversal_from_invoice(invoice: dict, *, db=None) -> int:
     """Generate reversing double-entry journal entries when an invoice is cancelled.
 
     This creates the mirror image of the original invoice entries:
@@ -181,7 +201,7 @@ def generate_reversal_from_invoice(invoice: dict) -> int:
 
     Returns the number of reversal entries created.
     """
-    db = get_database()
+    db = db if db is not None else get_database()
 
     invoice_ref = invoice.get("invoice_number", "")
     if not invoice_ref:
@@ -213,7 +233,7 @@ def generate_reversal_from_invoice(invoice: dict) -> int:
         return 0
 
     now = datetime.now(timezone.utc)
-    seq = _journal_seq()
+    seq = _journal_seq(db)
     journal_id = f"JE-{now.strftime('%Y%m%d')}-{seq:04d}"
 
     # Resolve guest name
@@ -291,6 +311,19 @@ def generate_reversal_from_invoice(invoice: dict) -> int:
     return entries_count
 
 
+def _has_complete_journal_pair(db, *, source: str, source_id: str) -> bool:
+    """Return true only when the source has both balanced ledger sides."""
+    rows = list(db[LEDGER_COLLECTION].find(
+        {"source": source, "source_id": source_id},
+        {"debit": 1, "credit": 1},
+    ))
+    if len(rows) != 2:
+        return False
+    debit = round(sum(float(row.get("debit", 0) or 0) for row in rows), 2)
+    credit = round(sum(float(row.get("credit", 0) or 0) for row in rows), 2)
+    return debit > 0 and debit == credit
+
+
 def generate_ledger_from_payment(payment: dict) -> int:
     """Generate double-entry journal entries when a payment is recorded.
 
@@ -307,12 +340,12 @@ def generate_ledger_from_payment(payment: dict) -> int:
         return 0
 
     # Prevent duplicates
-    existing = db[LEDGER_COLLECTION].count_documents({
-        "source": "payment",
-        "source_id": payment_ref,
-    })
-    if existing > 0:
+    if _has_complete_journal_pair(db, source="payment", source_id=payment_ref):
         return 0
+    # A partial pair is not a successful posting. Remove only that exact
+    # source event so a retry can rebuild both sides; reconciliation still sees
+    # the failure in the payment state/audit trail.
+    db[LEDGER_COLLECTION].delete_many({"source": "payment", "source_id": payment_ref})
 
     booking_id = payment.get("booking_id", "")
     prop_id = payment.get("prop_id", 0)
@@ -324,7 +357,7 @@ def generate_ledger_from_payment(payment: dict) -> int:
         return 0
 
     tx_date = paid_at if isinstance(paid_at, datetime) else datetime.now(timezone.utc)
-    seq = _journal_seq()
+    seq = _journal_seq(db)
     journal_id = f"JE-{tx_date.strftime('%Y%m%d')}-{seq:04d}"
 
     # Resolve guest name
@@ -385,6 +418,7 @@ def post_journal_entry(
     booking_id: str = "",
     guest_name: str = "",
     cost_center: str | None = None,
+    tx_date: datetime | None = None,
 ) -> str:
     """Post a balanced double-entry journal entry (DR + CR pair).
 
@@ -416,15 +450,23 @@ def post_journal_entry(
 
     # Idempotency: skip if a posting for this source/source_id already exists.
     if source_id:
-        existing = db[LEDGER_COLLECTION].count_documents({
-            "source": source,
-            "source_id": source_id,
-        })
-        if existing > 0:
+        if _has_complete_journal_pair(db, source=source, source_id=source_id):
+            existing_row = db[LEDGER_COLLECTION].find_one(
+                {"source": source, "source_id": source_id},
+                {"journal_entry_id": 1},
+            )
+            _emit_ledger_domain_event(
+                prop_id=prop_id,
+                journal_id=str((existing_row or {}).get("journal_entry_id") or f"{source}:{source_id}"),
+                source=source,
+                source_id=source_id,
+                amount=round(amount, 2),
+            )
             return f"skip:{source}/{source_id}"
+        db[LEDGER_COLLECTION].delete_many({"source": source, "source_id": source_id})
 
     seq = _journal_seq()
-    tx_date = datetime.now(timezone.utc)
+    tx_date = tx_date or datetime.now(timezone.utc)
     journal_id = f"JE-{tx_date.strftime('%Y%m%d')}-{seq:04d}"
     amount_rounded = round(amount, 2)
     cc = cost_center or f"hotel-{int(prop_id) if prop_id else 1}"
@@ -454,6 +496,13 @@ def post_journal_entry(
         prop_id=prop_id,
         guest_name=guest_name,
         source=source,
+    )
+    _emit_ledger_domain_event(
+        prop_id=prop_id,
+        journal_id=journal_id,
+        source=source,
+        source_id=source_id,
+        amount=amount_rounded,
     )
 
     return journal_id

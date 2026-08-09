@@ -57,6 +57,7 @@ def find_user_by_identifier(db: Database, identifier: str) -> dict[str, Any] | N
                 {"email": normalized},
                 {"email": normalized.lower()},
                 {"username": normalized},
+                {"login_aliases": normalized},
             ]
         }
     )

@@ -50,6 +50,8 @@ export interface ReservationCreateInput {
   checkOutDate: string;
   checkInTime?: string;
   checkOutTime?: string;
+  /** Hora estimada de llegada del huésped (HH:MM) — late check-in. */
+  estimatedArrivalTime?: string;
   adults: number;
   children: number;
   rooms: number;
@@ -202,6 +204,14 @@ export interface AssignedRoomView {
   roomStatus: string;
 }
 
+/** Fulfillment checklist item (pending/fulfilled + fulfillment date). */
+export interface FulfillmentItem {
+  label: string;
+  status: 'pending' | 'fulfilled';
+  /** ISO timestamp recorded when the item was last marked fulfilled. */
+  fulfilledAt?: string | null;
+}
+
 export interface ReservationDetailViewModel {
   bookingId: string;
   status: string;
@@ -224,6 +234,15 @@ export interface ReservationDetailViewModel {
   discountPercent?: number | null;
   originalTotalPrice?: number | null;
   specialRequests?: string[];
+  selectedAmenities?: string[];
+  /** Fulfillment checklist item: pending / fulfilled + fulfillment date. */
+  specialRequestFulfillment?: FulfillmentItem[];
+  /** Amenity fulfillment checklist — mirrors the special-request one. */
+  amenityFulfillment?: FulfillmentItem[];
+  /** Hora estimada de llegada del huésped (HH:MM). */
+  estimatedArrivalTime: string;
+  /** Marcador de late check-in. */
+  lateCheckin: boolean;
   isManual: boolean;
   manualReservationId: string | null;
   canCancel: boolean;

@@ -114,3 +114,267 @@
 }
 
 .select-arrow { position: absolute; right: 0.65rem; pointer-events: none; color: var(--muted-text); font-size: 1.15rem; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 22; }
+
+/* ── Peticiones especiales (checkbox selector) ──
+   Same chip language as the amenity selector below for UI consistency:
+   bordered, rounded, selectable chips with a check icon that fills on
+   selection. Native checkbox is hidden but stays keyboard-accessible. */
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem;
+}
+
+.checkbox-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.checkbox-label:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--app-border));
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.checkbox-label.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.checkbox-label input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.checkbox-label:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.checkbox-check {
+  font-size: 1.15rem;
+  color: var(--muted-text);
+  opacity: 0.35;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.checkbox-label.is-selected .checkbox-check {
+  color: var(--accent);
+  opacity: 1;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.checkbox-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.checkbox-label-text {
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.req-price {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.req-free {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── Servicios adicionales (amenity selector) ──
+   OTA-style (Booking.com / Expedia “value adds”): each category is a
+   bordered box, and every amenity is a selectable row with a check icon,
+   name on the left and price (or “Gratis” pill) aligned right. */
+.amenity-selector {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.amenity-category {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.8rem 0.85rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+}
+
+.amenity-category-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.amenity-category-head .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+}
+
+.amenity-category-head h3 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+}
+
+.amenity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.5rem;
+}
+
+.amenity-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.amenity-chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--app-border));
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.amenity-chip.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.amenity-chip input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.amenity-chip:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.amenity-check {
+  font-size: 1.15rem;
+  color: var(--muted-text);
+  opacity: 0.35;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.amenity-chip.is-selected .amenity-check {
+  color: var(--accent);
+  opacity: 1;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.amenity-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.amenity-label {
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.amenity-price {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.amenity-free {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ─── Hora estimada de llegada / late check-in ─── */
+.late-arrival-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  color: var(--warning);
+  font-size: 0.78rem;
+  font-weight: 600;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+}
+
+.arrival-note-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--muted-text);
+  font-size: 0.78rem;
+  line-height: 1.45;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  strong {
+    color: var(--warning);
+    font-weight: 700;
+  }
+}

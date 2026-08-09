@@ -84,13 +84,11 @@
         <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">location_on</span>
         <div class="booking-bar__body">
           <label class="booking-bar__label" for="welcome-dest">Destino</label>
-          <input
-            id="welcome-dest"
-            type="text"
-            formControlName="destination"
-            placeholder="Ciudad, hotel o zona"
-            class="booking-bar__input"
-            autocomplete="off"
+          <!-- Búsqueda dinámica: las opciones se filtran con cada carácter
+               (debounce 250ms) vía GET /api/hotels/destinations/suggest. -->
+          <app-destination-autocomplete
+            [value]="searchForm.controls.destination.value"
+            (valueChange)="onDestinationChange($event)"
           />
         </div>
       </div>
@@ -113,23 +111,16 @@
         <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">group</span>
         <div class="booking-bar__body">
           <span class="booking-bar__label">Huéspedes</span>
-          <div class="booking-bar__guests">
-            <select formControlName="adults" class="booking-bar__select" aria-label="Adultos" title="Adultos">
-              @for (n of guestRange; track n) {
-                <option [value]="n">{{ n }} {{ n === 1 ? 'adulto' : 'adultos' }}</option>
-              }
-            </select>
-            <select formControlName="children" class="booking-bar__select" aria-label="Niños" title="Niños">
-              @for (n of childRange; track n) {
-                <option [value]="n">{{ n }} {{ n === 1 ? 'niño' : 'niños' }}</option>
-              }
-            </select>
-            <select formControlName="rooms" class="booking-bar__select" aria-label="Habitaciones" title="Habitaciones">
-              @for (n of roomRange; track n) {
-                <option [value]="n">{{ n }} {{ n === 1 ? 'hab.' : 'habs.' }}</option>
-              }
-            </select>
-          </div>
+          <!-- Selector de huéspedes tipo popover (steppers) — misma UX que
+               el date-range-picker: un trigger + calendario/popover. -->
+          <app-guests-picker
+            [adults]="guestCounts().adults"
+            [children]="guestCounts().children"
+            [rooms]="guestCounts().rooms"
+            (adultsChange)="onAdultsChange($event)"
+            (childrenChange)="onChildrenChange($event)"
+            (roomsChange)="onRoomsChange($event)"
+          />
         </div>
       </div>
       <button type="submit" class="booking-bar__cta">

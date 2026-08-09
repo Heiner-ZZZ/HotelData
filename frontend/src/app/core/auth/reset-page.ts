@@ -1,7 +1,7 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { getErrorMessage } from '../../shared/utils/http-error.util';
 import { API_CONFIG } from '../api/api.config';
 
 @Component({
@@ -54,11 +54,7 @@ export class ResetPageComponent {
       },
       error: (error: unknown) => {
         this.submitting.set(false);
-        if (error instanceof HttpErrorResponse && error.error?.detail) {
-          this.errorMessage.set(error.error.detail);
-        } else {
-          this.errorMessage.set('Error al restablecer la contraseña. El enlace puede haber expirado.');
-        }
+        this.errorMessage.set(getErrorMessage(error) || 'Error al restablecer la contraseña. El enlace puede haber expirado.');
       }
     });
   }

@@ -9,7 +9,20 @@
   </div>
 
   <nav class="primary-nav" aria-label="Navegación principal">
-    @for (group of visibleGroups(); track group.id) {
+    @if (isGuest()) {
+      @for (item of guestNavItems; track item.href) {
+        <a
+          class="nav-btn nav-link"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored' }"
+          [routerLink]="item.href"
+        >
+          <span class="material-symbols-outlined nav-icon">{{ item.icon }}</span>
+          <span class="btn-label">{{ item.label }}</span>
+        </a>
+      }
+    } @else {
+      @for (group of visibleGroups(); track group.id) {
       <div
         class="menu-shell"
         (mouseenter)="onMenuEnter(group.id)"
@@ -47,13 +60,14 @@
         }
       </div>
     }
+    }
   </nav>
 
   <div class="nav-actions">
     <!-- Modo CRUD actual (read/insert/update/delete) -->
     <app-operation-mode-indicator />
 
-    @if (authState().authenticated && canViewNotifications()) {
+    @if (showNotificationBell()) {
       <div class="menu-shell notif-wrapper">
         <button type="button" class="icon-btn notif-bell" [class.has-unread]="unreadCount() > 0" [class.is-reviewed]="showNotifications()" (click)="toggleNotifications()" aria-label="Notificaciones">
           <span class="material-symbols-outlined">notifications</span>
@@ -116,7 +130,11 @@
           aria-haspopup="true"
           [attr.aria-expanded]="activeMenu() === 'session'"
         >
-          <span class="material-symbols-outlined nav-icon">account_circle</span>
+          @if (user.avatarUrl) {
+            <img class="session-avatar" [src]="user.avatarUrl" alt="Foto de perfil" />
+          } @else {
+            <span class="material-symbols-outlined nav-icon">account_circle</span>
+          }
           <span class="session-info">
             <strong class="session-name">{{ user.displayName }}</strong>
             <small class="session-role">{{ roleLabel(user.primaryRole) }}</small>

@@ -46,11 +46,6 @@
           />
         </div>
 
-        <!-- Messages -->
-        @if (hotelMessage()) {
-          <div class="message" [class.error]="hotelMessage().includes('Error')">{{ hotelMessage() }}</div>
-        }
-
         <!-- Hotels table -->
         @switch (hotelsState()) {
           @case ('loading') {
@@ -146,10 +141,6 @@
           <p class="section-desc">Define la tasa de IVA aplicable por país. Se usará al generar facturas de reservas.</p>
         </div>
 
-        @if (taxMessage()) {
-          <div class="message" [class.error]="taxMessage().includes('Error')">{{ taxMessage() }}</div>
-        }
-
         <!-- Add new tax rate -->
         <div class="inline-form">
           <input type="number" class="form-input" placeholder="ID del país" [ngModel]="newTaxCountryId()" (ngModelChange)="newTaxCountryId.set($event)" />
@@ -212,10 +203,6 @@
             Si un hotel no tiene comisión personalizada, se usa el % global (Config. General).
           </p>
         </div>
-
-        @if (commissionMessage()) {
-          <div class="message" [class.error]="commissionMessage().includes('Error')">{{ commissionMessage() }}</div>
-        }
 
         <!-- Add new commission rate -->
         <div class="inline-form">
@@ -280,9 +267,6 @@
           @case ('loading') { <app-loading-state /> }
           @case ('error') { <app-error-state /> }
           @case ('success') {
-            @if (configMessage()) {
-              <div class="message" [class.error]="configMessage().includes('Error')">{{ configMessage() }}</div>
-            }
             <div class="config-form">
               <div class="config-field">
                 <label>IVA por defecto (%)</label>

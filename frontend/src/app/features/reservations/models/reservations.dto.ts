@@ -147,6 +147,8 @@ export interface RoomTypeInfoDto {
 }
 
 export interface ReservationDetailDto {
+  special_request_fulfillment?: { label: string; status: string; fulfilled_at?: string | null }[];
+  amenity_fulfillment?: { label: string; status: string; fulfilled_at?: string | null }[];
   booking: {
     booking_id: string;
     prop_id: number;
@@ -169,7 +171,10 @@ export interface ReservationDetailDto {
     discount_percent?: number | null;
     original_total_price?: number | null;
     special_requests?: string[];
+    selected_amenities?: string[];
     stay_status?: string;
+    estimated_arrival_time?: string;
+    late_checkin?: boolean;
     transaction_id?: string;
     payment_method?: string;
     card_last4?: string;

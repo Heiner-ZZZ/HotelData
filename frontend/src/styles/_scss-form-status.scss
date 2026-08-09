@@ -1,0 +1,28 @@
+/* ── Estado del modo CRUD junto a los botones de form ──────────────────
+ * Compartido por profile, settings y promotion-form: la leyenda del estado
+ * (Editando · cambios sin guardar) y el punto del botón Guardar/Cambiar.
+ * El color de la leyenda usa --op-color, expuesto por [appModeHighlight]
+ * (el directive del modo del nav), con fallback al texto atenuado. */
+
+.form-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--op-color, var(--muted-text));
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+}
+
+/* Punto de cambios sin guardar en el botón de guardar. */
+.unsaved-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--on-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--on-accent) 30%, transparent);
+  flex-shrink: 0;
+}

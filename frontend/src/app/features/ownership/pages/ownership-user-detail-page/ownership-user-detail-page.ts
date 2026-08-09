@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpParams, httpResource } from '@angular/common/http';
+import { HttpParams, httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -121,15 +121,17 @@ export class OwnershipUserDetailPageComponent {
 
   constructor() {
     effect(() => {
-      const detail = this.detailResource.value();
-      const id = this.userId();
+      // error() ANTES de value(): value() lanza cuando el request falló (ej. 403)
+      // y este efecto se re-ejecuta durante el change detection.
       const err = this.detailResource.error();
+      const id = this.userId();
 
       if (!id) return;
       if (err) {
         this.viewState.set('error');
         return;
       }
+      const detail = this.detailResource.value();
       if (!detail && this.detailResource.isLoading()) {
         this.viewState.set('loading');
         return;

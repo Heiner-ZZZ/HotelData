@@ -29,10 +29,12 @@ from src.app.modules.admin.service import (
     search_hotels,
     security_overview,
     toggle_user_active,
+    update_user,
     update_assigned_hotels,
     update_role_definition,
     users_overview,
 )
+from src.app.modules.admin.service.ownership import _resolve_hotel_names
 from src.app.security.dependencies import require_permission, require_login
 from src.app.security.role_helpers import get_role_name
 
@@ -88,6 +90,7 @@ def _serialize_users_overview(current_user: dict) -> dict:
         is_protected = get_role_name(user) == "super_admin"
         can_toggle = not is_current_user and not is_protected
 
+        assigned = user.get("assigned_hotels", []) or []
         users.append(
             {
                 "user_id": user_id,
@@ -98,6 +101,10 @@ def _serialize_users_overview(current_user: dict) -> dict:
                 "is_active": bool(user.get("is_active", True)),
                 "created_at": user.get("created_at"),
                 "display_name": user.get("display_name") or user.get("username") or "",
+                "assigned_hotels": [
+                    {"prop_id": h["prop_id"], "label": h["label"]}
+                    for h in _resolve_hotel_names(assigned)
+                ],
                 "is_current_user": is_current_user,
                 "is_protected": is_protected,
                 "can_toggle": can_toggle,
@@ -113,6 +120,13 @@ def _serialize_users_overview(current_user: dict) -> dict:
             "username": current_username,
             "primary_role": get_role_name(current_user),
         },
+        "roles": [
+            {
+                "role_name": role.get("role_name") or "",
+                "description": role.get("description") or "",
+            }
+            for role in overview.get("roles", [])
+        ],
     }
 
 
@@ -288,6 +302,23 @@ def users_toggle_active_api(user_id: str, current_user: dict = Depends(require_p
 @api_router.delete("/users/{user_id}")
 def users_delete_api(user_id: str, current_user: dict = Depends(require_permission("users.manage"))):
     result = delete_user(user_id, current_user)
+    status_code = 200 if result["ok"] else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+@api_router.put("/users/{user_id}")
+def users_update_api(
+    user_id: str,
+    body: dict,
+    current_user: dict = Depends(require_permission("users.update")),
+):
+    """Edit a user's data from the system-admin view.
+
+    Gated by ``users.update`` (covered by ``users.manage`` via wildcard
+    expansion and by ``*.*`` for super_admin). Whitelisted fields live in
+    ``admin/service/users.py::update_user``.
+    """
+    result = update_user(user_id, body, current_user)
     status_code = 200 if result["ok"] else 400
     return JSONResponse(result, status_code=status_code)
 

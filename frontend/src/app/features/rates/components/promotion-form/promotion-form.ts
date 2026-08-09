@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { RatesApiService } from '../../services/rates-api.service';
 import type { RatesViewModel } from '../../models/rates.model';
 
@@ -13,6 +14,8 @@ export interface PromoEditState {
   description: string;
   discountPercent: number;
   couponCount: number;
+  /** Cupones ya utilizados en reservas — no se pueden retirar ni reducir por debajo. */
+  couponUsed: number;
   startDate: string;
   endDate: string;
   isActive: boolean;
@@ -29,11 +32,14 @@ export class PromotionFormComponent {
   private readonly api = inject(RatesApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly viewModel = input<RatesViewModel | null>(null);
   /** Pass a promo to edit — component auto-loads it into the form. */
   readonly editingPromo = input<PromoEditState | null>(null);
   readonly promoCreated = output<void>();
+  /** El usuario canceló la edición en curso — la página debe limpiar editingPromo. */
+  readonly cancelEditChange = output<void>();
   readonly errorChange = output<string>();
   readonly messageChange = output<string>();
 
@@ -50,9 +56,60 @@ export class PromotionFormComponent {
 
   readonly editing = signal<PromoEditState | null>(null);
 
-  get isEditing(): boolean {
-    return this.editing() !== null;
-  }
+  /** Error del backend (o bloqueo client-side) mostrado inline en el form. */
+  readonly inlineError = signal<string | null>(null);
+
+  /** Snapshot reactivo del form para derivar la advertencia de reducción. */
+  private readonly formValues = toSignal(this.form.valueChanges, {
+    initialValue: this.form.getRawValue(),
+  });
+
+  /**
+   * Cupones sin usar que se RETIRARÁN (borrado lógico, con trazabilidad) si
+   * se guarda con el couponCount actual: original de la campaña − valor del
+   * form, solo cuando es positivo y estamos en modo edición. null = sin aviso.
+   */
+  readonly couponsToRetire = computed<number | null>(() => {
+    const promo = this.editing();
+    if (!promo) return null;
+    const current = Number(this.formValues()?.couponCount ?? promo.couponCount);
+    const diff = promo.couponCount - current;
+    return diff > 0 ? diff : null;
+  });
+
+  /**
+   * Bloqueo DURO: si la campaña tiene cupones ya usados, NINGUNA edición se
+   * puede guardar — el backend (Guard 2) rechaza cualquier cambio con cupones
+   * utilizados. El aviso proactivo 'N cupones usados: desactiva y crea una
+   * nueva' reemplaza el error del backend al guardar. Devuelve el nº de usados
+   * (null = sin bloqueo). Tiene prioridad sobre couponsToRetire en el template.
+   */
+  readonly usedCouponsBlock = computed<number | null>(() => {
+    const promo = this.editing();
+    if (!promo) return null;
+    return promo.couponUsed > 0 ? promo.couponUsed : null;
+  });
+
+  readonly isEditing = computed(() => this.editing() !== null);
+
+  /**
+   * ¿Hay cambios sin guardar respecto a la promo cargada? Compara el snapshot
+   * del form contra los valores originales (editar y revertir no cuenta). El
+   * couponCode no se envía en updatePromotion, así que no se compara. Se usa
+   * para pedir confirmación antes de cancelar la edición.
+   */
+  readonly hasUnsavedChanges = computed<boolean>(() => {
+    const promo = this.editing();
+    if (!promo) return false;
+    const v = this.formValues();
+    return v.name !== promo.name
+      || v.description !== promo.description
+      || v.discountPercent !== promo.discountPercent
+      || v.couponCount !== promo.couponCount
+      || v.startDate !== promo.startDate
+      || v.endDate !== promo.endDate
+      || v.isActive !== promo.isActive;
+  });
 
   constructor() {
     // React to editingPromo input changes — auto-load form for editing
@@ -73,7 +130,19 @@ export class PromotionFormComponent {
     });
   }
 
-  cancelEdit(): void {
+  async cancelEdit(): Promise<void> {
+    if (!this.editing()) return;
+    // Con cambios sin guardar se pide confirmación antes de descartarlos.
+    if (this.hasUnsavedChanges()) {
+      const ok = await this.confirmDialog.open({
+        title: 'Descartar cambios',
+        message: 'Tienes cambios sin guardar en esta promoción. ¿Quieres descartarlos?',
+        confirmLabel: 'Descartar cambios',
+        cancelLabel: 'Seguir editando',
+        variant: 'warning',
+      });
+      if (!ok) return;
+    }
     this.editing.set(null);
     this.form.reset({
       name: '',
@@ -85,6 +154,8 @@ export class PromotionFormComponent {
       couponCode: '',
       isActive: true,
     });
+    // La página limpia editingPromo → el mode-indicator vuelve a insert/read.
+    this.cancelEditChange.emit();
   }
 
   submit(): void {
@@ -96,7 +167,19 @@ export class PromotionFormComponent {
 
     const value = this.form.getRawValue();
 
-    const obs = this.isEditing
+    // Bloqueo client-side: una campaña con cupones usados no se puede editar.
+    // El aviso proactivo del template ('N cupones usados: desactiva y crea una
+    // nueva') lo explica, sin round-trip al backend.
+    if (this.usedCouponsBlock() !== null) {
+      return;
+    }
+    this.inlineError.set(null);
+
+    // Cupones retirados (borrado lógico) en ESTE guardado: lo reporta la
+    // respuesta del backend al reducir coupon_count y se muestra en el toast.
+    let retiredCoupons = 0;
+
+    const obs = this.isEditing()
       ? this.api.updatePromotion(this.editing()!.campaignId, {
           name: value.name,
           description: value.description,
@@ -120,16 +203,21 @@ export class PromotionFormComponent {
 
     obs
       .pipe(
-        switchMap(() => forkJoin({
-          rates: this.api.getRates(vm.propId),
-          plans: this.api.getRatePlanOptions(vm.propId),
-          promotions: this.api.listPropertyPromotions(vm.propId),
-        })),
+        switchMap((result) => {
+          retiredCoupons = Math.max(0, Number((result as { coupons_retired?: number } | null)?.coupons_retired ?? 0));
+          return forkJoin({
+            rates: this.api.getRates(vm.propId),
+            plans: this.api.getRatePlanOptions(vm.propId),
+            promotions: this.api.listPropertyPromotions(vm.propId),
+          });
+        }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: () => {
-          this.messageChange.emit(this.isEditing ? 'Promoción actualizada' : 'Promoción creada');
+          const baseMessage = this.isEditing() ? 'Promoción actualizada' : 'Promoción creada';
+          const retiredLabel = retiredCoupons === 1 ? '1 cupón retirado' : `${retiredCoupons} cupones retirados`;
+          this.messageChange.emit(retiredCoupons > 0 ? `${baseMessage} · ${retiredLabel}` : baseMessage);
           this.errorChange.emit('');
           this.editing.set(null);
           this.form.reset({
@@ -145,7 +233,10 @@ export class PromotionFormComponent {
           this.promoCreated.emit();
         },
         error: (error: ApiError) => {
-          this.errorChange.emit(error.message || 'No fue posible crear la promoción.');
+          const message = error.message || 'No fue posible crear la promoción.';
+          // El error del backend se muestra inline en el form (además del toast).
+          this.inlineError.set(message);
+          this.errorChange.emit(message);
           this.messageChange.emit('');
         },
       });

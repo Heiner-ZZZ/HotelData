@@ -11,11 +11,17 @@ export interface CampaignRow {
   couponTotal: number;
   couponUsed: number;
   couponAvailable: number;
+  /** Cupones retirados (borrado lógico) por reducciones previas — trazabilidad. */
+  couponDeleted: number;
+  /** Cupones de esta campaña, anidados bajo la fila de campaña. */
+  coupons: CouponRow[];
 }
 
 export interface CouponRow {
   code: string;
   activeLabel: string;
+  /** campaign_id al que pertenece; vacío/desconocido = cupón sin campaña asociada. */
+  campaignId: string;
 }
 
 @Component({

@@ -100,7 +100,11 @@ def _available_room_type_summaries_for_properties(
                     {"$in": ["$date", dates_list]},
                     {"$gte": ["$available_rooms", required_rooms]},
                 ]}}},
-                {"$group": {"_id": None, "covered_nights": {"$sum": 1}}},
+                {"$group": {
+                    "_id": None,
+                    "covered_nights": {"$sum": 1},
+                    "min_available": {"$min": "$available_rooms"},
+                }},
             ],
             "as": "coverage",
         }},
@@ -115,6 +119,9 @@ def _available_room_type_summaries_for_properties(
             "max_adults": "$max_adults",
             "max_children": "$max_children",
             "base_capacity": "$base_capacity",
+            # Min available_rooms across the stay for this room type — the
+            # "cuántas quedan a este precio" count on the search card.
+            "min_available": {"$arrayElemAt": ["$coverage.min_available", 0]},
         }}}},
     ]
     return {
@@ -122,6 +129,80 @@ def _available_room_type_summaries_for_properties(
         for row in db.room_types.aggregate(pipeline)
         if row.get("_id") is not None and row.get("room_type")
     }
+
+
+def _eligible_room_type_summaries(
+    prop_ids: list[int] | None,
+    adults: int,
+    children: int,
+    check_in: str,
+    check_out: str,
+    required_rooms: int,
+) -> dict[int, dict[str, Any]]:
+    """INVERTED availability reduction: one pass over room_inventory_calendar.
+
+    Returns prop_id -> {room_type_id, name, max_adults, max_children,
+    base_capacity, min_available} for the cheapest room type per property with
+    FULL coverage of the stay (every night has available_rooms >= required)
+    and capacity for the guests.
+
+    This is the database-side reduction that replaces the search loop's
+    per-batch $lookup scan. The inventory collection is typically orders of
+    magnitude smaller than the hotel catalog, so the search never iterates
+    the full candidate list when few hotels have availability — it queries
+    the inventory once (milliseconds) and paginates the tiny eligible set.
+    """
+    dates_list = _date_range(check_in, check_out)
+    if not dates_list:
+        return {}
+    match: dict[str, Any] = {
+        "date": {"$in": dates_list},
+        "available_rooms": {"$gte": required_rooms},
+    }
+    if prop_ids is not None:
+        match["prop_id"] = {"$in": prop_ids}
+    db = get_database()
+    pipeline: list[dict[str, Any]] = [
+        {"$match": match},
+        {"$group": {
+            "_id": {"prop": "$prop_id", "rt": "$room_type_id"},
+            "covered_nights": {"$sum": 1},
+            "min_available": {"$min": "$available_rooms"},
+        }},
+        {"$match": {"covered_nights": len(dates_list)}},
+        {"$lookup": {
+            "from": "room_types",
+            "let": {"rt": "$_id.rt"},
+            "pipeline": [
+                {"$match": {"$expr": {"$eq": ["$room_type_id", "$$rt"]},
+                             "is_active": True,
+                             "max_adults": {"$gte": adults or 1},
+                             "max_children": {"$gte": children or 0}}},
+                {"$project": {"_id": 0, "room_type_id": 1, "name": 1,
+                              "max_adults": 1, "max_children": 1, "base_capacity": 1}},
+            ],
+            "as": "rt",
+        }},
+        {"$match": {"rt": {"$ne": []}}},
+        # Más barata por capacidad: la misma elección que el search por lote.
+        {"$sort": {"_id.prop": 1, "rt.base_capacity": 1, "rt.room_type_id": 1}},
+        {"$group": {
+            "_id": "$_id.prop",
+            "room_type": {"$first": {"$arrayElemAt": ["$rt", 0]}},
+            "min_available": {"$first": "$min_available"},
+        }},
+    ]
+    result: dict[int, dict[str, Any]] = {}
+    for row in db.room_inventory_calendar.aggregate(pipeline):
+        prop_id = row.get("_id")
+        room_type = row.get("room_type")
+        if prop_id is None or not room_type:
+            continue
+        result[int(prop_id)] = {
+            **room_type,
+            "min_available": int(row.get("min_available") or 0),
+        }
+    return result
 
 
 def _general_amenities_for_properties(
@@ -211,6 +292,30 @@ def _hotel_min_rates_for_properties(
 def _hotel_min_rate_for_range(prop_id: int, check_in: str, check_out: str) -> float | None:
     rates = _hotel_min_rates_for_properties([prop_id], check_in, check_out)
     return rates.get(prop_id)
+
+
+def _hotel_min_rates_from_today_for_properties(prop_ids: list[int]) -> dict[int, float]:
+    """Minimum nightly rate from today onward per property — the base 'Desde'
+    price for searches without a date range. One aggregation for the batch.
+    """
+    if not prop_ids:
+        return {}
+    from src.app.core.timezone import local_today
+    db = get_database()
+    today = local_today()
+    rows = db.hotel_rate_calendar.aggregate([
+        {"$match": {
+            "prop_id": {"$in": prop_ids},
+            "date": {"$gte": today},
+            "is_closed": {"$ne": True},
+        }},
+        {"$group": {"_id": "$prop_id", "min_rate": {"$min": "$rate_amount"}}},
+    ])
+    return {
+        int(row["_id"]): round(float(row["min_rate"]), 2)
+        for row in rows
+        if row.get("_id") is not None and row.get("min_rate") is not None
+    }
 
 
 def _hotel_image_url(prop_id: int) -> str | None:

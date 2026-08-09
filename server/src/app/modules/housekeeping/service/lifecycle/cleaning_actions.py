@@ -233,9 +233,15 @@ def _auto_create_maintenance(
     title = f"{'Daño' if damage_found else 'Mtto'} — Hab. {room_label}"
 
     try:
+        room = db.hotel_rooms.find_one(
+            {"prop_id": prop_id, "room_label": room_label},
+            {"hotel_room_id": 1},
+        )
+        if not room or not room.get("hotel_room_id"):
+            raise ValueError(f"Habitación no encontrada para mantenimiento automático: {room_label}")
         create_maintenance_task(MaintenanceTaskCreate(
             prop_id=prop_id,
-            room_label=room_label,
+            room_id=room["hotel_room_id"],
             task_type=task_type,
             title=title,
             description=" | ".join(desc_parts) if desc_parts else "Reportado automáticamente desde limpieza",

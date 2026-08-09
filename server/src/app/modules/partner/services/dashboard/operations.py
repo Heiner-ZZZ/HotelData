@@ -11,6 +11,11 @@ def _collection_count(collection_name: str, filters: dict[str, Any] | None = Non
     return int(db[collection_name].count_documents(filters or {}))
 
 
+def _active_coupon_count() -> int:
+    """Cupones operativos: los retirados (is_deleted) no cuentan."""
+    return int(get_database().coupon_codes.count_documents({"is_deleted": {"$ne": True}}))
+
+
 def _operational_flags(prop_id: int) -> dict[str, Any]:
     db = get_database()
     today_str = local_today()
@@ -30,7 +35,9 @@ def _operational_flags(prop_id: int) -> dict[str, Any]:
         "start_date": {"$lte": today_str},
         "end_date": {"$gte": today_str},
     }))
-    coupon_count = int(db.coupon_codes.count_documents({"prop_id": prop_id, "is_active": True}))
+    coupon_count = int(db.coupon_codes.count_documents(
+        {"prop_id": prop_id, "is_active": True, "is_deleted": {"$ne": True}}
+    ))
 
     policies_ready = policies_count > 0
     rooms_ready = hotel_rooms_count > 0
@@ -74,6 +81,9 @@ def _operational_dashboard_metrics() -> list[dict[str, Any]]:
         ("Contenido hotelero", "hotel_content_pages"),
         ("Imágenes", "hotel_images"),
         ("Campañas", "promotion_campaigns"),
-        ("Cupones", "coupon_codes"),
+        ("Cupones", None),  # filtrado por _active_coupon_count (excluye retirados)
     ]
-    return [{"label": label, "value": _collection_count(collection_name)} for label, collection_name in metrics]
+    return [
+        {"label": label, "value": _active_coupon_count() if collection_name is None else _collection_count(collection_name)}
+        for label, collection_name in metrics
+    ]

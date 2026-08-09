@@ -35,6 +35,11 @@ export interface HotelSearchResult {
   minNightlyRateLabel: string | null;
   totalEstimated: number | null;
   totalEstimatedLabel: string | null;
+  // Cuántas habitaciones quedan a ese precio (min available_rooms del tipo de
+  // habitación más barato disponible, a lo largo de la estancia). Solo llega
+  // cuando la búsqueda tiene fechas; sin fechas es null y la card no muestra
+  // la línea de disponibilidad.
+  minAvailableRooms: number | null;
   // [FIX BUG] nullable because /api/hotels/search (analytics-fact endpoint)
   // does NOT return `available_room_types_count` — wire-shape drift; mapper
   // logs this in per-field drift audit. Card template's `h.availableRoomTypesCount

@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { getErrorMessage } from '../../../../shared/utils/http-error.util';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -174,9 +174,8 @@ export class RoleFormModalComponent implements OnInit {
   }
 
   private errorMessage(err: unknown, fallback: string): string {
-    const httpErr = err as HttpErrorResponse;
-    const detail = httpErr?.error?.detail;
-    return typeof detail === 'string' && detail ? detail : fallback;
+    // getErrorMessage cubre HttpErrorResponse (tests) y ApiError del interceptor (vivo).
+    return getErrorMessage(err) || fallback;
   }
 
   onBackdropClick(event: MouseEvent): void {

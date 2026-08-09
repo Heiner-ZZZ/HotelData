@@ -10,6 +10,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ImageLightboxComponent } from '../../../../shared/ui/image-lightbox/image-lightbox';
+import { SimilarCarouselComponent } from '../../components/similar-carousel/similar-carousel';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { HotelDetailViewModel, SimilarHotel } from '../../models/hotel-detail.model';
 import type { HotelDetailDto, SimilarHotelsResponseDto } from '../../models/hotel-detail.dto';
@@ -18,7 +19,7 @@ import { mapHotelDetailResponse } from '../../mappers/hotel-detail.mapper';
 
 @Component({
   selector: 'app-hotel-detail-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, RouterLink, ImageLightboxComponent],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, RouterLink, ImageLightboxComponent, SimilarCarouselComponent],
   templateUrl: './hotel-detail-page.html',
   styleUrl: './hotel-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

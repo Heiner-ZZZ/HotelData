@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { httpResource } from '@angular/common/http';
 
@@ -11,6 +11,8 @@ import {
   type SelectOption,
 } from '../../settings/models/settings.model';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
+import { ModeHighlightDirective } from '../../../../core/directives/mode-highlight.directive';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 
@@ -23,7 +25,7 @@ interface NavItem {
 
 @Component({
   selector: 'app-settings-page',
-  imports: [ReactiveFormsModule, PageHeaderComponent],
+  imports: [ReactiveFormsModule, PageHeaderComponent, ModeHighlightDirective],
   templateUrl: './settings-page.html',
   styleUrl: './settings-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +36,7 @@ export class SettingsPageComponent {
   private readonly settingsApi = inject(SettingsApiService);
   private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly opMode = inject(OperationModeService);
 
   readonly currentUser = this.authService.currentUser;
 
@@ -85,8 +88,57 @@ export class SettingsPageComponent {
 
   readonly changingPassword = signal(false);
 
+  /** Snapshot reactivo del form de preferencias (patrón de promotion-form/profile). */
+  private readonly prefsFormValues = toSignal(this.form.valueChanges, {
+    initialValue: this.form.getRawValue(),
+  });
+
+  /** Snapshot reactivo del form de contraseña. */
+  private readonly passwordFormValues = toSignal(this.passwordForm.valueChanges, {
+    initialValue: this.passwordForm.getRawValue(),
+  });
+
+  /**
+   * ¿Hay cambios sin guardar en preferencias? Compara por valor contra lo
+   * cargado (editar y revertir no cuenta).
+   */
+  readonly hasUnsavedChanges = computed<boolean>(() => {
+    const s = this.settings();
+    const v = this.prefsFormValues();
+    if (!s || !v) return false;
+    return v.defaultDashboard !== s.defaultDashboard || v.theme !== s.theme;
+  });
+
+  /** ¿El usuario está escribiendo una contraseña nueva? (algún campo con contenido). */
+  readonly passwordEntry = computed<boolean>(() => {
+    const v = this.passwordFormValues();
+    return !!(v.currentPassword || v.newPassword || v.confirmPassword);
+  });
+
+  /**
+   * Modo CRUD de la página de settings: cada pestaña es un form independiente
+   * y solo la pestaña activa manda en el nav (patrón de secciones de rates).
+   */
+  private readonly _opMode = computed<{ mode: OperationMode; detail: string }>(() => {
+    if (this.activeTab() === 'security') {
+      return this.passwordEntry()
+        ? { mode: 'update', detail: 'Contraseña' }
+        : { mode: 'read', detail: '' };
+    }
+    return this.hasUnsavedChanges()
+      ? { mode: 'update', detail: 'Preferencias' }
+      : { mode: 'read', detail: '' };
+  });
+
   constructor() {
     this.loadSettings();
+
+    // Modo CRUD reactivo en el nav: Solo lectura ↔ Editando según el estado de
+    // la pestaña activa (contraseña en curso / preferencias con cambios).
+    effect(() => {
+      const m = this._opMode();
+      this.opMode.setMode(m.mode, m.detail);
+    });
   }
 
   private loadSettings(): void {

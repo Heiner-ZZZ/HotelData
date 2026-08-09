@@ -4,7 +4,7 @@ import { map, Observable } from 'rxjs';
 
 export interface FolioPosting {
   postingId: string;
-  type: 'room' | 'charge' | 'discount' | 'payment' | 'adjustment';
+  type: 'room' | 'charge' | 'charge_reversal' | 'refund' | 'discount' | 'payment' | 'adjustment';
   category: string;
   concept: string;
   amount: number;
@@ -28,7 +28,8 @@ export interface FolioDto {
   check_out_date: string;
   check_in_time?: string;
   check_out_time?: string;
-  status: 'open' | 'closed';
+  status: 'open' | 'closed' | 'settled' | 'written_off' | 'refunded';
+  close_reason?: string | null;
   is_expired: boolean;
   has_invoice: boolean;
   total_room: number;
@@ -41,6 +42,26 @@ export interface FolioDto {
   created_at: string;
   closed_at: string | null;
   closed_by: string | null;
+  reopened_at?: string | null;
+  reopened_by?: string | null;
+  settlement_type?: string | null;
+  settlement_amount?: number | null;
+  settlement_reason?: string | null;
+  approval_reference?: string | null;
+  external_reference?: string | null;
+  settled_at?: string | null;
+  settled_recorded_at?: string | null;
+  settled_by?: string | null;
+  settled_by_user_id?: string | null;
+  settlement_payment_id?: string | null;
+  settlement_payment_ids?: string[];
+  settlement_event_id?: string | null;
+  settlement_event_ids?: string[];
+  settlement_shift_id?: string | null;
+  settlement_shift_ids?: string[];
+  settlement_invoice_id?: string | null;
+  settlement_evidence_type?: string | null;
+  settlement_evidence_reference?: string | null;
   invoice_id: string | null;
 }
 
@@ -70,7 +91,8 @@ export interface FolioViewModel {
   checkOutDate: string;
   checkInTime?: string;
   checkOutTime?: string;
-  status: 'open' | 'closed';
+  status: 'open' | 'closed' | 'settled' | 'written_off' | 'refunded';
+  closeReason?: string | null;
   isExpired: boolean;
   hasInvoice: boolean;
   totalRoom: number;
@@ -83,6 +105,26 @@ export interface FolioViewModel {
   createdAt: string;
   closedAt: string | null;
   closedBy: string | null;
+  reopenedAt: string | null;
+  reopenedBy: string | null;
+  settlementType: string | null;
+  settlementAmount: number | null;
+  settlementReason: string | null;
+  approvalReference: string | null;
+  externalReference: string | null;
+  settledAt: string | null;
+  settledRecordedAt: string | null;
+  settledBy: string | null;
+  settledByUserId: string | null;
+  settlementPaymentId: string | null;
+  settlementPaymentIds: string[];
+  settlementEventId: string | null;
+  settlementEventIds: string[];
+  settlementShiftId: string | null;
+  settlementShiftIds: string[];
+  settlementInvoiceId: string | null;
+  settlementEvidenceType: string | null;
+  settlementEvidenceReference: string | null;
   invoiceId: string | null;
 }
 
@@ -98,6 +140,28 @@ export interface FolioPostPayload {
 
 export interface FolioClosePayload {
   invoice_id?: string;
+  close_reason?: string;
+}
+
+export type FolioSettlementType = 'payment' | 'write_off' | 'external_settlement';
+
+export interface FolioSettlementPayload {
+  settlement_type: FolioSettlementType;
+  idempotency_key: string;
+  amount?: number;
+  method?: string;
+  reason?: string;
+  approval_reference?: string;
+  external_reference?: string;
+}
+
+export type FolioCloseState = 'ready' | 'balance_due' | 'not_open';
+
+export function getFolioCloseState(
+  folio: Pick<FolioViewModel, 'status' | 'totalDue'> | null | undefined,
+): FolioCloseState {
+  if (!folio || folio.status !== 'open') return 'not_open';
+  return folio.totalDue > 0.005 ? 'balance_due' : 'ready';
 }
 
 export interface FolioCategory {
@@ -121,6 +185,7 @@ export function mapFolio(dto: FolioDto): FolioViewModel {
     checkInTime: dto.check_in_time || undefined,
     checkOutTime: dto.check_out_time || undefined,
     status: dto.status,
+    closeReason: dto.close_reason ?? null,
     isExpired: dto.is_expired ?? false,
     hasInvoice: dto.has_invoice ?? false,
     totalRoom: dto.total_room,
@@ -144,6 +209,26 @@ export function mapFolio(dto: FolioDto): FolioViewModel {
     createdAt: dto.created_at,
     closedAt: dto.closed_at,
     closedBy: dto.closed_by,
+    reopenedAt: dto.reopened_at ?? null,
+    reopenedBy: dto.reopened_by ?? null,
+    settlementType: dto.settlement_type ?? null,
+    settlementAmount: dto.settlement_amount ?? null,
+    settlementReason: dto.settlement_reason ?? null,
+    approvalReference: dto.approval_reference ?? null,
+    externalReference: dto.external_reference ?? null,
+    settledAt: dto.settled_at ?? null,
+    settledRecordedAt: dto.settled_recorded_at ?? null,
+    settledBy: dto.settled_by ?? null,
+    settledByUserId: dto.settled_by_user_id ?? null,
+    settlementPaymentId: dto.settlement_payment_id ?? null,
+    settlementPaymentIds: dto.settlement_payment_ids ?? [],
+    settlementEventId: dto.settlement_event_id ?? null,
+    settlementEventIds: dto.settlement_event_ids ?? [],
+    settlementShiftId: dto.settlement_shift_id ?? null,
+    settlementShiftIds: dto.settlement_shift_ids ?? [],
+    settlementInvoiceId: dto.settlement_invoice_id ?? null,
+    settlementEvidenceType: dto.settlement_evidence_type ?? null,
+    settlementEvidenceReference: dto.settlement_evidence_reference ?? null,
     invoiceId: dto.invoice_id,
   };
 }
@@ -161,6 +246,16 @@ export class FolioApiService {
   /** Post a transaction to the guest's folio. */
   postToFolio(bookingId: string, payload: FolioPostPayload): Observable<FolioViewModel> {
     return this.http.post<FolioDto>(`${this.base}/${bookingId}/post`, payload, { withCredentials: true }).pipe(map(mapFolio));
+  }
+
+  /** Reopen a closed folio with a collectible balance. */
+  reopenFolio(bookingId: string): Observable<FolioViewModel> {
+    return this.http.post<FolioDto>(`${this.base}/${bookingId}/reopen`, {}, { withCredentials: true }).pipe(map(mapFolio));
+  }
+
+  /** Resolve a positive balance with an explicit payment or approved exception. */
+  settleFolio(bookingId: string, payload: FolioSettlementPayload): Observable<FolioViewModel> {
+    return this.http.post<FolioDto>(`${this.base}/${bookingId}/settle`, payload, { withCredentials: true }).pipe(map(mapFolio));
   }
 
   /** Close a folio at check-out. */

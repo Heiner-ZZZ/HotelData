@@ -357,18 +357,5 @@
       }
     }
   }
-
-  <!-- Confirmation Modal -->
-  @if (confirmAction(); as confirm) {
-    <div class="modal-backdrop" (click)="confirmCancel()">
-      <article class="modal-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
-        <h2>{{ confirm.title }}</h2>
-        <p>{{ confirm.message }}</p>
-        <div class="modal-actions">
-          <button type="button" class="modal-btn modal-btn-secondary" (click)="confirmCancel()">Cancelar</button>
-          <button type="button" class="modal-btn modal-btn-primary" (click)="confirmAccept()">Continuar</button>
-        </div>
-      </article>
-    </div>
-  }
+  <!-- Confirmación ETL: diálogo global (ConfirmDialogService, montado en app.html). -->
 </div>

@@ -1,10 +1,12 @@
-import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { CurrencyPipe, DatePipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+
+import type { FulfillmentItem } from '../../../models/reservations.model';
 
 @Component({
   selector: 'app-rd-info-panels',
   standalone: true,
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="insight-grid">
@@ -18,13 +20,68 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
                 <tr><th>Tipo de habitación</th><td>{{ rt.name }}</td></tr>
               }
               <tr class="date-row"><th>Fechas</th><td><span class="date-range">{{ vm()?.checkInDate }}</span> <span class="date-arrow">→</span> <span class="date-range">{{ vm()?.checkOutDate }}</span></td></tr>
+              <tr>
+                <th>Llegada estimada</th>
+                <td>
+                  @if (vm()?.estimatedArrivalTime) {
+                    <span class="rd-arrival-time">{{ vm()?.estimatedArrivalTime }}</span>
+                  } @else {
+                    <span class="cell-muted">No declarada</span>
+                  }
+                  @if (vm()?.lateCheckin) {
+                    <span class="rd-late-badge">
+                      <span class="material-symbols-outlined" aria-hidden="true">nights_stay</span>
+                      Late check-in
+                    </span>
+                  }
+                </td>
+              </tr>
               <tr><th>Ocupación</th><td>{{ vm()?.occupancyLabel }}</td></tr>
               <tr><th>Comentario</th><td>{{ vm()?.comment }}</td></tr>
               @if (vm()?.specialRequests?.length > 0) {
                 <tr><th>Peticiones</th><td>
-                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <div class="rd-request-list">
                     @for (req of vm()?.specialRequests; track req) {
-                      <span style="background: var(--surface-2); padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: var(--text-2);">{{ req }}</span>
+                      @let done = fulfillment().find((f) => f.label === req)?.status === 'fulfilled';
+                      @let item = fulfillment().find((f) => f.label === req);
+                      <div class="rd-request-row" [class.is-done]="done">
+                        <span class="material-symbols-outlined rd-request-icon" aria-hidden="true">{{ done ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                        <span class="rd-request-label">{{ req }}</span>
+                        <span class="rd-request-status" [class.is-fulfilled]="done">{{ done ? 'Cumplida' : 'Pendiente' }}</span>
+                        @if (done && item?.fulfilledAt) {
+                          <span class="rd-request-date" title="Cumplida el {{ item!.fulfilledAt | date:'medium' }}">{{ item!.fulfilledAt | date:'dd MMM' }}</span>
+                        }
+                        @if (canToggle()) {
+                          <button type="button" class="rd-request-toggle" (click)="toggleFulfillment.emit({ kind: 'special_request', label: req, status: done ? 'pending' : 'fulfilled' })">
+                            <span class="material-symbols-outlined">{{ done ? 'replay' : 'check' }}</span>
+                            {{ done ? 'Reabrir' : 'Marcar cumplida' }}
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                </td></tr>
+              }
+              @if (vm()?.selectedAmenities?.length > 0) {
+                <tr><th>Servicios (amenities)</th><td>
+                  <div class="rd-request-list">
+                    @for (amenity of vm()?.selectedAmenities; track amenity) {
+                      @let done = amenityFulfillment().find((f) => f.label === amenity)?.status === 'fulfilled';
+                      @let item = amenityFulfillment().find((f) => f.label === amenity);
+                      <div class="rd-request-row" [class.is-done]="done">
+                        <span class="material-symbols-outlined rd-request-icon" aria-hidden="true">{{ done ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                        <span class="rd-request-label">{{ amenity }}</span>
+                        <span class="rd-request-status" [class.is-fulfilled]="done">{{ done ? 'Cumplida' : 'Pendiente' }}</span>
+                        @if (done && item?.fulfilledAt) {
+                          <span class="rd-request-date" title="Cumplida el {{ item!.fulfilledAt | date:'medium' }}">{{ item!.fulfilledAt | date:'dd MMM' }}</span>
+                        }
+                        @if (canToggle()) {
+                          <button type="button" class="rd-request-toggle" (click)="toggleFulfillment.emit({ kind: 'amenity', label: amenity, status: done ? 'pending' : 'fulfilled' })">
+                            <span class="material-symbols-outlined">{{ done ? 'replay' : 'check' }}</span>
+                            {{ done ? 'Reabrir' : 'Marcar cumplida' }}
+                          </button>
+                        }
+                      </div>
                     }
                   </div>
                 </td></tr>
@@ -76,4 +133,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 })
 export class RdInfoPanelsComponent {
   readonly vm = input<any>(null);
+  readonly fulfillment = input<FulfillmentItem[]>([]);
+  readonly amenityFulfillment = input<FulfillmentItem[]>([]);
+  /** Solo staff puede marcar/reabrir cumplimiento (huésped ve el checklist en solo lectura). */
+  readonly canToggle = input<boolean>(true);
+  readonly toggleFulfillment = output<{ kind: 'special_request' | 'amenity'; label: string; status: 'pending' | 'fulfilled' }>();
 }

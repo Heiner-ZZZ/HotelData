@@ -4,7 +4,7 @@ import { map } from 'rxjs';
 
 import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapAmenities, mapAmenitiesOptions } from '../mappers/amenities.mapper';
-import type { AmenitiesDto, AmenitiesOptionsDto, AmenitiesSaveDto } from '../models/amenities.dto';
+import type { AmenitiesDto, AmenitiesOptionsDto, AmenitiesSaveDto, SpecialRequestsSaveDto } from '../models/amenities.dto';
 
 @Injectable({ providedIn: 'root' })
 export class AmenitiesApiService {
@@ -23,5 +23,12 @@ export class AmenitiesApiService {
   saveAmenities(payload: AmenitiesSaveDto) {
     return this.http.put<AmenitiesDto>('/management/amenities', payload)
       .pipe(catchAuthError(), map((dto) => mapAmenities(dto)));
+  }
+
+  saveSpecialRequests(payload: SpecialRequestsSaveDto) {
+    return this.http.put<{ special_requests: AmenitiesDto['special_requests']; high_floor_from: number }>(
+      '/management/amenities/special-requests',
+      payload,
+    ).pipe(catchAuthError());
   }
 }

@@ -74,6 +74,7 @@ export function mapHotelSearchItems(dto: HotelSearchDto): HotelSearchResult[] {
         minNightlyRateLabel: item.min_nightly_rate_label ?? null,
         totalEstimated: item.total_estimated ?? null,
         totalEstimatedLabel: item.total_estimated_label ?? null,
+        minAvailableRooms: item.min_available_rooms ?? null,
         availableRoomTypesCount: item.available_room_types_count ?? null,
         selected: false,
       };

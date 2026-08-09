@@ -1,9 +1,20 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from src.app.modules.hotels.service._helpers import _safe_float, _safe_int
 from src.database.connection import get_database
+
+
+def _ci_regex(term: str) -> re.Pattern[str]:
+    """Compiled case-insensitive regex with the term escaped.
+
+    $regex con el término crudo interpreta metacaracteres del usuario
+    (``(``, ``[``, ``*``…) y puede lanzar OperationFailure → 500 en un
+    endpoint público. ``re.escape`` convierte el input en substring literal.
+    """
+    return re.compile(re.escape(term), re.IGNORECASE)
 
 
 def _destination_ids(destination: str) -> list[int]:
@@ -14,11 +25,7 @@ def _destination_ids(destination: str) -> list[int]:
         return []
     db = get_database()
     docs = db.dim_destinations.find(
-        {
-            "$or": [
-                {"destination_name": {"$regex": destination, "$options": "i"}},
-            ]
-        },
+        {"destination_name": _ci_regex(destination)},
         {"_id": 0, "srch_destination_id": 1},
     ).limit(200)
     return [int(item["srch_destination_id"]) for item in docs if item.get("srch_destination_id") is not None]
@@ -27,9 +34,15 @@ def _destination_ids(destination: str) -> list[int]:
 def suggest_destinations(query: str, limit: int = 8) -> list[dict[str, Any]]:
     """Public destination suggestions for the welcome booking-bar autocomplete.
 
-    Case-insensitive substring match over ``dim_destinations.destination_name``.
-    Returns up to ``limit`` suggestions with ``id`` (srch_destination_id) and
-    ``name`` (destination_name). No auth required — same surface as
+    Case-insensitive substring match over three sources:
+
+    - ``dim_destinations.destination_name`` → type ``city``
+    - ``dim_hotels`` (``display_name`` / ``hotel_name`` / ``city``) → type ``hotel``
+    - ``dim_visitor_countries`` + ``geo_catalog`` (``type: country``) → type ``country``
+
+    Each item: ``{"id", "name", "type"}``. El mezclado es round-robin por
+    tipo (fair mix): un prefijo con muchas ciudades no acapara los slots y
+    deja de mostrar hoteles/países. No auth required — same surface as
     ``/api/hotels/availability``.
     """
     q = (query or "").strip()
@@ -37,18 +50,137 @@ def suggest_destinations(query: str, limit: int = 8) -> list[dict[str, Any]]:
         return []
     db = get_database()
     limit = min(max(int(limit), 1), 20)
-    docs = db.dim_destinations.find(
-        {"destination_name": {"$regex": q, "$options": "i"}},
-        {"_id": 0, "srch_destination_id": 1, "destination_name": 1},
-    ).sort("destination_name", 1).limit(limit)
-    return [
+    rx = _ci_regex(q)
+    # Pool por tipo (más amplio que limit para que el interleave tenga fuel).
+    pool_size = limit * 3
+
+    cities: list[dict[str, Any]] = [
         {
             "id": int(doc["srch_destination_id"]),
             "name": doc.get("destination_name") or f"Destino {doc['srch_destination_id']}",
+            "type": "city",
         }
-        for doc in docs
+        for doc in db.dim_destinations.find(
+            {"destination_name": rx},
+            {"_id": 0, "srch_destination_id": 1, "destination_name": 1},
+        ).sort("destination_name", 1).limit(pool_size)
         if doc.get("srch_destination_id") is not None
     ]
+
+    hotels: list[dict[str, Any]] = []
+    for hotel in db.dim_hotels.find(
+        {"$or": [{"display_name": rx}, {"hotel_name": rx}, {"city": rx}]},
+        {"_id": 0, "prop_id": 1, "display_name": 1, "hotel_name": 1},
+    ).limit(pool_size):
+        pid = hotel.get("prop_id")
+        if pid is None:
+            continue
+        name = hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel {pid}"
+        hotels.append({"id": int(pid), "name": name, "type": "hotel"})
+
+    countries: list[dict[str, Any]] = [
+        {
+            "id": int(c["visitor_location_country_id"]),
+            "name": c.get("country_name") or c.get("country_display_name") or f"País {c['visitor_location_country_id']}",
+            "type": "country",
+        }
+        for c in db.dim_visitor_countries.find(
+            {"$or": [{"country_name": rx}, {"country_display_name": rx}, {"visitor_country_label": rx}]},
+            {"_id": 0, "visitor_location_country_id": 1, "country_name": 1, "country_display_name": 1},
+        ).limit(pool_size)
+        if c.get("visitor_location_country_id") is not None
+    ]
+    for geo in db.geo_catalog.find(
+        {"type": "country", "name": rx},
+        {"_id": 0, "code": 1, "name": 1},
+    ).limit(pool_size):
+        code = geo.get("code")
+        if code:
+            countries.append({"id": code, "name": geo.get("name") or code, "type": "country"})
+
+    # Dedup por nombre DENTRO de cada pool (el legacy int gana sobre el geo
+    # string cuando ambos nombran el mismo país, ej. "Bolivia" x2).
+    def _dedup(pool: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen: set[str] = set()
+        out: list[dict[str, Any]] = []
+        for item in pool:
+            key = (item.get("name") or "").strip().lower()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            out.append(item)
+        return out
+
+    pools = [_dedup(cities), _dedup(hotels), _dedup(countries)]
+    # Round-robin por tipo: city → hotel → country → city… hasta llenar limit.
+    out: list[dict[str, Any]] = []
+    idx = [0, 0, 0]
+    while len(out) < limit and any(p for p in pools):
+        advanced = False
+        for i, pool in enumerate(pools):
+            if len(out) >= limit:
+                break
+            if idx[i] < len(pool):
+                out.append(pool[idx[i]])
+                idx[i] += 1
+                advanced = True
+        if not advanced:
+            break
+    return out
+
+
+def _prop_ids_for_countries(country_ids: list[int], country_codes: list[str]) -> list[int]:
+    """prop_ids de dim_hotels cuyo país (legacy int o geo code) está en las listas."""
+    if not country_ids and not country_codes:
+        return []
+    db = get_database()
+    conds: list[dict[str, Any]] = []
+    if country_ids:
+        conds.append({"prop_country_id": {"$in": country_ids}})
+    if country_codes:
+        conds.append({"geo_country_code": {"$in": country_codes}})
+    docs = db.dim_hotels.find({"$or": conds}, {"_id": 0, "prop_id": 1}).limit(1000)
+    return [int(doc["prop_id"]) for doc in docs if doc.get("prop_id") is not None]
+
+
+def _resolve_destination(destination: str) -> dict[str, Any]:
+    """Resolve free-text destination to city IDs, hotel prop_ids and country keys.
+
+    Returns ``{"destination_ids", "prop_ids", "country_ids", "country_codes"}``
+    so callers can build an OR filter over every place a user may type
+    (ciudad, nombre de hotel o país). Each list is empty when nothing matches.
+    """
+    q = (destination or "").strip()
+    out: dict[str, Any] = {"destination_ids": [], "prop_ids": [], "country_ids": [], "country_codes": []}
+    if not q:
+        return out
+    db = get_database()
+
+    out["destination_ids"] = _destination_ids(q)
+
+    rx = _ci_regex(q)
+    for hotel in db.dim_hotels.find(
+        {"$or": [{"display_name": rx}, {"hotel_name": rx}, {"city": rx}]},
+        {"_id": 0, "prop_id": 1},
+    ).limit(200):
+        if hotel.get("prop_id") is not None:
+            out["prop_ids"].append(int(hotel["prop_id"]))
+
+    for country in db.dim_visitor_countries.find(
+        {"$or": [{"country_name": rx}, {"country_display_name": rx}, {"visitor_country_label": rx}]},
+        {"_id": 0, "visitor_location_country_id": 1},
+    ).limit(100):
+        if country.get("visitor_location_country_id") is not None:
+            out["country_ids"].append(int(country["visitor_location_country_id"]))
+
+    for geo in db.geo_catalog.find(
+        {"type": "country", "name": rx},
+        {"_id": 0, "code": 1},
+    ).limit(100):
+        if geo.get("code"):
+            out["country_codes"].append(geo["code"])
+
+    return out
 
 
 def _hotel_lookup(prop_ids: list[int]) -> dict[int, dict[str, Any]]:
@@ -113,7 +245,7 @@ def _suggest_alternative_destinations(
         return []
 
     db = get_database()
-    terms = [{"destination_name": {"$regex": w, "$options": "i"}} for w in words]
+    terms = [{"destination_name": _ci_regex(w)} for w in words]
 
     match: dict[str, Any] = {"$or": terms}
     if exclude_ids:
@@ -181,11 +313,26 @@ def _amenities_prop_ids(amenities: str, mode: str = "or") -> list[int]:
 def _build_match(filters: dict[str, Any]) -> dict[str, Any] | None:
     match: dict[str, Any] = {}
     destination = str(filters.get("destination") or "").strip()
-    destination_ids = _destination_ids(destination)
+    resolved = _resolve_destination(destination) if destination else {}
     if destination:
-        if not destination_ids:
+        destination_ids = resolved.get("destination_ids", [])
+        prop_ids = resolved.get("prop_ids", [])
+        country_prop_ids = _prop_ids_for_countries(
+            resolved.get("country_ids", []),
+            resolved.get("country_codes", []),
+        )
+        if not destination_ids and not prop_ids and not country_prop_ids:
             return None
-        match["srch_destination_id"] = {"$in": destination_ids}
+        or_conditions: list[dict[str, Any]] = []
+        if destination_ids:
+            or_conditions.append({"srch_destination_id": {"$in": destination_ids}})
+        all_prop_ids = list(dict.fromkeys([*prop_ids, *country_prop_ids]))
+        if all_prop_ids:
+            or_conditions.append({"prop_id": {"$in": all_prop_ids}})
+        if len(or_conditions) == 1:
+            match.update(or_conditions[0])
+        else:
+            match["$or"] = or_conditions
 
     min_price = _safe_float(filters.get("min_price"))
     max_price = _safe_float(filters.get("max_price"))

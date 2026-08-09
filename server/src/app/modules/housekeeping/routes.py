@@ -17,6 +17,8 @@ from src.app.modules.housekeeping.service import (
     complete_housekeeping_task,
     complete_maintenance_task,
     create_additional_charge,
+    repair_failed_charge,
+    reconcile_no_cost_maintenance,
     create_housekeeping_task,
     create_maintenance_task,
     delete_additional_charge,
@@ -30,6 +32,7 @@ from src.app.modules.housekeeping.service import (
     get_weekly_calendar,
     list_additional_charges,
     list_housekeeping_tasks,
+    recover_additional_charge,
     list_maintenance_tasks,
     list_room_status,
     list_room_status_history,
@@ -499,6 +502,30 @@ def mt_task_list_api(
     return result
 
 
+@api_router.post("/maintenance/{task_id}/reconcile-no-cost")
+def mt_task_reconcile_no_cost_api(
+    task_id: str,
+    current_user: dict = Depends(require_permission("maintenance.update")),
+):
+    """Explicitly classify a maintenance order with no recorded cost."""
+    result = reconcile_no_cost_maintenance(
+        task_id,
+        changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
+    )
+    if result is None:
+        raise HTTPException(status_code=409, detail="El mantenimiento tiene evidencia financiera o no existe")
+    register_action(
+        prop_id=result.get("propId", 0),
+        entity_type="housekeeping_maintenance",
+        entity_id=task_id,
+        action="repair",
+        summary=f"Mantenimiento clasificado sin costo registrado: {result.get('title', task_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff={"financial_link_status": {"old": None, "new": "no_cost_recorded"}},
+    )
+    return result
+
+
 @api_router.put("/maintenance/{task_id}")
 def mt_task_update_api(
     task_id: str,
@@ -654,6 +681,51 @@ def charge_list_api(
     return result
 
 
+@api_router.post("/charges/{charge_id}/repair-posting")
+def charge_repair_posting_api(
+    charge_id: str,
+    current_user: dict = Depends(require_permission("charges.manage")),
+):
+    """Attach a failed charge to its safe folio and post it idempotently."""
+    result = repair_failed_charge(
+        charge_id,
+        changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
+    )
+    if result is None:
+        raise HTTPException(status_code=409, detail="No se pudo reparar el posting del cargo")
+    register_action(
+        prop_id=result.get("prop_id", 0),
+        entity_type="housekeeping_charge",
+        entity_id=charge_id,
+        action="repair",
+        summary=f"Cargo enlazado al folio {result.get('folioNumber', '')}",
+        changed_by=current_user.get("username", "system"),
+    )
+    return result
+
+
+@api_router.post("/charges/{charge_id}/recover")
+def charge_recover_api(
+    charge_id: str,
+    current_user: dict = Depends(require_permission("charges.manage")),
+):
+    """Recover only an interrupted, already-posted charge mutation."""
+    result = recover_additional_charge(charge_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
+    if result.get("postingStatus") in {"updating", "reversing"}:
+        raise HTTPException(status_code=409, detail="No existe un posting completo para recuperar todavía")
+    register_action(
+        prop_id=result.get("prop_id", 0),
+        entity_type="housekeeping_charge",
+        entity_id=charge_id,
+        action="recover",
+        summary=f"Recuperación de posting de cargo {charge_id}",
+        changed_by=current_user.get("username", "system"),
+    )
+    return result
+
+
 @api_router.get("/charges/{charge_id}")
 def charge_get_api(
     charge_id: str,
@@ -686,9 +758,15 @@ def charge_delete_api(
     """Delete an additional charge (e.g., added by mistake)."""
     result = delete_additional_charge(charge_id)
     if result is None:
+        existing = get_additional_charge(charge_id)
+        if existing and existing.get("postingStatus") in {"updating", "reversing"}:
+            raise HTTPException(
+                status_code=409,
+                detail="El cargo tiene una operación financiera en curso; inténtalo de nuevo.",
+            )
         raise HTTPException(status_code=404, detail="Cargo no encontrado")
     register_action(
-        prop_id=0,
+        prop_id=result.get("prop_id", 0),
         entity_type="housekeeping_charge",
         entity_id=charge_id,
         action="delete",
@@ -696,7 +774,12 @@ def charge_delete_api(
         changed_by=current_user.get("username", "system"),
         diff={"deleted_id": {"old": None, "new": charge_id}},
     )
-    return result
+    return {
+        "ok": True,
+        "deleted_id": charge_id,
+        "booking_id": result.get("booking_id", ""),
+        "charge": result,
+    }
 
 
 @api_router.put("/charges/{charge_id}")
@@ -711,6 +794,11 @@ def charge_update_api(
         raise HTTPException(
             status_code=400,
             detail="No se pudo actualizar: el cargo no existe o fue creado en otro día.",
+        )
+    if result.get("postingStatus") in {"updating", "reversing"}:
+        raise HTTPException(
+            status_code=409,
+            detail="El cargo tiene una operación financiera en curso; inténtalo de nuevo.",
         )
     register_action(
         prop_id=result.get("prop_id", 0),

@@ -30,6 +30,8 @@ export function mapCheckIns(dto: CheckInsDto): CheckInsViewModel {
       assignedRoomNumbers: item.assigned_room_numbers || [],
       roomNumbersLabel: item.room_numbers_label || [],
       estimatedTime: item.estimated_time,
+      estimatedArrivalTime: item.estimated_arrival_time || '',
+      lateCheckin: !!item.late_checkin,
       notes: item.notes,
       canComplete: item.can_complete
     }))

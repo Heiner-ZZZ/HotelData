@@ -40,6 +40,58 @@
   }
 }
 
+/* ── Selected requests / amenities as chips (same language as the form) ── */
+.review-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-top: 0.2rem;
+}
+
+.review-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  font-size: 0.78rem;
+}
+
+.review-chip-icon {
+  font-size: 0.95rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.review-chip-amenity .review-chip-icon {
+  color: var(--success);
+}
+
+.review-chip-label {
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.review-chip-price {
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.review-chip-free {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* ── Price Breakdown Block ── */
 .price-breakdown {
   display: grid;

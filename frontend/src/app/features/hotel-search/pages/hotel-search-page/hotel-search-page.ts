@@ -1,8 +1,9 @@
-import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { getErrorStatus } from '../../../../shared/utils/http-error.util';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -41,11 +42,11 @@ export class HotelSearchPageComponent {
   });
 
   readonly viewState = computed<ViewState>(() => {
+    // error() ANTES de value(): value() lanza cuando el request falló.
+    const err = this.searchResource.error();
+    if (err) return getErrorStatus(err) === 404 ? 'empty' : 'error';
     const v = this.searchResource.value();
     if (this.searchResource.isLoading() && !v) return 'loading';
-    const err = this.searchResource.error();
-    if (err instanceof HttpErrorResponse) return err.status === 404 ? 'empty' : 'error';
-    if (err) return 'error';
     return v?.items.length ? 'success' : 'empty';
   });
 
@@ -108,6 +109,8 @@ export class HotelSearchPageComponent {
     // the template reads. The id-gate prevents paged fetches from overwriting any
     // user's optimistic compare selections.
     effect(() => {
+      // error() ANTES de value(): value() lanza cuando el request falló (ej. 403).
+      if (this.searchResource.error()) return;
       const data = this.searchResource.value();
       if (!data) return;
       const currentFilters = this.pageData();
@@ -155,6 +158,22 @@ export class HotelSearchPageComponent {
   goToPage(page: number) {
     const filters = this.currentFilters();
     this.updateFilters({ ...filters, page });
+  }
+
+  /** Botón "Elegir fechas" de una card: lleva el foco al calendario del
+   *  filtro (check-in) y abre el picker nativo — el total de la card se
+   *  recalcula al aplicar el rango (patrón Expedia: fechas primero). */
+  onChooseDates() {
+    const input = document.querySelector<HTMLInputElement>(
+      '.filter-sidebar input[formControlName="checkIn"]',
+    );
+    if (!input) return;
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (typeof input.showPicker === 'function') {
+      input.showPicker();
+    } else {
+      input.focus({ preventScroll: true });
+    }
   }
 
   onCompareSelected(hotelId: number) {

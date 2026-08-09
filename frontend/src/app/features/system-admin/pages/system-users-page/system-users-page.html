@@ -167,28 +167,39 @@
                     </td>
                     <td class="cell-date">{{ user.createdAtLabel }}</td>
                     <td class="cell-actions">
-                      @if (user.canToggle) {
+                      @if (user.canEdit) {
                         <div class="action-group">
                           <button
                             type="button"
-                            class="btn btn-sm btn-outline"
-                            [disabled]="pendingUserId() === user.userId"
-                            (click)="toggleUser(user.userId, user.username, user.toggleLabel)"
+                            class="btn btn-sm btn-icon btn-outline"
+                            title="Editar usuario"
+                            aria-label="Editar usuario {{ user.username }}"
+                            (click)="openEdit(user)"
                           >
-                            @if (pendingUserId() === user.userId) {
-                              <span class="material-symbols-outlined spinning">refresh</span>
-                            }
-                            {{ pendingUserId() === user.userId ? '…' : user.toggleLabel }}
+                            <span class="material-symbols-outlined">edit</span>
                           </button>
-                          <button
-                            type="button"
-                            class="btn btn-sm btn-icon btn-danger-soft"
-                            [disabled]="deletingId() === user.userId"
-                            (click)="requestDelete(user.userId, user.username)"
-                            title="Eliminar usuario"
-                          >
-                            <span class="material-symbols-outlined">delete</span>
-                          </button>
+                          @if (user.canToggle) {
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-outline"
+                              [disabled]="pendingUserId() === user.userId"
+                              (click)="toggleUser(user.userId, user.username, user.toggleLabel)"
+                            >
+                              @if (pendingUserId() === user.userId) {
+                                <span class="material-symbols-outlined spinning">refresh</span>
+                              }
+                              {{ pendingUserId() === user.userId ? '…' : user.toggleLabel }}
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-icon btn-danger-soft"
+                              [disabled]="deletingId() === user.userId"
+                              (click)="requestDelete(user.userId, user.username)"
+                              title="Eliminar usuario"
+                            >
+                              <span class="material-symbols-outlined">delete</span>
+                            </button>
+                          }
                         </div>
                       } @else {
                         @if (user.isActive) {
@@ -225,3 +236,196 @@
     }
   }
 </div>
+
+<!-- ═══ Edit User Modal ═══ -->
+@if (editingUser(); as user) {
+  <div class="modal-overlay" (click)="closeEdit()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h3>Editar usuario</h3>
+          <span class="edit-mode-chip">
+            <span class="material-symbols-outlined">edit</span>
+            Editando · {{ user.username }}
+          </span>
+        </div>
+        <button class="modal-close" (click)="closeEdit()" aria-label="Cerrar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="readonly-user">
+          <div class="user-avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
+          <div>
+            <div class="readonly-username">@{{ user.username }}</div>
+            <div class="readonly-sub">
+              Registrado {{ user.createdAtLabel }} ·
+              <app-status-badge
+                [tone]="user.isActive ? 'success' : 'neutral'"
+                [label]="user.isActive ? 'Activo' : 'Inactivo'"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="su-username">Nombre de usuario <span class="required">*</span></label>
+          <div class="input-wrap">
+            <input
+              id="su-username"
+              type="text"
+              [ngModel]="editForm().username"
+              (ngModelChange)="editForm.update(f => ({...f, username: $event}))"
+              placeholder="usuario_sistema"
+              maxlength="50"
+              autocomplete="off"
+            />
+          </div>
+          <span class="field-hint">Identificador de inicio de sesión. Sin espacios; debe ser único.</span>
+        </div>
+
+        <div class="field">
+          <label for="su-display">Nombre mostrado <span class="required">*</span></label>
+          <div class="input-wrap">
+            <input
+              id="su-display"
+              type="text"
+              [ngModel]="editForm().displayName"
+              (ngModelChange)="editForm.update(f => ({...f, displayName: $event}))"
+              placeholder="Nombre que ven los demás usuarios"
+              maxlength="80"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="su-email">Correo electrónico <span class="required">*</span></label>
+          <div class="input-wrap">
+            <input
+              id="su-email"
+              type="email"
+              [ngModel]="editForm().email"
+              (ngModelChange)="editForm.update(f => ({...f, email: $event}))"
+              placeholder="usuario@hotel.com"
+              maxlength="120"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="su-role">Rol principal <span class="required">*</span></label>
+          <div class="input-wrap">
+            <select
+              id="su-role"
+              [ngModel]="editForm().primaryRole"
+              (ngModelChange)="editForm.update(f => ({...f, primaryRole: $event}))"
+            >
+              @for (role of roleOptions(); track role.roleName) {
+                <option [value]="role.roleName">{{ roleLabel(role.roleName) }}</option>
+              }
+            </select>
+          </div>
+          @if (selectedRoleDescription(); as desc) {
+            <span class="field-hint">{{ desc }}</span>
+          }
+          @if (editForm().primaryRole === 'super_admin') {
+            <span class="field-hint field-hint--danger">
+              <span class="material-symbols-outlined">warning</span>
+              Este rol otorga acceso total al sistema.
+            </span>
+          }
+        </div>
+
+        @if (isHotelRole(editForm().primaryRole)) {
+          <div class="field hotels-field">
+            <label>Hoteles asignados <span class="required">*</span></label>
+            <div class="hotel-search-box">
+              <span class="material-symbols-outlined search-icon">search</span>
+              <input
+                type="text"
+                class="hotel-search-input"
+                [ngModel]="hotelQuery()"
+                (ngModelChange)="hotelQuery.set($event)"
+                placeholder="Buscar hotel por nombre…"
+              />
+              @if (hotelSearching()) {
+                <span class="search-spinner"></span>
+              }
+            </div>
+
+            @if (hotelResults().length > 0) {
+              <div class="hotel-search-results">
+                @for (hotel of hotelResults(); track hotel.propId) {
+                  <button
+                    type="button"
+                    class="hotel-result-item"
+                    [class.is-selected]="isHotelSelected(hotel.propId)"
+                    (click)="toggleHotel(hotel)"
+                  >
+                    <span class="material-symbols-outlined result-check">
+                      {{ isHotelSelected(hotel.propId) ? 'check_circle' : 'add_circle_outline' }}
+                    </span>
+                    <span class="result-label">{{ hotel.label }}</span>
+                    <span class="result-id">#{{ hotel.propId }}</span>
+                  </button>
+                }
+              </div>
+            }
+
+            @if (editForm().assignedHotels.length > 0) {
+              <div class="selected-hotels">
+                @for (hotel of editForm().assignedHotels; track hotel.propId) {
+                  <span class="selected-hotel-chip">
+                    <span class="chip-label">{{ hotel.label }}</span>
+                    <button
+                      type="button"
+                      class="chip-remove"
+                      (click)="removeHotel(hotel.propId)"
+                      aria-label="Quitar {{ hotel.label }}"
+                    >
+                      <span class="material-symbols-outlined">close</span>
+                    </button>
+                  </span>
+                }
+              </div>
+            }
+            <span class="field-hint">El usuario solo verá y operará los hoteles asignados.</span>
+          </div>
+        }
+
+        <div class="field">
+          <label for="su-password">Restablecer contraseña</label>
+          <div class="input-wrap">
+            <input
+              id="su-password"
+              type="password"
+              [ngModel]="editForm().password"
+              (ngModelChange)="editForm.update(f => ({...f, password: $event}))"
+              placeholder="Dejar en blanco para mantener la actual"
+              autocomplete="new-password"
+              minlength="6"
+            />
+          </div>
+          <span class="field-hint">El usuario deberá cambiarla en su próximo ingreso.</span>
+        </div>
+
+        <div class="audit-note">
+          <span class="material-symbols-outlined">shield_lock</span>
+          <span>Los cambios quedan registrados en el log de auditoría del sistema.</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-outline" (click)="closeEdit()">Cancelar</button>
+        <button class="btn-primary" (click)="saveEdit()" [disabled]="savingEdit()">
+          @if (savingEdit()) {
+            <span class="material-symbols-outlined spin">sync</span>
+            Guardando...
+          } @else {
+            <span class="material-symbols-outlined">save</span>
+            Guardar cambios
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -58,6 +58,8 @@ def _operational_item(
         "date": booking.get("check_in_date") if flow == "check_in" else booking.get("check_out_date"),
         "check_in_date": booking.get("check_in_date", ""),
         "check_in_time": booking.get("check_in_time", ""),
+        "estimated_arrival_time": booking.get("estimated_arrival_time", ""),
+        "late_checkin": bool(booking.get("late_checkin", False)),
         "check_out_date": booking.get("check_out_date", ""),
         "reservation_status": str(booking.get("status") or "pending"),
         "reservation_status_label": _reservation_status_label(str(booking.get("status") or "pending")),

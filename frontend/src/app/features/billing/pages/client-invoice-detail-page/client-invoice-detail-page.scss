@@ -318,9 +318,6 @@ code {
   animation: bar-indeterminate 1.4s ease-in-out infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 @keyframes bar-indeterminate {
   0% { transform: translateX(-100%); width: 40%; }

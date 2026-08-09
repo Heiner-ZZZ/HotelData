@@ -2,33 +2,76 @@
   display: block;
 }
 
-.edit-btn,
-.delete-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted-text);
-  cursor: pointer;
-  transition: background 120ms;
+/* Los botones edit/delete usan los estilos globales de _scss-tables.scss
+   (accent/danger a 50% → 100% en hover) como el resto de tablas de tarifas. */
 
-  &:hover {
-    background: var(--surface-soft);
-  }
+/* ── Confirmación de borrado (patrón role=alert) ── */
+.delete-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger-light) 55%, var(--surface));
+  color: var(--app-text);
+  font-size: 0.8rem;
 
   .material-symbols-outlined {
-    font-size: 1rem;
+    color: var(--danger);
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  strong {
+    color: var(--danger);
   }
 }
 
-.edit-btn:hover {
-  color: var(--accent);
+.delete-warning-body {
+  display: grid;
+  gap: 0.15rem;
+
+  span {
+    color: var(--muted-text);
+    line-height: 1.4;
+  }
 }
 
-.delete-btn:hover {
-  color: var(--danger);
+.delete-warning-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+
+  .btn-secondary,
+  .btn-danger {
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    border: 1px solid transparent;
+    transition: background 120ms ease, color 120ms ease;
+  }
+
+  .btn-secondary {
+    background: var(--surface-soft);
+    color: var(--app-text);
+
+    &:hover {
+      background: var(--surface-hover);
+    }
+  }
+
+  .btn-danger {
+    background: var(--danger);
+    color: var(--on-accent);
+
+    &:hover {
+      filter: brightness(1.1);
+    }
+  }
 }

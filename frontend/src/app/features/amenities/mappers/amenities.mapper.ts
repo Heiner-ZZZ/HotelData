@@ -28,6 +28,15 @@ export function mapAmenities(dto: AmenitiesDto): AmenitiesViewModel {
         capacityLabel: rt.capacity_label,
       })),
     roomAmenities,
+    specialRequests: (dto.special_requests ?? []).map((r) => ({
+      label: r.label,
+      unitPrice: r.unit_price,
+      chargeable: r.chargeable,
+      petRelated: r.pet_related,
+      highFloor: r.high_floor,
+      lateArrival: r.late_arrival,
+    })),
+    highFloorFrom: dto.high_floor_from ?? 3,
   };
 }
 

@@ -9,7 +9,7 @@ import { Component, input, output } from '@angular/core';
           <strong>{{ pageSize() }} hoteles por página</strong>
           <span>Disponibilidad real · página {{ page() }}</span>
         } @else {
-          <strong>{{ total() }} hotel{{ total() !== 1 ? 'es' : '' }} encontrados</strong>
+          <strong>{{ total() }} hotel{{ total() !== 1 ? 'es' : '' }} encontrado{{ total() !== 1 ? 's' : '' }}</strong>
         }
       </div>
       <div class="actions">

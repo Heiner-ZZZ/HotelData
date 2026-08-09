@@ -114,6 +114,14 @@ class MaintenanceTaskCreate(BaseModel):
     scheduled_date: str = ""
     status: str = "scheduled"
     auto_block: bool = True  # RF-002: block room availability during maintenance
+    estimated_cost: float | None = Field(default=None, ge=0)
+    actual_cost: float | None = Field(default=None, ge=0)
+    currency: str = "USD"
+    vendor_name: str | None = None
+    vendor_id: str | None = None
+    expense_invoice_id: str | None = None
+    ledger_journal_id: str | None = None
+    inventory_consumption_ids: list[str] = Field(default_factory=list)
 
 
 class AdditionalChargeCreate(BaseModel):
@@ -145,6 +153,10 @@ class AdditionalChargeResponse(BaseModel):
     total: float
     category: str = ""
     note: str
+    folio_id: str | None = None
+    folio_number: str | None = None
+    posting_status: str | None = None
+    posting_error: str | None = None
     created_at: str
 
 

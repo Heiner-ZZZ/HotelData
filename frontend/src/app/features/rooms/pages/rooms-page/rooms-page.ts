@@ -92,7 +92,6 @@ export class RoomsPageComponent {
 
   readonly selectedLabel = computed(() => this.roomsResource.value()?.hotelName ?? '');
 
-  readonly errorMessage = signal('');
 
   /** El formulario permanece oculto hasta que el usuario elige qué quiere crear. */
   readonly showCreateForm = signal(false);
@@ -253,6 +252,8 @@ export class RoomsPageComponent {
   readonly deleteTargetId = signal('');
   readonly deleteTargetName = signal('');
   readonly deleting = signal(false);
+  /** Error contextual mostrado dentro del modal de borrado (no es un banner). */
+  readonly errorMessage = signal('');
 
   /* ── Room Features ── */
   readonly featureCatalogRequested = signal(false);

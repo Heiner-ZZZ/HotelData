@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 
@@ -10,15 +10,20 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { SystemUserListItem, SystemUsersViewModel } from '../../models/system-users.model';
+import type { AssignedHotel, SystemUserListItem, SystemUsersViewModel } from '../../models/system-users.model';
 import type { SystemUsersResponseDto } from '../../models/system-users.dto';
 import { SystemUsersApiService } from '../../services/system-users-api.service';
 import { mapSystemUsersResponse } from '../../mappers/system-users.mapper';
 import { roleLabel } from '../../../../core/auth/role-labels';
 
 type ColumnKey = 'username' | 'email' | 'primaryRole' | 'roles' | 'isActive';
+
+/** Roles que operan sobre hoteles concretos y requieren hoteles asignados.
+ *  Espejo de ``HOTEL_ROLES`` en server/src/app/modules/admin/service/ownership.py. */
+const HOTEL_ROLES = new Set(['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'maintenance']);
 
 interface ColumnFilter {
   column: ColumnKey;
@@ -47,6 +52,38 @@ export class SystemUsersPageComponent {
   private readonly api = inject(SystemUsersApiService);
   private readonly toast = inject(ToastService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly opMode = inject(OperationModeService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor() {
+    // Si la página se destruye con el modal abierto, no dejar el chip del nav
+    // pegado en modo de escritura (misma guarda que currencies/amenities).
+    this.destroyRef.onDestroy(() => this.opMode.reset());
+
+    // Debounce de 350ms para la búsqueda de hoteles dentro del modal.
+    effect((onCleanup) => {
+      const q = this.hotelQuery();
+      const timer = setTimeout(() => {
+        if (!q.trim()) {
+          this.hotelResults.set([]);
+          this.hotelSearching.set(false);
+          return;
+        }
+        this.hotelSearching.set(true);
+        this.api.searchHotels(q.trim()).subscribe({
+          next: (results) => {
+            this.hotelResults.set(results);
+            this.hotelSearching.set(false);
+          },
+          error: () => {
+            this.hotelResults.set([]);
+            this.hotelSearching.set(false);
+          },
+        });
+      }, 350);
+      onCleanup(() => clearTimeout(timer));
+    });
+  }
 
   readonly usersResource = httpResource<SystemUsersViewModel>(() => '/api/admin/users', {
     parse: (dto) => mapSystemUsersResponse(dto as SystemUsersResponseDto),
@@ -216,6 +253,141 @@ export class SystemUsersPageComponent {
           this.toast.error(err?.error?.message || 'No fue posible actualizar el estado del usuario.');
         },
       });
+  }
+
+  // ── Edit modal ────────────────────────────────────────────────────────
+
+  readonly editingUser = signal<SystemUserListItem | null>(null);
+  readonly editForm = signal({
+    username: '',
+    displayName: '',
+    email: '',
+    primaryRole: '',
+    password: '',
+    assignedHotels: [] as AssignedHotel[],
+  });
+  readonly savingEdit = signal(false);
+
+  readonly roleOptions = computed(() => this.usersResource.value()?.roles ?? []);
+
+  readonly selectedRoleDescription = computed(() => {
+    const role = this.roleOptions().find((r) => r.roleName === this.editForm().primaryRole);
+    return role?.description ?? '';
+  });
+
+  openEdit(user: SystemUserListItem) {
+    this.editingUser.set(user);
+    this.editForm.set({
+      username: user.username,
+      displayName: user.displayName,
+      email: user.email,
+      primaryRole: user.primaryRole,
+      password: '',
+      assignedHotels: user.assignedHotels.map((h) => ({ ...h })),
+    });
+    this.hotelQuery.set('');
+    this.hotelResults.set([]);
+    this.opMode.setMode('update', user.username);
+  }
+
+  closeEdit() {
+    this.editingUser.set(null);
+    this.savingEdit.set(false);
+    this.opMode.reset();
+  }
+
+  saveEdit() {
+    const user = this.editingUser();
+    if (!user) return;
+
+    const f = this.editForm();
+    const username = f.username.trim();
+    const displayName = f.displayName.trim();
+    const email = f.email.trim().toLowerCase();
+    if (!username) {
+      this.toast.error('El nombre de usuario no puede quedar vacío.');
+      return;
+    }
+    if (/\s/.test(username)) {
+      this.toast.error('El nombre de usuario no puede contener espacios.');
+      return;
+    }
+    if (!displayName) {
+      this.toast.error('El nombre mostrado no puede quedar vacío.');
+      return;
+    }
+    if (!email.includes('@')) {
+      this.toast.error('Formato de email inválido.');
+      return;
+    }
+    if (this.isHotelRole(f.primaryRole) && f.assignedHotels.length === 0) {
+      this.toast.error('Un usuario con rol de hotel debe tener al menos un hotel asignado.');
+      return;
+    }
+
+    const payload: Record<string, string | number[]> = {
+      username,
+      display_name: displayName,
+      email,
+      primary_role: f.primaryRole,
+    };
+    if (this.isHotelRole(f.primaryRole)) {
+      payload['assigned_hotels'] = f.assignedHotels.map((h) => h.propId);
+    }
+    if (f.password.trim()) {
+      if (f.password.trim().length < 6) {
+        this.toast.error('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+      payload['password'] = f.password.trim();
+    }
+
+    this.savingEdit.set(true);
+    this.api.updateUser(user.userId, payload).subscribe({
+      next: (result) => {
+        this.savingEdit.set(false);
+        this.closeEdit();
+        this.usersResource.reload();
+        this.toast.success(result.message || 'Usuario actualizado correctamente.');
+      },
+      error: (err) => {
+        this.savingEdit.set(false);
+        this.toast.error(err?.error?.message || 'No fue posible actualizar el usuario.');
+      },
+    });
+  }
+
+  // ── Hotel selector (solo roles de hotel) ─────────────────────────────
+
+  readonly hotelQuery = signal('');
+  readonly hotelResults = signal<AssignedHotel[]>([]);
+  readonly hotelSearching = signal(false);
+
+  isHotelRole(role: string): boolean {
+    return HOTEL_ROLES.has(role);
+  }
+
+  isHotelSelected(propId: number): boolean {
+    return this.editForm().assignedHotels.some((h) => h.propId === propId);
+  }
+
+  toggleHotel(hotel: AssignedHotel) {
+    this.editForm.update((f) => {
+      const selected = f.assignedHotels.some((h) => h.propId === hotel.propId);
+      return {
+        ...f,
+        assignedHotels: selected
+          ? f.assignedHotels.filter((h) => h.propId !== hotel.propId)
+          : [...f.assignedHotels, hotel],
+      };
+    });
+  }
+
+  removeHotel(propId: number) {
+    this.editForm.update((f) => ({
+      ...f,
+      assignedHotels: f.assignedHotels.filter((h) => h.propId !== propId),
+    }));
   }
 
   async requestDelete(userId: string, username: string) {

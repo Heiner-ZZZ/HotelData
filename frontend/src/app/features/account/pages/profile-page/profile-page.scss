@@ -16,6 +16,14 @@
   gap: 1.25rem;
 }
 
+// Borde transparente para que el highlight global .mode-active (directive
+// appModeHighlight) enmarque el área editable con el color del mode-indicator
+// sin saltos de layout al entrar/salir del modo edición.
+.profile-form {
+  border: 1px solid transparent;
+  border-radius: 1rem;
+}
+
 // ── Avatar click affordance ─────────────────────────────────────────────
 .avatar-ring--clickable,
 .avatar-img--clickable {

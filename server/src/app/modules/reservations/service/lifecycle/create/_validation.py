@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from bson import ObjectId
 
 from src.database.connection import get_database
@@ -70,9 +69,13 @@ def validate_coupon_code(coupon_code: str, prop_id: int) -> tuple[str | None, in
         return None, None, None
     db = get_database()
     code = coupon_code.strip().upper()
-    coupon = db.coupon_codes.find_one({"coupon_code": code, "prop_id": prop_id, "is_active": True})
+    # Un cupón retirado (is_deleted=True) jamás vuelve a validar: el flag se
+    # conserva por trazabilidad al reducir coupon_count, pero queda inerte.
+    coupon = db.coupon_codes.find_one(
+        {"coupon_code": code, "prop_id": prop_id, "is_active": True, "is_deleted": {"$ne": True}}
+    )
     if not coupon:
-        coupon = db.coupon_codes.find_one({"coupon_code": code, "is_active": True})
+        coupon = db.coupon_codes.find_one({"coupon_code": code, "is_active": True, "is_deleted": {"$ne": True}})
         if not coupon:
             return f"Código promocional '{coupon_code}' no válido.", None, None
         campaign = db.promotion_campaigns.find_one({"campaign_id": coupon.get("campaign_id")})

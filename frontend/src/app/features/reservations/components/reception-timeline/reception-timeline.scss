@@ -773,6 +773,27 @@
   }
 }
 
+/* Marcador de late check-in: luna ámbar flotante a la izquierda del nombre
+   del huésped en la barra de la reserva. Creado en runtime (createElement),
+   por eso necesita ::ng-deep como el chip de meta. */
+:host ::ng-deep .timeline-late-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+  color: var(--warning);
+  filter: brightness(1.15) drop-shadow(0 0 1px rgba(0, 0, 0, 0.45));
+  z-index: 2;
+  pointer-events: none;
+
+  .material-symbols-outlined {
+    font-size: 0.78rem;
+    --icon-wght: 600;
+    --icon-opsz: 18;
+  }
+}
+
 /* Syncfusion renders appointments inside its child component; ::ng-deep is
    required so semantic status colors reach the actual appointment nodes. */
 /* Estados con color INTENSO + texto blanco: activo/rechazada(cancelled)/vencida

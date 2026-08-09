@@ -8,6 +8,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ExpensesApiService } from '../../services/expenses-api.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 
 @Component({
   selector: 'app-invoices-list-page',
@@ -89,6 +90,7 @@ import { ExpensesApiService } from '../../services/expenses-api.service';
 export class InvoicesListPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(ExpensesApiService);
+  private readonly propertyContext = inject(PropertyContextService);
 
   readonly viewState = signal<'loading' | 'success' | 'empty' | 'error'>('loading');
   readonly data = signal<any>(null);
@@ -100,7 +102,10 @@ export class InvoicesListPageComponent {
 
   loadInvoices() {
     this.viewState.set('loading');
-    this.api.getInvoices(this.filterStatus(), undefined, this.searchVendor(), this.currentPage())
+    this.api.getInvoices(
+      this.filterStatus(), undefined, this.searchVendor(), this.currentPage(),
+      this.propertyContext.currentPropId() || undefined,
+    )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => { this.data.set(r); this.viewState.set(r.items.length ? 'success' : 'empty'); },

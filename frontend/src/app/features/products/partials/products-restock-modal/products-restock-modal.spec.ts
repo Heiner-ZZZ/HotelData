@@ -91,7 +91,7 @@ describe('ProductsRestockModalComponent', () => {
     fixture.detectChanges(); // runs ngOnInit → fires the invoices GET
 
     const httpTesting = TestBed.inject(HttpTestingController);
-    const invoiceReq = httpTesting.expectOne((req) => req.url.includes('/expenses/invoices'));
+    const invoiceReq = httpTesting.expectOne((req) => req.url.includes('/vendor-ap/invoices'));
     expect(invoiceReq.request.params.get('prop_id')).toBe('1');
     // Rejected invoices must never be offered as a purchase source: the GET
     // carries the allow-list of statuses the selector may show.
@@ -105,7 +105,7 @@ describe('ProductsRestockModalComponent', () => {
     // `httpTesting.verify()` in afterEach would break them). The list URL
     // also contains '/expenses/invoices' but was already consumed above.
     httpTesting.match((req) =>
-      req.url.includes('/expenses/invoices/') && !req.url.includes('page='));
+      req.url.includes('/vendor-ap/invoices/') && !req.url.includes('page='));
 
     return { fixture, component, restockProduct, httpTesting, navigate };
   }
@@ -277,7 +277,7 @@ describe('ProductsRestockModalComponent', () => {
       const { component, fixture, httpTesting } = await setup();
 
       component.form.patchValue({ invoice_id: 'INV-ID-1' });
-      const detailReq = httpTesting.expectOne((req) => req.url.includes('/expenses/invoices/INV-ID-1'));
+      const detailReq = httpTesting.expectOne((req) => req.url.includes('/vendor-ap/invoices/INV-ID-1'));
       detailReq.flush(detailFixture('INV-ID-1', [
         { product_id: 'PROD-AGUA01', name: 'Agua Mineral', qty: 4, unit_cost: 1.5, line_total: 6, restocked: true, stock_now: 55, cost_now: 1.5 },
       ]));
@@ -299,7 +299,7 @@ describe('ProductsRestockModalComponent', () => {
       const { component, fixture, httpTesting } = await setup();
 
       component.form.patchValue({ invoice_id: 'INV-ID-2' });
-      const detailReq = httpTesting.expectOne((req) => req.url.includes('/expenses/invoices/INV-ID-2'));
+      const detailReq = httpTesting.expectOne((req) => req.url.includes('/vendor-ap/invoices/INV-ID-2'));
       detailReq.flush(detailFixture('INV-ID-2', [
         { product_id: 'PROD-OTRO', name: 'Otro Producto', qty: 2, unit_cost: 9, line_total: 18, restocked: true, stock_now: 3, cost_now: 9 },
       ]));
@@ -315,7 +315,7 @@ describe('ProductsRestockModalComponent', () => {
       const { component, fixture, httpTesting, navigate } = await setup();
 
       component.form.patchValue({ invoice_id: 'INV-ID-1' });
-      const detailReq = httpTesting.expectOne((req) => req.url.includes('/expenses/invoices/INV-ID-1'));
+      const detailReq = httpTesting.expectOne((req) => req.url.includes('/vendor-ap/invoices/INV-ID-1'));
       detailReq.flush(detailFixture('INV-ID-1', [
         { product_id: 'PROD-AGUA01', name: 'Agua Mineral', qty: 4, unit_cost: 1.5, line_total: 6, restocked: true, stock_now: 55, cost_now: 1.5 },
       ]));

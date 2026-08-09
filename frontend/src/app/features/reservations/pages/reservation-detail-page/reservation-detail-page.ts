@@ -1,5 +1,6 @@
 import { httpResource, HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, ViewEncapsulation } from '@angular/core';
+import { getErrorStatus, getErrorMessage } from '../../../../shared/utils/http-error.util';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -23,7 +24,7 @@ import { RdHistoryPanelComponent } from './partials/rd-history-panel';
 import { RdProductModalComponent } from './partials/rd-product-modal';
 import { RdRoomModalComponent } from './partials/rd-room-modal';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { ReservationDetailViewModel } from '../../models/reservations.model';
+import type { FulfillmentItem, ReservationDetailViewModel } from '../../models/reservations.model';
 import type { ReservationDetailDto } from '../../models/reservations.dto';
 import { mapReservationDetail } from '../../mappers/reservations.mapper';
 import { ReservationsApiService } from '../../services/reservations-api.service';
@@ -94,11 +95,49 @@ export class ReservationDetailPageComponent {
     parse: (dto) => mapReservationDetail(dto as ReservationDetailDto),
   });
 
+  /** Fulfillment checklists (pending/fulfilled) — local copies of the
+   *  detail's ``specialRequestFulfillment`` / ``amenityFulfillment`` so
+   *  toggles update without refetching. */
+  readonly requestFulfillment = signal<FulfillmentItem[]>([]);
+  readonly amenityFulfillment = signal<FulfillmentItem[]>([]);
+  readonly fulfillmentUpdating = signal(false);
+
+  toggleFulfillment(kind: 'special_request' | 'amenity', label: string, status: 'pending' | 'fulfilled'): void {
+    const vm = this.detailResource.value();
+    if (!vm || this.fulfillmentUpdating()) return;
+    this.fulfillmentUpdating.set(true);
+    this.errorMessage.set('');
+    this.reservationsApi.updateSpecialRequestStatus(vm.bookingId, label, status, kind)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          const mapped: FulfillmentItem[] = res.fulfillment.map((f) => ({
+            label: f.label,
+            status: f.status === 'fulfilled' ? ('fulfilled' as const) : ('pending' as const),
+            fulfilledAt: f.fulfilled_at ?? null,
+          }));
+          if (kind === 'amenity') {
+            this.amenityFulfillment.set(mapped);
+          } else {
+            this.requestFulfillment.set(mapped);
+          }
+          const noun = kind === 'amenity' ? 'Servicio' : 'Petición';
+          this.successMessage.set(`${noun} "${label}" ${status === 'fulfilled' ? 'marcado como cumplido' : 'reabierto'}.`);
+          this.fulfillmentUpdating.set(false);
+        },
+        error: (err) => {
+          this.errorMessage.set(err?.error?.detail || 'No se pudo actualizar el checklist.');
+          this.fulfillmentUpdating.set(false);
+        },
+      });
+  }
+
   readonly viewState = computed<ViewState>(() => {
     if (this.detailResource.isLoading()) return 'loading';
     const err = this.detailResource.error();
     if (err) {
-      const status = err instanceof HttpErrorResponse ? err.status : undefined;
+      // getErrorStatus cubre HttpErrorResponse (tests) y ApiError del interceptor (vivo).
+      const status = getErrorStatus(err);
       return status === 404 ? 'empty' : 'error';
     }
     return this.detailResource.value() ? 'success' : 'loading';
@@ -118,28 +157,56 @@ export class ReservationDetailPageComponent {
   // existing `mapProduct` / `mapLineItem` mappers from ProductsApiService.
   readonly productsResource = httpResource<HotelProduct[]>(() => {
     const vm = this.detailResource.value();
-    return vm ? `/management/products/hotels/${vm.propId}` : undefined;
+    // Los huéspedes (cliente/anónimo) no ven ni agregan productos: evitar
+    // disparar el request y el 403 properties.read en su detalle.
+    if (!vm || this.reservationsAuth.isClient()) return undefined;
+    return `/management/products/hotels/${vm.propId}`;
   }, {
     parse: (raw: any) => (raw?.items ?? []).map(mapProduct),
   });
 
   readonly lineItemsResource = httpResource<BookingLineItem[]>(() => {
     const vm = this.detailResource.value();
-    return vm ? `/management/products/bookings/${vm.bookingId}/line-items` : undefined;
+    if (!vm || this.reservationsAuth.isClient()) return undefined;
+    return `/management/products/bookings/${vm.bookingId}/line-items`;
   }, {
     parse: (raw: any) => (raw?.items ?? []).map(mapLineItem),
   });
 
-  readonly hotelProducts = computed(() => this.productsResource.value() ?? []);
+  readonly hotelProducts = computed(() => {
+    // httpResource.value() LANZA cuando el request falló (ej. 403 properties.read):
+    // devolver [] degrada con gracia en vez de relanzar el error en cada
+    // recomputación (spam de consola en el detalle visto por roles sin permiso).
+    if (this.productsResource.error()) return [];
+    return this.productsResource.value() ?? [];
+  });
   readonly productsState = computed<ViewState>(() => {
+    // Huéspedes: el request nunca se dispara (ver productsResource) → el
+    // recurso queda idle; reportar 'forbidden' para mostrar el estado
+    // "sin permiso" en la sección en vez de "no hay productos".
+    if (this.reservationsAuth.isClient()) return 'forbidden';
     if (this.productsResource.isLoading()) return 'loading';
-    if (this.productsResource.error()) return 'error';
+    const err = this.productsResource.error();
+    if (err) {
+      // 403 properties.read → el usuario no tiene permiso, no es un error del server.
+      // getErrorStatus cubre HttpErrorResponse (tests) y ApiError del interceptor (vivo).
+      if (getErrorStatus(err) === 403) return 'forbidden';
+      return 'error';
+    }
     return this.productsResource.value()?.length ? 'success' : 'empty';
   });
-  readonly lineItems = computed(() => this.lineItemsResource.value() ?? []);
+  readonly lineItems = computed(() => {
+    if (this.lineItemsResource.error()) return [];
+    return this.lineItemsResource.value() ?? [];
+  });
   readonly lineItemsState = computed<ViewState>(() => {
+    if (this.reservationsAuth.isClient()) return 'forbidden';
     if (this.lineItemsResource.isLoading()) return 'loading';
-    if (this.lineItemsResource.error()) return 'error';
+    const err = this.lineItemsResource.error();
+    if (err) {
+      if (getErrorStatus(err) === 403) return 'forbidden';
+      return 'error';
+    }
     return this.lineItemsResource.value()?.length ? 'success' : 'empty';
   });
   readonly lineItemsTotal = computed(() => this.lineItems().reduce((sum, li) => sum + li.total, 0));
@@ -202,6 +269,7 @@ export class ReservationDetailPageComponent {
   readonly roomsRequired = signal(0);
 
   readonly isStaff = this.reservationsAuth.isStaff;
+  readonly isClient = this.reservationsAuth.isClient;
 
   readonly canConfirm = computed(() => {
     const vm = this.detailResource.value();
@@ -238,6 +306,17 @@ export class ReservationDetailPageComponent {
   });
 
   constructor() {
+    // Seed the fulfillment checklists when the detail loads (and on booking changes).
+    effect(() => {
+      const vm = this.detailResource.value();
+      if (vm?.specialRequestFulfillment) {
+        this.requestFulfillment.set(vm.specialRequestFulfillment);
+      }
+      if (vm?.amenityFulfillment) {
+        this.amenityFulfillment.set(vm.amenityFulfillment);
+      }
+    });
+
     // Sync cancel preview result to cancelPenalty signal
     effect(() => {
       const preview = this.cancelPreviewResource.value();
@@ -442,10 +521,8 @@ export class ReservationDetailPageComponent {
           setTimeout(() => this.successMessage.set(''), 4000);
         },
         error: (err: unknown) => {
-          const message = err instanceof HttpErrorResponse
-            ? err.error?.message ?? err.message
-            : (err as { message?: string }).message;
-          this.editError.set(message || 'Error al modificar la reserva');
+          // getErrorMessage cubre HttpErrorResponse y ApiError del interceptor.
+          this.editError.set(getErrorMessage(err) || 'Error al modificar la reserva');
           this.editSaving.set(false);
           this.operationMode.reset();
         },
@@ -588,10 +665,7 @@ export class ReservationDetailPageComponent {
       error: (err: unknown) => {
         this.noShowPending.set(false);
         this.operationMode.reset();
-        const message = err instanceof HttpErrorResponse
-          ? (err.error?.detail ?? err.message)
-          : (err as { message?: string }).message;
-        this.errorMessage.set(message || 'No fue posible marcar el no-show.');
+        this.errorMessage.set(getErrorMessage(err) || 'No fue posible marcar el no-show.');
         setTimeout(() => this.errorMessage.set(''), 6000);
       },
     });

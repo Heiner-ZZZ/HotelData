@@ -124,13 +124,13 @@ import { FormGroup } from '@angular/forms';
             <span>{{ hotel.label }}</span>
           </div>
           @if (preselectedRoomTypeName()) {
-            <div class="avail-badge" style="--avail-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent);">
+            <div class="avail-badge" style="--avail-color: var(--accent)">
               <span class="material-symbols-outlined avail-icon">meeting_room</span>
               <span>{{ preselectedRoomTypeName() }}</span>
             </div>
           }
           @if (preselectedRoomNumber()) {
-            <div class="avail-badge" style="--avail-color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent);">
+            <div class="avail-badge" style="--avail-color: var(--success)">
               <span class="material-symbols-outlined avail-icon">door_front</span>
               <span>Habitación {{ preselectedRoomNumber() }} seleccionada</span>
             </div>
@@ -143,7 +143,7 @@ import { FormGroup } from '@angular/forms';
           }
           @if (computedNights() > 0) {
             <div class="nights-badge">
-              <span class="material-symbols-outlined">nightstay</span>
+              <span class="material-symbols-outlined">nights_stay</span>
               <span><strong>{{ computedNights() }}</strong> {{ computedNights() === 1 ? 'noche' : 'noches' }}</span>
             </div>
           }

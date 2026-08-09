@@ -22,6 +22,8 @@ import { PoliciesApiService } from '../../services/policies-api.service';
 import { KpiApiService, type OccupancyTrendResponse, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { PolicySummaryCardsComponent } from '../../components/policy-summary-cards/policy-summary-cards';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
+import { ModeHighlightDirective } from '../../../../core/directives/mode-highlight.directive';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 
 @Component({
@@ -37,6 +39,7 @@ import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-to
     PropertySelectorComponent,
     ReactiveFormsModule,
     AiSuggestDirective,
+    ModeHighlightDirective,
   ],
   templateUrl: './policies-page.html',
   styleUrl: './policies-page.scss',
@@ -47,6 +50,7 @@ export class PoliciesPageComponent {
   private readonly router = inject(Router);
   private readonly api = inject(PoliciesApiService);
   private readonly kpiApi = inject(KpiApiService);
+  private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   readonly propertyCtx = inject(PropertyContextService);
@@ -82,9 +86,6 @@ export class PoliciesPageComponent {
     if (!vm) return 'empty';
     return 'success';
   });
-
-  readonly errorMessage = signal('');
-  readonly message = signal('');
 
   readonly selectedLabel = computed(() => this.policiesResource.value()?.hotelName ?? '');
   readonly roomTypeOptions = computed(() => this.policiesResource.value()?.roomTypes ?? []);
@@ -189,7 +190,7 @@ export class PoliciesPageComponent {
     // Load occupancy trend (for line chart)
     this.kpiApi.getOccupancyTrend(14).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (trend) => this.occupancyTrend.set(trend),
-      error: () => {},
+      error: () => this.occupancyTrend.set(null),
     });
 
     // Carga por query param (navegación manual con prop_id en URL)
@@ -220,7 +221,8 @@ export class PoliciesPageComponent {
     // Apply side effects when fresh policies arrive
     effect(() => {
       const err = this.policiesResource.error();
-      this.errorMessage.set((err as unknown as ApiError)?.message || '');
+      const msg = (err as unknown as ApiError)?.message;
+      if (msg) this.toast.error(msg);
     });
 
     effect(() => {
@@ -266,7 +268,6 @@ export class PoliciesPageComponent {
   onPropSelected(event: { propId: number; label: string }) {
     // Changing the property reloads a different policy set — leave any edit session.
     this.cancelEditing();
-    this.message.set('');
     if (!event.propId) this.propertyCtx.clear();
     else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
     void this.router.navigate([], {
@@ -278,7 +279,6 @@ export class PoliciesPageComponent {
   switchRoomType(roomTypeId: string) {
     if (roomTypeId === this.selectedRoomTypeId()) return;
     this.cancelEditing();
-    this.message.set('');
     this.selectedRoomTypeId.set(roomTypeId);
     // Clear rate plan when switching room type (mutually exclusive scoping)
     if (roomTypeId) this.selectedRatePlanId.set('');
@@ -287,7 +287,6 @@ export class PoliciesPageComponent {
   switchRatePlan(ratePlanId: string) {
     if (ratePlanId === this.selectedRatePlanId()) return;
     this.cancelEditing();
-    this.message.set('');
     this.selectedRatePlanId.set(ratePlanId);
     // Clear room type when switching rate plan (mutually exclusive scoping)
     if (ratePlanId) this.selectedRoomTypeId.set('');
@@ -305,7 +304,6 @@ export class PoliciesPageComponent {
     this.hotelCheckInTime = raw.checkInTime;
     this.hotelCheckOutTime = raw.checkOutTime;
 
-    const propId = current.propId;
     const rtId = this.selectedRoomTypeId();
 
     const payload = mapPoliciesPayload({
@@ -338,11 +336,10 @@ export class PoliciesPageComponent {
         next: () => {
           this.endEditSession();
           this.policiesResource.reload();
-          this.message.set('Políticas actualizadas');
+          this.toast.success('Políticas actualizadas');
         },
         error: (error: ApiError) => {
-          this.message.set('');
-          this.errorMessage.set(error.message || 'No fue posible guardar las políticas.');
+          this.toast.error(error.message || 'No fue posible guardar las políticas.');
         },
       });
   }
@@ -353,7 +350,7 @@ export class PoliciesPageComponent {
     if (!trend || this.selectedPropId() > 0) return null;
     return {
       labels: trend.dates.map((d) => {
-        const [y, m, day] = d.split('-');
+        const [, m, day] = d.split('-');
         return `${day}/${m}`;
       }),
       datasets: [

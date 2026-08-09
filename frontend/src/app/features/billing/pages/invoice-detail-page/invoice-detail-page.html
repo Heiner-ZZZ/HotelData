@@ -364,9 +364,45 @@
               <div class="inv-summary-divider"></div>
 
               <div class="inv-summary-total">
-                <span>Total</span>
+                <span>{{ isVoided() ? 'Importe original' : 'Total' }}</span>
                 <span class="inv-summary-amount">${{ total().toFixed(2) }}</span>
               </div>
+
+              @if (isVoided()) {
+                <div class="inv-summary-row">
+                  <span>Valor neto reconocido</span>
+                  <span class="mono">${{ inv.recognizedTotal.toFixed(2) }}</span>
+                </div>
+                @if (inv.creditNoteNumber) {
+                  <div class="inv-ledger-ok" role="status">
+                    <span class="material-symbols-outlined">description</span>
+                    Documento compensatorio: <strong>{{ inv.creditNoteNumber }}</strong>
+                  </div>
+                } @else if (creditNotePending()) {
+                  <button type="button" class="inv-btn inv-btn-outline inv-btn-full" (click)="issueCreditNote()" [disabled]="creditNoteBusy()">
+                    <span class="material-symbols-outlined">note_add</span>
+                    {{ creditNoteBusy() ? 'Emitiendo...' : 'Emitir nota de crédito / comprobante de reembolso' }}
+                  </button>
+                }
+                @if (accountingRepairPending()) {
+                  <div class="inv-ledger-warning" role="alert">
+                    <span class="material-symbols-outlined">warning</span>
+                    <div>
+                      <strong>Reversión contable pendiente</strong>
+                      <p>La factura conserva su importe histórico, pero aún no está en cero neto.</p>
+                    </div>
+                  </div>
+                  <button type="button" class="inv-btn inv-btn-primary inv-btn-full" (click)="repairSettlement()" [disabled]="accountingRepairBusy()">
+                    <span class="material-symbols-outlined">sync</span>
+                    {{ accountingRepairBusy() ? 'Corrigiendo...' : 'Corregir valor y reversión' }}
+                  </button>
+                } @else {
+                  <div class="inv-ledger-ok" role="status">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    Valor neto $0.00; reversión contable conciliada.
+                  </div>
+                }
+              }
 
               <!-- Paid / Pending -->
               <div class="inv-pay-status">
@@ -383,6 +419,26 @@
               <div class="inv-summary-meta">
                 Moneda: USD | Líneas: {{ lineItems().length }}
               </div>
+
+              @if (inv.ledgerPostingStatus === 'failed') {
+                <div class="inv-ledger-warning" role="alert">
+                  <span class="material-symbols-outlined">error</span>
+                  <div>
+                    <strong>Libro mayor pendiente</strong>
+                    <p>{{ inv.ledgerPostingError || 'El asiento de esta factura requiere reintento.' }}</p>
+                  </div>
+                </div>
+              } @else if (inv.ledgerPostingStatus === 'posted') {
+                <div class="inv-ledger-ok" role="status">
+                  <span class="material-symbols-outlined">account_balance</span>
+                  <div>
+                    <strong>Libro mayor conciliado</strong>
+                    @if (inv.ledgerReferences.length) {
+                      <p>Asiento: {{ inv.ledgerReferences.join(', ') }}</p>
+                    }
+                  </div>
+                </div>
+              }
 
               @if (canModify()) {
                 <button type="button" class="inv-btn inv-btn-primary inv-btn-full" (click)="openAddForm()">

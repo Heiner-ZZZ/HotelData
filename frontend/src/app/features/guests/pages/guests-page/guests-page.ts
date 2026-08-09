@@ -56,8 +56,6 @@ export class GuestsPageComponent {
   readonly page = signal(1);
   readonly pageSize = signal(20);
   readonly searchQuery = signal('');
-  readonly message = signal('');
-  readonly errorMessage = signal('');
 
   readonly guestsResource = httpResource<GuestsResponse>(() => {
     const propId = this.selectedPropId();

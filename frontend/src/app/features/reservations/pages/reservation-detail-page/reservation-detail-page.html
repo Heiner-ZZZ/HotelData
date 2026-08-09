@@ -52,7 +52,13 @@
           (goToInStay)="goToInStay($event)"
         />
 
-        <app-rd-info-panels [vm]="vm" />
+        <app-rd-info-panels
+          [vm]="vm"
+          [fulfillment]="requestFulfillment()"
+          [amenityFulfillment]="amenityFulfillment()"
+          [canToggle]="!isClient()"
+          (toggleFulfillment)="toggleFulfillment($event.kind, $event.label, $event.status)"
+        />
 
         @if (vm.cancellationPolicy) {
           <section class="surface-card policy-info-card">
@@ -115,7 +121,8 @@
 
         <app-rd-history-panel [vm]="vm" />
 
-        <app-rd-product-modal
+        @if (!isClient()) {
+          <app-rd-product-modal
           [show]="showProductModal()"
           [productsState]="productsState()"
           [productsGrouped]="productsGrouped()"
@@ -134,7 +141,8 @@
           (qtyIncrease)="addProductQty.update(q => q + 1)"
           (qtyChange)="addProductQty.set(Math.max(1, $event))"
           (addToBooking)="addProductToBooking()"
-        />
+          />
+        }
 
         <app-rd-room-modal
           [show]="showRoomModal()"

@@ -334,7 +334,12 @@ export class RatesApiService {
     endDate?: string;
     isActive?: boolean;
   }) {
-    return this.http.put(
+    /**
+     * La respuesta incluye coupons_retired: cuántos cupones se retiraron
+     * (borrado lógico) al reducir coupon_count en este edit. La UI lo muestra
+     * en el toast. KEEP IN SYNC con update_promotion_campaign (server).
+     */
+    return this.http.put<{ coupons_retired?: number }>(
       `${this.apiConfig.baseUrl}/management/promotions/${campaignId}`,
       {
         name: payload.name,
@@ -359,22 +364,32 @@ export class RatesApiService {
 
   listPropertyPromotions(propId: number) {
     const params = new HttpParams().set('prop_id', String(propId));
-    return this.http.get<{ campaigns: {
-      campaign_id: string;
-      name: string;
-      description?: string;
-      discount_percent?: number;
-      start_date?: string;
-      end_date?: string;
-      is_active: boolean;
-      coupon_total?: number;
-      coupon_used?: number;
-      coupon_available?: number;
-      discount_percent_label?: string;
-      hotel_label?: string;
-    }[]; total: number }>(
+    return this.http.get<PromotionsListResponse>(
       `${this.apiConfig.baseUrl}/management/promotions`,
       { params, withCredentials: true }
     );
   }
+}
+
+/** Wire shape de GET /api/management/promotions (list_property_campaigns). */
+export interface PromotionCampaignDto {
+  campaign_id: string;
+  name: string;
+  description?: string;
+  discount_percent?: number;
+  start_date?: string;
+  end_date?: string;
+  is_active: boolean;
+  coupon_total?: number;
+  coupon_used?: number;
+  coupon_available?: number;
+  /** Cupones retirados (borrado lógico) — trazabilidad, no operativos. */
+  coupon_deleted?: number;
+  discount_percent_label?: string;
+  hotel_label?: string;
+}
+
+export interface PromotionsListResponse {
+  campaigns: PromotionCampaignDto[];
+  total: number;
 }

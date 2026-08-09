@@ -104,6 +104,21 @@
                             <span class="material-symbols-outlined btn-icon">receipt</span>
                             Ver factura
                           </a>
+                          @if (item.refundDocumentNumber) {
+                            <span class="text-muted">{{ item.refundDocumentNumber }} · reembolso conciliado</span>
+                          }
+                        } @else if (item.refundDocumentNumber) {
+                          <span class="inline-link" title="Documento formal del reembolso">
+                            <span class="material-symbols-outlined btn-icon">description</span>
+                            {{ item.refundDocumentNumber }}
+                          </span>
+                          @if (item.reconciliationStatus === 'unapplied_refund') {
+                            <span class="text-muted">Reembolso sin factura · no altera AR</span>
+                          }
+                        } @else if (item.reconciliationStatus === 'informational' || item.status === 'failed' || item.status === 'rejected' || item.status === 'declined' || item.status === 'error') {
+                          <span class="text-muted">Informativo · sin factura · no altera saldo</span>
+                        } @else if (item.status === 'refunded') {
+                          <span class="text-muted">Comprobante pendiente</span>
                         }
                       </td>
                       <td class="cell-action">

@@ -285,12 +285,15 @@ def process_early_checkout(
                 label = r.get("room_label", "")
                 if not label:
                     continue
-                db.room_status_log.update_one(
-                    {"prop_id": prop_id, "room_label": label},
-                    {"$set": {"status": "vacant_dirty", "note": f"Early check-out: {booking_id}", "updated_at": now},
-                     "$setOnInsert": {"created_at": now}},
-                    upsert=True,
-                )
+                from src.app.modules.housekeeping.service.lifecycle.status import upsert_room_status
+                from src.app.modules.housekeeping.schemas import RoomStatusLogCreate
+                upsert_room_status(RoomStatusLogCreate(
+                    prop_id=prop_id,
+                    room_type_id=r.get("room_type_id", ""),
+                    room_label=label,
+                    status="vacant_dirty",
+                    note=f"Early check-out: {booking_id}",
+                ))
                 db.housekeeping_tasks.insert_one({
                     "prop_id": prop_id,
                     "room_id": r["_id"],

@@ -16,7 +16,7 @@ export interface RatesViewModel {
     dateRange: string;
     activeLabel: string;
   }[];
-  coupons: { code: string; activeLabel: string }[];
+  coupons: { code: string; activeLabel: string; campaignId: string }[];
 }
 
 export interface SeasonalRuleItem {

@@ -96,7 +96,11 @@
             @for (hotel of items(); track hotel.id) {
               <app-hotel-card
                 [hotel]="hotel"
+                [checkIn]="currentFilters().checkIn"
+                [checkOut]="currentFilters().checkOut"
                 [compareMode]="showCompareMode()"
+                [chooseDatesEnabled]="true"
+                (chooseDates)="onChooseDates()"
                 (compareSelected)="onCompareSelected($event)"
               />
             }

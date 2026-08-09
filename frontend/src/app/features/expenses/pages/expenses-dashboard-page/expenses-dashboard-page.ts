@@ -8,6 +8,7 @@ import { BaseChartDirective } from 'ng2-charts';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ThemeService } from '../../../../core/theme/theme.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ExpensesApiService } from '../../services/expenses-api.service';
 import { mapExpenseDashboard } from '../../mappers/expenses.mapper';
 import type { ExpenseDashboard } from '../../models/expenses.model';
@@ -133,15 +134,20 @@ Chart.register(...registerables);
 export class ExpensesDashboardPageComponent {
   private readonly expensesApi = inject(ExpensesApiService);
   private readonly themeService = inject(ThemeService);
+  private readonly propertyContext = inject(PropertyContextService);
 
   readonly dashboardResource = httpResource<ExpenseDashboard>(
-    () => `/api/expenses/dashboard`,
+    () => {
+      const propId = this.propertyContext.currentPropId();
+      return propId > 0 ? `/api/expenses/dashboard?prop_id=${propId}` : undefined;
+    },
     { parse: (dto) => mapExpenseDashboard(dto as ExpenseDashboardDto) },
   );
 
   readonly data = computed(() => this.dashboardResource.value());
 
   readonly viewState = computed(() => {
+    if (!this.propertyContext.currentPropId()) return 'empty' as const;
     if (this.dashboardResource.error()) return 'error' as const;
     if (this.dashboardResource.isLoading()) return 'loading' as const;
     return 'success' as const;

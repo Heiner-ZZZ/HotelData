@@ -5,3 +5,21 @@
 @use 'partials/mt-layout' as *;
 @use 'partials/mt-content' as *;
 @use 'partials/mt-actions' as *;
+
+.td-finance { min-width: 10rem; }
+.finance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .3rem .5rem;
+  border-radius: .55rem;
+  font-size: .75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--surface-variant) 70%, transparent);
+  color: var(--text-secondary);
+  .material-symbols-outlined { font-size: 1rem; }
+  &.linked { color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent); }
+  &.pending { color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, transparent); }
+  &.failed { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+}

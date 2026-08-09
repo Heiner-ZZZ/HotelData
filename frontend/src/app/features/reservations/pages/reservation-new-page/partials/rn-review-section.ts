@@ -72,13 +72,33 @@ interface ReservationPreviewView {
         @if (specialRequests().length > 0) {
           <div class="review-item review-item-span">
             <span class="review-label">Peticiones Especiales</span>
-            <strong>{{ specialRequests().join(', ') }}</strong>
+            <div class="review-chips">
+              @for (req of specialRequests(); track req) {
+                <span class="review-chip">
+                  <span class="material-symbols-outlined review-chip-icon">check_circle</span>
+                  <span class="review-chip-label">{{ req }}</span>
+                  @let reqPrice = specialRequestPrices().get(req);
+                  @if (reqPrice !== undefined && reqPrice > 0) { <span class="review-chip-price">{{ reqPrice | currency:'USD' }}</span> }
+                  @else { <span class="review-chip-free">Gratis</span> }
+                </span>
+              }
+            </div>
           </div>
         }
         @if (selectedAmenities().size > 0) {
           <div class="review-item review-item-span">
             <span class="review-label">Servicios adicionales</span>
-            <strong>{{ [...selectedAmenities()].join(', ') }}</strong>
+            <div class="review-chips">
+              @for (item of selectedAmenities(); track item) {
+                <span class="review-chip review-chip-amenity">
+                  <span class="material-symbols-outlined review-chip-icon">spa</span>
+                  <span class="review-chip-label">{{ item }}</span>
+                  @let price = amenityPrices().get(item);
+                  @if (price !== undefined && price > 0) { <span class="review-chip-price">{{ price | currency:'USD' }}</span> }
+                  @else { <span class="review-chip-free">Gratis</span> }
+                </span>
+              }
+            </div>
           </div>
         }
         @if (couponCode()) {
@@ -231,7 +251,9 @@ export class RnReviewSectionComponent {
   readonly nights = input(0);
   readonly comment = input<string>('');
   readonly specialRequests = input<string[]>([]);
+  readonly specialRequestPrices = input<Map<string, number>>(new Map());
   readonly selectedAmenities = input<Set<string>>(new Set());
+  readonly amenityPrices = input<Map<string, number>>(new Map());
   readonly couponCode = input<string>('');
   readonly couponStatus = input<{ valid: boolean; discountPercent: number } | null>(null);
   readonly preview = input<ReservationPreviewView | null>(null);

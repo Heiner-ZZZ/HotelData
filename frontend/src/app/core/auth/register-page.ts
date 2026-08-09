@@ -1,9 +1,9 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { getErrorStatus, getErrorMessage } from '../../shared/utils/http-error.util';
 import { API_CONFIG } from '../api/api.config';
 
 @Component({
@@ -178,11 +178,7 @@ export class RegisterPageComponent {
       },
       error: (error: unknown) => {
         this.sendingCode.set(false);
-        if (error instanceof HttpErrorResponse && error.error?.detail) {
-          this.errorMessage.set(error.error.detail);
-        } else {
-          this.errorMessage.set('Error al enviar el código. Intenta de nuevo.');
-        }
+        this.errorMessage.set(getErrorMessage(error) || 'Error al enviar el código. Intenta de nuevo.');
       }
     });
   }
@@ -230,12 +226,10 @@ export class RegisterPageComponent {
       },
       error: (error: unknown) => {
         this.submitting.set(false);
-        if (error instanceof HttpErrorResponse && error.status === 409) {
+        if (getErrorStatus(error) === 409) {
           this.errorMessage.set('El usuario o correo ya está registrado.');
-        } else if (error instanceof HttpErrorResponse && error.error?.detail) {
-          this.errorMessage.set(error.error.detail);
         } else {
-          this.errorMessage.set('Error al crear la cuenta. Intenta de nuevo.');
+          this.errorMessage.set(getErrorMessage(error) || 'Error al crear la cuenta. Intenta de nuevo.');
         }
       }
     });
@@ -279,11 +273,7 @@ export class RegisterPageComponent {
         }
         document.querySelector<HTMLInputElement>('#code-digit-0')?.focus();
 
-        if (error instanceof HttpErrorResponse && error.error?.detail) {
-          this.errorMessage.set(error.error.detail);
-        } else {
-          this.errorMessage.set('Error al verificar el código. Solicita uno nuevo.');
-        }
+        this.errorMessage.set(getErrorMessage(error) || 'Error al verificar el código. Solicita uno nuevo.');
       }
     });
   }

@@ -1,10 +1,11 @@
 import { Location } from '@angular/common';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { catchError, filter, map, of } from 'rxjs';
 
+import { getErrorStatus } from '../utils/http-error.util';
 import { API_CONFIG } from '../../core/api/api.config';
 import { AuthService } from '../../core/auth/auth.service';
 
@@ -145,7 +146,8 @@ export class PropertyContextService {
           defaultPropId: dto.default_prop_id,
         })),
         catchError((err: unknown) => {
-          const status = err instanceof HttpErrorResponse ? err.status : null;
+          // getErrorStatus cubre HttpErrorResponse (tests) y ApiError del interceptor (vivo).
+          const status = getErrorStatus(err) ?? null;
           // 401/403 means auth token expired or not yet available — don't cache fallback,
           // let the effect retry when auth state changes.
           if (status === 401 || status === 403) {
@@ -174,7 +176,8 @@ export class PropertyContextService {
           // On 401/403, invalidate the session so the auth effect triggers
           // resetState → re-login → reload. This guarantees recovery even if
           // the auth HTTP interceptor hasn't fired yet for this call path.
-          if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
+          const status = getErrorStatus(err);
+          if (status === 401 || status === 403) {
             this.auth.invalidateSession();
           }
         },

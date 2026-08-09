@@ -1,4 +1,6 @@
-import { httpResource, HttpErrorResponse } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
+
+import { getErrorStatus, getErrorMessage } from '../../../../shared/utils/http-error.util';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -347,12 +349,12 @@ export class TeamPermissionsPageComponent {
   }
 
   private notifyError(err: unknown, fallback: string): void {
-    const httpErr = err as HttpErrorResponse;
-    const detail = httpErr?.error?.detail;
-    const msg = typeof detail === 'string' && detail ? detail : fallback;
+    // getErrorMessage/getErrorStatus cubren HttpErrorResponse (tests) y
+    // ApiError del interceptor (vivo).
+    const msg = getErrorMessage(err) || fallback;
     // 409 = guardrail del backend (anti self-lockout / anti-lockout / duplicado /
     // rol con personal asignado). Se muestra como advertencia con el texto real.
-    if (httpErr?.status === 409) {
+    if (getErrorStatus(err) === 409) {
       toast(msg, 'warning');
     } else {
       toast(msg, 'error');

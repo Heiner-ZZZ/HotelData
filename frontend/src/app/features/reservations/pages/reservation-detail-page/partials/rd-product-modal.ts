@@ -38,6 +38,12 @@ import { FormsModule } from '@angular/forms';
                   <span>No se pudieron cargar los productos del hotel.</span>
                 </div>
               }
+              @case ('forbidden') {
+                <div class="error-msg">
+                  <span class="material-symbols-outlined">lock</span>
+                  <span>Sin permiso para ver los productos del hotel.</span>
+                </div>
+              }
               @case ('empty') {
                 <div class="empty-rooms">
                   <span class="material-symbols-outlined">inventory_2</span>

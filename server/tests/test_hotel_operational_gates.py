@@ -25,6 +25,7 @@ from passlib.context import CryptContext
 
 from src.app.modules.hotels.service.availability import search_available_hotels
 from src.app.modules.hotels.service.search import search_hotels
+from src.app.modules.hotels.service.similar import _prefilter_candidates
 
 pytestmark = pytest.mark.asyncio
 
@@ -138,6 +139,44 @@ async def test_similar_empty_for_unpublished_source(client: AsyncClient, db):
     resp = await client.get("/api/hotels/9002/similar")
     assert resp.status_code == 200
     assert resp.json()["items"] == []
+
+
+async def test_prefilter_candidates_reduces_catalog_by_country_and_stars(db):
+    """_prefilter_candidates reduce el catálogo por país + rango de estrellas,
+    excluye la fuente y queda acotado por max_candidates (la reducción por
+    base de datos del endpoint de similares)."""
+    _seed_hotel(db, prop_id=9001, name="Fuente", published=True)
+    db.dim_hotels.update_one(
+        {"prop_id": 9001},
+        {"$set": {"prop_country_id": 169, "prop_starrating": 4.0, "prop_review_score": 9.0}},
+    )
+    # Candidatos: 3 en el mismo país con 4 estrellas; 1 con 2 estrellas
+    # (fuera del rango ±1) y 1 en otro país (ambos deben quedar fuera).
+    for pid, stars, score, country in [
+        (9010, 4.0, 9.5, 169),
+        (9011, 4.0, 8.0, 169),
+        (9012, 4.0, 7.0, 169),
+        (9013, 2.0, 9.9, 169),
+        (9014, 4.0, 9.8, 200),
+    ]:
+        _seed_hotel(db, prop_id=pid, name=f"Hotel {pid}", published=True)
+        db.dim_hotels.update_one(
+            {"prop_id": pid},
+            {"$set": {
+                "prop_country_id": country,
+                "prop_starrating": stars,
+                "prop_review_score": score,
+            }},
+        )
+
+    source = db.dim_hotels.find_one({"prop_id": 9001})
+    candidates = _prefilter_candidates(source, max_candidates=10)
+    ids = sorted(int(c["prop_id"]) for c in candidates)
+    assert 9001 not in ids  # excluye la fuente
+    assert ids == [9010, 9011, 9012]  # mismo país + rango de estrellas
+
+    # Acotado: aunque haya más candidatos, nunca supera max_candidates.
+    assert len(candidates) <= 10
 
 
 # ── Compare /api/hotels/compare ──────────────────────────────────────

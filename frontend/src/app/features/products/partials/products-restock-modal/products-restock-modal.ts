@@ -237,7 +237,7 @@ export class ProductsRestockModalComponent implements OnInit {
     }
     this.invoiceDetailLoading.set(true);
     this.expensesApi
-      .getInvoice(invoiceId)
+      .getInvoice(invoiceId, this.propCtx.currentPropId())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (detail) => {

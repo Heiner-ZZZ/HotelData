@@ -27,6 +27,7 @@ from src.app.modules.expenses.schemas import (
     IncomeStatementResponse,
     InvoiceCreate,
     InvoiceListResponse,
+    InvoicePayCreate,
     InvoiceResponse,
     InvoiceUpdate,
     LedgerFolioListResponse,
@@ -98,12 +99,33 @@ def _enrich_invoice(doc: dict) -> dict:
         except (TypeError, ValueError):
             # ObjectId (post-FK migration) — leave for ObjectIdStr validator
             pass
-    for f in ("created_at", "updated_at", "approved_at"):
+    for f in ("created_at", "updated_at", "approved_at", "paid_at"):
         if isinstance(doc.get(f), datetime):
             doc[f] = doc[f].isoformat()
         elif doc.get(f) is None:
             doc[f] = None
     return doc
+
+
+def _product_restock_ledger_complete(db, invoice_id: str, product_lines: list[dict], prop_id: int | None) -> bool:
+    """Check that every received product line has one balanced AP pair."""
+    if not product_lines:
+        return False
+    for index, line in enumerate(product_lines):
+        event_id = str(line.get("restock_event_id") or f"{invoice_id}:line:{index}")
+        rows = list(db[LEDGER_COLLECTION].find({
+            "source": "hotel_product_restock",
+            "source_id": event_id,
+            "prop_id": prop_id,
+        }, {"debit": 1, "credit": 1}))
+        if len(rows) != 2:
+            return False
+        debit = round(sum(float(row.get("debit", 0) or 0) for row in rows), 2)
+        credit = round(sum(float(row.get("credit", 0) or 0) for row in rows), 2)
+        expected = round(float(line.get("line_total", 0) or 0), 2)
+        if debit <= 0 or debit != credit or debit != expected:
+            return False
+    return True
 
 
 def _enrich_product_lines(doc: dict) -> dict:
@@ -192,6 +214,27 @@ def _unwrap_query(value: Any) -> Any:
     return value
 
 
+def _require_hotel_scope(value: Any) -> int:
+    """Require one explicit hotel scope for legacy financial endpoints.
+
+    The old query-param routes remain for compatibility, but an omitted
+    ``prop_id`` must fail closed rather than aggregate every hotel's data.
+    ``_unwrap_query`` also keeps direct Python calls safe when a route's
+    FastAPI default is passed as a ``Query`` object.
+    """
+    value = _unwrap_query(value)
+    try:
+        prop_id = int(value)
+    except (TypeError, ValueError):
+        prop_id = 0
+    if prop_id < 1:
+        raise HTTPException(
+            status_code=400,
+            detail="prop_id es obligatorio para consultar datos financieros del hotel",
+        )
+    return prop_id
+
+
 # ─── Module Status ───
 
 @router.get("/status", response_model=ModuleStatus)
@@ -208,35 +251,42 @@ def expenses_dashboard(
     prop_id: int | None = Query(default=None, ge=1),
 ):
     """Return expense KPIs: total, by category, pending approval, budget execution."""
+    prop_id = _require_hotel_scope(prop_id)
     db = get_database()
     now = datetime.now(timezone.utc)
     current_q = f"Q{(now.month - 1) // 3 + 1}-{now.year}"
 
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    invoice_scope: dict[str, Any] = {}
+    if prop_id is not None:
+        invoice_scope["prop_id"] = prop_id
     month_pipeline = [
-        {"$match": {"created_at": {"$gte": month_start}}},
+        {"$match": {**invoice_scope, "created_at": {"$gte": month_start}}},
         {"$group": {"_id": None, "total": {"$sum": "$total"}}},
     ]
     month_agg = list(db[INVOICES_COLLECTION].aggregate(month_pipeline))
     month_total = month_agg[0]["total"] if month_agg else 0
 
-    pending = db[INVOICES_COLLECTION].count_documents({"status": "pending"})
+    pending = db[INVOICES_COLLECTION].count_documents({**invoice_scope, "status": "pending"})
     pending_value_pipeline = [
-        {"$match": {"status": "pending"}},
+        {"$match": {**invoice_scope, "status": "pending"}},
         {"$group": {"_id": None, "total": {"$sum": "$total"}}},
     ]
     pending_agg = list(db[INVOICES_COLLECTION].aggregate(pending_value_pipeline))
     pending_value = pending_agg[0]["total"] if pending_agg else 0
 
+    budget_scope: dict[str, Any] = {"period": current_q}
+    if prop_id is not None:
+        budget_scope["prop_id"] = prop_id
     budget_pipeline = [
-        {"$match": {"period": current_q}},
+        {"$match": budget_scope},
         {"$group": {"_id": None, "total_budget": {"$sum": "$amount"}}},
     ]
     budget_agg = list(db[BUDGET_COLLECTION].aggregate(budget_pipeline))
     total_budget = budget_agg[0]["total_budget"] if budget_agg else 0
 
     spent_pipeline = [
-        {"$match": {"status": {"$in": ["approved", "paid"]}}},
+        {"$match": {**invoice_scope, "status": {"$in": ["approved", "paid"]}}},
         {"$group": {"_id": None, "total": {"$sum": "$total"}}},
     ]
     spent_agg = list(db[INVOICES_COLLECTION].aggregate(spent_pipeline))
@@ -244,13 +294,14 @@ def expenses_dashboard(
     budget_pct = round((total_spent / total_budget * 100), 1) if total_budget > 0 else 0
 
     cat_pipeline = [
+        {"$match": invoice_scope},
         {"$group": {"_id": "$category", "total": {"$sum": "$total"}, "count": {"$sum": 1}}},
         {"$sort": {"total": -1}},
     ]
     by_category = list(db[INVOICES_COLLECTION].aggregate(cat_pipeline))
 
     monthly_pipeline = [
-        {"$match": {"status": {"$in": ["approved", "paid"]}}},
+        {"$match": {**invoice_scope, "status": {"$in": ["approved", "paid"]}}},
         {"$group": {"_id": {"$dateToString": {"format": "%Y-%m", "date": "$created_at"}}, "total": {"$sum": "$total"}}},
         {"$sort": {"_id": 1}},
         {"$limit": 6},
@@ -361,7 +412,7 @@ def create_invoice(
     # a failure is observable on the wire and persisted, not just logged.
     if product_lines:
         final_lines: list[dict[str, Any]] = []
-        for line in product_lines:
+        for index, line in enumerate(product_lines):
             try:
                 restock_product(
                     payload.prop_id,
@@ -369,7 +420,13 @@ def create_invoice(
                     qty=line["qty"],
                     unit_cost=line["unit_cost"],
                     supplier_name=payload.vendor_name,
+                    # One vendor invoice can contain several products. The
+                    # product is part of the immutable acquisition event, so
+                    # it must be part of the ledger/inventory idempotency key;
+                    # using only the invoice id makes later lines collide.
                     invoice_id=str(result.inserted_id),
+                    ledger_source_id=f"{result.inserted_id}:line:{index}",
+                    inventory_event_id=f"{result.inserted_id}:line:{index}",
                     changed_by=current_user.get("username", "system"),
                 )
                 final_lines.append({**line, "restocked": True})
@@ -401,6 +458,22 @@ def create_invoice(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
+    try:
+        from src.app.modules.financial_reconciliation.domain_events import append_domain_event
+        if payload.prop_id:
+            append_domain_event(
+                prop_id=payload.prop_id,
+                event_type="vendor_ap.invoice.pending",
+                aggregate_type="vendor_ap",
+                aggregate_id=str(result.inserted_id),
+                idempotency_key=f"live:vendor-bill:created:{result.inserted_id}",
+                payload={"vendor_name": payload.vendor_name, "total": total_amount, "status": "pending"},
+                source_collection=INVOICES_COLLECTION,
+                source_id=str(result.inserted_id),
+                actor_id=current_user.get("username", "system"),
+            )
+    except Exception:
+        logger.exception("Failed to emit Vendor AP event for invoice %s", result.inserted_id)
     return InvoiceResponse.model_validate(enriched)
 
 
@@ -415,6 +488,11 @@ def list_invoices(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
+    if prop_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="prop_id es obligatorio; usa /api/hotels/{prop_id}/vendor-ap/invoices para Vendor AP.",
+        )
     db = get_database()
     query: dict = {}
     if status_filter:
@@ -475,10 +553,13 @@ def list_invoices(
 def get_invoice(
     request: Request,
     invoice_id: str = Path(...),
+    prop_id: int | None = Query(default=None, ge=1),
 ):
+    prop_id = _require_hotel_scope(prop_id)
     db = get_database()
+
     try:
-        doc = db[INVOICES_COLLECTION].find_one({"_id": ObjectId(invoice_id)})
+        doc = db[INVOICES_COLLECTION].find_one({"_id": ObjectId(invoice_id), "prop_id": prop_id})
     except Exception:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
     if not doc:
@@ -491,25 +572,154 @@ def get_invoice(
         action="read",
         summary=f"Consulta de factura {doc.get('vendor_name', invoice_id)}",
         changed_by=user.get("username", "anonymous"),
-        metadata={"url": str(request.url)},
+        metadata={"url": str(request.url), "prop_id": prop_id},
     )
     return InvoiceResponse.model_validate(_enrich_invoice(doc))
 
 
-@api_router.put("/invoices/{invoice_id}", response_model=InvoiceResponse)
-def update_invoice(
+@api_router.post("/invoices/{invoice_id}/pay", response_model=InvoiceResponse)
+def pay_expense_invoice(
     invoice_id: str = Path(...),
-    payload: InvoiceUpdate = Body(...),
+    prop_id: int | None = Query(default=None, ge=1),
+    payload: InvoicePayCreate | None = Body(default=None),
+    method: str | None = None,
+    payment_reference: str | None = None,
     current_user: dict = Depends(require_permission("revenue.manage")),
 ):
+    """Settle an approved VendorBill and post DR AP / CR cash-bank once.
+
+    Payment is a separate transition from approval: marking a bill paid must
+    always leave a payment journal pair. ``payment_reference`` is the
+    idempotency evidence shown to the operator and stored on the bill.
+    """
+    prop_id = _require_hotel_scope(prop_id)
     db = get_database()
     try:
         oid = ObjectId(invoice_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
-    before = db[INVOICES_COLLECTION].find_one({"_id": oid})
+    before = db[INVOICES_COLLECTION].find_one({"_id": oid, "prop_id": prop_id})
     if not before:
+        raise HTTPException(status_code=404, detail="Factura no encontrada en este hotel")
+
+    # Direct service-level callers (and route aliases) may omit the body; in
+    # that case FastAPI's Body sentinel must not be treated as a DTO.
+    payment_payload = payload if isinstance(payload, InvoicePayCreate) else None
+    requested_method = (payment_payload.method if payment_payload else None) or method or ""
+    requested_reference = (payment_payload.payment_reference if payment_payload else None) or payment_reference or ""
+    requested_method = requested_method.strip().lower()
+    requested_reference = requested_reference.strip()
+    if not requested_method or not requested_reference:
+        raise HTTPException(status_code=422, detail="method y payment_reference son obligatorios")
+
+    current_status = str(before.get("status") or "pending").lower()
+    if current_status == "paid":
+        if before.get("payment_reference") == requested_reference:
+            return InvoiceResponse.model_validate(_enrich_invoice(before))
+        raise HTTPException(status_code=409, detail="La factura ya fue pagada con otra referencia")
+    if current_status != "approved":
+        raise HTTPException(status_code=409, detail="La factura debe aprobarse antes de pagarse")
+
+    product_backed = bool(before.get("product_lines"))
+    if product_backed:
+        ledger_ready = _product_restock_ledger_complete(
+            db, invoice_id, before.get("product_lines") or [], before.get("prop_id"),
+        )
+    else:
+        ledger_ready = db[LEDGER_COLLECTION].count_documents({
+            "source": "expense_invoice",
+            "source_id": invoice_id,
+            "prop_id": before.get("prop_id"),
+        }) == 2
+    if not ledger_ready:
+        raise HTTPException(status_code=409, detail="La factura no puede pagarse mientras su asiento AP no esté completo")
+
+    from src.app.modules.expenses.service.ledger_hooks import post_journal_entry
+    try:
+        marker = post_journal_entry(
+            amount=float(before.get("total") or 0),
+            dr_account_code="2010",
+            dr_account_name="Cuentas por Pagar Proveedores",
+            cr_account_code="1010",
+            cr_account_name="Caja / Bancos",
+            description=f"Pago de factura de proveedor — {before.get('vendor_name', invoice_id)}",
+            prop_id=int(before.get("prop_id", 0) or 0),
+            source="expense_invoice_payment",
+            source_id=invoice_id,
+        )
+    except Exception as exc:
+        logger.exception("Failed to post VendorBill payment %s", invoice_id)
+        db[INVOICES_COLLECTION].update_one({"_id": oid}, {"$set": {
+            "payment_posting_status": "failed",
+            "payment_posting_error": str(exc),
+        }})
+        raise HTTPException(status_code=503, detail="No se pudo contabilizar el pago; reintenta") from exc
+
+    payment_journal_id = marker.split(":", 1)[1] if marker.startswith("skip:") else marker
+    now = datetime.now(timezone.utc)
+    db[INVOICES_COLLECTION].update_one({"_id": oid}, {"$set": {
+        "status": "paid",
+        "payment_method": requested_method,
+        "payment_reference": requested_reference,
+        "payment_journal_id": payment_journal_id,
+        "payment_posting_status": "posted",
+        "payment_posting_error": None,
+        "paid_at": now,
+        "updated_at": now,
+    }})
+    db.maintenance_tasks.update_many(
+        {"expense_invoice_id": invoice_id, "prop_id": before.get("prop_id")},
+        {"$set": {"payment_status": "paid", "payment_journal_id": payment_journal_id, "updated_at": now}},
+    )
+    stored = db[INVOICES_COLLECTION].find_one({"_id": oid})
+    register_action(
+        prop_id=(before.get("prop_id") or 0),
+        entity_type="expense_invoice",
+        entity_id=invoice_id,
+        action="pay",
+        summary=f"Pago de factura de proveedor: {before.get('vendor_name', invoice_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff={
+            "status": {"old": current_status, "new": "paid"},
+            "payment_reference": {"old": None, "new": requested_reference},
+            "payment_journal_id": {"old": None, "new": payment_journal_id},
+        },
+    )
+    try:
+        from src.app.modules.financial_reconciliation.domain_events import append_domain_event
+        if before.get("prop_id"):
+            append_domain_event(
+                prop_id=int(before["prop_id"]),
+                event_type="vendor_ap.invoice.paid",
+                aggregate_type="vendor_ap",
+                aggregate_id=invoice_id,
+                idempotency_key=f"live:vendor-bill:paid:{invoice_id}:{requested_reference}",
+                payload={"total": stored.get("total", 0), "payment_reference": requested_reference, "status": "paid"},
+                source_collection=INVOICES_COLLECTION,
+                source_id=invoice_id,
+                actor_id=current_user.get("username", "system"),
+            )
+    except Exception:
+        logger.exception("Failed to emit Vendor AP payment event %s", invoice_id)
+    return InvoiceResponse.model_validate(_enrich_invoice(stored))
+
+
+@api_router.put("/invoices/{invoice_id}", response_model=InvoiceResponse)
+def update_invoice(
+    invoice_id: str = Path(...),
+    prop_id: int | None = Query(default=None, ge=1),
+    payload: InvoiceUpdate = Body(...),
+    current_user: dict = Depends(require_permission("revenue.manage")),
+):
+    prop_id = _require_hotel_scope(prop_id)
+    db = get_database()
+    try:
+        oid = ObjectId(invoice_id)
+    except Exception:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
+    before = db[INVOICES_COLLECTION].find_one({"_id": oid, "prop_id": prop_id})
+    if not before:
+        raise HTTPException(status_code=404, detail="Factura no encontrada en este hotel")
     update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
     if not update:
         raise HTTPException(status_code=400, detail="No hay campos para actualizar")
@@ -523,10 +733,117 @@ def update_invoice(
         amt = update.get("amount", before["amount"])
         tax = update.get("tax_amount", before["tax_amount"])
         update["total"] = amt + tax
-    if update.get("status") == "approved" and not update.get("approved_by"):
+    current_status = str(before.get("status") or "pending").lower()
+    requested_status = str(update.get("status", current_status)).lower()
+    product_backed = bool(before.get("product_lines"))
+    if requested_status == "paid":
+        raise HTTPException(
+            status_code=409,
+            detail="Usa el flujo de pago de factura con método y referencia de pago.",
+        )
+    if product_backed and {"amount", "vendor_name", "category", "description"}.intersection(update):
+        # Restock and AP were already created from the purchase snapshot at
+        # invoice creation. Mutating only the bill would leave stock and the
+        # ledger backed by a different amount/vendor. Use a compensating
+        # document workflow instead.
+        raise HTTPException(
+            status_code=409,
+            detail="La factura con productos ya recibidos no puede modificarse; usa un documento compensatorio.",
+        )
+    if current_status in {"approved", "paid"}:
+        # Approved/paid supplier bills are accounting documents. A direct
+        # amount/vendor/status mutation would orphan the AP journal and any
+        # maintenance links; corrections must be represented by a separate
+        # compensating invoice/credit-note flow.
+        financial_fields = {"vendor_name", "category", "description", "amount", "status"}
+        if financial_fields.intersection(update):
+            raise HTTPException(
+                status_code=409,
+                detail="La factura aprobada o pagada no puede modificarse; usa un documento compensatorio.",
+            )
+    if requested_status == "approved" and product_backed and not _product_restock_ledger_complete(
+        db, invoice_id, before.get("product_lines") or [], before.get("prop_id"),
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="La factura con productos no puede aprobarse mientras falte un asiento de inventario por línea.",
+        )
+    if requested_status == "approved" and current_status != "approved":
         update["approved_at"] = datetime.now(timezone.utc)
         update["approved_by"] = current_user.get("username", "system")
+
     db[INVOICES_COLLECTION].update_one({"_id": oid}, {"$set": update})
+    if requested_status == "approved" and current_status != "approved":
+        try:
+            # Product-backed bills already post DR 1050 / CR 2010 once per
+            # restock line. Posting generic operating expense AP here too would
+            # double the payable, so only manual/non-inventory bills use 5030.
+            if product_backed:
+                ledger_complete = _product_restock_ledger_complete(
+                    db,
+                    invoice_id,
+                    before.get("product_lines") or [],
+                    before.get("prop_id"),
+                )
+                ledger_row = db[LEDGER_COLLECTION].find_one({
+                    "source": "hotel_product_restock",
+                    "source_id": {"$regex": f"^{invoice_id}:"},
+                    "prop_id": before.get("prop_id"),
+                }, {"journal_entry_id": 1}) if ledger_complete else None
+                journal_id = (ledger_row or {}).get("journal_entry_id", "")
+                ledger_status = "posted" if ledger_complete else "pending"
+            else:
+                from src.app.modules.expenses.service.ledger_hooks import post_journal_entry
+                marker = post_journal_entry(
+                    amount=float((update.get("total") if "total" in update else before.get("total")) or 0),
+                    dr_account_code="5030",
+                    dr_account_name="Gastos Operativos",
+                    cr_account_code="2010",
+                    cr_account_name="Cuentas por Pagar Proveedores",
+                    description=f"Factura de proveedor aprobada — {before.get('vendor_name', invoice_id)}",
+                    prop_id=int(before.get("prop_id", 0) or 0),
+                    source="expense_invoice",
+                    source_id=invoice_id,
+                )
+                if marker.startswith("skip:"):
+                    existing_row = db[LEDGER_COLLECTION].find_one({
+                        "source": "expense_invoice",
+                        "source_id": invoice_id,
+                    }, {"journal_entry_id": 1})
+                    journal_id = (existing_row or {}).get("journal_entry_id", "")
+                else:
+                    journal_id = marker
+                ledger_status = "posted" if journal_id else "failed"
+            db[INVOICES_COLLECTION].update_one({"_id": oid}, {"$set": {
+                "ledger_posting_status": ledger_status,
+                "ledger_posting_error": None if ledger_status == "posted" else "No existe asiento de compra para esta factura",
+                "ledger_journal_id": journal_id or None,
+            }})
+            db.maintenance_tasks.update_many(
+                {"expense_invoice_id": invoice_id, "prop_id": before.get("prop_id")},
+                {"$set": {
+                    "ledger_status": ledger_status,
+                    "ledger_journal_id": journal_id or None,
+                    "financial_link_status": "linked",
+                    "financial_link_error": None if ledger_status == "posted" else "No existe asiento de compra para esta factura",
+                    "updated_at": datetime.now(timezone.utc),
+                }},
+            )
+        except Exception as exc:
+            logger.exception("Failed to post AP ledger for expense invoice %s", invoice_id)
+            db[INVOICES_COLLECTION].update_one({"_id": oid}, {"$set": {
+                "ledger_posting_status": "failed",
+                "ledger_posting_error": str(exc),
+            }})
+            db.maintenance_tasks.update_many(
+                {"expense_invoice_id": invoice_id, "prop_id": before.get("prop_id")},
+                {"$set": {
+                    "ledger_status": "failed",
+                    "financial_link_status": "linked",
+                    "financial_link_error": str(exc),
+                    "updated_at": datetime.now(timezone.utc),
+                }},
+            )
     doc = db[INVOICES_COLLECTION].find_one({"_id": oid})
     diff = {
         k: {"old": before.get(k), "new": v}
@@ -548,17 +865,26 @@ def update_invoice(
 @api_router.delete("/invoices/{invoice_id}", status_code=204)
 def delete_invoice(
     invoice_id: str = Path(...),
+    prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_permission("revenue.manage")),
 ):
     """Returns 204 No Content — no response body; do NOT add response_model=."""
+    prop_id = _require_hotel_scope(prop_id)
     db = get_database()
     try:
         oid = ObjectId(invoice_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
-    before = db[INVOICES_COLLECTION].find_one({"_id": oid})
+    before = db[INVOICES_COLLECTION].find_one({"_id": oid, "prop_id": prop_id})
     if not before:
-        raise HTTPException(status_code=404, detail="Factura no encontrada")
+        raise HTTPException(status_code=404, detail="Factura no encontrada en este hotel")
+    if str(before.get("status") or "").lower() in {"approved", "paid"} or db.ledger_transactions.find_one({
+        "source": "expense_invoice", "source_id": invoice_id,
+    }, {"_id": 1}):
+        raise HTTPException(
+            status_code=409,
+            detail="La factura aprobada o contabilizada no puede eliminarse; usa reversión o nota de crédito.",
+        )
     result = db[INVOICES_COLLECTION].delete_one({"_id": oid})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
@@ -584,6 +910,7 @@ def list_categories(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
 ):
+    prop_id = _require_hotel_scope(prop_id)
     db = get_database()
     cursor = db[CATEGORIES_COLLECTION].find().sort("name", 1)
     result: list[dict[str, Any]] = []
@@ -593,8 +920,11 @@ def list_categories(
         or_filter: list = [{"category": cat["name"]}]
         if cat_oid:
             or_filter.insert(0, {"category_id": cat_oid})
+        spent_match: dict[str, Any] = {"$or": or_filter, "status": {"$in": ["approved", "paid"]}}
+        if prop_id is not None:
+            spent_match["prop_id"] = prop_id
         spent_agg = db[INVOICES_COLLECTION].aggregate([
-            {"$match": {"$or": or_filter, "status": {"$in": ["approved", "paid"]}}},
+            {"$match": spent_match},
             {"$group": {"_id": None, "total": {"$sum": "$total"}}},
         ])
         spent_list = list(spent_agg)
@@ -630,11 +960,19 @@ def create_category(payload: ExpenseCategoryCreate = Body(...)):
 @api_router.post("/budget", status_code=201, response_model=BudgetResponse)
 def create_budget(payload: BudgetCreate = Body(...)):
     db = get_database()
-    existing = db[BUDGET_COLLECTION].find_one({"department": payload.department, "period": payload.period})
+    scope = {"department": payload.department, "period": payload.period}
+    if payload.prop_id is not None:
+        scope["prop_id"] = payload.prop_id
+    else:
+        # Preserve legacy global budgets, but do not let them collide with a
+        # hotel-scoped allocation for the same department and period.
+        scope["prop_id"] = {"$exists": False}
+    existing = db[BUDGET_COLLECTION].find_one(scope)
     if existing:
         raise HTTPException(status_code=409, detail=f"Ya existe un presupuesto para {payload.department} en {payload.period}")
     doc = {"department": payload.department, "period": payload.period, "amount": payload.amount,
            "spent": 0, "remaining": payload.amount, "description": payload.description,
+           "prop_id": payload.prop_id,
            "created_at": datetime.now(timezone.utc)}
     result = db[BUDGET_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -642,11 +980,18 @@ def create_budget(payload: BudgetCreate = Body(...)):
 
 
 @api_router.get("/budget", response_model=BudgetListResponse)
-def list_budget(period: str | None = Query(default=None)):
+def list_budget(
+    period: str | None = Query(default=None),
+    prop_id: int | None = Query(default=None, ge=1),
+):
+    prop_id = _require_hotel_scope(prop_id)
+    period = _unwrap_query(period)
     db = get_database()
-    query = {}
+    query: dict[str, Any] = {}
     if period:
         query["period"] = period
+    if prop_id is not None:
+        query["prop_id"] = prop_id
     cursor = db[BUDGET_COLLECTION].find(query).sort("period", -1)
     items = [BudgetResponse.model_validate(_enrich_budget(doc)) for doc in cursor]
     return BudgetListResponse.model_validate({"items": items})
@@ -687,10 +1032,19 @@ def list_ledger(
     sort_field = _unwrap_query(sort_field)
     sort_order = _unwrap_query(sort_order)
 
+    prop_id = _require_hotel_scope(prop_id)
+    folio_ref = _unwrap_query(folio_ref)
+    account_code = _unwrap_query(account_code)
+    accounting_period = _unwrap_query(accounting_period)
+    status_filter = _unwrap_query(status_filter)
+    search = _unwrap_query(search)
+    page = _unwrap_query(page)
+    page_size = _unwrap_query(page_size)
+    sort_field = _unwrap_query(sort_field)
+    sort_order = _unwrap_query(sort_order)
+
     db = get_database()
-    query: dict = {}
-    if prop_id:
-        query["prop_id"] = prop_id
+    query: dict = {"prop_id": prop_id}
     if folio_ref:
         query["folio_ref"] = folio_ref
     if account_code:
@@ -779,6 +1133,10 @@ def list_active_folios(
     Defaults to open folios only. Pass status=closed or omit the param
     (status=null) to see all folios.
     """
+    prop_id = _require_hotel_scope(prop_id)
+    page = _unwrap_query(page)
+    page_size = _unwrap_query(page_size)
+    status = _unwrap_query(status)
     db = get_database()
     query: dict = {}
     if status:
@@ -800,6 +1158,7 @@ def list_active_folios(
     items_raw: list[dict[str, Any]] = []
     for f in cursor:
         items_raw.append({
+            "prop_id": prop_id,
             "folio_id": str(f["_id"]),
             "folio_ref": f.get("folio_number", ""),
             "guest_name": f.get("guest_name", ""),
@@ -822,11 +1181,17 @@ def list_active_folios(
 
 
 @api_router.get("/ledger/folios/{folio_id}/postings", response_model=FolioPostingsResponse)
-def get_folio_postings(folio_id: str = Path(...)):
-    """Return the posting history for a guest folio."""
+def get_folio_postings(
+    folio_id: str = Path(...),
+    prop_id: int | None = Query(default=None, ge=1),
+):
+    """Return the posting history for a guest folio in one hotel."""
+    prop_id = _require_hotel_scope(prop_id)
     from src.app.modules.billing.service.folio import get_folio_by_id
 
     folio = get_folio_by_id(folio_id)
+    if folio and int(folio.get("prop_id", 0) or 0) != prop_id:
+        folio = None
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
 
@@ -860,10 +1225,9 @@ def get_folio_postings(folio_id: str = Path(...)):
 @api_router.get("/ledger/summary", response_model=LedgerSummaryResponse)
 def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
     """Return trial balance + KPI summary for the ledger header."""
+    prop_id = _require_hotel_scope(prop_id)
     db = get_database()
-    match: dict = {}
-    if prop_id:
-        match["prop_id"] = int(prop_id)
+    match: dict = {"prop_id": prop_id}
 
     pipeline = [
         {"$match": match},
@@ -911,6 +1275,7 @@ def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
 @api_router.post("/ledger/folios/{folio_id}/payment", response_model=FolioPaymentResponse)
 def register_folio_payment(
     folio_id: str = Path(...),
+    prop_id: int | None = Query(default=None, ge=1),
     amount: float = Body(..., gt=0),
     method: str = Body(default="cash"),
     notes: str = Body(default=""),
@@ -921,7 +1286,10 @@ def register_folio_payment(
     from src.app.modules.billing.service.lifecycle.invoices import create_invoice as create_billing_invoice
     from src.app.modules.billing.service.lifecycle.payments import create_payment as create_billing_payment
 
+    prop_id = _require_hotel_scope(prop_id)
     folio = get_folio_by_id(folio_id)
+    if folio and int(folio.get("prop_id", 0) or 0) != prop_id:
+        folio = None
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
     if folio.get("status") != "open":
@@ -931,21 +1299,10 @@ def register_folio_payment(
     if not booking_id:
         raise HTTPException(status_code=400, detail="Folio sin booking_id")
 
-    # 1. Post payment transaction to the folio (reduces balance)
-    concept = f"Pago {method} por {paid_by} — {notes}" if notes else f"Pago {method} por {paid_by}"
-    updated = post_to_folio(
-        booking_id,
-        posting_type="payment",
-        category=method.title(),
-        concept=concept,
-        amount=amount,
-        reference_id=f"PAY-{folio.get('folio_number', '')}",
-        reference_type="folio_payment",
-    )
-    if not updated:
-        raise HTTPException(status_code=500, detail="Error al registrar el pago")
-
-    # 2. Create or find existing reservation_invoice for this booking
+    # The billing payment service owns the durable payment + folio posting.
+    # Do not post a second ad-hoc folio event here: doing so made the old flow
+    # mutate the folio first and create the payment afterwards.
+    # 1. Create or find existing reservation_invoice for this booking
     db = get_database()
     invoice = db.reservation_invoices.find_one({"booking_id": booking_id})
 
@@ -969,18 +1326,24 @@ def register_folio_payment(
     else:
         invoice_id = str(invoice["_id"])
 
-    # 3. Record the payment (generates ledger entries automatically)
-    payment_result = create_billing_payment(PaymentCreate(
-        booking_id=booking_id,
-        invoice_id=invoice_id,
-        amount=amount,
-        method=method,
-    ))
+    # 2. Record the payment (generates ledger and folio entries atomically/idempotently)
+    try:
+        payment_result = create_billing_payment(PaymentCreate(
+            booking_id=booking_id,
+            invoice_id=invoice_id,
+            amount=amount,
+            method=method,
+        ))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not payment_result:
+        raise HTTPException(status_code=400, detail="No se pudo registrar el pago")
+    updated = get_folio_by_id(folio_id)
 
     return FolioPaymentResponse.model_validate({
         "folio_id": folio_id,
         "folio_number": folio.get("folio_number", ""),
-        "new_balance": round(updated.get("total_due", 0), 2),
+        "new_balance": round((updated or {}).get("total_due", 0), 2),
         "payment_amount": amount,
         "method": method,
         "invoice_id": invoice_id,
@@ -993,6 +1356,7 @@ def register_folio_payment(
 @api_router.post("/ledger/folios/{folio_id}/transfer", response_model=FolioTransferResponse)
 def transfer_folio_charges(
     folio_id: str = Path(...),
+    prop_id: int | None = Query(default=None, ge=1),
     target_folio_id: str = Body(...),
     amount: float = Body(..., gt=0),
     notes: str = Body(default=""),
@@ -1000,13 +1364,18 @@ def transfer_folio_charges(
     """Transfer charges from one folio to another."""
     from src.app.modules.billing.service.folio import get_folio_by_id, post_to_folio
 
+    prop_id = _require_hotel_scope(prop_id)
     source = get_folio_by_id(folio_id)
+    if source and int(source.get("prop_id", 0) or 0) != prop_id:
+        source = None
     if not source:
         raise HTTPException(status_code=404, detail="Folio origen no encontrado")
     if source.get("status") != "open":
         raise HTTPException(status_code=400, detail="Solo se pueden transferir cargos desde folios abiertos")
 
     target = get_folio_by_id(target_folio_id)
+    if target and int(target.get("prop_id", 0) or 0) != prop_id:
+        target = None
     if not target:
         raise HTTPException(status_code=404, detail="Folio destino no encontrado")
     if target.get("status") != "open":
@@ -1079,10 +1448,9 @@ def list_chart_of_accounts():
 @api_router.get("/ledger/periods", response_model=list[str])
 def list_ledger_periods(prop_id: int = Query(default=0, ge=0)):
     """Return distinct accounting periods available in the ledger."""
+    prop_id = _require_hotel_scope(prop_id)
     db = get_database()
-    match: dict = {}
-    if prop_id:
-        match["prop_id"] = prop_id
+    match: dict = {"prop_id": prop_id}
     periods = db[LEDGER_COLLECTION].distinct("accounting_period", match)
     return sorted([p for p in periods if p], reverse=True)
 
@@ -1096,10 +1464,10 @@ def trial_balance(
 
     Returns every account with its total debits, total credits, and net balance.
     """
+    prop_id = _require_hotel_scope(prop_id)
+    accounting_period = _unwrap_query(accounting_period)
     db = get_database()
-    match: dict = {}
-    if prop_id:
-        match["prop_id"] = int(prop_id)
+    match: dict = {"prop_id": prop_id}
     if accounting_period:
         match["accounting_period"] = accounting_period
 
@@ -1170,10 +1538,10 @@ def income_statement(
     accounting_period: str | None = Query(default=None, description="YYYY-MM"),
 ):
     """Estado de Resultados (P&L): Ingresos - Costos - Descuentos = Resultado Neto."""
+    prop_id = _require_hotel_scope(prop_id)
+    accounting_period = _unwrap_query(accounting_period)
     db = get_database()
-    match: dict = {}
-    if prop_id:
-        match["prop_id"] = int(prop_id)
+    match: dict = {"prop_id": prop_id}
     if accounting_period:
         match["accounting_period"] = accounting_period
 
@@ -1262,10 +1630,10 @@ def balance_sheet(
     accounting_period: str | None = Query(default=None, description="YYYY-MM"),
 ):
     """Balance General: Activos = Pasivos + Patrimonio + Resultado del Período."""
+    prop_id = _require_hotel_scope(prop_id)
+    accounting_period = _unwrap_query(accounting_period)
     db = get_database()
-    match: dict = {}
-    if prop_id:
-        match["prop_id"] = int(prop_id)
+    match: dict = {"prop_id": prop_id}
     if accounting_period:
         match["accounting_period"] = accounting_period
 

@@ -144,7 +144,7 @@ export class PaymentsListPageComponent {
 
   refund(paymentId: string) {
     this.refundingId.set(paymentId);
-    this.billingApi.refundPayment(paymentId)
+    this.billingApi.refundPayment(paymentId, this.selectedPropId())
       .subscribe({
         next: () => {
           this.toast.show('Pago reembolsado correctamente.', 'info', 4000);

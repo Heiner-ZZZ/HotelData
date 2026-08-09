@@ -143,7 +143,7 @@ def notify_review_created(
 
     body = (
         f'<p style="margin:0 0 20px;font-size:14px;color:#3f484c">'
-        f'Hola <strong>{{STAFF_NAME}}</strong>,</p>\n'
+        f'Hola <strong>{{{{STAFF_NAME}}}}</strong>,</p>\n'
         f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
         f'  Se ha recibido una <strong>nueva resena</strong> de un huesped '
         f'para <strong>{hotel_label}</strong>.\n'

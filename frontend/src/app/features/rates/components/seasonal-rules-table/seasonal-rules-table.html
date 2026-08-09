@@ -1,3 +1,20 @@
+  @if (deleteConfirm(); as rule) {
+    <div class="delete-warning" role="alert">
+      <span class="material-symbols-outlined">warning</span>
+      <div class="delete-warning-body">
+        <strong>Vas a eliminar la regla «{{ rule.name }}» permanentemente.</strong>
+        <span>
+          Esta acción no se puede deshacer y retira el precio override del rango
+          {{ rule.rangeLabel }}. ¿Continuar?
+        </span>
+        <div class="delete-warning-actions">
+          <button type="button" class="btn-secondary" (click)="cancelDelete()">Cancelar</button>
+          <button type="button" class="btn-danger" (click)="confirmDelete()">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  }
+
 <div class="table-wrap">
   <table class="data-table">
     <thead>
@@ -20,7 +37,7 @@
             <button type="button" class="edit-btn" (click)="editRule.emit(rule)" title="Editar regla">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button type="button" class="delete-btn" (click)="deleteRule.emit(rule.ruleId)" title="Eliminar regla">
+            <button type="button" class="delete-btn" (click)="requestDelete(rule)" title="Eliminar regla">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </td>

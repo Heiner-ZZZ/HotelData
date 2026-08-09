@@ -371,13 +371,7 @@
                 <div class="similar-grid">
                   @for (item of similarHotels(); track item.id) {
                     <a [routerLink]="['/hotels', item.id]" class="similar-card">
-                      <div class="similar-img">
-                        @if (item.imageUrl && !imageErrors().has('sim-' + item.id)) {
-                          <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('sim-' + item.id, $event)" />
-                        } @else {
-                          <span class="material-symbols-outlined">hotel</span>
-                        }
-                      </div>
+                      <app-similar-carousel [hotel]="item" />
                       <div class="similar-body">
                         <strong class="similar-name">{{ item.name }}</strong>
                         <div class="similar-meta">

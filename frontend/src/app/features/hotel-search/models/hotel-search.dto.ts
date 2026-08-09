@@ -48,6 +48,7 @@ export interface HotelSearchItemDto {
   min_nightly_rate_label?: string | null;
   total_estimated?: number | null;
   total_estimated_label?: string | null;
+  min_available_rooms?: number | null;
 
   // Legacy analytics aliases. They are optional because availability does not
   // return historical fact metrics.

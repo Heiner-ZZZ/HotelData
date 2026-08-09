@@ -52,6 +52,96 @@ def save_partner_hotel_content(
     return document
 
 
+_VALID_REQUEST_FLAGS = {"pet_related", "high_floor", "late_arrival", "chargeable"}
+
+
+def save_special_requests(
+    prop_id: int,
+    *,
+    special_requests: list[dict[str, Any]],
+    high_floor_from: int | None = None,
+    changed_by: str = "angular_api",
+) -> dict[str, Any] | None:
+    """Replace the hotel's special-requests catalog (labels/prices/flags).
+
+    The Amenities page tab sends the FULL configured list; this upserts it on
+    ``hotel_content_pages`` together with the ``high_floor_from`` threshold
+    used by the booking-time high-floor guard. Entries are validated and
+    deduplicated by normalized label.
+
+    Returns the updated content-page document (or None if the property
+    doesn't exist). Raises ``ValueError`` on invalid entries.
+    """
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        return None
+
+    clean: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for entry in special_requests:
+        if not isinstance(entry, dict):
+            continue
+        label = normalize_label(entry.get("label"))
+        if not label:
+            raise ValueError("Cada petición necesita un label.")
+        key = label.lower()
+        try:
+            price = round(float(entry.get("unit_price") or 0.0), 2)
+        except (ValueError, TypeError):
+            price = 0.0
+        if price < 0:
+            raise ValueError(f"El precio de '{label}' no puede ser negativo.")
+        flags = [str(f).strip().lower() for f in (entry.get("flags") or []) if str(f).strip()]
+        unknown = set(flags) - _VALID_REQUEST_FLAGS
+        if unknown:
+            raise ValueError(f"Flags inválidas para '{label}': {sorted(unknown)}")
+        if key in seen:
+            # La última entrada gana sobre la duplicada (mismo label normalizado).
+            for existing in clean:
+                if normalize_label(existing["label"]).lower() == key:
+                    existing["label"] = label
+                    existing["unit_price"] = price
+                    existing["flags"] = sorted(set(flags))
+                    break
+            continue
+        seen.add(key)
+        clean.append({"label": label, "unit_price": price, "flags": sorted(set(flags))})
+
+    try:
+        threshold = int(high_floor_from) if high_floor_from is not None else 3
+    except (ValueError, TypeError):
+        threshold = 3
+    if threshold < 1:
+        threshold = 1
+
+    db = get_database()
+    document = db.hotel_content_pages.find_one_and_update(
+        {"prop_id": prop_id},
+        {
+            "$set": {"special_requests": clean, "high_floor_from": threshold, "updated_at": now_utc()},
+            "$setOnInsert": {"created_at": now_utc()},
+        },
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+        projection={"_id": 0},
+    )
+    register_content_change(
+        prop_id, "hotel_content_pages", "upsert_special_requests",
+        {"count": len(clean), "high_floor_from": threshold},
+        changed_by=changed_by,
+    )
+    register_action(
+        prop_id=prop_id,
+        entity_type="special_request",
+        entity_id=f"special_requests_{prop_id}",
+        action="update",
+        summary=f"Catálogo de peticiones especiales actualizado: {len(clean)} peticiones",
+        changed_by=changed_by,
+        metadata={"count": len(clean), "high_floor_from": threshold},
+    )
+    return document
+
+
 def save_partner_hotel_amenities(
     prop_id: int,
     *,

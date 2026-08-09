@@ -86,7 +86,9 @@ from src.app.modules.billing.routes import router as billing_module_router
 from src.app.modules.billing.service import ensure_billing_collections
 from src.app.modules.expenses.routes import api_router as expenses_api_router
 from src.app.modules.expenses.routes import router as expenses_module_router
+from src.app.modules.expenses.vendor_ap_routes import api_router as vendor_ap_api_router
 from src.app.modules.expenses.service.collections import ensure_expenses_collections
+from src.app.modules.financial_reconciliation.domain_events import ensure_domain_event_collections
 from src.app.modules.financial_reconciliation.routes import (
     api_router as financial_reconciliation_api_router,
 )
@@ -243,6 +245,7 @@ def create_app() -> FastAPI:
     app.include_router(hr_module_router)
     app.include_router(expenses_api_router)
     app.include_router(expenses_module_router)
+    app.include_router(vendor_ap_api_router)
     app.include_router(financial_reconciliation_api_router)
     app.include_router(instay_guest_router)
     app.include_router(instay_staff_router)
@@ -267,6 +270,7 @@ async def lifespan(app: FastAPI):
     ensure_revenue_collections()
     ensure_reviews_collections()
     ensure_billing_collections()
+    ensure_domain_event_collections()
     ensure_housekeeping_collections()
     ensure_reservation_collections()
     ensure_reception_collections()

@@ -109,30 +109,12 @@
 }
 
 .form-footer {
-  text-align: right;
-}
-
-.btn-primary {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.6rem 1.35rem;
-  border: 0;
-  border-radius: $radius-md;
-  background: linear-gradient(135deg, $accent, var(--accent));
-  color: var(--on-accent);
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: box-shadow 180ms ease, opacity 180ms ease, transform 120ms ease;
-
-  &:hover:not(:disabled) { box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent); transform: translateY(-1px); }
-  &:active:not(:disabled) { transform: translateY(0); }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .material-symbols-outlined { font-size: 1.1rem; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
-  .spin { animation: spin 0.8s linear infinite; }
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+/* .form-status, .unsaved-dot y .btn-primary viven en los SCSS globales
+   (styles/_scss-form-status.scss y styles/_scss-forms.scss). */
 

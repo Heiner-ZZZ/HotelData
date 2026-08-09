@@ -59,7 +59,8 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
     })),
     coupons: (dto.coupon_codes || []).map((coupon) => ({
       code: coupon.coupon_code,
-      activeLabel: coupon.is_active ? 'Sí' : 'No'
+      activeLabel: coupon.is_active ? 'Sí' : 'No',
+      campaignId: coupon.campaign_id || ''
     }))
   };
 }

@@ -1,11 +1,13 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { getErrorStatus } from '../../../../shared/utils/http-error.util';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ExpensesApiService } from '../../services/expenses-api.service';
 import type { InvoiceProductLine } from '../../models/expenses.model';
 
@@ -17,7 +19,7 @@ import type { InvoiceProductLine } from '../../models/expenses.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-wrap page-wrap--narrow">
-      <app-page-header eyebrow="Gastos" title="Detalle de Factura" description="Información completa de la factura." />
+      <app-page-header eyebrow="Vendor AP · Gastos" title="Detalle de factura de proveedor" description="Documento de cuentas por pagar del hotel y su trazabilidad operativa." />
 
       <button class="back-btn" type="button" (click)="goBack()">
         <span class="material-symbols-outlined icon">arrow_back</span> Volver
@@ -65,6 +67,17 @@ import type { InvoiceProductLine } from '../../models/expenses.model';
                 </div>
               </div>
 
+              @if (i.status === 'paid' && i.payment_reference) {
+                <div class="meta-tile meta-tile--full">
+                  <h4 class="meta-tile__heading">Trazabilidad del pago</h4>
+                  <div class="meta-row">
+                    <div><span class="meta-row__label">Método:</span> <span class="meta-row__value">{{ i.payment_method || '—' }}</span></div>
+                    <div><span class="meta-row__label">Referencia:</span> <span class="meta-row__value">{{ i.payment_reference }}</span></div>
+                    <div><span class="meta-row__label">Asiento:</span> <span class="meta-row__value">{{ i.payment_journal_id || '—' }}</span></div>
+                  </div>
+                </div>
+              }
+
               <!-- Linked restocks (reverse view) -->
               @if (i.productLines?.length) {
                 <div class="meta-tile meta-tile--full">
@@ -109,12 +122,11 @@ import type { InvoiceProductLine } from '../../models/expenses.model';
                 <div class="meta-actions">
                   <button class="btn btn--lg btn--ghost-danger" type="button" (click)="updateStatus(i.id, 'rejected')">Rechazar</button>
                   <button class="btn btn--lg btn--success" type="button" (click)="updateStatus(i.id, 'approved')">Aprobar</button>
-                  <button class="btn btn--lg btn--primary" type="button" (click)="updateStatus(i.id, 'paid')">Marcar Pagada</button>
                 </div>
               }
               @if (i.status === 'approved') {
                 <div class="meta-actions">
-                  <button class="btn btn--lg btn--primary" type="button" (click)="updateStatus(i.id, 'paid')">Marcar Pagada</button>
+                  <button class="btn btn--lg btn--primary" type="button" (click)="payInvoice(i.id)">Registrar pago por transferencia</button>
                 </div>
               }
             </div>
@@ -128,6 +140,7 @@ export class InvoiceDetailPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ExpensesApiService);
+  private readonly propertyContext = inject(PropertyContextService);
 
   // ── Reactive route param — httpResource re-fires when this changes ──
   private readonly paramMap = toSignal(this.route.paramMap, {
@@ -137,10 +150,16 @@ export class InvoiceDetailPageComponent {
 
   readonly detailResource = httpResource<any>(() => {
     const id = this.invId();
-    return id ? `/api/expenses/invoices/${id}` : undefined;
+    const propId = this.propertyContext.currentPropId();
+    return id && propId > 0
+      ? `/api/hotels/${propId}/vendor-ap/invoices/${id}`
+      : undefined;
   });
 
   readonly inv = computed(() => {
+    // value() LANZA cuando el request falló — leer error() antes para degradar
+    // con gracia (404 → 'empty', otros → 'error') sin romper el template.
+    if (this.detailResource.error()) return null;
     const raw = this.detailResource.value();
     if (!raw) return null;
     return {
@@ -165,13 +184,13 @@ export class InvoiceDetailPageComponent {
   readonly productLines = computed<InvoiceProductLine[]>(() => this.inv()?.productLines ?? []);
 
   readonly viewState = computed<'loading' | 'success' | 'error' | 'empty'>(() => {
+    // error() ANTES de value(): value() lanza cuando el request falló.
+    const err = this.detailResource.error();
+    if (err) return getErrorStatus(err) === 404 ? 'empty' : 'error';
     const v = this.detailResource.value();
     // Anti-flicker: keep 'success' during silent reloads after mutations
     // (updateStatus() → detailResource.reload() triggers a brief isLoading).
     if (this.detailResource.isLoading() && !v) return 'loading';
-    const err = this.detailResource.error();
-    if (err instanceof HttpErrorResponse) return err.status === 404 ? 'empty' : 'error';
-    if (err) return 'error';
     return v ? 'success' : 'loading';
   });
 
@@ -204,7 +223,13 @@ export class InvoiceDetailPageComponent {
   updateStatus(id: string, status: string) {
     // Server-side update; httpResource reload picks up the new value and
     // re-renders the template via `inv()` (computed).
-    this.api.updateInvoice(id, { status }).subscribe({
+    this.api.updateInvoice(id, { status }, this.propertyContext.currentPropId()).subscribe({
+      next: () => { this.detailResource.reload(); },
+    });
+  }
+
+  payInvoice(id: string): void {
+    this.api.payInvoice(id, this.propertyContext.currentPropId()).subscribe({
       next: () => { this.detailResource.reload(); },
     });
   }

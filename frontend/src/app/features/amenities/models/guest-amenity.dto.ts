@@ -19,6 +19,15 @@ export interface GuestAmenityCategoryDto {
   items: GuestAmenityItemDto[];
 }
 
+export interface GuestSpecialRequestDto {
+  label: string;
+  unit_price: number;
+  chargeable: boolean;
+  pet_related: boolean;
+  high_floor: boolean;
+  late_arrival: boolean;
+}
+
 export interface GuestAmenityCatalogDto {
   booking: GuestAmenityBookingDto;
   catalog: GuestAmenityCategoryDto[];

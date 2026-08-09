@@ -37,6 +37,18 @@ function toAssignedRoomView(r: AssignedRoomSnapshotDto | string): AssignedRoomVi
   };
 }
 
+function mapFulfillmentItem(f: { label: string; status: string; fulfilled_at?: string | null }): {
+  label: string;
+  status: 'pending' | 'fulfilled';
+  fulfilledAt?: string | null;
+} {
+  return {
+    label: f.label,
+    status: f.status === 'fulfilled' ? ('fulfilled' as const) : ('pending' as const),
+    fulfilledAt: f.fulfilled_at ?? null,
+  };
+}
+
 function mapReservationListItem(item: ReservationListItemDto): ReservationListItem {
   const assigned: AssignedRoomView[] = (item.assigned_rooms ?? []).map(toAssignedRoomView);
   return {
@@ -97,6 +109,7 @@ export function mapReservationCreatePayload(input: ReservationCreateInput) {
     check_out_date: input.checkOutDate,
     check_in_time: input.checkInTime || '',
     check_out_time: input.checkOutTime || '',
+    estimated_arrival_time: input.estimatedArrivalTime || '',
     adults: input.adults,
     children: input.children,
     rooms: input.rooms,
@@ -233,6 +246,8 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     stay_status?: string | null;
     coupon_code?: string;
     special_requests?: string[] | string;
+    estimated_arrival_time?: string;
+    late_checkin?: boolean;
     discount_percent?: number | null;
     original_total_price?: number | null;
     transaction_id?: string;
@@ -283,6 +298,15 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     discountPercent: booking.discount_percent,
     originalTotalPrice: booking.original_total_price,
     specialRequests,
+    selectedAmenities: Array.isArray(booking.selected_amenities) ? booking.selected_amenities : [],
+    estimatedArrivalTime: booking.estimated_arrival_time ?? '',
+    lateCheckin: Boolean(booking.late_checkin),
+    specialRequestFulfillment: Array.isArray(dto.special_request_fulfillment)
+      ? dto.special_request_fulfillment.map(mapFulfillmentItem)
+      : undefined,
+    amenityFulfillment: Array.isArray(dto.amenity_fulfillment)
+      ? dto.amenity_fulfillment.map(mapFulfillmentItem)
+      : undefined,
     isManual: Boolean(dto.manual),
     manualReservationId: dto.manual?.manual_reservation_id ?? null,
     canCancel: wire.can_cancel ?? false,

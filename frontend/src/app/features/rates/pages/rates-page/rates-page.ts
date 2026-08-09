@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, viewChild, type ElementRef } from '@angular/core';
 import type { PromoEditState } from '../../components/promotion-form/promotion-form';
 import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -15,9 +15,10 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
-import type { RatePlanOption, RatesViewModel } from '../../models/rates.model';
+import { ToastService } from '../../../../shared/services/toast.service';
+import type { RatePlanItem, RatePlanOption, RatesViewModel } from '../../models/rates.model';
 import type { RatesDto } from '../../models/rates.dto';
-import { RatesApiService } from '../../services/rates-api.service';
+import { RatesApiService, type PromotionsListResponse } from '../../services/rates-api.service';
 import { mapRatesResponse } from '../../mappers/rates.mapper';
 import { KpiApiService, type RateTrendResponse } from '../../../../shared/services/kpi-api.service';
 import { RatePlanTableComponent } from '../../components/rate-plan-table/rate-plan-table';
@@ -30,6 +31,7 @@ import { PromotionsTableComponent, type CampaignRow, type CouponRow } from '../.
 import { SeasonalRulesTableComponent, type SeasonalRuleRow } from '../../components/seasonal-rules-table/seasonal-rules-table';
 
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
+import { ModeHighlightDirective } from '../../../../core/directives/mode-highlight.directive';
 
 /** Return the Monday of the week containing the given date. */
 function _mondayOfWeek(date: Date): Date {
@@ -39,6 +41,30 @@ function _mondayOfWeek(date: Date): Date {
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+/**
+ * Agrupa los cupones planos del overview por campaña. Un cupón es huérfano si
+ * su campaign_id no está entre las campañas conocidas o viene vacío — así una
+ * asociación rota en Mongo se vuelve visible en la UI en vez de parecer normal.
+ */
+export function splitCouponsByCampaign(
+  campaignIds: string[],
+  coupons: CouponRow[],
+): { byCampaign: Map<string, CouponRow[]>; orphans: CouponRow[] } {
+  const byCampaign = new Map<string, CouponRow[]>();
+  const orphans: CouponRow[] = [];
+  const known = new Set(campaignIds);
+  for (const coupon of coupons) {
+    if (coupon.campaignId && known.has(coupon.campaignId)) {
+      const list = byCampaign.get(coupon.campaignId) ?? [];
+      list.push(coupon);
+      byCampaign.set(coupon.campaignId, list);
+    } else {
+      orphans.push(coupon);
+    }
+  }
+  return { byCampaign, orphans };
 }
 
 @Component({
@@ -59,6 +85,7 @@ function _mondayOfWeek(date: Date): Date {
     RatePlanTableComponent,
     RateCalendarTableComponent,
     AiSuggestDirective,
+    ModeHighlightDirective,
   ],
   templateUrl: './rates-page.html',
   styleUrl: './rates-page.scss',
@@ -71,7 +98,19 @@ export class RatesPageComponent {
   private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   readonly propertyCtx = inject(PropertyContextService);
+  private readonly toast = inject(ToastService);
   private readonly opMode = inject(OperationModeService);
+
+  /**
+   * Señales del modo CRUD (leídas del servicio global del nav) para el template:
+   * la caja del form de promoción se tiñe con el mismo color del mode-indicator
+   * (insert=ámbar, update=naranja) para ubicar al usuario cuando está en la tabla.
+   */
+  readonly opModeInfo = this.opMode.info;
+  readonly opModeMode = this.opMode.mode;
+
+  /** Caja del form de promoción — para hacer scroll hasta ella al editar. */
+  readonly promoFormPanel = viewChild<ElementRef<HTMLElement>>('promoFormPanel');
 
   // ── KPI: 7-day rate trend ──
   readonly rateTrend = signal<RateTrendResponse | null>(null);
@@ -120,8 +159,6 @@ export class RatesPageComponent {
   /** Toggle to show/hide past dates in the overview calendar */
   readonly showPastDates = signal(false);
 
-  readonly message = signal('');
-  readonly errorMessage = signal('');
 
   /** Current property ID — derived from URL (source of truth). */
   readonly selectedPropId = computed(() => this.routePropId());
@@ -135,7 +172,7 @@ export class RatesPageComponent {
   readonly editingSeason = signal<{ ruleId: string; ratePlanId: string; name: string; startDate: string; endDate: string; priceOverride: number } | null>(null);
   readonly deleteConfirm = signal<string | null>(null);
   readonly promoDeleteConfirm = signal<string | null>(null);
-  readonly promotionsData = signal<{ campaigns: any[]; total: number } | null>(null);
+  readonly promotionsData = signal<PromotionsListResponse | null>(null);
   readonly editingPromo = signal<PromoEditState | null>(null);
 
   /* ── Form signals (replacing FormBuilder) ── */
@@ -208,28 +245,32 @@ export class RatesPageComponent {
    * confirms de borrado abiertos. Un effect lo escribe al nav (applyMode).
    */
   private readonly _opMode = computed<{ mode: OperationMode; detail: string }>(() => {
-    // Confirms de borrado: el modal gestiona su propio modo mientras está abierto.
-    if (this.deleteConfirm()) {
+    // Cada estado de edición/borrado pertenece a UNA sección: no debe filtrarse
+    // al nav cuando el usuario navega a otra (editar en promos no deja el nav
+    // en EDITANDO al pasar a plans). El effect de cambio de sección además
+    // cancela la edición al salir, así que aquí solo aplica en su sección.
+    const section = this.activeSection();
+    if (section === 'plans' && this.deleteConfirm()) {
       const plan = this.ratesResource.value()?.ratePlans.find((p) => p.id === this.deleteConfirm());
       return { mode: 'delete', detail: plan?.name || 'Plan tarifario' };
     }
-    if (this.promoDeleteConfirm()) {
+    if (section === 'promos' && this.promoDeleteConfirm()) {
       return { mode: 'delete', detail: 'Promoción' };
     }
     // Ediciones en curso tienen prioridad sobre el default de la sección.
-    if (this.editingPlan()) {
+    if (section === 'plans' && this.editingPlan()) {
       return { mode: 'update', detail: this.editingPlan()!.name };
     }
-    if (this.editingSeason()) {
+    if (section === 'seasons' && this.editingSeason()) {
       return { mode: 'update', detail: this.editingSeason()!.name };
     }
-    if (this.editingPromo()) {
+    if (section === 'promos' && this.editingPromo()) {
       return { mode: 'update', detail: this.editingPromo()!.name };
     }
     if (!this.selectedPropId()) {
       return { mode: 'read', detail: '' };
     }
-    switch (this.activeSection()) {
+    switch (section) {
       case 'rate-entry':
         // Form de entrada individual siempre visible en esta sección.
         return { mode: 'insert', detail: 'Entrada de tarifa' };
@@ -351,11 +392,11 @@ readonly sidebarSections: SidebarSection[] = [
         .filter((c) => roomTypePlanIds.get(rt.id)?.has(c.ratePlanId) && dateFilter(c.date))
         .map((c) => {
           const amount = c.rateAmount;
-          let tier: 'low' | 'medium' | 'high' | 'premium' = 'medium';
-          if (amount < 80) tier = 'low';
-          else if (amount < 150) tier = 'medium';
-          else if (amount < 250) tier = 'high';
-          else tier = 'premium';
+          const tier: 'low' | 'medium' | 'high' | 'premium' =
+            amount < 80 ? 'low'
+            : amount < 150 ? 'medium'
+            : amount < 250 ? 'high'
+            : 'premium';
           return {
             date: c.date,
             rateAmount: c.rateAmount,
@@ -431,9 +472,11 @@ readonly sidebarSections: SidebarSection[] = [
   });
 
   readonly campaignRows = computed((): CampaignRow[] => {
+    const flatCoupons = this.ratesResource.value()?.coupons ?? [];
     const data = this.promotionsData();
     if (data) {
-      return data.campaigns.map((p: any) => ({
+      const { byCampaign } = splitCouponsByCampaign(data.campaigns.map((p) => p.campaign_id), flatCoupons);
+      return data.campaigns.map((p) => ({
         campaignId: p.campaign_id,
         name: p.name,
         description: p.description || '',
@@ -444,9 +487,13 @@ readonly sidebarSections: SidebarSection[] = [
         couponTotal: p.coupon_total ?? 0,
         couponUsed: p.coupon_used ?? 0,
         couponAvailable: p.coupon_available ?? 0,
+        couponDeleted: p.coupon_deleted ?? 0,
+        coupons: byCampaign.get(p.campaign_id) ?? [],
       }));
     }
-    return (this.ratesResource.value()?.promotions ?? []).map((p) => ({
+    const fallback = this.ratesResource.value()?.promotions ?? [];
+    const { byCampaign } = splitCouponsByCampaign(fallback.map((p) => p.campaignId), flatCoupons);
+    return fallback.map((p) => ({
       campaignId: p.campaignId,
       name: p.name,
       description: p.description,
@@ -457,14 +504,19 @@ readonly sidebarSections: SidebarSection[] = [
       couponTotal: 0,
       couponUsed: 0,
       couponAvailable: 0,
+      couponDeleted: 0,
+      coupons: byCampaign.get(p.campaignId) ?? [],
     }));
   });
 
+  /** Cupones cuyo campaign_id no coincide con ninguna campaña (asociación rota). */
   readonly couponRows = computed((): CouponRow[] => {
-    return (this.ratesResource.value()?.coupons ?? []).map((c) => ({
-      code: c.code,
-      activeLabel: c.activeLabel,
-    }));
+    const flatCoupons = this.ratesResource.value()?.coupons ?? [];
+    const data = this.promotionsData();
+    const campaignIds = data
+      ? data.campaigns.map((p) => p.campaign_id)
+      : (this.ratesResource.value()?.promotions ?? []).map((p) => p.campaignId);
+    return splitCouponsByCampaign(campaignIds, flatCoupons).orphans;
   });
 
 
@@ -496,6 +548,13 @@ readonly sidebarSections: SidebarSection[] = [
         next: (catalog) => this.amenityCatalog.set(catalog),
         error: () => this.amenityCatalog.set([]),
       });
+
+      // Promociones con conteos de cupones al abrir o cambiar de propiedad:
+      // antes solo se cargaban tras una mutación → la tabla mostraba 0/0.
+      this.api.listPropertyPromotions(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (promotions) => this.promotionsData.set(promotions),
+        error: () => this.promotionsData.set(null),
+      });
     });
 
     // ── Sync httpResource → viewState + property context ──
@@ -504,8 +563,6 @@ readonly sidebarSections: SidebarSection[] = [
 
       if (!propId) {
         this.viewState.set('empty');
-        this.message.set('');
-        this.errorMessage.set('');
         this.editingPlan.set(null);
         this.editingPromo.set(null);
         this.deleteConfirm.set(null);
@@ -520,21 +577,33 @@ readonly sidebarSections: SidebarSection[] = [
 
       if (this.ratesResource.error()) {
         this.viewState.set('error');
-        this.errorMessage.set('No se pudo cargar la información.');
+        this.toast.error('No se pudo cargar la información.');
         return;
       }
 
       const data = this.ratesResource.value();
       if (data) {
         this.viewState.set('success');
-        this.errorMessage.set('');
         this.propertyCtx.setProperty(data.propId, data.hotelLabel);
-      }      }, { allowSignalWrites: true });
+      }      });
+
+    // Al cambiar de sección, la edición en curso de la sección anterior se
+    // cancela (mismo efecto que pulsar su botón Cancelar): las tres interfaces
+    // son independientes y el nav nunca hereda EDITANDO de otra sección.
+    effect(() => {
+      const section = this.activeSection();
+      const editingPlan = this.editingPlan();
+      const editingSeason = this.editingSeason();
+      const editingPromo = this.editingPromo();
+      if (section !== 'plans' && editingPlan) this.cancelEditPlan();
+      if (section !== 'seasons' && editingSeason) this.cancelEditSeason();
+      if (section !== 'promos' && editingPromo) this.editingPromo.set(null);
+    });
 
     // Modo CRUD reactivo en el nav según sección/edición/borrado.
     effect(() => {
       this.applyMode();
-    }, { allowSignalWrites: true });
+    });
 
     // Auto-carga en modo single-hotel: si no hay prop_id en URL pero el contexto
     // está ready, navegar con el propId del contexto
@@ -626,15 +695,15 @@ readonly sidebarSections: SidebarSection[] = [
     ).subscribe({
       next: () => {
         this.ratesResource.reload();
-        this.message.set('Plan tarifario registrado'); this.errorMessage.set('');
+        this.toast.success('Plan tarifario registrado');
         this.editingPlan.set(null);
         this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set(this.propertyCtx.currentCurrency()); this.planApplicableRoomTypes.set([]); this.planIsActive.set(true); this.planIncludedAmenities.set([]);
       },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'No fue posible registrar el plan tarifario.'); this.message.set(''); },
+      error: (error: ApiError) => { this.toast.error(error.message || 'No fue posible registrar el plan tarifario.'); },
     });
   }
 
-  onEditPlan(plan: any): void {
+  onEditPlan(plan: RatePlanItem): void {
     this.editingPlan.set({
       id: plan.id, name: plan.name, description: plan.description, baseRate: plan.baseRate,
       currency: plan.currency, applicableRoomTypes: plan.applicableRoomTypes ?? [], isActive: plan.activeLabel === 'Sí',
@@ -672,8 +741,8 @@ readonly sidebarSections: SidebarSection[] = [
     this.api.deleteRatePlan(planId).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: () => { this.ratesResource.reload(); this.message.set('Plan tarifario eliminado'); this.errorMessage.set(''); },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al eliminar plan.'); this.message.set(''); },
+      next: () => { this.ratesResource.reload(); this.toast.success('Plan tarifario eliminado'); },
+      error: (error: ApiError) => { this.toast.error(error.message || 'Error al eliminar plan.'); },
     });
   }
 
@@ -687,8 +756,8 @@ readonly sidebarSections: SidebarSection[] = [
     }).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: () => { this.ratesResource.reload(); this.message.set('Tarifa actualizada'); this.errorMessage.set(''); this.calendarRatePlanId.set(''); this.calendarDate.set(''); this.calendarRateAmount.set(0); this.calendarMinStayNights.set(1); this.calendarIsClosed.set(false); },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'No fue posible actualizar la tarifa.'); this.message.set(''); },
+      next: () => { this.ratesResource.reload(); this.toast.success('Tarifa actualizada'); this.calendarRatePlanId.set(''); this.calendarDate.set(''); this.calendarRateAmount.set(0); this.calendarMinStayNights.set(1); this.calendarIsClosed.set(false); },
+      error: (error: ApiError) => { this.toast.error(error.message || 'No fue posible actualizar la tarifa.'); },
     });
   }
 
@@ -697,7 +766,7 @@ readonly sidebarSections: SidebarSection[] = [
     const current = this.ratesResource.value();
     if (!current || !this.batchRatePlanId() || !this.batchStartDate() || !this.batchEndDate() || this.batchRateAmount() <= 0) { return; }
     if (this.batchStartDate() > this.batchEndDate()) {
-      this.errorMessage.set('La fecha de inicio no puede ser mayor a la fecha de fin.');
+      this.toast.error('La fecha de inicio no puede ser mayor a la fecha de fin.');
       return;
     }
     this.api.batchUpdateCalendar({
@@ -706,8 +775,8 @@ readonly sidebarSections: SidebarSection[] = [
     }).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: () => { this.ratesResource.reload(); this.message.set('Calendario actualizado por lote'); this.errorMessage.set(''); this.batchRatePlanId.set(''); this.batchStartDate.set(''); this.batchEndDate.set(''); this.batchRateAmount.set(0); this.batchMinStayNights.set(1); this.batchOnlyWeekends.set(false); },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al actualizar calendario por lote.'); this.message.set(''); },
+      next: () => { this.ratesResource.reload(); this.toast.success('Calendario actualizado por lote'); this.batchRatePlanId.set(''); this.batchStartDate.set(''); this.batchEndDate.set(''); this.batchRateAmount.set(0); this.batchMinStayNights.set(1); this.batchOnlyWeekends.set(false); },
+      error: (error: ApiError) => { this.toast.error(error.message || 'Error al actualizar calendario por lote.'); },
     });
   }
 
@@ -716,7 +785,7 @@ readonly sidebarSections: SidebarSection[] = [
     const current = this.ratesResource.value();
     if (!current) return;
     if (this.generateStartDate() && this.generateEndDate() && this.generateStartDate() > this.generateEndDate()) {
-      this.errorMessage.set('La fecha de inicio no puede ser mayor a la fecha de fin.');
+      this.toast.error('La fecha de inicio no puede ser mayor a la fecha de fin.');
       return;
     }
     this.api.generateCalendar({
@@ -727,11 +796,10 @@ readonly sidebarSections: SidebarSection[] = [
     ).subscribe({
       next: (result) => {
         this.ratesResource.reload();
-        this.message.set(`Calendario generado: ${result.entries_generated} entradas`);
-        this.errorMessage.set('');
+        this.toast.success(`Calendario generado: ${result.entries_generated} entradas`);
         this.generateRatePlanId.set(''); this.generateStartDate.set(''); this.generateEndDate.set('');
       },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al generar calendario.'); this.message.set(''); },
+      error: (error: ApiError) => { this.toast.error(error.message || 'Error al generar calendario.'); },
     });
   }
 
@@ -766,15 +834,15 @@ readonly sidebarSections: SidebarSection[] = [
     const current = this.ratesResource.value();
     this.seasonalPriceTouched.set(true);
     if (!current || !this.seasonalRatePlanId() || !this.seasonalName() || !this.seasonalStartDate() || !this.seasonalEndDate()) {
-      this.errorMessage.set('Completa todos los campos requeridos.');
+      this.toast.error('Completa todos los campos requeridos.');
       return;
     }
     if (this.seasonalPriceOverride() <= 0) {
-      this.errorMessage.set('El precio override debe ser mayor a 0.');
+      this.toast.error('El precio override debe ser mayor a 0.');
       return;
     }
     if (this.seasonalStartDate() > this.seasonalEndDate()) {
-      this.errorMessage.set('La fecha de inicio no puede ser mayor a la fecha de fin.');
+      this.toast.error('La fecha de inicio no puede ser mayor a la fecha de fin.');
       return;
     }
 
@@ -802,11 +870,10 @@ readonly sidebarSections: SidebarSection[] = [
     ).subscribe({
       next: () => {
         this.ratesResource.reload();
-        this.message.set(edit ? 'Regla de temporada actualizada' : 'Regla de temporada creada');
-        this.errorMessage.set('');
+        this.toast.success(edit ? 'Regla de temporada actualizada' : 'Regla de temporada creada');
         this.cancelEditSeason();
       },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al guardar regla de temporada.'); this.message.set(''); },
+      error: (error: ApiError) => { this.toast.error(error.message || 'Error al guardar regla de temporada.'); },
     });
   }
 
@@ -818,18 +885,27 @@ readonly sidebarSections: SidebarSection[] = [
     this.api.deleteSeasonalRule(ruleId).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: () => { this.ratesResource.reload(); this.message.set('Regla de temporada eliminada'); this.applyMode(); },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al eliminar regla de temporada.'); this.applyMode(); },
+      next: () => { this.ratesResource.reload(); this.toast.success('Regla de temporada eliminada'); this.applyMode(); },
+      error: (error: ApiError) => { this.toast.error(error.message || 'Error al eliminar regla de temporada.'); this.applyMode(); },
     });
   }
 
   /* ── Promotions ── */
+  /** Mensajes del form de promoción → toast global (no existe toast local). */
+  onPromoMessage(message: string): void {
+    this.toast.success(message);
+  }
+
+  onPromoError(message: string): void {
+    this.toast.error(message);
+  }
+
   refreshAfterPromo(): void {
     const current = this.ratesResource.value(); if (!current) return;
     this.ratesResource.reload();
     this.api.listPropertyPromotions(current.propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (promotions) => { this.promotionsData.set(promotions); },
-      error: () => { this.errorMessage.set('Error al recargar promociones.'); },
+      error: () => { this.toast.error('Error al recargar promociones.'); },
     });
   }
 
@@ -841,11 +917,11 @@ readonly sidebarSections: SidebarSection[] = [
       next: () => {
         this.ratesResource.reload();
         this.api.listPropertyPromotions(current.propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-          next: (promotions) => { this.promotionsData.set(promotions); this.message.set('Estado de promoción actualizado'); this.errorMessage.set(''); },
-          error: () => { this.errorMessage.set('Error al recargar promociones.'); },
+          next: (promotions) => { this.promotionsData.set(promotions); this.toast.success('Estado de promoción actualizado'); },
+          error: () => { this.toast.error('Error al recargar promociones.'); },
         });
       },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al cambiar estado.'); this.message.set(''); },
+      error: (error: ApiError) => { this.toast.error(error.message || 'Error al cambiar estado.'); },
     });
   }
 
@@ -868,21 +944,22 @@ readonly sidebarSections: SidebarSection[] = [
       next: () => {
         this.ratesResource.reload();
         this.api.listPropertyPromotions(current.propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-          next: (promotions) => { this.promotionsData.set(promotions); this.message.set('Promoción desactivada'); this.errorMessage.set(''); },
-          error: () => { this.errorMessage.set('Error al recargar promociones.'); },
+          next: (promotions) => { this.promotionsData.set(promotions); this.toast.success('Promoción desactivada'); },
+          error: () => { this.toast.error('Error al recargar promociones.'); },
         });
       },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al desactivar promoción.'); this.message.set(''); },
+      error: (error: ApiError) => { this.toast.error(error.message || 'Error al desactivar promoción.'); },
     });
   }
 
-  onEditPromo(promo: any): void {
+  onEditPromo(promo: CampaignRow): void {
     this.editingPromo.set({
       campaignId: promo.campaignId,
       name: promo.name,
       description: promo.description || '',
       discountPercent: promo.discountPercent,
       couponCount: promo.couponTotal ?? 0,
+      couponUsed: promo.couponUsed ?? 0,
       startDate: promo.startDate || '',
       endDate: promo.endDate || '',
       isActive: promo.isActive,
@@ -892,5 +969,8 @@ readonly sidebarSections: SidebarSection[] = [
       queryParamsHandling: 'merge',
       queryParams: { section: 'promos' },
     });
+    // Lleva la vista a la caja del form: la tabla de promociones puede ser muy
+    // larga y el usuario debe ver el modo de edición activo sin buscarlo.
+    this.promoFormPanel()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }

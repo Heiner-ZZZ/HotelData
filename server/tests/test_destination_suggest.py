@@ -29,6 +29,36 @@ def _seed_destinations(db) -> None:
         )
 
 
+def _seed_places(db) -> None:
+    """Seed a hotel and a country so the suggest endpoint returns typed items."""
+    _seed_destinations(db)
+    db.dim_hotels.update_one(
+        {"prop_id": 777001},
+        {"$set": {
+            "prop_id": 777001,
+            "display_name": "Hotel Lima Centro",
+            "hotel_name": "Hotel Lima Centro",
+            "city": "Lima",
+            "prop_country_id": 169,
+        }},
+        upsert=True,
+    )
+    db.dim_visitor_countries.update_one(
+        {"visitor_location_country_id": 42},
+        {"$set": {
+            "visitor_location_country_id": 42,
+            "country_name": "Testlandia",
+            "country_display_name": "Testlandia",
+        }},
+        upsert=True,
+    )
+    db.geo_catalog.update_one(
+        {"type": "country", "code": "TT"},
+        {"$set": {"type": "country", "code": "TT", "name": "Terranova"}},
+        upsert=True,
+    )
+
+
 async def test_suggest_returns_matching_destinations(db, client):
     """GET /api/hotels/destinations/suggest?q=Mad returns Madrid matches."""
     _seed_destinations(db)
@@ -85,3 +115,233 @@ async def test_suggest_requires_no_auth(db, client):
     _seed_destinations(db)
     response = await client.get("/api/hotels/destinations/suggest", params={"q": "Mad"})
     assert response.status_code == 200
+
+
+# ── País / hotel / ciudad (filtro ampliado del welcome) ──────────────────
+
+
+async def test_suggest_returns_hotel_matches_typed(db, client):
+    """A query matching a hotel name returns a suggestion with type 'hotel'."""
+    _seed_places(db)
+    response = await client.get(
+        "/api/hotels/destinations/suggest", params={"q": "Hotel Lima"}
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert any(it["type"] == "hotel" and "Hotel Lima Centro" in it["name"] for it in items)
+
+
+async def test_suggest_returns_country_matches_typed(db, client):
+    """A query matching a country name returns a suggestion with type 'country'."""
+    _seed_places(db)
+    response = await client.get(
+        "/api/hotels/destinations/suggest", params={"q": "Testlandia"}
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert any(it["type"] == "country" and it["name"] == "Testlandia" for it in items)
+
+
+async def test_suggest_returns_geo_country_matches_typed(db, client):
+    """Geo-catalog country names are also suggested (type 'country')."""
+    _seed_places(db)
+    response = await client.get(
+        "/api/hotels/destinations/suggest", params={"q": "Terranova"}
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert any(it["type"] == "country" and it["name"] == "Terranova" for it in items)
+
+
+async def test_suggest_city_still_typed_city(db, client):
+    """Destination-name matches keep type 'city' (backward compatible)."""
+    _seed_places(db)
+    response = await client.get(
+        "/api/hotels/destinations/suggest", params={"q": "Madrid"}
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert all(it["type"] == "city" for it in items)
+    assert any(it["name"] == "Madrid" for it in items)
+
+
+def _seed_search_hotels(db) -> None:
+    """Seed three hotels + facts: uno por país, uno por nombre, uno por ciudad."""
+    _seed_places(db)
+    db.dim_hotels.update_one(
+        {"prop_id": 777002},
+        {"$set": {
+            "prop_id": 777002,
+            "display_name": "Hotel Testlandia Plaza",
+            "hotel_name": "Hotel Testlandia Plaza",
+            "city": "Capital",
+            "prop_country_id": 42,
+        }},
+        upsert=True,
+    )
+    db.dim_hotels.update_one(
+        {"prop_id": 777003},
+        {"$set": {
+            "prop_id": 777003,
+            "display_name": "Hotel Quito Real",
+            "hotel_name": "Hotel Quito Real",
+            "city": "Quito",
+        }},
+        upsert=True,
+    )
+    # Solo el hotel de CIUDAD (777003) queda ligado al destino Quito (id 3)
+    # vía fact: la búsqueda por ciudad resuelve por srch_destination_id en
+    # fact, mientras que por nombre de hotel y por país resuelve por prop_id
+    # directo en dim_hotels (sin depender del fact).
+    db.fact_hotel_reservations.insert_one({
+        "prop_id": 777003,
+        "srch_destination_id": 3,
+        "price_usd": 70.0,
+        "click_bool": 1,
+        "reserva_bool": 1,
+        "promotion_flag": 0,
+    })
+
+
+async def test_search_filters_by_country(db, client):
+    """destination=<país> devuelve SOLO hoteles de ese país."""
+    _seed_search_hotels(db)
+    response = await client.get(
+        "/api/hotels/availability", params={"destination": "Testlandia", "page_size": 10}
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    ids = [item["prop_id"] for item in payload["items"]]
+    assert 777002 in ids
+    assert 777001 not in ids  # Perú (169), no Testlandia (42)
+    assert 777003 not in ids  # sin país → no Testlandia
+
+
+async def test_search_filters_by_hotel_name(db, client):
+    """destination=<nombre de hotel> devuelve SOLO ese hotel."""
+    _seed_search_hotels(db)
+    response = await client.get(
+        "/api/hotels/availability",
+        params={"destination": "Hotel Lima Centro", "page_size": 10},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    ids = [item["prop_id"] for item in payload["items"]]
+    assert 777001 in ids
+    assert 777002 not in ids
+    assert 777003 not in ids
+
+
+async def test_search_still_filters_by_city(db, client):
+    """City-name destination still filters (regression guard)."""
+    _seed_search_hotels(db)
+    response = await client.get(
+        "/api/hotels/availability", params={"destination": "Quito", "page_size": 10}
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    ids = [item["prop_id"] for item in payload["items"]]
+    assert 777003 in ids
+    assert 777002 not in ids  # Quito es ciudad; Testlandia Plaza no está en Quito
+
+
+async def test_search_country_via_geo_code(db, client):
+    """destination=<país geo> matchea por geo_country_code."""
+    _seed_search_hotels(db)
+    db.dim_hotels.update_one(
+        {"prop_id": 777004},
+        {"$set": {
+            "prop_id": 777004,
+            "display_name": "Hotel Terranova Inn",
+            "hotel_name": "Hotel Terranova Inn",
+            "geo_country_code": "TT",
+        }},
+        upsert=True,
+    )
+    db.fact_hotel_reservations.insert_one({
+        "prop_id": 777004,
+        "srch_destination_id": 3,
+        "price_usd": 60.0,
+        "click_bool": 1,
+        "reserva_bool": 1,
+        "promotion_flag": 0,
+    })
+    response = await client.get(
+        "/api/hotels/availability", params={"destination": "Terranova", "page_size": 10}
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    ids = [item["prop_id"] for item in payload["items"]]
+    assert 777004 in ids
+    assert 777001 not in ids
+
+
+async def test_suggest_dedups_country_by_name(db, client):
+    """El mismo país en dim_visitor_countries y geo_catalog aparece UNA vez."""
+    _seed_places(db)
+    # Testlandia ya está en dim_visitor_countries (id 42); agrégala a geo para
+    # reproducir el duplicado real (Bolivia legacy + geo BO).
+    db.geo_catalog.update_one(
+        {"type": "country", "code": "TL"},
+        {"$set": {"type": "country", "code": "TL", "name": "Testlandia"}},
+        upsert=True,
+    )
+    response = await client.get(
+        "/api/hotels/destinations/suggest", params={"q": "Testlandia", "limit": 5}
+    )
+    assert response.status_code == 200
+    countries = [it for it in response.json()["items"] if it["type"] == "country"]
+    assert len(countries) == 1
+    assert countries[0]["name"] == "Testlandia"
+
+
+async def test_suggest_never_starves_hotels_and_countries(db, client):
+    """Un prefijo con MUCHAS ciudades no oculta hoteles ni países (fair mix)."""
+    _seed_places(db)
+    # 12 ciudades que matchean "Ciud" (llenarían el limit de 8 solo de cities)
+    for i in range(1, 13):
+        db.dim_destinations.update_one(
+            {"srch_destination_id": 1000 + i},
+            {"$set": {"srch_destination_id": 1000 + i, "destination_name": f"Ciudad Delta {i}"}},
+            upsert=True,
+        )
+    db.dim_hotels.update_one(
+        {"prop_id": 777010},
+        {"$set": {
+            "prop_id": 777010,
+            "display_name": "Hotel Ciudadela Real",
+            "hotel_name": "Hotel Ciudadela Real",
+            "city": "Ciudadela",
+        }},
+        upsert=True,
+    )
+    response = await client.get(
+        "/api/hotels/destinations/suggest", params={"q": "Ciud", "limit": 8}
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    types = {it["type"] for it in items}
+    assert "hotel" in types, "las ciudades no deben acaparar todas las sugerencias"
+
+
+async def test_suggest_survives_regex_metacharacters(db, client):
+    """Un query con metacaracteres regex no rompe el endpoint (sin 500)."""
+    _seed_places(db)
+    for bad in ["(", "[", "*", "a.", "\\"]:
+        response = await client.get(
+            "/api/hotels/destinations/suggest", params={"q": bad, "limit": 3}
+        )
+        assert response.status_code == 200, f"q={bad!r} devolvió {response.status_code}"
+        assert isinstance(response.json()["items"], list)
+
+
+async def test_search_unmatched_destination_returns_empty(db, client):
+    """Un destino que no matchea nada NO devuelve todos los hoteles (vacío)."""
+    _seed_search_hotels(db)
+    response = await client.get(
+        "/api/hotels/availability", params={"destination": "Zzznohaytalugar", "page_size": 10}
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 0
+    assert payload["items"] == []

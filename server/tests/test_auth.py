@@ -38,6 +38,30 @@ async def test_login_api_accepts_email_as_identifier(client, cliente_user):
     assert response.json()["user"]["email"] == cliente_user["email"]
 
 
+async def test_login_api_accepts_explicit_login_alias(client, db):
+    from tests.conftest import _seed_user
+
+    user = _seed_user(
+        db,
+        username="alias_login_user",
+        email="alias-login@example.com",
+        password="Secret123!",
+        role="cliente",
+    )
+    db.users.update_one(
+        {"username": user["username"]},
+        {"$set": {"login_aliases": ["Visible Login Name"]}},
+    )
+
+    response = await client.post(
+        "/api/auth/login",
+        json={"identifier": "Visible Login Name", "password": "Secret123!"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["user"]["username"] == "alias_login_user"
+
+
 async def test_login_api_wrong_password_returns_401(client, cliente_user):
     response = await client.post(
         "/api/auth/login",

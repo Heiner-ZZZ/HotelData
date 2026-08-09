@@ -61,6 +61,7 @@ def insert_inventory_layer(
     source: str = "restock",
     supplier_name: str = "",
     invoice_ref: str = "",
+    inventory_event_id: str = "",
     acquired_at: datetime | None = None,
     created_by: str = "system",
 ) -> dict[str, Any]:
@@ -81,6 +82,7 @@ def insert_inventory_layer(
         "source": source,
         "supplier_name": supplier_name or "",
         "invoice_ref": invoice_ref or "",
+        "inventory_event_id": inventory_event_id or invoice_ref or "",
         "consumed_at": None,
         "created_by": created_by,
         "is_active": True,

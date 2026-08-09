@@ -730,6 +730,7 @@ export class StaffInboxPageComponent {
       event.amount,
       event.method ?? 'cash',
       event.notes,
+      this.selectedPropId(),
     ).subscribe({
       next: () => {
         this.toast.success(`Pago de ${formatCurrency(event.amount, 'en-US', '$', 'USD', '1.0-2')} registrado`);
@@ -751,6 +752,7 @@ export class StaffInboxPageComponent {
       event.targetFolioId,
       event.amount,
       event.notes,
+      this.selectedPropId(),
     ).subscribe({
       next: () => {
         this.toast.success(`Transferencia de ${formatCurrency(event.amount, 'en-US', '$', 'USD', '1.0-2')} completada`);

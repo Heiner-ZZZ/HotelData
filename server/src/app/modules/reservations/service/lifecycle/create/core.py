@@ -21,6 +21,11 @@ from src.app.modules.reservations.service.lifecycle.create._validation import _v
 from src.app.core.resolvers import resolve_hotel_id
 from src.app.core.timezone import local_today
 from src.app.modules.reservations.service.lifecycle.create._amenities import _generate_amenity_charges
+from src.app.modules.reservations.service.lifecycle.create._special_requests import (
+    _generate_special_request_charges,
+    resolve_late_checkin,
+    validate_special_requests,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +70,11 @@ def create_booking(
     )
     if room_error:
         raise ValueError(room_error)
+
+    request_error = validate_special_requests(
+        payload.prop_id, payload.hotel_room_id, payload.special_requests)
+    if request_error:
+        raise ValueError(request_error)
 
     avail_error = _check_availability(
         payload.prop_id, payload.check_in_date, payload.check_out_date,
@@ -147,6 +157,42 @@ def create_booking(
     card_last4 = payload.card_last4
     if payment_method or card_last4:
         payment_status = "paid"
+    # Immutable sold-price snapshot. Downstream folio/invoice logic must use
+    # this evidence rather than re-reading a mutable rate calendar.
+    rate_plan_name_snapshot = None
+    if payload.rate_plan_id:
+        rate_plan = db.rate_plans.find_one(
+            {"prop_id": payload.prop_id, "rate_plan_id": payload.rate_plan_id},
+            {"_id": 0, "name": 1},
+        )
+        rate_plan_name_snapshot = rate_plan.get("name") if rate_plan else None
+    nightly_breakdown: list[dict[str, Any]] = []
+    try:
+        rate_rows = list(db.hotel_rate_calendar.find(
+            {
+                "prop_id": payload.prop_id,
+                "room_type_id": payload.room_type_id,
+                "date": {"$gte": payload.check_in_date, "$lt": payload.check_out_date},
+                **({"rate_plan_id": payload.rate_plan_id} if payload.rate_plan_id else {}),
+            },
+            {"_id": 0, "date": 1, "rate_amount": 1, "currency": 1},
+        ).sort("date", 1))
+        fallback_rate = round(total_price / max(total_nights, 1) / max(payload.rooms, 1), 2)
+        by_date = {str(row.get("date")): row for row in rate_rows}
+        from datetime import date, timedelta
+        start = date.fromisoformat(payload.check_in_date)
+        for offset in range(total_nights):
+            day = (start + timedelta(days=offset)).isoformat()
+            rate = float((by_date.get(day) or {}).get("rate_amount") or fallback_rate)
+            nightly_breakdown.append({
+                "date": day,
+                "rate": round(rate, 2),
+                "rooms": payload.rooms,
+                "night_total": round(rate * payload.rooms, 2),
+            })
+    except (TypeError, ValueError):
+        nightly_breakdown = []
+
     booking_document = {
         "booking_id": booking_id, "user_id": payload.user_id,
         "prop_id": payload.prop_id, "hotel_id": resolve_hotel_id(payload.prop_id),
@@ -160,15 +206,44 @@ def create_booking(
         "assigned_rooms": [payload.hotel_room_id] if selected_room else [],
         "check_in_date": payload.check_in_date, "check_out_date": payload.check_out_date,
         "check_in_time": payload.check_in_time, "check_out_time": payload.check_out_time,
+        "estimated_arrival_time": payload.estimated_arrival_time,
+        "late_checkin": resolve_late_checkin(
+            payload.prop_id, payload.special_requests, payload.estimated_arrival_time),
         "adults": payload.adults, "children": payload.children, "rooms": payload.rooms,
         "comment": payload.comment, "special_requests": payload.special_requests,
+        # Fulfillment checklist: every selected request starts as pending so
+        # reception/housekeeping can track it during the active stay.
+        "special_request_fulfillment": [
+            {"label": str(s).strip(), "status": "pending", "fulfilled_at": None}
+            for s in (payload.special_requests or [])
+            if str(s).strip()
+        ],
+        # Amenity fulfillment checklist — same pending/fulfilled semantics,
+        # seeded from the amenities selected at booking time.
+        "amenity_fulfillment": [
+            {"label": str(s).strip(), "status": "pending", "fulfilled_at": None}
+            for s in (payload.selected_amenities or [])
+            if str(s).strip()
+        ],
         "total_price": total_price, "currency": currency, "total_nights": total_nights,
         "coupon_code": payload.coupon_code.strip().upper() if payload.coupon_code else "",
         "coupon_id": coupon_id,
         "discount_percent": discount_percent,
         "contract_code": payload.contract_code.strip().upper() if payload.contract_code else "",
         "contract_id": contract_id,
-        "pricing_source": pricing_source,
+        "pricing_source": pricing_source or "hotel_rate_calendar",
+        "rate_plan_name_snapshot": rate_plan_name_snapshot,
+        "price_snapshot": {
+            "currency": currency,
+            "rate_plan_id": payload.rate_plan_id or None,
+            "rate_plan_name": rate_plan_name_snapshot,
+            "nightly_breakdown": nightly_breakdown,
+            "subtotal": round(total_price - tax_amount, 2),
+            "tax_rate": tax_rate,
+            "tax_amount": tax_amount,
+            "total": total_price,
+            "pricing_source": pricing_source or "hotel_rate_calendar",
+        },
         "season_id": season_id,
         "tax_included": tax_included,
         "tax_rate": tax_rate,
@@ -210,6 +285,16 @@ def create_booking(
     amenity_charges_summary = [
         {"concept": c.get("concept", ""), "amount": c.get("amount", 0), "total": c.get("total", c.get("amount", 0))}
         for c in amenity_charges
+    ]
+
+    # ── Generate additional charges for priced special requests ──
+    request_charges = _generate_special_request_charges(
+        booking_id=booking_id, prop_id=payload.prop_id,
+        selected_requests=payload.special_requests,
+    )
+    request_charges_summary = [
+        {"concept": c.get("concept", ""), "amount": c.get("amount", 0), "total": c.get("total", c.get("amount", 0))}
+        for c in request_charges
     ]
 
     manual_document = None
@@ -378,9 +463,31 @@ def modify_booking(
     # ── Amenity selection change ──
     if selected_amenities is not None:
         prop_id = int(booking.get("prop_id", 0))
+        # Re-seed the amenity fulfillment checklist for the new selection,
+        # preserving fulfillment statuses for amenities that stay selected.
+        stored = {
+            str(item.get("label") or "").strip(): item
+            for item in (booking.get("amenity_fulfillment") or [])
+            if isinstance(item, dict) and item.get("label")
+        }
+        new_fulfillment = []
+        for raw in selected_amenities:
+            label = str(raw).strip()
+            if not label:
+                continue
+            prev = stored.get(label) or {}
+            new_fulfillment.append({
+                "label": label,
+                "status": prev.get("status") if prev.get("status") in ("pending", "fulfilled") else "pending",
+                "updated_at": prev.get("updated_at"),
+                "fulfilled_at": prev.get("fulfilled_at") if prev.get("status") == "fulfilled" else None,
+            })
         db.booking_orders.update_one(
             {"booking_id": booking_id},
-            {"$set": {"selected_amenities": selected_amenities}},
+            {"$set": {
+                "selected_amenities": selected_amenities,
+                "amenity_fulfillment": new_fulfillment,
+            }},
         )
         db.additional_charges.delete_many({
             "booking_id": booking_id,

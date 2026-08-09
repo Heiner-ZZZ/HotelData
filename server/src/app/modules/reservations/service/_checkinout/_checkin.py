@@ -257,12 +257,15 @@ def complete_check_in(
             for r in _room_docs:
                 label = r.get("room_label", "")
                 if label:
-                    db.room_status_log.update_one(
-                        {"prop_id": booking["prop_id"], "room_label": label},
-                        {"$set": {"status": "occupied_clean", "note": f"Check-in: {booking_id}", "updated_at": changed_at},
-                         "$setOnInsert": {"created_at": changed_at}},
-                        upsert=True,
-                    )
+                    from src.app.modules.housekeeping.service.lifecycle.status import upsert_room_status
+                    from src.app.modules.housekeeping.schemas import RoomStatusLogCreate
+                    upsert_room_status(RoomStatusLogCreate(
+                        prop_id=booking["prop_id"],
+                        room_type_id=r.get("room_type_id", ""),
+                        room_label=label,
+                        status="occupied_clean",
+                        note=f"Check-in: {booking_id}",
+                    ))
             logger.info("Rooms marked as occupied for booking %s", booking_id)
         except Exception:
             logger.exception("Failed to mark rooms as occupied for booking %s", booking_id)

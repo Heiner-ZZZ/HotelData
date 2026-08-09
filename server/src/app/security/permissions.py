@@ -28,6 +28,22 @@ logger = logging.getLogger(__name__)
 # Actions that ``.manage`` expands into
 _MANAGE_CRUD_ACTIONS = ("create", "read", "update", "delete")
 
+# Guest-facing codes (auto-servicio del huésped — sección "Cliente" del editor
+# de roles). super_admin conserva el bypass ``*.*`` para AUTH (``user_has_permission``
+# sigue devolviendo True), pero estos códigos NO se le otorgan en el editor ni se
+# le muestran los ítems de navegación que los exigen (Buscar Hoteles / Mis Reservas
+# / Mi Perfil): el menú HUÉSPED es auto-servicio del cliente, no del administrador
+# del sistema. Decisión 2026-08.
+# KEEP IN SYNC: scripts/init_security_model_ga03.py (GUEST_PERMISSION_CODES).
+GUEST_PERMISSION_CODES = frozenset({
+    "account.manage",
+    "account.read",
+    "account.update",
+    "account.bookings.read",
+    "search.manage",
+    "search.read",
+})
+
 
 def ensure_read_dependencies(
     explicit_codes: set[str],

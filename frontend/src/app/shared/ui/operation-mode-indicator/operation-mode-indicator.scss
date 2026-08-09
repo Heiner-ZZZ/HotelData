@@ -41,10 +41,11 @@
   }
 }
 
-/* Lectura: estable. Los modos de escritura respiran para comunicar actividad. */
+/* Lectura: estable. Los modos de escritura/ejecución respiran para comunicar actividad. */
 .op-chip--insert,
 .op-chip--update,
-.op-chip--delete {
+.op-chip--delete,
+.op-chip--execute {
   .op-dot {
     animation: op-dot-pulse 1.8s ease-in-out infinite;
   }
@@ -80,7 +81,8 @@
 @media (prefers-reduced-motion: reduce) {
   .op-chip--insert,
   .op-chip--update,
-  .op-chip--delete {
+  .op-chip--delete,
+  .op-chip--execute {
     .op-dot {
       animation: none;
     }

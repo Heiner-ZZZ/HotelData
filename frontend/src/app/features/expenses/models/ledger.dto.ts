@@ -1,4 +1,5 @@
 export interface LedgerFolioDto {
+  prop_id?: number;
   folio_id: string;
   folio_ref: string;
   guest_name: string;

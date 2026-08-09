@@ -110,6 +110,8 @@ interface TimelineEvent {
   RoomNumber: string;
   CheckInDate: string;
   CheckInTime: string;
+  EstimatedArrivalTime: string;
+  LateCheckin: boolean;
   CheckOutDate: string;
   CheckOutTime: string;
   TotalNights: number;
@@ -344,6 +346,8 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       RoomNumber: this.displayValue(reservation.roomNumber || room.roomNumber, 'Sin número'),
       CheckInDate: reservation.checkInDate,
       CheckInTime: reservation.checkInTime,
+      EstimatedArrivalTime: reservation.estimatedArrivalTime || '',
+      LateCheckin: !!reservation.lateCheckin,
       CheckOutDate: reservation.checkOutDate,
       CheckOutTime: reservation.checkOutTime,
       TotalNights: reservation.totalNights,
@@ -1145,6 +1149,8 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       children: event.Children,
       checkInDate: event.CheckInDate,
       checkInTime: event.CheckInTime,
+      estimatedArrivalTime: event.EstimatedArrivalTime || '',
+      lateCheckin: !!event.LateCheckin,
       checkOutDate: event.CheckOutDate,
       checkOutTime: event.CheckOutTime,
       totalNights: event.TotalNights,
@@ -1189,6 +1195,27 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     if (event.VisualStatus === 'cancelled') args.element.style.opacity = '0.9';
 
     this.appendAppointmentMeta(args.element, event);
+    this.appendLateCheckinMarker(args.element, event);
+  }
+
+  /**
+   * Marcador visual de late check-in en la barra de la reserva: un icono de
+   * luna con tooltip cuando el huésped declaró llegada tardía (petición
+   * "Llegada tarde" u hora estimada ≥ 20:00). Idempotente por render.
+   */
+  private appendLateCheckinMarker(element: HTMLElement, event: TimelineEvent): void {
+    if (!event.LateCheckin) return;
+    if (element.querySelector('.timeline-late-marker')) return;
+    const marker = document.createElement('span');
+    marker.className = 'timeline-late-marker';
+    marker.setAttribute('aria-label', 'Late check-in: llegada tarde');
+    marker.title = 'Llegada tarde (late check-in)';
+    const icon = document.createElement('span');
+    icon.className = 'material-symbols-outlined';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = 'nights_stay';
+    marker.appendChild(icon);
+    element.appendChild(marker);
   }
 
   /**

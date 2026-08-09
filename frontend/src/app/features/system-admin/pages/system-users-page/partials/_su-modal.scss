@@ -1,0 +1,358 @@
+/* ─── Edit User Modal ───────────────────────
+   Sigue el patrón de currencies/amenities: overlay + card con tokens
+   globales (--surface, --app-border, --accent, --muted-text…). */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.modal-card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow-md);
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--app-text);
+  }
+}
+
+.modal-title-wrap {
+  display: grid;
+  gap: 0.35rem;
+}
+
+/* Chip inline de modo edición (refuerza el app-operation-mode-indicator
+   del nav superior). */
+.edit-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+  color: var(--warning-strong);
+  width: fit-content;
+
+  .material-symbols-outlined {
+    font-size: 0.85rem;
+  }
+}
+
+.modal-close {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--muted-text);
+  font-size: 1.3rem;
+  padding: 0.25rem;
+  border-radius: 50%;
+  line-height: 1;
+  display: inline-flex;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+}
+
+.modal-body {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+/* ─── Recap del usuario ──────────────────── */
+
+.readonly-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px dashed var(--app-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 96%, var(--app-text));
+
+  .user-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 0.95rem;
+  }
+}
+
+.readonly-username {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--app-text);
+}
+
+.readonly-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  margin-top: 0.1rem;
+}
+
+/* ─── Fields ─────────────────────────────── */
+
+.field {
+  display: grid;
+  gap: 4px;
+
+  label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--muted-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .required {
+    color: var(--danger);
+  }
+}
+
+.input-wrap {
+  input,
+  select {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--app-text);
+    transition: border-color 180ms;
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+  }
+}
+
+.field-hint {
+  font-size: 0.74rem;
+  color: var(--muted-text);
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+  }
+
+  &--danger {
+    color: var(--danger-strong);
+  }
+}
+
+/* ─── Selector de hoteles (roles de hotel) ── */
+
+.hotels-field {
+  .field-hint {
+    margin-top: 0.1rem;
+  }
+}
+
+.hotel-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .search-icon {
+    position: absolute;
+    left: 0.6rem;
+    font-size: 1.05rem;
+    color: var(--muted-text);
+    pointer-events: none;
+  }
+
+  .hotel-search-input {
+    width: 100%;
+    padding: 0.45rem 2.1rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--app-text);
+    transition: border-color 180ms;
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+  }
+
+  .search-spinner {
+    position: absolute;
+    right: 0.6rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 2px solid var(--app-border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+}
+
+.hotel-search-results {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0.3rem;
+  background: var(--surface-raised);
+}
+
+.hotel-result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--app-text);
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+
+  &.is-selected {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+
+  .result-check {
+    font-size: 1.05rem;
+    color: var(--muted-text);
+  }
+
+  &.is-selected .result-check {
+    color: var(--success);
+  }
+
+  .result-label {
+    flex: 1;
+    font-size: 0.82rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .result-id {
+    font-size: 0.72rem;
+    color: var(--muted-text);
+  }
+}
+
+.selected-hotels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.selected-hotel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent-strong);
+
+  .chip-label {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    padding: 0;
+    border-radius: 50%;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    .material-symbols-outlined {
+      font-size: 0.9rem;
+    }
+  }
+}
+
+/* ─── Nota de auditoría ──────────────────── */
+
+.audit-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 97%, var(--app-text));
+  color: var(--muted-text);
+  font-size: 0.76rem;
+  line-height: 1.4;
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    color: var(--success);
+    flex-shrink: 0;
+  }
+}

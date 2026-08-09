@@ -20,7 +20,7 @@ from .security import (
     security_overview,
     users_overview,
 )
-from .users import delete_user, toggle_user_active
+from .users import delete_user, toggle_user_active, update_user
 
 __all__ = [
     "build_security_section_pdf",
@@ -37,6 +37,7 @@ __all__ = [
     "security_overview",
     "toggle_user_active",
     "update_assigned_hotels",
+    "update_user",
     "update_role_definition",
     "users_overview",
 ]

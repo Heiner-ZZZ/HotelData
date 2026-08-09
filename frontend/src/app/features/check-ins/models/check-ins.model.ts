@@ -20,6 +20,10 @@ export interface CheckInRowViewModel {
   assignedRoomNumbers: string[];
   roomNumbersLabel: string[];
   estimatedTime: string;
+  /** Hora estimada de llegada del huésped (HH:MM) si la declaró al reservar. */
+  estimatedArrivalTime: string;
+  /** Marcador de late check-in (llegada tarde). */
+  lateCheckin: boolean;
   notes: string;
   canComplete: boolean;
 }

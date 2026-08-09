@@ -1,0 +1,46 @@
+<div class="da-autocomplete">
+  <div class="da-input-wrap">
+    <input
+      type="text"
+      class="da-input"
+      [value]="filterText()"
+      (input)="onInput(($any($event.target)).value)"
+      (focus)="onFocus()"
+      (blur)="onBlur()"
+      (keydown)="onKeydown($event)"
+      placeholder="País, hotel o ciudad"
+      autocomplete="off"
+      role="combobox"
+      aria-label="Destino"
+      [attr.aria-expanded]="dropdownOpen()"
+      [attr.aria-activedescendant]="highlighted() >= 0 ? 'da-option-' + highlighted() : null"
+    />
+    @if (loading() && debouncedTermVisible() && dropdownOpen()) {
+      <span class="material-symbols-outlined da-spinner" aria-hidden="true">sync</span>
+    }
+  </div>
+
+  @if (dropdownOpen() && suggestions().length > 0) {
+    <div class="da-dropdown" role="listbox" aria-label="Sugerencias de destino">
+      @for (item of suggestions(); track item.type + ':' + item.id; let i = $index) {
+        <button
+          type="button"
+          class="da-option"
+          [class.is-highlighted]="highlighted() === i"
+          [id]="'da-option-' + i"
+          role="option"
+          [attr.aria-selected]="highlighted() === i"
+          (click)="choose(item)"
+          (mouseenter)="highlighted.set(i)"
+        >
+          <span class="material-symbols-outlined da-option-icon" [class.da-option-icon--city]="item.type === 'city'" [class.da-option-icon--hotel]="item.type === 'hotel'" [class.da-option-icon--country]="item.type === 'country'" aria-hidden="true">{{ typeIcon(item.type) }}</span>
+          <span class="da-option-name">{{ item.name }}</span>
+          <span class="da-option-type" [class.da-option-type--city]="item.type === 'city'" [class.da-option-type--hotel]="item.type === 'hotel'" [class.da-option-type--country]="item.type === 'country'">{{ typeLabel(item.type) }}</span>
+        </button>
+      }
+      @if (loading()) {
+        <div class="da-loading-hint">Buscando…</div>
+      }
+    </div>
+  }
+</div>

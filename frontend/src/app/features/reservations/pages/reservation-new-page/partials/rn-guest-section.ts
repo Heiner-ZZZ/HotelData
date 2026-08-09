@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 
 import type { RecentGuestView } from './reservation-form.types';
@@ -24,6 +24,11 @@ interface CouponStatusView {
 interface SpecialRequestView {
   value: string;
   label: string;
+  unit_price: number;
+  chargeable: boolean;
+  pet_related: boolean;
+  high_floor: boolean;
+  late_arrival: boolean;
 }
 
 @Component({
@@ -78,6 +83,28 @@ interface SpecialRequestView {
           </div>
         </label>
       </div>
+      <div class="field-group two-col">
+        <label class="field">
+          <span class="field-label">Hora estimada de llegada</span>
+          <div class="input-wrap">
+            <span class="material-symbols-outlined input-prefix">schedule</span>
+            <input formControlName="estimatedArrivalTime" type="time" placeholder="--:--" />
+          </div>
+          @if (lateArrivalSelected()) {
+            <span class="field-message late-arrival-hint">
+              <span class="material-symbols-outlined" aria-hidden="true">nights_stay</span>
+              Llegada tardía: el huésped llegará después del horario de recepción.
+            </span>
+          }
+        </label>
+        <div class="field arrival-note">
+          <span class="field-label">&nbsp;</span>
+          <p class="arrival-note-text">
+            <span class="material-symbols-outlined" aria-hidden="true">info</span>
+            Si el huésped llega a las 20:00 o después, la reserva se marca como <strong>late check-in</strong> en recepción.
+          </p>
+        </div>
+      </div>
       @if (!isClient() && showGuestDropdown() && guestSuggestions().length > 0) {
         <div class="recent-guests" role="listbox" aria-label="Contactos recientes">
           <div class="recent-guests-head">
@@ -106,11 +133,16 @@ interface SpecialRequestView {
           <p>Opciones comunes requeridas por el huésped (sujetas a disponibilidad)</p>
         </div>
       </div>
-      <div class="field-group checkbox-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">
+      <div class="field-group checkbox-grid">
         @for (req of specialRequestsOptions(); track req.value) {
-          <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="checkbox" (change)="onRequestChange(req.value, $event)" />
-            <span>{{ req.label }}</span>
+          <label class="checkbox-label" [class.is-selected]="selectedRequests().includes(req.value)">
+            <input type="checkbox" [checked]="selectedRequests().includes(req.value)" (change)="onRequestChange(req.value, $event)" />
+            <span class="checkbox-check material-symbols-outlined" aria-hidden="true">check_circle</span>
+            <span class="checkbox-copy">
+              <span class="checkbox-label-text">{{ req.label }}</span>
+              @if (req.unit_price > 0) { <span class="req-price">{{ req.unit_price | currency:'USD' }}</span> }
+              @else { <span class="req-free">Gratis</span> }
+            </span>
           </label>
         }
       </div>
@@ -219,6 +251,13 @@ export class RnGuestSectionComponent {
   readonly couponValidating = input(false);
   readonly couponStatus = input<CouponStatusView | null>(null);
   readonly specialRequestsOptions = input<SpecialRequestView[]>([]);
+  readonly selectedRequests = input<string[]>([]);
+
+  /** True si alguna petición seleccionada está flaggeada como late_arrival. */
+  readonly lateArrivalSelected = computed(() => {
+    const selected = new Set(this.selectedRequests());
+    return this.specialRequestsOptions().some((r) => r.late_arrival && selected.has(r.value));
+  });
 
   readonly guestInput = output<string>();
   readonly guestFocus = output<void>();

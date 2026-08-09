@@ -78,4 +78,16 @@ describe('GuestsPickerComponent', () => {
     comp.close();
     expect(comp.isOpen()).toBe(false);
   });
+
+  it('keeps the popover open after a stepper click (mouseup inside must not close it)', () => {
+    const { fixture, comp } = setup();
+    comp.toggleOpen();
+    fixture.detectChanges();
+    // Simula un mouseup dentro del wrapper (como ocurre al pulsar un botón
+    // del stepper): no debe cerrar el popover — el click-fuera lo maneja el
+    // backdrop, no un mouseup global del wrapper.
+    const wrapper = (fixture.nativeElement as HTMLElement).querySelector('.guests-picker-wrapper');
+    wrapper?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(comp.isOpen()).toBe(true);
+  });
 });

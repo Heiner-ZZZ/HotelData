@@ -5,3 +5,36 @@
 @use 'partials/fd-layout' as *;
 @use 'partials/fd-content' as *;
 @use 'partials/fd-actions' as *;
+
+.fl-settlement-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+
+.fl-settlement-help {
+  margin: 0.25rem 0 0.75rem;
+  color: var(--text-muted, #64748b);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.fl-settlement-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.fl-settlement-form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.fl-settlement-form .fl-label {
+  display: grid;
+  gap: 0.3rem;
+}

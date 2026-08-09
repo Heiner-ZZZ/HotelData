@@ -31,8 +31,8 @@ def role_editor_payload(role_name: str) -> dict[str, Any] | None:
     permissions = [_clean(item) for item in db.permissions.find({}).sort("permission_code", 1)]
     permission_map = role_permission_map()
     selected_codes = permission_map.get(role_name, [])
-    if role_name == "super_admin":
-        selected_codes = _all_permission_codes(db)
+    # super_admin ya viene filtrado por role_permission_map (catálogo menos
+    # GUEST_PERMISSION_CODES): no forzar aquí todos los códigos del catálogo.
     selected_codes = _normalize_role_permission_codes(db, selected_codes)
     role_clean["permission_codes"] = selected_codes
     expanded = expand_permissions(set(selected_codes))
@@ -56,8 +56,8 @@ def role_editor_payload_api(role_name: str) -> dict[str, Any] | None:
     ]
     permission_map = role_permission_map()
     selected_codes = permission_map.get(role_name, [])
-    if role_name == "super_admin":
-        selected_codes = _all_permission_codes(db)
+    # super_admin ya viene filtrado por role_permission_map (catálogo menos
+    # GUEST_PERMISSION_CODES): no forzar aquí todos los códigos del catálogo.
     selected_codes = _normalize_role_permission_codes(db, selected_codes)
     role_clean["permission_codes"] = selected_codes
     expanded = expand_permissions(set(selected_codes))

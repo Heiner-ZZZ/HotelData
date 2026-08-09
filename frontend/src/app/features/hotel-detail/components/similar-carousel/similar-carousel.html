@@ -1,0 +1,45 @@
+<div class="similar-carousel" [class.is-fallback]="galleryImages().length === 0">
+  @if (galleryImages().length > 1) {
+    <div class="sc-strip" [style.transform]="stripOffset()">
+      @for (img of galleryImages(); track $index) {
+        <img [src]="img" [alt]="hotel().name" loading="lazy" (error)="onImgError($any($event.target))" />
+      }
+    </div>
+    <button
+      class="sc-arrow sc-prev"
+      type="button"
+      aria-label="Imagen anterior"
+      (click)="prevImage(); $event.preventDefault(); $event.stopPropagation()"
+    >
+      <span class="material-symbols-outlined">chevron_left</span>
+    </button>
+    <button
+      class="sc-arrow sc-next"
+      type="button"
+      aria-label="Imagen siguiente"
+      (click)="nextImage(); $event.preventDefault(); $event.stopPropagation()"
+    >
+      <span class="material-symbols-outlined">chevron_right</span>
+    </button>
+    <div class="sc-dots">
+      @for (i of dotIndices(); track i) {
+        <button
+          class="sc-dot"
+          [class.active]="currentImageIdx() === i"
+          (click)="goToImage(i); $event.preventDefault(); $event.stopPropagation()"
+          [attr.aria-label]="'Imagen ' + (i + 1)"
+        ></button>
+      }
+    </div>
+  } @else if (galleryImages().length === 1) {
+    <img
+      class="sc-single"
+      [src]="galleryImages()[0]"
+      [alt]="hotel().name"
+      loading="lazy"
+      (error)="onImgError($any($event.target))"
+    />
+  } @else {
+    <span class="material-symbols-outlined">hotel</span>
+  }
+</div>

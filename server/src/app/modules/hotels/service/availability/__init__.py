@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-from .search import search_available_hotels
 from .helpers import (
     _check_inventory_for_dates,
-    _matching_room_types,
-    _hotel_min_rate_for_range,
+    _eligible_room_type_summaries,
     _hotel_image_url,
+    _hotel_min_rate_for_range,
+    _matching_room_types,
 )
+from .search import search_available_hotels
 
 __all__ = [
-    "search_available_hotels",
     "_check_inventory_for_dates",
-    "_matching_room_types",
-    "_hotel_min_rate_for_range",
+    "_eligible_room_type_summaries",
     "_hotel_image_url",
+    "_hotel_min_rate_for_range",
+    "_matching_room_types",
+    "search_available_hotels",
 ]

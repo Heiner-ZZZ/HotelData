@@ -331,7 +331,17 @@
                           <span class="badge badge-warning">{{ item.reservationStatusLabel }}</span>
                         }
                       </td>
-                      <td class="cell-time">{{ item.estimatedTime || '--' }}</td>
+                      <td class="cell-time">
+                        <div class="arrival-cell">
+                          <span>{{ item.estimatedArrivalTime || item.estimatedTime || '--' }}</span>
+                          @if (item.lateCheckin) {
+                            <span class="badge badge-late">
+                              <span class="material-symbols-outlined" aria-hidden="true">nights_stay</span>
+                              Llegada tarde
+                            </span>
+                          }
+                        </div>
+                      </td>
                       <td class="cell-notes">{{ item.notes || '--' }}</td>
                       <td class="cell-action">
                         @if (item.canComplete) {

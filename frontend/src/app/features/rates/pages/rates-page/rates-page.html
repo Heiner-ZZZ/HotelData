@@ -30,19 +30,6 @@
     }
   }
 
-  @if (message()) {
-    <section class="notification success">
-      <span class="material-symbols-outlined notif-icon">check_circle</span>
-      <span>{{ message() }}</span>
-    </section>
-  }
-  @if (errorMessage()) {
-    <section class="notification error">
-      <span class="material-symbols-outlined notif-icon">error</span>
-      <span>{{ errorMessage() }}</span>
-    </section>
-  }
-
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando tarifas..." />
@@ -121,7 +108,7 @@
               }
 
               @case ('rate-entry') {
-                <section class="surface-card data-panel">
+                <section class="surface-card data-panel" appModeHighlight>
                   <div class="panel-head">
                     <span class="material-symbols-outlined panel-head-icon" style="color: #06b6d4">edit_calendar</span>
                     <div>
@@ -165,7 +152,11 @@
               @case ('calendar') {
                 <!-- Batch Update Form — collapsible, closed by default -->
                 <section class="surface-card data-panel collapsible-section">
-                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('batchCalendar')">
+                  <div class="panel-head collapsible-trigger" role="button" tabindex="0"
+                       [attr.aria-expanded]="!batchCalendarCollapsed()"
+                       (click)="toggleCollapse('batchCalendar')"
+                       (keydown.enter)="toggleCollapse('batchCalendar')"
+                       (keydown.space)="toggleCollapse('batchCalendar'); $event.preventDefault()">
                     <span class="material-symbols-outlined panel-head-icon" style="color: #06b6d4">date_range</span>
                     <div>
                       <h2>Actualización masiva de calendario</h2>
@@ -230,7 +221,7 @@
 
               @case ('plans') {
                 <!-- Generate Calendar Form -->
-                <section class="surface-card data-panel">
+                <section class="surface-card data-panel" appModeHighlight>
                   <div class="panel-head">
                     <span class="material-symbols-outlined panel-head-icon" style="color: #10b981">auto_awesome</span>
                     <div>
@@ -268,8 +259,12 @@
                 </section>
 
                 <!-- Rate Plans Section -->
-                <section class="surface-card data-panel plan-form-section collapsible-section">
-                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('planForm')">
+                <section class="surface-card data-panel plan-form-section collapsible-section" appModeHighlight>
+                  <div class="panel-head collapsible-trigger" role="button" tabindex="0"
+                       [attr.aria-expanded]="!planFormCollapsed()"
+                       (click)="toggleCollapse('planForm')"
+                       (keydown.enter)="toggleCollapse('planForm')"
+                       (keydown.space)="toggleCollapse('planForm'); $event.preventDefault()">
                     <span class="material-symbols-outlined panel-head-icon">add_card</span>
                     <div>
                       <h2>{{ editingPlan() ? 'Editar plan' : 'Nuevo plan tarifario' }}</h2>
@@ -359,6 +354,12 @@
                     </fieldset>
 
                     <div class="form-actions">
+                      @if (editingPlan()) {
+                        <button type="button" class="btn-secondary" (click)="cancelEditPlan()">
+                          <span class="material-symbols-outlined btn-icon">close</span>
+                          Cancelar
+                        </button>
+                      }
                       <button type="submit" class="btn-primary">
                         <span class="material-symbols-outlined btn-icon">{{ editingPlan() ? 'save' : 'add' }}</span>
                         {{ editingPlan() ? 'Guardar cambios' : 'Crear plan' }}
@@ -369,7 +370,11 @@
                 </section>
 
                 <section class="surface-card data-panel collapsible-section">
-                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('existingPlans')">
+                  <div class="panel-head collapsible-trigger" role="button" tabindex="0"
+                       [attr.aria-expanded]="!existingPlansCollapsed()"
+                       (click)="toggleCollapse('existingPlans')"
+                       (keydown.enter)="toggleCollapse('existingPlans')"
+                       (keydown.space)="toggleCollapse('existingPlans'); $event.preventDefault()">
                     <span class="material-symbols-outlined panel-head-icon">table</span>
                     <div>
                       <h2>Planes existentes</h2>
@@ -389,8 +394,12 @@
 
               @case ('seasons') {
                 <!-- Seasons Section -->
-                <section class="surface-card data-panel collapsible-section">
-                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('newSeasonal')">
+                <section class="surface-card data-panel collapsible-section" appModeHighlight>
+                  <div class="panel-head collapsible-trigger" role="button" tabindex="0"
+                       [attr.aria-expanded]="!newSeasonalCollapsed()"
+                       (click)="toggleCollapse('newSeasonal')"
+                       (keydown.enter)="toggleCollapse('newSeasonal')"
+                       (keydown.space)="toggleCollapse('newSeasonal'); $event.preventDefault()">
                     <span class="material-symbols-outlined panel-head-icon" style="color: #8b5cf6">event</span>
                     <div>
                       <h2>Nueva regla de temporada</h2>
@@ -441,6 +450,12 @@
                       }
                     </label>
                     <div class="form-actions">
+                      @if (editingSeason()) {
+                        <button type="button" class="btn-secondary" (click)="cancelEditSeason()">
+                          <span class="material-symbols-outlined btn-icon">close</span>
+                          Cancelar
+                        </button>
+                      }
                       <button type="submit" class="btn-primary">
                         <span class="material-symbols-outlined btn-icon">{{ editingSeason() ? 'save' : 'add' }}</span>
                         {{ editingSeason() ? 'Actualizar regla' : 'Crear regla' }}
@@ -451,7 +466,11 @@
                 </section>
 
                 <section class="surface-card data-panel collapsible-section">
-                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('existingSeasons')">
+                  <div class="panel-head collapsible-trigger" role="button" tabindex="0"
+                       [attr.aria-expanded]="!existingSeasonsCollapsed()"
+                       (click)="toggleCollapse('existingSeasons')"
+                       (keydown.enter)="toggleCollapse('existingSeasons')"
+                       (keydown.space)="toggleCollapse('existingSeasons'); $event.preventDefault()">
                     <span class="material-symbols-outlined panel-head-icon" style="color: #8b5cf6">event</span>
                     <div>
                       <h2>Reglas de temporada</h2>
@@ -471,9 +490,10 @@
 
               @case ('promos') {
                 <!-- Promotions Section -->
-                <section class="surface-card data-panel">
+                <section class="surface-card data-panel promo-form-panel" #promoFormPanel appModeHighlight>
                   <div class="panel-head">
-                    <span class="material-symbols-outlined panel-head-icon icon-promo-amber">campaign</span>
+                    <span class="material-symbols-outlined panel-head-icon"
+                          [style.color]="opModeMode() === 'read' ? 'var(--warning)' : 'var(--op-color)'">campaign</span>
                     <div>
                       <h2>{{ promoDeleteConfirm() ? 'Desactivar promoción' : 'Promoción' }}</h2>
                       <p>Crea o edita campañas promocionales con descuento y cupones.</p>
@@ -483,8 +503,9 @@
                     [viewModel]="ratesResource.value() ?? null"
                     [editingPromo]="editingPromo()"
                     (promoCreated)="refreshAfterPromo(); editingPromo.set(null)"
-                    (messageChange)="message.set($event); errorMessage.set('')"
-                    (errorChange)="errorMessage.set($event); message.set('')"
+                    (cancelEditChange)="editingPromo.set(null)"
+                    (messageChange)="onPromoMessage($event)"
+                    (errorChange)="onPromoError($event)"
                   />
                 </section>
 
@@ -518,8 +539,11 @@
 
   <!-- Delete confirmation modal -->
   @if (deleteConfirm(); as planId) {
-    <div class="modal-backdrop" (click)="cancelDeletePlan()">
-      <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop" role="button" tabindex="0" aria-label="Cerrar diálogo"
+         (click)="$event.target === $event.currentTarget ? cancelDeletePlan() : null"
+         (keydown.enter)="cancelDeletePlan()"
+         (keydown.escape)="cancelDeletePlan()">
+      <article class="modal-card modal-card-danger" role="dialog" aria-modal="true">
         <h2>Eliminar plan tarifario</h2>
         <p>¿Estás seguro de eliminar este plan tarifario? Se eliminarán también las tarifas del calendario asociadas. Esta acción no se puede deshacer.</p>
         <div class="modal-actions">
@@ -532,8 +556,11 @@
 
   <!-- Promo delete confirmation -->
   @if (promoDeleteConfirm(); as campaignId) {
-    <div class="modal-backdrop" (click)="cancelDeletePromo()">
-      <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop" role="button" tabindex="0" aria-label="Cerrar diálogo"
+         (click)="$event.target === $event.currentTarget ? cancelDeletePromo() : null"
+         (keydown.enter)="cancelDeletePromo()"
+         (keydown.escape)="cancelDeletePromo()">
+      <article class="modal-card modal-card-danger" role="dialog" aria-modal="true">
         <h2>Desactivar promoción</h2>
         <p>¿Estás seguro de desactivar esta campaña promocional? Los cupones asociados dejarán de ser válidos.</p>
         <div class="modal-actions">

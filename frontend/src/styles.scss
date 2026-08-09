@@ -8,13 +8,15 @@
 @use './styles/scss-variables';
 @use './styles/scss-reset';
 @use './styles/scss-surface-card';
+@use './styles/scss-mode-highlight';
+@use './styles/scss-form-status';
+@use './styles/scss-keyframes';
 @use './styles/scss-accordion';
 @use './styles/scss-hero-card';
 @use './styles/scss-icons';
 @use './styles/scss-forms';
 @use './styles/scss-tables';
 @use './styles/scss-panels';
-@use './styles/scss-notifications';
 @use './styles/scss-ai';
 
 /* Print — must be last to override */

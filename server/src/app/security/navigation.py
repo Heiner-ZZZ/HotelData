@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.app.security.permissions import GUEST_PERMISSION_CODES
 from src.app.security.role_helpers import get_role_name, is_super_admin
 
 
@@ -123,8 +124,16 @@ def get_all_navigation_items(permission_codes: set[str] | None = None) -> list[d
         for doc in cursor:
             required = doc.get("required_permission")
             visible = True
-            if required and permission_codes is not None and "*.*" not in permission_codes:
-                visible = required in permission_codes
+            if required and permission_codes is not None:
+                if "*.*" in permission_codes:
+                    # Bypass de super_admin (``get_user_permission_codes`` → ``*.*``):
+                    # ve TODO el menú EXCEPTO el auto-servicio del huésped. El rol
+                    # conserva el bypass de auth, pero los ítems que exigen
+                    # account.*/search.* (Buscar Hoteles / Mis Reservas / Mi Perfil)
+                    # no son para el administrador del sistema.
+                    visible = required not in GUEST_PERMISSION_CODES
+                else:
+                    visible = required in permission_codes
             pid = doc.get("permission_id")
             items.append({
                 "label": doc.get("label", ""),

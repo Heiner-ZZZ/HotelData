@@ -11,19 +11,6 @@
     />
   </app-page-header>
 
-  @if (message()) {
-    <section class="notification success">
-      <span class="material-symbols-outlined notif-icon">check_circle</span>
-      <span>{{ message() }}</span>
-    </section>
-  }
-  @if (errorMessage()) {
-    <section class="notification error">
-      <span class="material-symbols-outlined notif-icon">error</span>
-      <span>{{ errorMessage() }}</span>
-    </section>
-  }
-
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando huéspedes..." />

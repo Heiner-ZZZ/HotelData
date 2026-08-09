@@ -113,6 +113,7 @@ TEST_COLLECTIONS = [
     # --- Housekeeping -----------------------------------------------------
     "housekeeping_tasks",
     "maintenance_tasks",
+    "maintenance_financial_reconciliations",
     "room_status_history",
     "room_status_log",
     "additional_charges",
@@ -133,7 +134,15 @@ TEST_COLLECTIONS = [
     "reservation_payments",
     "fact_reservation_invoices",
     "fact_reservation_payments",
+    "payment_reconciliation_events",
+    "hotel_domain_events",
+    "fact_hotel_domain_events",
+    "hotel_financial_aggregates",
+    "refund_documents",
+    "fact_refund_documents",
     "guest_folios",  # create_folio/post_to_folio/close_folio/list_folios (billing.service.folio)
+    "folio_settlement_events",
+    "fact_folio_settlement_events",
     "platform_earnings",
     # --- Reviews --------------------------------------------------------
     "reviews",

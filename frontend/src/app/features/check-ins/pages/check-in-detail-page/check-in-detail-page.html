@@ -3,6 +3,15 @@
     @case ('loading') { <app-loading-state label="Cargando reserva..." /> }
     @case ('error')   { <app-error-state title="Error" description="No se pudo cargar la reserva." /> }
     @case ('empty')   { <app-empty-state title="No encontrada" description="La reserva no existe." /> }
+    @case ('forbidden') {
+      <div class="ciw-forbidden">
+        <span class="material-symbols-outlined">lock</span>
+        <div>
+          <strong>Sin permiso para ver este check-in</strong>
+          <span>Solicitá el permiso <code>check-ins.read</code> a tu administrador para ver y gestionar el check-in de esta reserva.</span>
+        </div>
+      </div>
+    }
     @default {
       @if (data(); as vm) {
 
@@ -26,6 +35,20 @@
             <span class="ciw-badge pending">● Pendiente</span>
           }
         </div>
+
+        @if (vm.late_checkin) {
+          <div class="ciw-late-banner">
+            <span class="material-symbols-outlined">nights_stay</span>
+            <div>
+              <strong>Late check-in</strong>
+              <span>El huésped declaró llegada tardía.
+                @if (vm.estimated_arrival_time) {
+                  Hora estimada de llegada: <strong>{{ vm.estimated_arrival_time }}</strong>.
+                }
+              </span>
+            </div>
+          </div>
+        }
 
         @if (successMessage()) {
           <div class="ciw-toast success" (click)="successMessage.set('')">

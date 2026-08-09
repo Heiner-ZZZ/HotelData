@@ -8,6 +8,10 @@
 .settings-form {
   display: grid;
   gap: 1.25rem;
+  /* Borde transparente para que el highlight global .mode-active (directive
+     appModeHighlight) enmarque el área editable con el color del modo. */
+  border: 1px solid transparent;
+  border-radius: 1rem;
 }
 
 .settings-card {
@@ -40,9 +44,14 @@
 }
 
 .card-actions {
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding-top: 0.25rem;
 }
+
+/* .form-status y .unsaved-dot viven en styles/_scss-form-status.scss (global). */
 
 .card-actions--form {
   padding-top: 0;
@@ -109,9 +118,6 @@
   }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 /* ── Fields ── */
 
@@ -224,46 +230,7 @@ select option {
   pointer-events: none;
 }
 
-/* ── Button ── */
-
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.6rem 1.35rem;
-  border: 0;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), var(--accent));
-  color: var(--on-accent);
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: box-shadow 180ms ease, opacity 180ms ease, transform 120ms ease;
-  font-family: inherit;
-
-  &:hover:not(:disabled) {
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
-    transform: translateY(-1px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .material-symbols-outlined {
-    font-size: 1.1rem;
-    --icon-opsz: 20;
-  }
-
-  .spin {
-    animation: spin 0.8s linear infinite;
-  }
-}
+/* ── Button ── .btn-primary vive en styles/_scss-forms.scss (global). */
 
 @media (max-width: 600px) {
   .settings-page {

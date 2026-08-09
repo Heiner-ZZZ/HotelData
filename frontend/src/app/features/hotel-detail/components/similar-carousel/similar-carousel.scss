@@ -1,0 +1,114 @@
+/* ═══ Similar Hotels — Galería con flechas y puntitos ═══
+   Misma mecánica que hotel-card pero compacta para la tarjeta de 120px. */
+
+.similar-carousel {
+  position: relative;
+  height: 120px;
+  overflow: hidden;
+  background: var(--surface-container-high, var(--gray-200));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--outline, var(--muted-text));
+
+  .material-symbols-outlined {
+    font-size: 36px;
+  }
+}
+
+.sc-strip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+  img {
+    min-width: 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    flex-shrink: 0;
+  }
+}
+
+.sc-single {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Flechas ── */
+.sc-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gray-900) 25%, transparent);
+  backdrop-filter: blur(6px);
+  color: var(--surface);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s, transform 0.15s;
+
+  .material-symbols-outlined {
+    font-size: 16px;
+    --icon-wght: 500;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--gray-900) 45%, transparent);
+    transform: translateY(-50%) scale(1.08);
+  }
+
+  &:active {
+    transform: translateY(-50%) scale(0.94);
+  }
+}
+
+.sc-prev {
+  left: 0.35rem;
+}
+
+.sc-next {
+  right: 0.35rem;
+}
+
+/* ── Puntitos ── */
+.sc-dots {
+  position: absolute;
+  bottom: 0.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  gap: 0.3rem;
+}
+
+.sc-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--surface) 70%, transparent);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s, border-color 0.2s;
+
+  &.active {
+    background: var(--surface);
+    border-color: var(--accent);
+  }
+
+  &:hover:not(.active) {
+    background: color-mix(in srgb, var(--surface) 40%, transparent);
+  }
+}

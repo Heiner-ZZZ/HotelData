@@ -97,6 +97,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../expenses/expenses.routes').then((m) => m.EXPENSES_ROUTES)
   },
   {
+    path: 'financial-control',
+    loadComponent: () =>
+      import('../financial-control/pages/financial-control-page/financial-control-page').then((m) => m.FinancialControlPageComponent)
+  },
+  {
     path: 'revenue',
     redirectTo: 'reports'
   },

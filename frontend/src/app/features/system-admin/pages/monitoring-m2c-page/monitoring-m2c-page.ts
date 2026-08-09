@@ -15,6 +15,8 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { M2cConsolidatedDto, M2cActionResponseDto } from '../../models/monitoring-m2c.dto';
@@ -37,6 +39,8 @@ export class MonitoringM2cPageComponent {
   private readonly api = inject(MonitoringM2cApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly toast = inject(ToastService);
+  private readonly opMode = inject(OperationModeService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly monitoringResource = httpResource<M2cConsolidatedDto>(() => '/api/etl-status/m2c/consolidated');
@@ -74,7 +78,20 @@ export class MonitoringM2cPageComponent {
     'quality_report',
     'execution_report',
   ] as const;
-  readonly confirmAction = signal<{ title: string; message: string; handler: () => void } | null>(null);
+  /** Acción ETL pendiente de confirmar — mantiene el modo 'execute' en el nav. */
+  private readonly pendingAction = signal<{ title: string } | null>(null);
+
+  /**
+   * Modo CRUD de la página M2C: fuera del flujo CRUD normal. Muestra 'execute'
+   * (Ejecutando) mientras hay un diálogo de confirmación abierto o el ETL corre;
+   * en reposo, Solo lectura.
+   */
+  private readonly _opMode = computed<{ mode: OperationMode; detail: string }>(() => {
+    const pending = this.pendingAction();
+    if (pending) return { mode: 'execute', detail: pending.title };
+    if (this.isRunning()) return { mode: 'execute', detail: 'ETL Mongo → ClickHouse' };
+    return { mode: 'read', detail: '' };
+  });
 
   constructor() {
     this.destroyRef.onDestroy(() => this.stopPolling());
@@ -94,6 +111,12 @@ export class MonitoringM2cPageComponent {
         this.stopPolling();
       }
     });
+
+    // Modo CRUD reactivo en el nav: execute con diálogo abierto o ETL corriendo.
+    effect(() => {
+      const m = this._opMode();
+      this.opMode.setMode(m.mode, m.detail);
+    });
   }
 
   private startPolling() {
@@ -112,20 +135,46 @@ export class MonitoringM2cPageComponent {
     this.openSection.update(v => v === key ? null : key);
   }
 
-  triggerRun() {
-    this.confirmAction.set({
-      title: 'Ejecutar ETL Mongo → ClickHouse',
-      message: 'Esta acción ejecutará el pipeline táctico: agrega KPIs desde MongoDB y los carga a ClickHouse (ReplacingMergeTree, idempotente). ¿Desea continuar?',
-      handler: () => this.execAction(this.api.triggerRun()),
+  /**
+   * Abre el diálogo de confirmación GLOBAL (ConfirmDialogService) para una
+   * acción ETL. Mientras está abierto, el nav muestra el modo 'execute' con el
+   * título de la acción; al resolver (confirmar o cancelar) se restaura.
+   */
+  private openConfirm(
+    title: string,
+    message: string,
+    action: () => void,
+    options: { confirmLabel?: string; variant?: 'danger' | 'warning' | 'default' } = {},
+  ): void {
+    this.pendingAction.set({ title });
+    void this.confirmDialog.open({
+      title,
+      message,
+      confirmLabel: options.confirmLabel ?? 'Continuar',
+      cancelLabel: 'Cancelar',
+      variant: options.variant ?? 'warning',
+    }).then((ok) => {
+      this.pendingAction.set(null);
+      if (ok) action();
     });
   }
 
+  triggerRun() {
+    this.openConfirm(
+      'Ejecutar ETL Mongo → ClickHouse',
+      'Esta acción ejecutará el pipeline táctico: agrega KPIs desde MongoDB y los carga a ClickHouse (ReplacingMergeTree, idempotente). ¿Desea continuar?',
+      () => this.execAction(this.api.triggerRun()),
+      { confirmLabel: 'Ejecutar' },
+    );
+  }
+
   triggerStop() {
-    this.confirmAction.set({
-      title: 'Detener pipeline M2C',
-      message: 'Esta acción solicitará la detención de la corrida mongo→clickhouse en curso. ¿Desea continuar?',
-      handler: () => this.execAction(this.api.triggerStop()),
-    });
+    this.openConfirm(
+      'Detener pipeline M2C',
+      'Esta acción solicitará la detención de la corrida mongo→clickhouse en curso. ¿Desea continuar?',
+      () => this.execAction(this.api.triggerStop()),
+      { confirmLabel: 'Detener', variant: 'danger' },
+    );
   }
 
   setScheduleFrequency(frequency: 'hourly' | 'daily') {
@@ -169,10 +218,10 @@ export class MonitoringM2cPageComponent {
   saveSchedule() {
     const cron = this.cronFromControls();
     this.scheduleCron.set(cron);
-    this.confirmAction.set({
-      title: 'Actualizar horario del DAG',
-      message: `El DAG se ejecutará ${this.scheduleSummary().toLowerCase()} (${this.scheduleEnabled() ? 'habilitado' : 'pausado'}). Se aplica en el próximo parseo de Airflow. ¿Desea continuar?`,
-      handler: () => {
+    this.openConfirm(
+      'Actualizar horario del DAG',
+      `El DAG se ejecutará ${this.scheduleSummary().toLowerCase()} (${this.scheduleEnabled() ? 'habilitado' : 'pausado'}). Se aplica en el próximo parseo de Airflow. ¿Desea continuar?`,
+      () => {
         this.actionBusy.set(true);
         this.api.updateSchedule({ schedule_cron: cron, enabled: this.scheduleEnabled() }).subscribe({
           next: (result) => {
@@ -193,17 +242,8 @@ export class MonitoringM2cPageComponent {
           },
         });
       },
-    });
-  }
-
-  confirmAccept() {
-    const handler = this.confirmAction()?.handler;
-    this.confirmAction.set(null);
-    if (handler) handler();
-  }
-
-  confirmCancel() {
-    this.confirmAction.set(null);
+      { confirmLabel: 'Guardar' },
+    );
   }
 
   refresh() {

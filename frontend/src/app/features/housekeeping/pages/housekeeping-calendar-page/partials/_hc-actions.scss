@@ -68,10 +68,6 @@
   animation: modalSlideIn 220ms ease;
 }
 
-@keyframes modalSlideIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
 
 .modal-header {
   display: flex;
@@ -227,6 +223,3 @@
   animation: spin 800ms linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}

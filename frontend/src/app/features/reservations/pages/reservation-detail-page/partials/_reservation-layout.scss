@@ -51,6 +51,124 @@
   overflow-x: auto;
 }
 
+/* ── Llegada estimada / late check-in ── */
+.rd-arrival-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.rd-late-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+  }
+}
+
+/* ── Fulfillment checklist for special requests ── */
+.rd-request-list {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.15rem 0;
+}
+
+.rd-request-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.rd-request-row.is-done {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--app-border));
+  background: color-mix(in srgb, var(--success) 6%, var(--surface));
+}
+
+.rd-request-icon {
+  font-size: 1.05rem;
+  color: var(--muted-text);
+  opacity: 0.55;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.rd-request-row.is-done .rd-request-icon {
+  color: var(--success);
+  opacity: 1;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.rd-request-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+  flex: 1;
+  min-width: 0;
+}
+
+.rd-request-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+}
+
+.rd-request-status.is-fulfilled {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+}
+
+.rd-request-date {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.rd-request-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 160ms ease, color 160ms ease;
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+  }
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
 @media (max-width: 920px) {
   .reservation-detail-page {
     padding: 1rem;

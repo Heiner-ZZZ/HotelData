@@ -41,6 +41,8 @@ class ReservationInput:
     comment: str
     check_in_time: str = ""
     check_out_time: str = ""
+    # Optional HH:MM — hora estimada de llegada del huésped (late check-in).
+    estimated_arrival_time: str = ""
     guest_phone: str = ""
     cedula: str = ""
     room_type_id: str = ""

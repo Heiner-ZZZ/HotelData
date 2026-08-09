@@ -7,8 +7,9 @@ from typing import Any
 
 from src.app.modules.hotels.service.lookups import (
     _amenities_prop_ids,
-    _destination_ids,
     _destination_lookup,
+    _prop_ids_for_countries,
+    _resolve_destination,
     _suggest_alternative_destinations,
 )
 from src.app.modules.hotels.service.operational import PUBLISHED_QUERY
@@ -17,9 +18,11 @@ from src.database.connection import get_database
 from .helpers import (
     _available_room_type_summaries_for_properties,
     _destination_display_name,
+    _eligible_room_type_summaries,
     _general_amenities_for_properties,
     _hotel_display_name,
     _hotel_min_rates_for_properties,
+    _hotel_min_rates_from_today_for_properties,
 )
 
 
@@ -62,8 +65,17 @@ def search_available_hotels(
         except (ValueError, TypeError):
             return _empty_availability(destination, check_in, check_out, adults, children, rooms)
 
-    destination_ids = _destination_ids(destination) if destination else []
+    resolved = _resolve_destination(destination) if destination else {}
+    destination_ids = resolved.get("destination_ids", [])
     destination_lookup = _destination_lookup(destination_ids) if destination_ids else {}
+
+    # Destino sin match en ninguna fuente (ciudad/hotel/país): vacío con
+    # alternativas — NO devolver todos los hoteles como si no hubiera filtro.
+    if destination and not amenities and not any(
+        resolved.get(k) for k in ("destination_ids", "prop_ids", "country_ids", "country_codes")
+    ):
+        alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
+        return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
 
     # Gate operativo (Fase A): la búsqueda pública nunca incluye hoteles
     # pendientes de aprobación (published=false). Se aplica SIEMPRE, también
@@ -80,29 +92,75 @@ def search_available_hotels(
             alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
             return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
 
-        if destination_ids or amenities_ids:
-            prop_sets: list[set[int]] = []
+        if destination_ids or amenities_ids or resolved.get("prop_ids") or resolved.get("country_ids") or resolved.get("country_codes"):
+            # OR entre fuentes de lugar (ciudad / nombre de hotel / país): el
+            # usuario puede tipear cualquiera de las tres. La intersección con
+            # amenities (AND) se aplica DESPUÉS sobre el conjunto unido.
+            place_prop_ids: set[int] = set()
             if destination_ids:
-                fact_prop_ids = set(db.fact_hotel_reservations.distinct(
+                place_prop_ids |= set(db.fact_hotel_reservations.distinct(
                     "prop_id", {"srch_destination_id": {"$in": destination_ids}},
                 ))
-                if not fact_prop_ids:
-                    alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
-                    return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
-                prop_sets.append(fact_prop_ids)
-            if amenities_ids:
-                prop_sets.append(set(amenities_ids))
-            combined = set.intersection(*prop_sets) if prop_sets else set()
-            if not combined:
+            if resolved.get("prop_ids"):
+                place_prop_ids |= {int(p) for p in resolved["prop_ids"]}
+            country_prop_ids = _prop_ids_for_countries(
+                resolved.get("country_ids", []),
+                resolved.get("country_codes", []),
+            )
+            if country_prop_ids:
+                place_prop_ids |= set(country_prop_ids)
+            if not place_prop_ids and not amenities_ids:
                 alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
                 return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
-            hotel_filter["prop_id"] = {"$in": list(combined)}
+            if amenities_ids:
+                # Si solo hay amenities (sin destino), place_prop_ids parte
+                # vacío y la intersección sería {} — usar amenities directo.
+                place_prop_ids = place_prop_ids & set(amenities_ids) if place_prop_ids else set(amenities_ids)
+            if not place_prop_ids:
+                alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
+                return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
+            hotel_filter["prop_id"] = {"$in": list(place_prop_ids)}
 
     if star_rating is not None:
         hotel_filter["prop_starrating"] = {"$gte": star_rating}
 
     if content_only:
         hotel_filter["display_name"] = {"$exists": True, "$ne": ""}
+
+    if has_dates:
+        # Búsqueda INVERTIDA (disponibilidad primero): una sola pasada sobre
+        # room_inventory_calendar (colección diminuta) devuelve los prop_ids con
+        # cobertura completa del rango + el tipo de habitación más barato que
+        # cabe. Antes el loop escaneaba TODOS los candidatos en lotes de 20
+        # (93,990 → 4,700 round-trips, ~67s) cuando pocos hoteles tenían
+        # disponibilidad. Ahora el set elegible es pequeño y se pagina directo.
+        eligible = _eligible_room_type_summaries(
+            explicit_ids or None, adults, children, check_in, check_out, rooms,
+        )
+        eligible_ids = {pid for pid, rt in eligible.items() if rt}
+        if eligible_ids:
+            rates = _hotel_min_rates_for_properties(sorted(eligible_ids), check_in, check_out)
+            eligible_ids = {pid for pid in eligible_ids if rates.get(pid) is not None}
+            # El filtro de precio se aplica ANTES del conteo: el total y la
+            # paginación ya reflejan price_min/price_max (exactos, no estimados).
+            if price_min is not None:
+                eligible_ids = {pid for pid in eligible_ids if rates[pid] >= price_min}
+            if price_max is not None:
+                eligible_ids = {pid for pid in eligible_ids if rates[pid] <= price_max}
+        if not eligible_ids:
+            alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
+            return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
+        # Intersección con el filtro de lugar/amenities ya resuelto: el hotel
+        # debe tener inventario PARA el rango Y cumplir destino/servicios.
+        existing_prop = hotel_filter.get("prop_id")
+        if isinstance(existing_prop, dict) and "$in" in existing_prop:
+            eligible_ids &= {int(pid) for pid in existing_prop["$in"]}
+        elif isinstance(existing_prop, (int, float)):
+            eligible_ids &= {int(existing_prop)}
+        if not eligible_ids:
+            alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
+            return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
+        hotel_filter["prop_id"] = {"$in": sorted(eligible_ids)}
 
     total_candidates = db.dim_hotels.count_documents(hotel_filter)
     if total_candidates == 0:
@@ -133,6 +191,7 @@ def search_available_hotels(
 
         available_room_summaries: dict[int, dict[str, Any]] = {}
         rates_by_property: dict[int, float] = {}
+        base_rates_by_property: dict[int, float] = {}
         general_amenities = _general_amenities_for_properties(batch_ids)
         nights = 0
         if has_dates:
@@ -141,6 +200,10 @@ def search_available_hotels(
             )
             rates_by_property = _hotel_min_rates_for_properties(batch_ids, check_in, check_out)
             nights = max((date.fromisoformat(check_out) - date.fromisoformat(check_in)).days, 1)
+        else:
+            # Sin fechas la tarjeta muestra el precio base 'desde hoy' (sin
+            # total ni conteo, que requieren un rango real).
+            base_rates_by_property = _hotel_min_rates_from_today_for_properties(batch_ids)
 
         batch_items: list[dict[str, Any]] = []
         for hotel in hotels:
@@ -154,12 +217,14 @@ def search_available_hotels(
                 batch_items.append(_build_item(
                     hotel, prop_id, image_map, destination_lookup, destination_ids,
                     matched_room_type, min_rate, total_est,
+                    matched_room_type.get("min_available"),
                     general_amenities.get(prop_id, []),
                 ))
             else:
                 batch_items.append(_build_item(
                     hotel, prop_id, image_map, destination_lookup, destination_ids,
-                    None, None, None, general_amenities.get(prop_id, []),
+                    None, base_rates_by_property.get(prop_id), None, None,
+                    general_amenities.get(prop_id, []),
                 ))
         # Without dates there is no live nightly rate to compare. Keep the
         # hotels visible; price filters are applied only when the request has
@@ -178,32 +243,14 @@ def search_available_hotels(
             ]
         return batch_items
 
-    if has_dates:
-        # Availability can remove candidates after the dimension query. Scan
-        # ordered candidates in batches until this page is full (plus one
-        # extra item to establish has_next), instead of returning short pages.
-        target_count = page * page_size + 1
-        eligible_items: list[dict[str, Any]] = []
-        batch_size = max(page_size * 2, 20)
-        candidate_cursor = db.dim_hotels.find(hotel_filter, {"_id": 0}).sort(mongo_sort)
-        while len(eligible_items) < target_count:
-            candidate_batch: list[dict[str, Any]] = []
-            for _ in range(batch_size):
-                try:
-                    candidate_batch.append(next(candidate_cursor))
-                except StopIteration:
-                    break
-            if not candidate_batch:
-                break
-            eligible_items.extend(build_items(candidate_batch))
-        start = (page - 1) * page_size
-        items = eligible_items[start:start + page_size]
-        has_more_eligible = len(eligible_items) > start + page_size
-    else:
-        skip = (page - 1) * page_size
-        page_hotels = list(db.dim_hotels.find(hotel_filter, {"_id": 0}).sort(mongo_sort).skip(skip).limit(page_size))
-        items = build_items(page_hotels)
-        has_more_eligible = page < ((total_candidates + page_size - 1) // page_size)
+    # Con fechas el set elegible ya es pequeño (solo hoteles con inventario
+    # para el rango), así que paginar es un skip/limit directo — el loop de
+    # lotes desapareció. +1 item establece has_next igual que antes.
+    skip = (page - 1) * page_size
+    page_hotels = list(db.dim_hotels.find(hotel_filter, {"_id": 0}).sort(mongo_sort).skip(skip).limit(page_size + 1))
+    items = build_items(page_hotels)
+    has_more_eligible = len(items) > page_size
+    items = items[:page_size]
 
     if not items:
         empty = _empty_availability(destination, check_in, check_out, adults, children, rooms)
@@ -218,14 +265,13 @@ def search_available_hotels(
     # With dates, availability is evaluated after candidate selection, so the
     # exact global total would require scanning every candidate. Expose the
     # pages known from this scan and rely on has_next for forward navigation.
-    total_pages = (
-        page + (1 if has_more_eligible else 0)
-        if has_dates
-        else max((total_candidates + page_size - 1) // page_size, 1)
-    )
+    # El total ya es exacto en ambas ramas (con fechas = elegibles tras
+    # inversión + filtro de precio; sin fechas = candidatos del filtro), así
+    # que total_pages se calcula de verdad y el flag de estimado se apaga.
+    total_pages = max((total_candidates + page_size - 1) // page_size, 1)
     result: dict[str, Any] = {
         "items": items, "total": total_candidates if items else 0, "page": page, "page_size": page_size, "total_pages": total_pages,
-        "total_is_estimate": has_dates,
+        "total_is_estimate": False,
         "has_prev": page > 1, "has_next": has_more_eligible,
         "filters": {"destination": destination, "check_in": check_in, "check_out": check_out,
                      "adults": adults, "children": children, "rooms": rooms},
@@ -239,7 +285,7 @@ def search_available_hotels(
     return result
 
 
-def _build_item(hotel, prop_id, image_map, destination_lookup, destination_ids, matched_room_type, min_rate, total_est, general_amenities):
+def _build_item(hotel, prop_id, image_map, destination_lookup, destination_ids, matched_room_type, min_rate, total_est, min_available, general_amenities):
     item = {
         "prop_id": prop_id, "hotel_name": _hotel_display_name(hotel, prop_id),
         "display_name": hotel.get("display_name") or "",
@@ -250,19 +296,23 @@ def _build_item(hotel, prop_id, image_map, destination_lookup, destination_ids, 
                                for did in (hotel.get("destinations") or destination_ids)[:3]] if destination_ids else [],
         "general_amenities": general_amenities,
     }
-    if matched_room_type is not None and min_rate is not None and total_est is not None:
-        item["matched_room_type"] = matched_room_type
+    if min_rate is not None:
         item["min_nightly_rate"] = min_rate
         item["min_nightly_rate_label"] = f"${min_rate:.2f}"
+    if total_est is not None:
         item["total_estimated"] = total_est
         item["total_estimated_label"] = f"${total_est:.2f}"
+    if matched_room_type is not None:
+        item["matched_room_type"] = matched_room_type
+    if min_available is not None:
+        item["min_available_rooms"] = int(min_available)
     return item
 
 
 def _empty_availability(destination="", check_in="", check_out="", adults=1, children=0, rooms=1, alternatives=None):
     result = {
         "items": [], "total": 0, "page": 1, "page_size": 10, "total_pages": 0,
-        "total_is_estimate": bool(check_in and check_out),
+        "total_is_estimate": False,
         "has_prev": False, "has_next": False,
         "filters": {"destination": destination, "check_in": check_in, "check_out": check_out,
                      "adults": adults, "children": children, "rooms": rooms},

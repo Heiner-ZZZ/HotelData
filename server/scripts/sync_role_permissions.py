@@ -50,9 +50,8 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "monitoring.manage", "monitoring.read",
         "etl.manage", "etl.read", "etl.execute",
         "hotel.manage_roles", "properties.approve",
-        "account.manage", "account.read", "account.update",
-        "account.bookings.read",
-        "search.manage", "search.read",
+        # Guest-facing (auto-servicio del huésped): super_admin NO los tiene —
+        # ver GUEST_PERMISSION_CODES en init_security_model_ga03.py (2026-08).
     ],
     "admin_sistema": [
         "users.manage", "roles.read", "dashboard.read",

@@ -110,6 +110,42 @@
   justify-content: space-between;
 }
 
+.session-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--app-border) 50%, transparent);
+}
+
+/* Enlaces directos del huésped: texto plano sin píldora (ya se sabe que son
+   botones); la sección actual se marca con un borde inferior recto. */
+.nav-link {
+  padding: 0.45rem 0.55rem;
+  white-space: nowrap;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  font-weight: 600;
+}
+
+.nav-link:hover {
+  background: none;
+  color: var(--accent);
+}
+
+.nav-link.is-active {
+  background: none;
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.nav-link.is-active:hover {
+  border-bottom-color: var(--accent);
+}
+
 .session-info {
   display: grid;
   text-align: left;

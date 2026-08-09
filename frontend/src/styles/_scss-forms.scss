@@ -50,6 +50,7 @@
   grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
+  gap: 0.6rem;
 }
 
 .panel-form {
@@ -57,23 +58,27 @@
   gap: 1rem;
 }
 
+/* ── Botones ── Variante canónica del sistema (la familia gradient usada por
+ * rates/promotion-form, settings y profile). El resto de páginas con estilos
+ * propios conservan sus variantes locales — solo estas clases son globales. */
+
 .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.55rem 1.25rem;
+  padding: 0.6rem 1.35rem;
   border: 0;
-  border-radius: 8px;
-  background: var(--accent);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent));
   color: var(--on-accent);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 180ms ease, transform 120ms ease;
+  transition: box-shadow 180ms ease, opacity 180ms ease, transform 120ms ease;
   font-family: inherit;
 
   &:hover:not(:disabled) {
-    opacity: 0.88;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
     transform: translateY(-1px);
   }
 
@@ -85,45 +90,83 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    --icon-opsz: 20;
+  }
+
+  .spin {
+    animation: spin 0.8s linear infinite;
+  }
 }
 
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0.6rem 1.35rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 180ms ease, box-shadow 180ms ease, transform 120ms ease;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-hover);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--app-text) 12%, transparent);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+/* ── Banner de edición en curso ── (usado por promotion-form y rates-page) */
 .editing-banner {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--accent);
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 600;
+  color: var(--app-text);
 
   .material-symbols-outlined {
     font-size: 1.1rem;
+    color: var(--accent);
   }
 }
 
 .cancel-edit-btn {
-  display: flex;
+  margin-left: auto;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  margin-left: auto;
+  width: 1.75rem;
+  height: 1.75rem;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
-  color: var(--accent);
+  color: var(--muted-text);
   cursor: pointer;
-  transition: background 120ms;
+  transition: background 120ms ease, color 120ms ease;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    background: var(--accent-light);
+    color: var(--accent);
   }
 
   .material-symbols-outlined {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 }
 

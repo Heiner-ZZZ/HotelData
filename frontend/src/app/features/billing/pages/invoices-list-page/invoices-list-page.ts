@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { of } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
@@ -38,8 +39,9 @@ export class InvoicesListPageComponent {
   readonly dateTo = computed(() => this.qp()?.get('date_to') ?? '');
 
   // ── Stats resource ──
-  readonly statsResource = rxResource<InvoiceStatsDto, undefined>({
-    stream: () => this.billingApi.getInvoiceStats(),
+  readonly statsResource = rxResource<InvoiceStatsDto | undefined, number | undefined>({
+    params: () => this.selectedPropId() || undefined,
+    stream: ({ params }) => params ? this.billingApi.getInvoiceStats(params) : of<InvoiceStatsDto | undefined>(undefined),
   });
 
   readonly stats = computed(() => this.statsResource.value());

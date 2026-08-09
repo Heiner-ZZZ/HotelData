@@ -1,3 +1,57 @@
 :host {
   display: block;
 }
+
+/* Trazabilidad de borrado lógico: cupones retirados por reducciones. */
+.coupons-retired {
+  color: var(--muted-text);
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* Cupones usados: 0 neutro; >0 danger + candado (campaña congelada). */
+.coupons-used {
+  font-weight: 600;
+  color: var(--muted-text);
+
+  &.frozen {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--danger);
+    font-weight: 700;
+
+    .material-symbols-outlined {
+      font-size: 0.95rem;
+    }
+  }
+}
+
+/* Cupones anidados bajo su campaña: la asociación es visible por indentación. */
+.coupon-row {
+  background: var(--surface-soft);
+
+  td:first-child {
+    padding-left: 2.25rem;
+  }
+
+  code {
+    font-size: 0.85rem;
+  }
+}
+
+/* Grupo de cupones cuyo campaign_id no coincide con ninguna campaña. */
+.group-header td {
+  padding: 0.5rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--danger);
+  background: var(--surface);
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+}
+
+.orphan-row {
+  background: color-mix(in srgb, var(--danger) 6%, var(--surface-soft));
+}

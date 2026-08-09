@@ -1,7 +1,8 @@
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, catchError, of } from 'rxjs';
 
+import { getErrorStatus } from '../utils/http-error.util';
 import { API_CONFIG } from '../../core/api/api.config';
 import type { PropertyOption, PropertyOptionsPage } from '../models/property-option.model';
 
@@ -42,7 +43,8 @@ export class PropertySelectorService {
           }),
         ),
         catchError((err: unknown) => {
-          if (err instanceof HttpErrorResponse && err.status === 401) {
+          // getErrorStatus cubre HttpErrorResponse (tests) y ApiError del interceptor (vivo).
+          if (getErrorStatus(err) === 401) {
             // Session expired — signal to the component so it can show
             // a login prompt instead of a broken dropdown.
             return of({

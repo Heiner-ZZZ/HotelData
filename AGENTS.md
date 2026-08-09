@@ -166,6 +166,61 @@ c.close()
 - **NUNCA** ejecutar scripts que modifiquen la base de datos en producción (seed, drop, reset) sin confirmación.
 - **NUNCA** sobrescribir archivos de configuración (`.env`, `docker-compose.yml`, etc.) sin informar.
 
+### 🧪 Aislamiento de BD — tests y diagnósticos NUNCA tocan la BD dev (regla dura)
+
+#### ¿Qué es `hoteldata_hub_test`?
+
+`hoteldata_hub_test` es una base de datos MongoDB **desechable y exclusiva para pytest y diagnósticos aislados**. Vive en la misma instancia local de MongoDB que `hoteldata_hub`, pero no contiene datos de negocio del entorno dev:
+
+- Los tests la fuerzan mediante `server/tests/conftest.py` antes de importar `src.app.*`.
+- Las fixtures siembran allí usuarios, roles, reservas, facturas, empleados y demás documentos mínimos necesarios para cada caso.
+- Su contenido normal son **fixtures y residuos de pruebas**: documentos creados por tests anteriores o por una corrida interrumpida. Esos residuos no representan datos reales ni deben interpretarse como una copia de `hoteldata_hub`.
+- El cleanup del conftest vacía las colecciones operativas antes de cada test. Si una ejecución se corta, pueden quedar residuos hasta la siguiente corrida.
+- Si el usuario autoriza explícitamente borrar la base completa, puede hacerse sin riesgo para dev: pytest vuelve a crear las colecciones, índices y fixtures que necesita al iniciar. **Desechable no significa que se pueda borrar automáticamente ni sin autorización; no contiene información que deba conservarse.**
+
+**Por qué existe:** en el incidente de agosto de 2026 se perdieron aproximadamente 30 minutos porque un script de diagnóstico conectó por defecto a `hoteldata_hub` y eliminó las cinco colecciones de seguridad `users`, `roles`, `permissions`, `hotel_roles` y `role_assignments`. Desde entonces, `hoteldata_hub_test` es el cortafuegos obligatorio para pruebas, migraciones de prueba y exploración técnica.
+
+**Regla operativa:** los tests y diagnósticos rutinarios van **SIEMPRE** a `hoteldata_hub_test`, con la base fijada explícitamente antes de importar cualquier módulo de la aplicación. Solo una auditoría dev solicitada expresamente puede leer `hoteldata_hub`, y debe ser estrictamente read-only: sin inserts, updates, deletes, drops, seeds, migraciones ni creación de índices.
+
+Desde entonces, estas reglas son obligatorias:
+
+1. **Los tests pytest SIEMPRE corren contra la BD de test `hoteldata_hub_test`** — el
+   `server/tests/conftest.py` setea `os.environ["MONGO_DATABASE"]="hoteldata_hub_test"` ANTES de
+   importar `src.app.*`. No modificar ese contrato.
+2. **🚫 NUNCA ejecutar scripts de diagnóstico/exploración con `get_database()` a secas** — dentro
+   del contenedor server la env var del compose es `MONGO_DATABASE=hoteldata_hub` (dev). Un
+   `python -c "from src.database.connection import get_database"` sin aislar conecta a DEV.
+   Para explorar Mongo aislado, forzar la BD de test explícitamente:
+   ```bash
+   docker compose --env-file .env -f infra/docker-compose.yml exec -T server python -c "
+   import os
+   os.environ['MONGO_DATABASE'] = 'hoteldata_hub_test'  # ANTES de importar src.*
+   from src.database.connection import get_database
+   ..."
+   ```
+3. **Diagnóstico = solo lectura + BD de test.** 🚫 NUNCA `drop_collection` / `delete_many` /
+   writes desde un script de diagnóstico, ni siquiera contra la BD de test, sin autorización.
+   Si necesitas replicar una fixture para debuggear, hazlo dentro de un test pytest (el conftest
+   ya dropea y recrea las colecciones de test por test) — nunca con un `python -c` suelto.
+4. **Comando canónico de tests** (el contenedor monta el server en `/app`, por eso el path es
+   `tests/...` y NO `server/tests/...`):
+   ```bash
+   docker compose --env-file .env -f infra/docker-compose.yml exec -T server python -m pytest -q tests/<archivo>.py
+   ```
+5. Los seeds/migraciones de RESTAURACIÓN (`init_security_model_ga03.py`, `seed_roles_users.py`,
+   `sync_hotel_manage_roles.py`, `migrate_hotel_roles.py`) sí apuntan a dev — pero SOLO se corren
+   cuando el usuario lo pide explícitamente o para deshacer un error, nunca como parte de un
+   diagnóstico rutinario. Nota: `seed_roles_users.py` ya NO es fuente divergente de roles/permisos
+   (migrado 2026-08) — importa `BASE_ROLES`/`PERMISSION_CATALOG`/`ROLE_PERMISSION_CODES` y las
+   funciones de upsert del canónico `init_security_model_ga03.py`; su único aporte propio son los
+   usuarios demo. Re-ejecutarlo es CONVERGENTE con el canónico, nunca pisa permisos.
+6. **🚫 NUNCA correr DOS procesos pytest a la vez contra la misma BD de test.** El conftest adquiere
+   un flock exclusivo (`/tmp/hoteldata_test_db.lock`) al arrancar; el segundo proceso falla con
+   "Otro proceso pytest está corriendo...". La causa de los 401/403/duplicate-key intermitentes de
+   `test_role_permissions_notifications.py` fue exactamente esto: dos suites simultáneas, y el
+   `delete_many` del cleanup de una borraba los usuarios/sesiones/roles que la otra acababa de
+   sembrar. Espera a que termine el otro proceso (o mátalo) antes de relanzar.
+
 ## Airflow 3 — instalación y dependencias
 
 La imagen `infra/docker/airflow3.Dockerfile` usa `apache/airflow:3.2.2-python3.12`.

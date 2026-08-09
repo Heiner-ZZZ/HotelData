@@ -9,6 +9,7 @@ import { forkJoin, map } from 'rxjs';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { BillableServices, InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
 import type { BillableServicesDto, InvoiceDetailDto } from '../../models/billing.dto';
@@ -31,6 +32,12 @@ export class InvoiceDetailPageComponent {
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
+  private readonly propertyCtx = inject(PropertyContextService);
+
+  private readonly routePropId = toSignal(
+    this.activatedRoute.queryParamMap.pipe(map(params => Number(params.get('prop_id') ?? '0'))),
+    { initialValue: 0 },
+  );
 
   private readonly invoiceId = toSignal(
     this.activatedRoute.paramMap.pipe(map(params => params.get('invoiceId') ?? '')),
@@ -39,7 +46,8 @@ export class InvoiceDetailPageComponent {
 
   readonly invoiceResource = httpResource<InvoiceDetailViewModel>(() => {
     const id = this.invoiceId();
-    return id ? `/api/billing/invoices/${id}` : undefined;
+    const propId = this.propertyCtx.currentPropId() || this.routePropId();
+    return id && propId > 0 ? `/api/billing/invoices/${id}?prop_id=${propId}` : undefined;
   }, {
     parse: (res) => mapInvoiceDetail(res as InvoiceDetailDto),
   });
@@ -110,7 +118,12 @@ export class InvoiceDetailPageComponent {
 
   readonly isPaid = computed(() => this.invoice()?.status === 'paid');
   readonly isCancelled = computed(() => this.invoice()?.status === 'cancelled');
+  readonly isVoided = computed(() => this.invoice()?.status === 'cancelled' || this.invoice()?.status === 'refunded');
   readonly isIssued = computed(() => this.invoice()?.status === 'issued');
+  readonly accountingRepairPending = computed(() => this.isVoided() && this.invoice()?.accountingStatus !== 'reversed');
+  readonly accountingRepairBusy = signal(false);
+  readonly creditNoteBusy = signal(false);
+  readonly creditNotePending = computed(() => this.isVoided() && !this.invoice()?.creditNoteNumber);
 
   readonly subtotal = computed(() => this.invoice()?.subtotal ?? 0);
   readonly taxes = computed(() => this.invoice()?.taxes ?? 0);
@@ -181,7 +194,7 @@ export class InvoiceDetailPageComponent {
       quantity: form.quantity,
       unit_price: form.unit_price,
       category: form.category,
-    }).subscribe({
+    }, this.invoice()!.propId as number).subscribe({
       next: () => {
         this.invoiceResource.reload();
         this.actionMessage.set(`Cargo "${form.name}" agregado a la factura.`);
@@ -214,7 +227,7 @@ export class InvoiceDetailPageComponent {
     this.actionError.set(null);
     this.actionMessage.set(null);
 
-    this.billingApi.removeLineItem(this.invoice()!.id, item.itemId).subscribe({
+    this.billingApi.removeLineItem(this.invoice()!.id, item.itemId, this.invoice()!.propId as number).subscribe({
       next: () => {
         this.invoiceResource.reload();
         this.actionMessage.set(`Concepto "${item.name}" eliminado de la factura.`);
@@ -253,7 +266,7 @@ export class InvoiceDetailPageComponent {
         quantity: qc.quantity,
         unit_price: qc.amount,
         category: qc.category,
-      }),
+      }, inv.propId as number),
     }).subscribe({
       next: () => {
         this.invoiceResource.reload();
@@ -267,10 +280,48 @@ export class InvoiceDetailPageComponent {
     });
   }
 
+  issueCreditNote(): void {
+    const invoice = this.invoice();
+    if (!invoice || !this.creditNotePending()) return;
+    this.creditNoteBusy.set(true);
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+    this.billingApi.createCreditNote(invoice.id, invoice.propId as number).subscribe({
+      next: () => {
+        this.actionMessage.set('Documento compensatorio emitido y enlazado al libro mayor.');
+        this.creditNoteBusy.set(false);
+        this.invoiceResource.reload();
+      },
+      error: () => {
+        this.actionError.set('No se pudo emitir el documento compensatorio.');
+        this.creditNoteBusy.set(false);
+      },
+    });
+  }
+
+  repairSettlement(): void {
+    const invoice = this.invoice();
+    if (!invoice || !this.accountingRepairPending()) return;
+    this.accountingRepairBusy.set(true);
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+    this.billingApi.repairInvoiceSettlement(invoice.id, invoice.propId as number).subscribe({
+      next: () => {
+        this.actionMessage.set('Valor neto y reversión contable corregidos; el importe original se conserva.');
+        this.accountingRepairBusy.set(false);
+        this.invoiceResource.reload();
+      },
+      error: () => {
+        this.actionError.set('No se pudo corregir la reversión contable de la factura.');
+        this.accountingRepairBusy.set(false);
+      },
+    });
+  }
+
   payInvoice(): void {
     this.actionError.set(null);
     this.actionMessage.set(null);
-    this.billingApi.payInvoice(this.invoice()!.id).subscribe({
+    this.billingApi.payInvoice(this.invoice()!.id, this.invoice()!.propId as number).subscribe({
       next: () => {
         this.actionMessage.set('Pago procesado exitosamente.');
         this.invoiceResource.reload();
@@ -292,7 +343,7 @@ export class InvoiceDetailPageComponent {
     if (!ok) return;
     this.actionError.set(null);
     this.actionMessage.set(null);
-    this.billingApi.cancelInvoice(this.invoice()!.id).subscribe({
+    this.billingApi.cancelInvoice(this.invoice()!.id, this.invoice()!.propId as number).subscribe({
       next: () => {
         this.actionMessage.set('Factura anulada correctamente.');
         this.invoiceResource.reload();

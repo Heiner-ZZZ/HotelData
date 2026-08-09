@@ -1,5 +1,7 @@
-import { HttpErrorResponse, HttpClient } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { httpResource } from '@angular/common/http';
+
+import { getErrorMessage } from '../../shared/utils/http-error.util';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -306,13 +308,9 @@ export class OnboardingPropertyComponent {
         },
         error: (error: unknown) => {
           this.sendingCode.set(false);
-          if (error instanceof HttpErrorResponse && error.error?.detail) {
-            this.errorMessage.set(error.error.detail);
-          } else {
-            this.errorMessage.set(
-              'Error al procesar tu registro. Intenta nuevamente.'
-            );
-          }
+          this.errorMessage.set(
+            getErrorMessage(error) || 'Error al procesar tu registro. Intenta nuevamente.'
+          );
         }
       });
   }
@@ -358,13 +356,9 @@ export class OnboardingPropertyComponent {
           document
             .querySelector<HTMLInputElement>('#onboarding-code-digit-0')
             ?.focus();
-          if (error instanceof HttpErrorResponse && error.error?.detail) {
-            this.errorMessage.set(error.error.detail);
-          } else {
-            this.errorMessage.set(
-              'Error al verificar el código. Solicita uno nuevo.'
-            );
-          }
+          this.errorMessage.set(
+            getErrorMessage(error) || 'Error al verificar el código. Solicita uno nuevo.'
+          );
         }
       });
   }

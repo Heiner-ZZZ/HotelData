@@ -6,6 +6,10 @@ export interface ReceptionCalendarReservation {
   children: number;
   checkInDate: string;
   checkInTime: string;
+  /** Hora estimada de llegada (HH:MM) si el huésped la declaró. */
+  estimatedArrivalTime: string;
+  /** Marcador de late check-in visible en la barra del calendario. */
+  lateCheckin: boolean;
   checkOutDate: string;
   checkOutTime: string;
   totalNights: number;

@@ -14,6 +14,7 @@ from src.app.modules.reservations.service import (
 )
 from src.app.modules.reservations.service.lifecycle.create import _check_availability, _calculate_total_price
 from src.app.modules.reservations.service.lifecycle.create._availability import validate_requested_room
+from src.app.modules.reservations.service.lifecycle.create._special_requests import validate_special_requests
 from src.app.modules.reservations.service.lifecycle.create.core import _get_cancellation_policy_text
 from src.app.modules.partner.services.content.amenities import _amenity_unit_price
 from src.database.connection import get_database
@@ -109,12 +110,17 @@ def preview_reservation(payload: dict) -> dict:
             reservation_input.check_out_date,
             reservation_input.rooms,
         )
+        request_error = validate_special_requests(
+            reservation_input.prop_id,
+            reservation_input.hotel_room_id,
+            reservation_input.special_requests,
+        )
         avail_error = _check_availability(
             reservation_input.prop_id, reservation_input.check_in_date,
             reservation_input.check_out_date, reservation_input.rooms, reservation_input.room_type_id,
             rate_plan_id=reservation_input.rate_plan_id or "",
         )
-        availability_error = room_error or avail_error
+        availability_error = room_error or request_error or avail_error
         total_price, currency, total_nights, tax_rate, tax_amount, tax_included = _calculate_total_price(
             reservation_input.prop_id, reservation_input.room_type_id,
             reservation_input.check_in_date, reservation_input.check_out_date, reservation_input.rooms,

@@ -43,6 +43,7 @@ export class AdditionalChargesPageComponent {
   readonly data = signal<PaginatedResponse<AdditionalChargeItem> | null>(null);
   readonly message = signal('');
   readonly errorMessage = signal('');
+  readonly repairingId = signal<string | null>(null);
 
   readonly filterBookingId = signal('');
   readonly showCreateForm = signal(false);
@@ -229,6 +230,26 @@ export class AdditionalChargesPageComponent {
           },
         });
     }
+  }
+
+  repairChargePosting(item: AdditionalChargeItem): void {
+    if (item.postingStatus !== 'posting_failed' || this.repairingId()) return;
+    this.repairingId.set(item.id);
+    this.api.repairChargePosting(item.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.message.set(`Cargo enlazado al folio ${item.folioNumber || ''} y publicado correctamente`);
+          this.errorMessage.set('');
+          this.repairingId.set(null);
+          this.refresh();
+        },
+        error: (err) => {
+          this.errorMessage.set(err.error?.detail || 'No se pudo enlazar el cargo al folio.');
+          this.message.set('');
+          this.repairingId.set(null);
+        },
+      });
   }
 
   async deleteChargeWithConfirm(item: AdditionalChargeItem): Promise<void> {

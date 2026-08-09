@@ -1,9 +1,10 @@
-import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, ViewEncapsulation } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
+import { getErrorStatus } from '../../../../shared/utils/http-error.util';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -47,7 +48,17 @@ export class CheckOutDetailPageComponent {
   private readonly opMode = inject(OperationModeService);
 
   readonly viewState = signal<ViewState>('loading');
-  readonly data = computed(() => this.detailResource.value() ?? null);
+  /**
+   * Degradación elegante: httpResource.value() LANZA cuando el request falló
+   * (ej. 403 check-outs.read) y todos los computeds derivados (_opMode,
+   * roomTotal, grandTotal…) lo re-leerían → spam de consola en cada
+   * recomputación. Con error presente devolvemos null y la vista pasa a
+   * 'forbidden'/'error' sin lanzar.
+   */
+  readonly data = computed(() => {
+    if (this.detailResource.error()) return null;
+    return this.detailResource.value() ?? null;
+  });
   readonly errorMessage = signal('');
 
   // ── Reactive route param → httpResource (re-fires on bookingId change) ──
@@ -231,14 +242,20 @@ export class CheckOutDetailPageComponent {
     // after completeCheckOut/addCharge/removeCharge/quickCharge/onInvoiceEmitted
     // don't trash user-edited values).
     effect(() => {
-      const detail = this.detailResource.value();
+      // Leer error() ANTES de value(): value() lanza cuando el request falló
+      // (ej. 403) y este efecto se re-ejecuta durante el change detection →
+      // el throw rompería la vista y spamearía la consola.
       const err = this.detailResource.error();
-
       if (err) {
-        const status = err instanceof HttpErrorResponse ? err.status : undefined;
-        this.viewState.set(status === 404 ? 'empty' : 'error');
+        // getErrorStatus cubre HttpErrorResponse (tests) y ApiError del
+        // interceptor (app en vivo) — ver shared/utils/http-error.util.ts.
+        const status = getErrorStatus(err);
+        // 403 check-outs.read → el rol no tiene permiso; no es un error del server.
+        this.viewState.set(status === 403 ? 'forbidden' : (status === 404 ? 'empty' : 'error'));
         return;
       }
+
+      const detail = this.detailResource.value();
       if (!detail) {
         this.viewState.set('loading');
         return;

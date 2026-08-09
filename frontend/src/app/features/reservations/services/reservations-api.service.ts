@@ -106,6 +106,8 @@ export interface ReceptionCalendarDto {
       children: number;
       check_in_date: string;
       check_in_time: string;
+      estimated_arrival_time: string;
+      late_checkin: boolean;
       check_out_date: string;
       check_out_time: string;
       total_nights: number;
@@ -152,6 +154,8 @@ function mapReceptionReservation(r: ReceptionCalendarDto['rooms'][number]['reser
     children: r.children,
     checkInDate: r.check_in_date,
     checkInTime: r.check_in_time,
+    estimatedArrivalTime: r.estimated_arrival_time || '',
+    lateCheckin: !!r.late_checkin,
     checkOutDate: r.check_out_date,
     checkOutTime: r.check_out_time,
     totalNights: r.total_nights,
@@ -232,6 +236,14 @@ export class ReservationsApiService {
     return this.http
       .get<ReservationDetailDto>(`/reservations/${bookingId}`)
       .pipe(map((dto) => mapReservationDetail(dto)));
+  }
+
+  /** Flip one checklist item's fulfillment status (pending ↔ fulfilled). */
+  updateSpecialRequestStatus(bookingId: string, label: string, status: 'pending' | 'fulfilled', kind: 'special_request' | 'amenity' = 'special_request') {
+    return this.http.patch<{ ok: boolean; kind: string; fulfillment: { label: string; status: string; fulfilled_at?: string | null }[] }>(
+      `/reservations/${bookingId}/special-requests`,
+      { kind, label, status },
+    );
   }
 
   getCancelPreview(bookingId: string): Observable<CancelPreviewDto> {

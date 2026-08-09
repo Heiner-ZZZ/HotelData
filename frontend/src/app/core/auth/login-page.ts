@@ -1,7 +1,7 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { getErrorMessage } from '../../shared/utils/http-error.util';
 import { AuthService } from './auth.service';
 
 @Component({
@@ -75,12 +75,6 @@ export class LoginPageComponent {
   }
 
   private resolveErrorMessage(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      const detail = error.error?.detail;
-      if (typeof detail === 'string' && detail.trim()) {
-        return detail;
-      }
-    }
-    return 'No pudimos iniciar sesión. Revisa tus credenciales e inténtalo otra vez.';
+    return getErrorMessage(error) || 'No pudimos iniciar sesión. Revisa tus credenciales e inténtalo otra vez.';
   }
 }

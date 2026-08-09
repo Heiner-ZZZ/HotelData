@@ -5,12 +5,16 @@ They verify destination resolution, inventory checking, and rate lookups.
 """
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
+from src.app.core.timezone import local_today
 from src.app.modules.hotels.service.availability import (
     _check_inventory_for_dates,
-    _matching_room_types,
+    _eligible_room_type_summaries,
     _hotel_min_rate_for_range,
+    _matching_room_types,
     search_available_hotels,
 )
 
@@ -140,6 +144,42 @@ async def test_matching_room_types_finds_correct_types(db):
     assert len(types) == 0
 
 
+async def test_eligible_room_type_summaries_inverted(db):
+    """La búsqueda invertida devuelve (prop -> room_type) con cobertura completa
+    del rango y el mínimo de available_rooms, en una sola pasada."""
+    _seed_test_data(db)
+    result = _eligible_room_type_summaries(None, 2, 1, "2026-08-01", "2026-08-04", 1)
+    assert 99999 in result
+    rt = result[99999]
+    assert rt["room_type_id"] == "RT-99999-test"
+    assert rt["name"] == "Test Room Standard"
+    assert rt["min_available"] == 5  # 5 disponibles en las 3 noches
+
+
+async def test_eligible_room_type_summaries_excludes_partial_coverage(db):
+    """La inversión excluye tipos de habitación sin cobertura de TODAS las noches."""
+    _seed_test_data(db)
+    # Solo 2 de 3 noches con inventario para el rango pedido de 4 noches
+    result = _eligible_room_type_summaries(None, 2, 1, "2026-08-01", "2026-08-06", 1)
+    assert 99999 not in result
+
+
+async def test_eligible_room_type_summaries_respects_capacity(db):
+    """La inversión filtra room types que no caben con los huéspedes pedidos."""
+    _seed_test_data(db)
+    result = _eligible_room_type_summaries(None, 5, 2, "2026-08-01", "2026-08-04", 1)
+    assert 99999 not in result  # max_adults=2 no alcanza para 5
+
+
+async def test_eligible_room_type_summaries_restricts_prop_ids(db):
+    """Con prop_ids explícitos (favoritos) la inversión se acota a ese set."""
+    _seed_test_data(db)
+    result = _eligible_room_type_summaries([99999], 2, 1, "2026-08-01", "2026-08-04", 1)
+    assert 99999 in result
+    result = _eligible_room_type_summaries([88888], 2, 1, "2026-08-01", "2026-08-04", 1)
+    assert result == {}
+
+
 async def test_hotel_min_rate_for_range(db):
     """_hotel_min_rate_for_range returns the minimum nightly rate."""
     _seed_test_data(db)
@@ -166,10 +206,82 @@ async def test_search_available_hotels_full_flow(db):
     assert item["min_nightly_rate"] == 89.50
     assert item["total_estimated"] == 89.50 * 3  # 3 nights
     assert item["matched_room_type"]["room_type_id"] == "RT-99999-test"
+    assert item["min_available_rooms"] == 5  # min available_rooms across the 3 nights
     assert item["general_amenities"] == ["Wi-Fi", "Piscina", "Playa", "Parking"]
     assert "hotel_rooms" not in item
     assert "room_inventory_calendar" not in item
     assert result["alternative_destinations"] == []
+
+
+async def test_search_dated_reports_exact_total_and_pages(db):
+    """Tras la inversión el total con fechas es exacto: total_is_estimate=False
+    y total_pages calculado de verdad (ya no el estimado de 93,990)."""
+    _seed_test_data(db)
+    result = search_available_hotels(
+        check_in="2026-08-01",
+        check_out="2026-08-04",
+        adults=2,
+        rooms=1,
+    )
+    assert result["total_is_estimate"] is False
+    assert result["total"] >= 1
+    expected_pages = max(1, (result["total"] + result["page_size"] - 1) // result["page_size"])
+    assert result["total_pages"] == expected_pages
+
+
+async def test_search_dated_price_filter_makes_total_exact(db):
+    """El filtro de precio se aplica antes del conteo: el total ya refleja
+    price_min/price_max (no es un estimado que ignore el filtro)."""
+    _seed_test_data(db)
+    # La tarifa mínima del hotel es 89.50: con price_min=89.5 queda dentro.
+    result = search_available_hotels(
+        check_in="2026-08-01",
+        check_out="2026-08-04",
+        adults=2,
+        rooms=1,
+        price_min=89.5,
+    )
+    assert result["total"] == 1
+    # Con price_min por encima de la tarifa mínima, el hotel queda fuera y el
+    # total es 0 (exacto), no el estimado de candidatos.
+    result = search_available_hotels(
+        check_in="2026-08-01",
+        check_out="2026-08-04",
+        adults=2,
+        rooms=1,
+        price_min=200.0,
+    )
+    assert result["total"] == 0
+    assert result["items"] == []
+
+
+async def test_search_without_dates_returns_base_from_price(db):
+    """Sin fechas la tarjeta muestra el precio base 'desde hoy' sin total ni conteo."""
+    _seed_test_data(db)
+    from datetime import date as date_cls
+    today = date_cls.fromisoformat(local_today())
+    # Tarifa futura: el precio base sin fechas se toma de hotel_rate_calendar hoy+.
+    for i in range(3):
+        day = (today + timedelta(days=1 + i)).isoformat()
+        db.hotel_rate_calendar.update_one(
+            {"prop_id": 99999, "rate_plan_id": "RP-99999-base", "date": day},
+            {"$set": {
+                "prop_id": 99999,
+                "rate_plan_id": "RP-99999-base",
+                "date": day,
+                "rate_amount": 74.25,
+                "is_closed": False,
+            }},
+            upsert=True,
+        )
+    result = search_available_hotels(destination="Test City", adults=2, rooms=1)
+    assert result["total"] >= 1
+    item = next(item for item in result["items"] if item["prop_id"] == 99999)
+    assert item["min_nightly_rate"] == 74.25
+    assert item["min_nightly_rate_label"] == "$74.25"
+    # Sin fechas no hay total ni conteo de habitaciones
+    assert "total_estimated" not in item
+    assert "min_available_rooms" not in item
 
 
 async def test_search_no_availability_excludes_hotel(db):

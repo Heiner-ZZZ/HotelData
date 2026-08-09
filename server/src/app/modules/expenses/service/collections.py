@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from pymongo import ASCENDING, DESCENDING, IndexModel
 
-from src.database.collections import ensure_collection
+from src.database.collections import drop_index_safe, ensure_collection
 
 if TYPE_CHECKING:
     from src.app.modules.expenses.schemas import ModuleStatus
@@ -29,7 +29,17 @@ CATEGORIES_INDEXES = [
 ]
 
 BUDGET_INDEXES = [
-    IndexModel([("department", ASCENDING), ("period", ASCENDING)], name="idx_budget_dept_period", unique=True),
+    # A hotel may use the same department/period as another hotel. Legacy
+    # rows without prop_id remain outside this unique index until explicitly
+    # classified; new hotel-scoped budgets are unique per property.
+    IndexModel(
+        [("prop_id", ASCENDING), ("department", ASCENDING), ("period", ASCENDING)],
+        name="idx_budget_prop_dept_period",
+        unique=True,
+        # Mongo partial indexes do not accept `$ne: null`; all hotel tenant
+        # keys are integer prop_id values, so `$type: int` is the safe filter.
+        partialFilterExpression={"prop_id": {"$type": "int"}},
+    ),
 ]
 
 LEDGER_INDEXES = [
@@ -39,6 +49,9 @@ LEDGER_INDEXES = [
     IndexModel([("status", ASCENDING)], name="idx_ledger_status"),
     IndexModel([("account_code", ASCENDING)], name="idx_ledger_account"),
     IndexModel([("journal_entry_id", ASCENDING)], name="idx_ledger_journal"),
+    # One source event owns exactly one journal pair. This makes retries safe
+    # and lets reconciliation distinguish a complete pair from a half-write.
+    IndexModel([("source", ASCENDING), ("source_id", ASCENDING), ("account_code", ASCENDING)], name="idx_ledger_source_account", unique=True, partialFilterExpression={"source_id": {"$exists": True, "$ne": ""}}),
 ]
 
 CHART_INDEXES = [
@@ -48,6 +61,10 @@ CHART_INDEXES = [
 
 
 def ensure_expenses_collections() -> None:
+    # Replace the pre-hotel-scoping unique index. Keeping it would reject the
+    # same department/period in a second hotel even though the records are
+    # unrelated.
+    drop_index_safe(BUDGET_COLLECTION, "idx_budget_dept_period")
     ensure_collection(INVOICES_COLLECTION, INVOICES_INDEXES)
     ensure_collection(CATEGORIES_COLLECTION, CATEGORIES_INDEXES)
     ensure_collection(BUDGET_COLLECTION, BUDGET_INDEXES)

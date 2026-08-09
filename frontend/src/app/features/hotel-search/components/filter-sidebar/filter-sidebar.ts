@@ -1,11 +1,12 @@
-import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
+import { DestinationAutocompleteComponent } from '../../../../shared/ui/destination-autocomplete/destination-autocomplete';
 import type { HotelSearchFilters } from '../../models/hotel-search.model';
 
 @Component({
   selector: 'app-filter-sidebar',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, DestinationAutocompleteComponent],
   templateUrl: './filter-sidebar.html',
   styleUrl: './filter-sidebar.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -13,6 +14,14 @@ import type { HotelSearchFilters } from '../../models/hotel-search.model';
 export class FilterSidebarComponent {
   readonly filters = input.required<HotelSearchFilters>();
   readonly submitted = output<HotelSearchFilters>();
+
+  /** Fecha local de hoy (YYYY-MM-DD) — el calendario solo admite hoy o futuro. */
+  readonly today = new Date().toLocaleDateString('sv-SE');
+
+  /** Check-in elegido como signal (el valor del form no es reactivo para
+   *  OnPush) — el mínimo del check-out nunca es anterior al check-in. */
+  private readonly checkInValue = signal('');
+  readonly checkOutMin = computed(() => this.checkInValue() || this.today);
 
   private readonly formBuilder = new FormBuilder();
 
@@ -32,8 +41,11 @@ export class FilterSidebarComponent {
   });
 
   constructor() {
+    this.form.controls.checkIn.valueChanges.subscribe((value) => this.checkInValue.set(value ?? ''));
+
     effect(() => {
       const filters = this.filters();
+      this.checkInValue.set(filters.checkIn);
       this.form.patchValue(
         {
           destination: filters.destination,

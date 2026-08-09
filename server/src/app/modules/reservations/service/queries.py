@@ -417,8 +417,15 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
     # Cancellation policy
     cancellation_policy = _get_cancellation_policy(db, int(booking.get("prop_id", 0)))
 
+    from src.app.modules.reservations.service.special_request_fulfillment import (
+        get_amenity_fulfillment,
+        get_special_request_fulfillment,
+    )
+
     return _json_safe({
         "booking": booking,
+        "special_request_fulfillment": get_special_request_fulfillment(booking),
+        "amenity_fulfillment": get_amenity_fulfillment(booking),
         "guest": guest,
         "history": history,
         "manual": manual,

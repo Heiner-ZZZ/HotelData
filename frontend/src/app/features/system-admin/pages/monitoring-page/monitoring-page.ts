@@ -7,6 +7,8 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ServiceStatusCard, MonitoringViewModel } from '../../models/monitoring.model';
@@ -34,6 +36,8 @@ export class MonitoringPageComponent {
   private readonly api = inject(MonitoringApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly toast = inject(ToastService);
+  private readonly opMode = inject(OperationModeService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly monitoringResource = httpResource<MonitoringViewModel>(() => '/api/etl-status/consolidated', {
@@ -64,7 +68,8 @@ export class MonitoringPageComponent {
   readonly targetPocketbase = signal(300000);
   readonly targetMongodb = signal(300000);
   readonly openSection = signal<string | null>(null);
-  readonly confirmAction = signal<{ title: string; message: string; handler: () => void } | null>(null);
+  /** Acción ETL pendiente de confirmar — mantiene el modo 'execute' en el nav. */
+  private readonly pendingAction = signal<{ title: string } | null>(null);
   readonly targetOptions = Array.from({ length: 16 }, (_, i) => {
     const val = (i + 1) * 100000;
     return { value: val, label: val.toLocaleString('es') };
@@ -73,6 +78,23 @@ export class MonitoringPageComponent {
   readonly incrementalMode = signal(false);
   readonly etlModeLabel = computed(() => this.incrementalMode() ? 'Incremental' : 'Completo');
   readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
+
+  /**
+   * Modo CRUD de la página de monitoreo: fuera del flujo CRUD normal. Muestra
+   * 'execute' (Ejecutando) mientras hay un diálogo de confirmación ETL abierto
+   * o mientras el proceso está corriendo; en reposo, Solo lectura.
+   */
+  private readonly _opMode = computed<{ mode: OperationMode; detail: string }>(() => {
+    const pending = this.pendingAction();
+    if (pending) return { mode: 'execute', detail: pending.title };
+    if (this.isRunning()) {
+      const vm = this.viewModel();
+      if (vm?.progress.preparationStatus === 'running') return { mode: 'execute', detail: 'Preparación GA03' };
+      if (vm?.progress.pipelineStatus === 'running') return { mode: 'execute', detail: 'Pipeline GA03' };
+      return { mode: 'execute', detail: 'ETL GA03' };
+    }
+    return { mode: 'read', detail: '' };
+  });
 
   constructor() {
     this.destroyRef.onDestroy(() => this.stopPolling());
@@ -95,6 +117,12 @@ export class MonitoringPageComponent {
       } else {
         this.stopPolling();
       }
+    });
+
+    // Modo CRUD reactivo en el nav: execute con diálogo abierto o ETL corriendo.
+    effect(() => {
+      const m = this._opMode();
+      this.opMode.setMode(m.mode, m.detail);
     });
   }
 
@@ -142,63 +170,82 @@ export class MonitoringPageComponent {
     });
   }
 
-  triggerValidate() {
-    this.confirmAction.set({
-      title: 'Validar dataset GA03',
-      message: 'Esta acción verificará que PocketBase tenga los registros objetivo y que MongoDB esté disponible. No modifica datos. ¿Desea continuar?',
-      handler: () => this.execAction(this.api.triggerValidate(this.targetPocketbase())),
+  /**
+   * Abre el diálogo de confirmación GLOBAL (ConfirmDialogService) para una
+   * acción ETL. Mientras está abierto, el nav muestra el modo 'execute' con el
+   * título de la acción; al resolver (confirmar o cancelar) se restaura.
+   */
+  private openConfirm(
+    title: string,
+    message: string,
+    action: () => void,
+    options: { confirmLabel?: string; variant?: 'danger' | 'warning' | 'default' } = {},
+  ): void {
+    this.pendingAction.set({ title });
+    void this.confirmDialog.open({
+      title,
+      message,
+      confirmLabel: options.confirmLabel ?? 'Continuar',
+      cancelLabel: 'Cancelar',
+      variant: options.variant ?? 'warning',
+    }).then((ok) => {
+      this.pendingAction.set(null);
+      if (ok) action();
     });
+  }
+
+  triggerValidate() {
+    this.openConfirm(
+      'Validar dataset GA03',
+      'Esta acción verificará que PocketBase tenga los registros objetivo y que MongoDB esté disponible. No modifica datos. ¿Desea continuar?',
+      () => this.execAction(this.api.triggerValidate(this.targetPocketbase())),
+      { confirmLabel: 'Validar' },
+    );
   }
 
   triggerRunPipeline() {
     const mode = this.incrementalMode();
     const modeLabel = mode ? 'incremental' : 'completo (full reload)';
-    this.confirmAction.set({
-      title: 'Ejecutar pipeline GA03',
-      message: `Esta acción ejecutará el ETL principal PocketBase → JSONL → Parquet → MongoDB en modo ${modeLabel}. ¿Desea continuar?`,
-      handler: () => this.execAction(this.api.triggerRunPipeline(this.targetMongodb(), mode)),
-    });
+    this.openConfirm(
+      'Ejecutar pipeline GA03',
+      `Esta acción ejecutará el ETL principal PocketBase → JSONL → Parquet → MongoDB en modo ${modeLabel}. ¿Desea continuar?`,
+      () => this.execAction(this.api.triggerRunPipeline(this.targetMongodb(), mode)),
+      { confirmLabel: 'Ejecutar' },
+    );
   }
 
   triggerSeed() {
     const mode = this.incrementalMode();
     const modeLabel = mode ? 'incremental' : 'completo (full reload)';
-    this.confirmAction.set({
-      title: 'Preparar fuente GA03',
-      message: `Esta acción cargará registros desde CSV hacia PocketBase hotel_reservation_events_03 en modo ${modeLabel}. No carga directo a MongoDB. ¿Desea continuar?`,
-      handler: () => this.execAction(this.api.triggerSeed(this.targetPocketbase(), mode)),
-    });
+    this.openConfirm(
+      'Preparar fuente GA03',
+      `Esta acción cargará registros desde CSV hacia PocketBase hotel_reservation_events_03 en modo ${modeLabel}. No carga directo a MongoDB. ¿Desea continuar?`,
+      () => this.execAction(this.api.triggerSeed(this.targetPocketbase(), mode)),
+      { confirmLabel: 'Preparar' },
+    );
   }
 
   triggerClearEvidence() {
-    this.confirmAction.set({
-      title: 'Limpiar evidencia local GA03',
-      message: 'Esta acción eliminará reportes, logs, .parquet, .jsonl y .json generados por el ETL GA03. Los datos en MongoDB se conservan y solo se sobrescriben al re-ejecutar el pipeline. No toca PocketBase. ¿Desea continuar?',
-      handler: () => this.execAction(this.api.triggerClearEvidence()),
-    });
+    this.openConfirm(
+      'Limpiar evidencia local GA03',
+      'Esta acción eliminará reportes, logs, .parquet, .jsonl y .json generados por el ETL GA03. Los datos en MongoDB se conservan y solo se sobrescriben al re-ejecutar el pipeline. No toca PocketBase. ¿Desea continuar?',
+      () => this.execAction(this.api.triggerClearEvidence()),
+      { confirmLabel: 'Limpiar', variant: 'danger' },
+    );
   }
 
   triggerStop(process: string) {
     const label = process === 'seed' ? 'Preparación' : 'Pipeline';
-    this.confirmAction.set({
-      title: `Detener ${label}`,
-      message: `Esta acción detendrá el proceso de ${label} GA03 en ejecución. ¿Desea continuar?`,
-      handler: () => this.execAction(this.api.triggerStop(process)),
-    });
+    this.openConfirm(
+      `Detener ${label}`,
+      `Esta acción detendrá el proceso de ${label} GA03 en ejecución. ¿Desea continuar?`,
+      () => this.execAction(this.api.triggerStop(process)),
+      { confirmLabel: 'Detener', variant: 'danger' },
+    );
   }
 
   toggleSection(key: string) {
     this.openSection.update(v => v === key ? null : key);
-  }
-
-  confirmAccept() {
-    const handler = this.confirmAction()?.handler;
-    this.confirmAction.set(null);
-    if (handler) handler();
-  }
-
-  confirmCancel() {
-    this.confirmAction.set(null);
   }
 
   refresh() {

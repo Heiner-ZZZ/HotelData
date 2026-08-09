@@ -1,11 +1,20 @@
 <form [formGroup]="form" (submit)="$event.preventDefault(); submit()" class="panel-form">
-  @if (isEditing) {
+  @if (isEditing()) {
     <div class="editing-banner">
       <span class="material-symbols-outlined">edit</span>
       Editando: {{ editing()!.name }}
       <button type="button" class="cancel-edit-btn" (click)="cancelEdit()">
         <span class="material-symbols-outlined">close</span>
       </button>
+    </div>
+  }
+
+  @if (inlineError(); as err) {
+    <div class="reduction-warning danger" role="alert">
+      <span class="material-symbols-outlined">error</span>
+      <div class="reduction-warning-body">
+        <strong>{{ err }}</strong>
+      </div>
     </div>
   }
 
@@ -41,6 +50,33 @@
     <input type="number" min="1" max="1000" formControlName="couponCount" placeholder="10">
   </label>
 
+  @if (usedCouponsBlock(); as used) {
+    <div class="reduction-warning danger" role="alert">
+      <span class="material-symbols-outlined">block</span>
+      <div class="reduction-warning-body">
+        <strong>
+          {{ used }} {{ used === 1 ? 'cupón usado' : 'cupones usados' }}:
+          desactiva y crea una nueva.
+        </strong>
+        <span>
+          Las campañas con cupones ya utilizados no se pueden editar: el descuento
+          y los códigos emitidos quedan fijados a las reservas existentes.
+        </span>
+      </div>
+    </div>
+  } @else if (couponsToRetire(); as retired) {
+    <div class="reduction-warning" role="alert">
+      <span class="material-symbols-outlined">warning</span>
+      <div class="reduction-warning-body">
+        <strong>Se retirarán {{ retired }} {{ retired === 1 ? 'cupón' : 'cupones' }} sin usar.</strong>
+        <span>
+          Al guardar, los cupones sobrantes dejarán de ser válidos para nuevas reservas.
+          Quedan registrados con trazabilidad (borrado lógico) y no podrás reactivarlos.
+        </span>
+      </div>
+    </div>
+  }
+
   <div class="field-row">
     <label class="field">
       <span class="field-label">
@@ -75,9 +111,18 @@
   </label>
 
   <div class="form-actions">
+    @if (isEditing()) {
+      <button type="button" class="btn-secondary" (click)="cancelEdit()">
+        <span class="material-symbols-outlined btn-icon">close</span>
+        Cancelar
+      </button>
+    }
     <button type="submit" class="btn-primary" style="background: var(--warning)">
-      <span class="material-symbols-outlined btn-icon">{{ isEditing ? 'save' : 'add' }}</span>
-      {{ isEditing ? 'Guardar cambios' : 'Crear promoción' }}
+      <span class="material-symbols-outlined btn-icon">{{ isEditing() ? 'save' : 'add' }}</span>
+      {{ isEditing() ? 'Guardar cambios' : 'Crear promoción' }}
+      @if (hasUnsavedChanges()) {
+        <span class="unsaved-dot" aria-hidden="true" title="Cambios sin guardar"></span>
+      }
     </button>
   </div>
 </form>

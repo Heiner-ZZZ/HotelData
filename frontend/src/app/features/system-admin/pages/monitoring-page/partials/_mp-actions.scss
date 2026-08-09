@@ -112,67 +112,6 @@ td code {
   background: rgba(20, 99, 255, 0.08);
 }
 
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.25rem;
-  background: rgba(15, 23, 42, 0.42);
-}
-
-.modal-card {
-  width: min(520px, 100%);
-  padding: 1.5rem;
-  border-radius: 18px;
-  border: 1px solid var(--app-border);
-  background: var(--surface);
-  box-shadow: var(--shadow-md);
-  display: grid;
-  gap: 0.75rem;
-}
-
-.modal-card h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: var(--app-text);
-}
-
-.modal-card p {
-  margin: 0;
-  color: var(--muted-text);
-  line-height: 1.5;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.modal-btn {
-  min-height: 2.5rem;
-  padding: 0 1.2rem;
-  border-radius: 999px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--accent);
-}
-
-.modal-btn-primary {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.modal-btn-secondary {
-  background: var(--accent-light);
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-}
-
 .message.success {
   border: 1px solid rgba(15, 138, 96, 0.2);
 }

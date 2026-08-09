@@ -1,0 +1,10 @@
+/* ── Resaltado de panel por modo CRUD (directive [appModeHighlight]) ──
+ * El directive solo añade la clase `mode-active` y expone `--op-color` con el
+ * color del mode-indicator del nav. El look (borde fino + halo del color)
+ * vive aquí para que cualquier panel de form del sistema lo herede sin CSS
+ * duplicado. Importado después de _scss-surface-card para ganar el borde. */
+.mode-active {
+  border-color: color-mix(in srgb, var(--op-color) 60%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--op-color) 10%, transparent),
+              0 8px 26px color-mix(in srgb, var(--op-color) 16%, transparent);
+}

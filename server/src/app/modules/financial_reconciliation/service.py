@@ -8,7 +8,7 @@ privileged workflow.
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -85,6 +85,93 @@ def _invoice_ledger_totals(db, prop_id: int, invoice_number: str) -> tuple[float
     )
 
 
+def _balanced_source_rows(db: Any, query: dict[str, Any]) -> bool:
+    """Return whether a source has a balanced journal in this hotel."""
+    rows = list(db.ledger_transactions.find(
+        query,
+        {"debit": 1, "credit": 1, "journal_entry_id": 1},
+    ))
+    if len(rows) < 2:
+        return False
+    debit = round(sum(_amount(row.get("debit")) for row in rows), 2)
+    credit = round(sum(_amount(row.get("credit")) for row in rows), 2)
+    journals = {str(row.get("journal_entry_id")) for row in rows if row.get("journal_entry_id")}
+    return debit > 0 and debit == credit and len(journals) == 1
+
+
+def _historical_invoice_has_evidence(db: Any, prop_id: int, invoice: dict[str, Any]) -> bool:
+    """Recognize non-duplicating accounting evidence for a reconstructed invoice.
+
+    Historical invoices intentionally do not always create a second
+    ``source=invoice`` revenue journal: they may reuse the original invoice
+    plus its reversal, or rely on the already-posted folio room/charge events.
+    They are valid only when the linked settled folio reconciles to the invoice
+    total and at least one of those source trails is balanced.
+    """
+    if invoice.get("source") != "historical_reconstruction" or invoice.get("accounting_status") != "posted":
+        return False
+
+    folio_query: dict[str, Any] = {"prop_id": prop_id}
+    folio_id = invoice.get("folio_id")
+    if folio_id is not None:
+        folio_query["_id"] = folio_id
+    else:
+        folio_query["booking_id"] = invoice.get("booking_id")
+    folio = db.guest_folios.find_one(folio_query)
+    if not folio or folio.get("status") not in {"settled", "closed", "written_off"}:
+        return False
+    if _amount(folio.get("total_due")) > 0.005:
+        return False
+
+    invoice_total = _amount(invoice.get("total"))
+    folio_total = round(
+        _amount(folio.get("total_room"))
+        + _amount(folio.get("total_charges"))
+        - _amount(folio.get("total_discounts")),
+        2,
+    )
+    if abs(folio_total - invoice_total) >= 0.01:
+        return False
+
+    booking_id = str(invoice.get("booking_id") or "")
+    evidence_groups: dict[tuple[str, str, str], list[float]] = {}
+    for row in db.ledger_transactions.find(
+        {
+            "prop_id": prop_id,
+            "booking_id": booking_id,
+            "source": {"$in": ["historical_invoice", "folio_posting", "folio_transfer"]},
+        },
+        {"source": 1, "source_id": 1, "journal_entry_id": 1, "debit": 1, "credit": 1},
+    ):
+        key = (
+            str(row.get("source") or ""),
+            str(row.get("source_id") or ""),
+            str(row.get("journal_entry_id") or ""),
+        )
+        evidence_groups.setdefault(key, [0.0, 0.0])
+        evidence_groups[key][0] += _amount(row.get("debit"))
+        evidence_groups[key][1] += _amount(row.get("credit"))
+
+    evidence_total = 0.0
+    for (source, source_id, _journal_id), (debit, credit) in evidence_groups.items():
+        amount = max(round(debit, 2), round(credit, 2))
+        if amount <= 0 or round(debit, 2) != round(credit, 2):
+            continue
+        sign = -1.0 if source == "folio_transfer" and source_id.startswith("XFR-OUT") else 1.0
+        evidence_total += sign * amount
+    if abs(round(evidence_total, 2) - invoice_total) < 0.01:
+        return True
+
+    legacy_id = invoice.get("supersedes_invoice_id")
+    legacy = db.reservation_invoices.find_one({"_id": legacy_id, "prop_id": prop_id}) if legacy_id else None
+    legacy_number = str((legacy or {}).get("invoice_number") or "")
+    return bool(
+        legacy_number
+        and _balanced_source_rows(db, {"prop_id": prop_id, "source": "invoice", "source_id": legacy_number})
+        and _balanced_source_rows(db, {"prop_id": prop_id, "source": "invoice_reversal", "source_id": legacy_number})
+    )
+
+
 def _has_folio_posting_for_charge(folio: dict[str, Any], charge_id: Any) -> bool:
     charge_key = _source_id(charge_id)
     for posting in folio.get("postings", []) or []:
@@ -126,7 +213,7 @@ def build_reconciliation_report(prop_id: int) -> dict[str, Any]:
     # traced reliably.
     for payment in db.reservation_payments.find(
         {"prop_id": prop_id},
-        {"booking_id": 1, "invoice_id": 1, "amount": 1, "status": 1, "method": 1, "_id": 1},
+        {"booking_id": 1, "invoice_id": 1, "amount": 1, "status": 1, "method": 1, "reference": 1, "refund_id": 1, "reconciliation_status": 1, "reconciliation_reason": 1, "_id": 1},
     ).sort("_id", 1):
         invoice_ref = payment.get("invoice_id")
         referenced_invoice = None
@@ -135,9 +222,43 @@ def build_reconciliation_report(prop_id: int) -> dict[str, Any]:
                 {"prop_id": prop_id, "$or": [{"_id": invoice_ref}, {"invoice_number": invoice_ref}]},
                 {"_id": 1},
             )
+        status = str(payment.get("status") or "unknown").lower()
+        if status == "refunded":
+            refund_event_id = str(payment.get("refund_id") or payment.get("reference") or payment.get("_id"))
+            has_refund_document = db.refund_documents.find_one({
+                "payment_id": payment.get("_id"),
+                "status": "issued",
+                "accounting_status": "posted",
+            }, {"_id": 1}) is not None
+            has_refund_ledger = _balanced_source_rows(
+                db,
+                {"prop_id": prop_id, "source": "payment_refund", "source_id": refund_event_id},
+            )
+            has_explicit_unapplied_state = (
+                invoice_ref in (None, "")
+                and payment.get("reconciliation_status") == "unapplied_refund"
+            )
+            if has_refund_document and has_refund_ledger and (invoice_ref not in (None, "") or has_explicit_unapplied_state):
+                continue
+            findings.append(_finding(
+                domain="payment",
+                severity="warning",
+                source_ids=[payment.get("_id"), payment.get("booking_id")],
+                expected={"refund_document": "issued", "refund_ledger": "balanced"},
+                actual={
+                    "status": payment.get("status"),
+                    "invoice_id": invoice_ref,
+                    "refund_id": payment.get("refund_id"),
+                    "refund_document": has_refund_document,
+                    "refund_ledger": has_refund_ledger,
+                    "reconciliation_status": payment.get("reconciliation_status"),
+                },
+                repair_policy="idempotent_migration",
+                message="Pago reembolsado sin documento de reembolso o reversa contable completa.",
+            ))
+            continue
         if invoice_ref not in (None, "") and referenced_invoice is not None:
             continue
-        status = str(payment.get("status") or "unknown").lower()
         severity = "info" if status in {"failed", "rejected", "declined", "error"} else "warning"
         findings.append(_finding(
             domain="payment",
@@ -147,6 +268,7 @@ def build_reconciliation_report(prop_id: int) -> dict[str, Any]:
             actual={
                 "invoice_id": invoice_ref,
                 "status": payment.get("status"),
+                "reconciliation_status": payment.get("reconciliation_status"),
                 "method": payment.get("method"),
                 "amount": _amount(payment.get("amount")),
             },
@@ -166,9 +288,41 @@ def build_reconciliation_report(prop_id: int) -> dict[str, Any]:
     # invoices are not treated as missing revenue postings.
     for invoice in db.reservation_invoices.find(
         {"prop_id": prop_id, "total": {"$gt": 0}},
-        {"invoice_number": 1, "total": 1, "status": 1, "_id": 1},
+        {"invoice_number": 1, "total": 1, "status": 1, "source": 1, "folio_id": 1, "booking_id": 1, "supersedes_invoice_id": 1, "recognized_total": 1, "accounting_status": 1, "_id": 1},
     ).sort("_id", 1):
         invoice_number = invoice.get("invoice_number")
+        invoice_status = str(invoice.get("status") or "").lower()
+        if _historical_invoice_has_evidence(db, prop_id, invoice):
+            continue
+        if invoice_status in {"cancelled", "refunded"}:
+            reversal_rows = list(db.ledger_transactions.find(
+                {"prop_id": prop_id, "source": "invoice_reversal", "source_id": invoice.get("invoice_number")},
+                {"debit": 1, "credit": 1},
+            ))
+            reversal_debit = round(sum(_amount(row.get("debit")) for row in reversal_rows), 2)
+            reversal_credit = round(sum(_amount(row.get("credit")) for row in reversal_rows), 2)
+            is_reconciled_void = (
+                invoice.get("accounting_status") == "reversed"
+                and _amount(invoice.get("recognized_total")) == 0.0
+                and reversal_debit == _amount(invoice.get("total"))
+                and reversal_credit == _amount(invoice.get("total"))
+            )
+            if is_reconciled_void:
+                continue
+            findings.append(_finding(
+                domain="invoice",
+                severity="warning",
+                source_ids=[invoice.get("_id"), invoice_number],
+                expected={"ledger_repair": "manual_reversal_or_void_review"},
+                actual={"status": invoice_status, "invoice_total": _amount(invoice.get("total"))},
+                repair_policy="manual",
+                message=(
+                    "Factura cancelada con importe positivo; requiere revisión manual de anulación."
+                    if invoice_status == "cancelled"
+                    else "Factura reembolsada con importe positivo; requiere revisión manual del reverso."
+                ),
+            ))
+            continue
         if not invoice_number:
             findings.append(_finding(
                 domain="invoice",
@@ -215,6 +369,61 @@ def build_reconciliation_report(prop_id: int) -> dict[str, Any]:
                 message="El asiento de la factura no concilia importe o partida doble.",
             ))
 
+    # Every source-bearing journal must resolve back to a business document.
+    # A globally balanced ledger can still contain orphan or duplicated source
+    # events, so inspect source identity independently of debit/credit totals.
+    source_groups: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in db.ledger_transactions.find(
+        {"prop_id": prop_id},
+        {"source": 1, "source_id": 1, "journal_entry_id": 1},
+    ):
+        source = str(row.get("source") or "").strip()
+        source_id = str(row.get("source_id") or "").strip()
+        key = (source, source_id)
+        group = source_groups.setdefault(key, {"journals": set(), "rows": 0})
+        journal_id = row.get("journal_entry_id")
+        if journal_id:
+            group["journals"].add(str(journal_id))
+        group["rows"] += 1
+
+    for (source, source_id), group in sorted(source_groups.items()):
+        if not source or not source_id:
+            findings.append(_finding(
+                domain="ledger",
+                severity="warning",
+                source_ids=[source or "missing-source", source_id or "missing-source-id"],
+                expected={"source": "present", "source_id": "present"},
+                actual={"source": source or None, "source_id": source_id or None, "rows": group["rows"]},
+                repair_policy="manual",
+                message="Asiento del libro mayor sin identidad de fuente completa.",
+            ))
+            continue
+
+        if source == "invoice" and not db.reservation_invoices.find_one(
+            {"prop_id": prop_id, "invoice_number": source_id},
+            {"_id": 1},
+        ):
+            findings.append(_finding(
+                domain="ledger",
+                severity="critical",
+                source_ids=[f"{source}:{source_id}"],
+                expected={"source_document": "reservation_invoices.invoice_number"},
+                actual={"source": source, "source_id": source_id, "journal_count": len(group["journals"])},
+                repair_policy="manual",
+                message="Asiento del libro mayor huérfano: no existe el documento de origen.",
+            ))
+
+        if len(group["journals"]) > 1:
+            findings.append(_finding(
+                domain="ledger",
+                severity="warning",
+                source_ids=[f"{source}:{source_id}"],
+                expected={"journal_count": 1},
+                actual={"journal_count": len(group["journals"]), "journal_entry_ids": sorted(group["journals"])},
+                repair_policy="manual",
+                message="El mismo source_id aparece repartido en varios journals; revisar posible duplicación.",
+            ))
+
     # Ledger must balance for this hotel; an empty ledger is balanced by
     # arithmetic but does not produce a spurious finding.
     ledger_totals = list(db.ledger_transactions.aggregate([
@@ -252,7 +461,14 @@ def build_reconciliation_report(prop_id: int) -> dict[str, Any]:
     }
     for charge in db.additional_charges.find(
         {"prop_id": prop_id},
-        {"booking_id": 1, "amount": 1, "description": 1, "_id": 1},
+        {
+            "booking_id": 1,
+            "amount": 1,
+            "description": 1,
+            "posting_status": 1,
+            "posting_error": 1,
+            "_id": 1,
+        },
     ).sort("_id", 1):
         booking_id = charge.get("booking_id")
         folio = folio_by_booking.get(booking_id)
@@ -266,18 +482,137 @@ def build_reconciliation_report(prop_id: int) -> dict[str, Any]:
                     "folio_id": _source_id(folio.get("_id")) if folio else None,
                     "amount": _amount(charge.get("amount")),
                     "description": charge.get("description"),
+                    "posting_status": charge.get("posting_status"),
+                    "posting_error": charge.get("posting_error"),
                 },
                 repair_policy="manual",
                 message="Cargo adicional sin posting trazable en el folio.",
             ))
 
+    # Nightly reservation/calendar reconciliation. The inventory calendar is
+    # an aggregate projection, so compare it to the reservation's assigned
+    # physical rooms (or its requested room count when assignment is absent)
+    # per room type and night. A balanced GL cannot reveal this operational
+    # drift.
+    for booking in db.booking_orders.find(
+        {
+            "prop_id": prop_id,
+            "status": {"$in": ["confirmed", "checked_in"]},
+            # ``status`` is the reservation workflow state and often remains
+            # ``confirmed`` after the stay ends. Current nightly occupancy is
+            # determined by ``stay_status``; checkout/no-show/cancelled stays
+            # must not create findings against today's calendar projection.
+            "stay_status": {"$nin": ["checked_out", "no_show", "cancelled"]},
+        },
+        {
+            "booking_id": 1,
+            "room_type_id": 1,
+            "rooms": 1,
+            "assigned_rooms": 1,
+            "check_in_date": 1,
+            "check_out_date": 1,
+        },
+    ).sort("booking_id", 1):
+        try:
+            check_in = date.fromisoformat(str(booking.get("check_in_date", ""))[:10])
+            check_out = date.fromisoformat(str(booking.get("check_out_date", ""))[:10])
+        except (TypeError, ValueError):
+            continue
+        if check_out <= check_in:
+            continue
+
+        assigned = booking.get("assigned_rooms") or []
+        assigned_ids = [
+            str(room.get("hotel_room_id") or room.get("room_id") or "")
+            if isinstance(room, dict) else str(room)
+            for room in assigned
+        ]
+        assigned_ids = [room_id for room_id in assigned_ids if room_id]
+        expected_by_type: dict[str, int] = {}
+        if assigned_ids:
+            room_docs = list(db.hotel_rooms.find(
+                {"prop_id": prop_id, "hotel_room_id": {"$in": assigned_ids}},
+                {"hotel_room_id": 1, "room_type_id": 1},
+            ))
+            found_room_ids = {
+                str(room.get("hotel_room_id"))
+                for room in room_docs
+                if room.get("hotel_room_id")
+            }
+            missing_room_ids = [room_id for room_id in assigned_ids if room_id not in found_room_ids]
+            if missing_room_ids:
+                findings.append(_finding(
+                    domain="room",
+                    severity="critical",
+                    source_ids=[booking.get("booking_id"), *missing_room_ids],
+                    expected={"assigned_rooms": "valid hotel_rooms.hotel_room_id references"},
+                    actual={"missing_room_ids": missing_room_ids},
+                    repair_policy="manual",
+                    message="La reserva referencia habitaciones físicas inexistentes o de otro hotel.",
+                ))
+            for room in room_docs:
+                room_type = str(room.get("room_type_id") or booking.get("room_type_id") or "")
+                if room_type:
+                    expected_by_type[room_type] = expected_by_type.get(room_type, 0) + 1
+        # A booking without a physical assignment is allowed to reserve a room
+        # type. Only use the requested room count as a fallback in that case;
+        # never hide a stale assigned_rooms FK behind a synthetic inventory
+        # expectation.
+        if not assigned_ids and booking.get("room_type_id"):
+            expected_by_type[str(booking["room_type_id"])] = max(1, int(booking.get("rooms", 1) or 1))
+        if assigned_ids and not expected_by_type:
+            continue
+
+        for offset in range((check_out - check_in).days):
+            night = (check_in + timedelta(days=offset)).isoformat()
+            for room_type_id, expected_occupied in expected_by_type.items():
+                calendar = db.room_inventory_calendar.find_one(
+                    {
+                        "prop_id": prop_id,
+                        "room_type_id": room_type_id,
+                        "date": night,
+                        "is_deleted": {"$ne": True},
+                    },
+                    {"total_rooms": 1, "available_rooms": 1, "blocked_rooms": 1},
+                )
+                actual_occupied = None
+                if calendar is not None:
+                    actual_occupied = round(
+                        float(calendar.get("total_rooms", 0) or 0)
+                        - float(calendar.get("available_rooms", 0) or 0)
+                        - float(calendar.get("blocked_rooms", 0) or 0),
+                        2,
+                    )
+                if actual_occupied is not None and abs(actual_occupied - expected_occupied) < 0.01:
+                    continue
+                findings.append(_finding(
+                    domain="inventory",
+                    severity="warning",
+                    source_ids=[booking.get("booking_id"), f"{room_type_id}:{night}"],
+                    expected={
+                        "occupied_rooms": expected_occupied,
+                        "calendar": "present",
+                    },
+                    actual={
+                        "date": night,
+                        "room_type_id": room_type_id,
+                        "occupied_rooms": actual_occupied,
+                        "calendar": "present" if calendar is not None else "missing",
+                    },
+                    repair_policy="manual",
+                    message="La disponibilidad nocturna no concilia con las habitaciones reservadas; requiere revisión.",
+                ))
+
     # Current maintenance documents are operationally valid but financially
     # incomplete when they lack cost/invoice/ledger evidence.
     for task in db.maintenance_tasks.find(
         {"prop_id": prop_id, "status": {"$ne": "deleted"}},
-        {"cost": 1, "actual_cost": 1, "expense_invoice_id": 1, "ledger_journal_id": 1, "room_id": 1, "_id": 1},
-    ).sort("_id", 1):
+        {"cost": 1, "actual_cost": 1, "expense_invoice_id": 1, "ledger_journal_id": 1, "financial_link_status": 1, "room_id": 1, "_id": 1},
+    ).sort("_id", 1    ):
+        if task.get("financial_link_status") == "no_cost_recorded":
+            continue
         if not task.get("cost") and not task.get("actual_cost") and not task.get("expense_invoice_id") and not task.get("ledger_journal_id"):
+
             findings.append(_finding(
                 domain="maintenance",
                 severity="warning",

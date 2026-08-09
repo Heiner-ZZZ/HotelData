@@ -57,7 +57,7 @@ def staff_new_booking_html(
 
     body = (
         f'<p style="margin:0 0 20px;font-size:14px;color:#3f484c">'
-        f'Hola <strong>{{STAFF_NAME}}</strong>,</p>\n'
+        f'Hola <strong>{{{{STAFF_NAME}}}}</strong>,</p>\n'
         f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
         f'  Se ha recibido una <strong>nueva solicitud de reserva</strong> para tu propiedad.\n'
         f'  Revisa los detalles y confirma o rechaza desde el panel de gestion.\n'
@@ -114,7 +114,7 @@ def staff_check_event_html(
 
     body = (
         f'<p style="margin:0 0 20px;font-size:14px;color:#3f484c">'
-        f'Hola <strong>{{STAFF_NAME}}</strong>,</p>\n'
+        f'Hola <strong>{{{{STAFF_NAME}}}}</strong>,</p>\n'
         f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
         f'  El huesped <strong>{guest_name}</strong> ha completado el <strong>{action_label}</strong>.\n'
         f'  Puedes ver los detalles actualizados desde el panel de gestion.\n'

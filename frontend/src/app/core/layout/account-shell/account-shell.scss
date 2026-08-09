@@ -16,21 +16,3 @@
   margin: 0 auto;
   padding: 1.25rem 0.5rem 0;
 }
-
-/* Notification bell FAB — fixed bottom-right for mobile-first access */
-.account-notif-fab {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  z-index: 50;
-}
-
-@media (min-width: 768px) {
-  .account-notif-fab {
-    position: relative;
-    bottom: auto;
-    right: auto;
-    z-index: auto;
-    display: none; /* On desktop the top-nav handles notifications */
-  }
-}

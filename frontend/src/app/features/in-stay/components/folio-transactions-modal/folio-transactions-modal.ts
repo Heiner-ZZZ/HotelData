@@ -50,7 +50,7 @@ export class FolioTransactionsModalComponent {
       return;
     }
 
-    this.api.getFolioPostings(f.folioId)
+    this.api.getFolioPostings(f.folioId, f.propId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {

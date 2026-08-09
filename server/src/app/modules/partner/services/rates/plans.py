@@ -314,8 +314,10 @@ def _promotion_campaigns_for_prop(prop_id: int, limit: int = 20) -> list[dict[st
 
 def _coupon_codes_for_prop(prop_id: int, limit: int = 20) -> list[dict[str, Any]]:
     db = get_database()
+    # Solo códigos activos: los retirados (is_deleted) son trazabilidad, no
+    # se ofrecen a los hoteles.
     return list(
-        db.coupon_codes.find({"prop_id": prop_id}, {"_id": 0})
+        db.coupon_codes.find({"prop_id": prop_id, "is_deleted": {"$ne": True}}, {"_id": 0})
         .sort([("coupon_code", 1)])
         .limit(limit)
     )

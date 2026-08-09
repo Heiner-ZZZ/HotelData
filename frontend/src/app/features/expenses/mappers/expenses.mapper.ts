@@ -82,6 +82,7 @@ export function mapExpenseDashboard(dto: ExpenseDashboardDto): ExpenseDashboard 
 export function mapLedgerFolios(dto: LedgerFoliosDto) {
   return {
     items: (dto.items || []).map((f: LedgerFolioDto): LedgerFolio => ({
+      propId: f.prop_id ?? 0,
       folioId: f.folio_id,
       folioRef: f.folio_ref,
       guestName: f.guest_name,

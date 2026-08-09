@@ -15,7 +15,7 @@
             <h1 class="fl-title">
               Folio
               <span class="fl-number">{{ f.folioNumber }}</span>
-              <span class="fl-status-badge" [class.open]="statusClass() === 'open'" [class.expired]="statusClass() === 'expired'" [class.closed-no-invoice]="statusClass() === 'closed-no-invoice'" [class.invoiced]="statusClass() === 'invoiced'" [class.closed]="statusClass() === 'closed'">
+              <span class="fl-status-badge" [class.open]="statusClass() === 'open'" [class.expired]="statusClass() === 'expired'" [class.closed-no-invoice]="statusClass() === 'closed-no-invoice'" [class.invoiced]="statusClass() === 'invoiced'" [class.settled]="statusClass() === 'settled'" [class.written-off]="statusClass() === 'written-off'" [class.refunded]="statusClass() === 'refunded'" [class.closed]="statusClass() === 'closed'">
                 {{ statusLabel() }}
               </span>
             </h1>
@@ -167,7 +167,8 @@
                     <div class="fl-posting-row">
                       <div class="fl-posting-icon" [class.is-charge]="posting.type === 'charge' || posting.type === 'room'"
                         [class.is-discount]="posting.type === 'discount'"
-                        [class.is-payment]="posting.type === 'payment'">
+                        [class.is-payment]="posting.type === 'payment' || posting.type === 'refund'"
+                        [class.is-reversal]="posting.type === 'charge_reversal' || posting.type === 'refund'">
                         <span class="material-symbols-outlined">{{ postingIcon(posting.type) }}</span>
                       </div>
                       <div class="fl-posting-info">
@@ -236,10 +237,104 @@
                 @if (f.invoiceId) {
                   <div class="fl-summary-meta">Factura: {{ f.invoiceId }}</div>
                 }
+                @if (f.settlementEventId || f.settlementPaymentId || f.settlementShiftId || f.settlementEventIds.length) {
+                  <div class="fl-summary-meta"><strong>Trazabilidad de liquidación</strong></div>
+                  @if (f.settlementPaymentIds.length > 0) {
+                    <div class="fl-summary-meta">Pagos trazables: {{ f.settlementPaymentIds.length }}</div>
+                  }
+                  @if (f.settlementEventIds.length > 0) {
+                    <div class="fl-summary-meta">Eventos de liquidación: {{ f.settlementEventIds.length }}</div>
+                  }
+                  @if (f.settlementPaymentId) {
+                    <div class="fl-summary-meta">Último pago: {{ f.settlementPaymentId }}</div>
+                  }
+                  @if (f.settlementInvoiceId || f.invoiceId) {
+                    <div class="fl-summary-meta">Factura AR: {{ f.settlementInvoiceId || f.invoiceId }}</div>
+                  }
+                  @if (f.settlementShiftId) {
+                    <div class="fl-summary-meta">Turno: {{ f.settlementShiftId }}</div>
+                  }
+                  @if (f.settlementEvidenceReference) {
+                    <div class="fl-summary-meta">Evidencia: {{ f.settlementEvidenceReference }}</div>
+                  }
+                  @if (f.settledBy) {
+                    <div class="fl-summary-meta">Registrado por: {{ f.settledBy }}</div>
+                  }
+                }
               </div>
 
+              @if (isOpen() && f.reopenedAt) {
+                <div class="fl-toast" role="status">
+                  <span class="material-symbols-outlined">history</span>
+                  Folio reabierto para cobro. Saldo pendiente: ${{ f.totalDue.toFixed(2) }}.
+                </div>
+              }
+              @if (isOpen() && closeState() === 'balance_due') {
+                <div class="fl-toast error" role="alert">
+                  <span class="material-symbols-outlined">warning</span>
+                  No se puede cerrar: saldo pendiente de ${{ f.totalDue.toFixed(2) }}.
+                </div>
+              }
+              @if (isOpen() && f.totalDue > 0.005) {
+                <section class="fl-settlement-panel" aria-labelledby="settlement-title">
+                  <h3 id="settlement-title" class="fl-card-sm-header">Resolver saldo histórico</h3>
+                  <p class="fl-settlement-help">El folio solo puede cerrarse mediante un pago, un write-off aprobado o una liquidación externa documentada.</p>
+                  <div class="fl-settlement-actions">
+                    <button type="button" class="fl-btn fl-btn-primary" (click)="startSettlement('payment')" [disabled]="postingBusy()">
+                      <span class="material-symbols-outlined">payments</span> Registrar pago
+                    </button>
+                    <button type="button" class="fl-btn fl-btn-outline" (click)="startSettlement('write_off')" [disabled]="postingBusy()">
+                      <span class="material-symbols-outlined">fact_check</span> Write-off aprobado
+                    </button>
+                    <button type="button" class="fl-btn fl-btn-outline" (click)="startSettlement('external_settlement')" [disabled]="postingBusy()">
+                      <span class="material-symbols-outlined">verified</span> Liquidación externa
+                    </button>
+                  </div>
+                  @if (settlementMode() !== 'idle') {
+                    <div class="fl-settlement-form">
+                      <strong>{{ settlementMode() === 'payment' ? 'Registrar pago' : settlementMode() === 'write_off' ? 'Autorizar write-off' : 'Documentar liquidación externa' }}</strong>
+                      @if (settlementMode() === 'payment') {
+                        <label class="fl-label">Monto
+                          <input class="fl-input" type="number" min="0.01" step="0.01" [ngModel]="settlementForm().amount" (ngModelChange)="settlementForm.update(v => ({...v, amount: +$event}))" />
+                        </label>
+                        <label class="fl-label">Método
+                          <select class="fl-select" [ngModel]="settlementForm().method" (ngModelChange)="settlementForm.update(v => ({...v, method: $event}))">
+                            <option value="card">Tarjeta</option>
+                            <option value="transfer">Transferencia</option>
+                            <option value="cash">Efectivo (requiere turno)</option>
+                          </select>
+                        </label>
+                      } @else {
+                        <label class="fl-label">Razón
+                          <input class="fl-input" type="text" [ngModel]="settlementForm().reason" (ngModelChange)="settlementForm.update(v => ({...v, reason: $event}))" placeholder="Motivo documentado" />
+                        </label>
+                        <label class="fl-label">Referencia de aprobación
+                          <input class="fl-input" type="text" [ngModel]="settlementForm().approvalReference" (ngModelChange)="settlementForm.update(v => ({...v, approvalReference: $event}))" placeholder="AUTH-..." />
+                        </label>
+                        @if (settlementMode() === 'external_settlement') {
+                          <label class="fl-label">Referencia externa
+                            <input class="fl-input" type="text" [ngModel]="settlementForm().externalReference" (ngModelChange)="settlementForm.update(v => ({...v, externalReference: $event}))" placeholder="BANK-..." />
+                          </label>
+                        }
+                      }
+                      <div class="fl-form-actions">
+                        <button type="button" class="fl-btn fl-btn-outline" (click)="cancelSettlement()" [disabled]="postingBusy()">Cancelar</button>
+                        <button type="button" class="fl-btn fl-btn-primary" (click)="submitSettlement()" [disabled]="postingBusy()">
+                          @if (postingBusy()) { <span class="spinner"></span> Guardando... } @else { Confirmar liquidación }
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </section>
+              }
+              @if (canReopen()) {
+                <button type="button" class="fl-btn fl-btn-outline fl-btn-full" (click)="reopenFolio()" [disabled]="postingBusy()">
+                  <span class="material-symbols-outlined">lock_open</span>
+                  Reabrir para cobrar saldo
+                </button>
+              }
               @if (isOpen()) {
-                <button type="button" class="fl-btn fl-btn-danger fl-btn-full" (click)="closeFolio()" [disabled]="postingBusy()">
+                <button type="button" class="fl-btn fl-btn-danger fl-btn-full" (click)="closeFolio()" [disabled]="postingBusy() || closeState() !== 'ready'">
                   <span class="material-symbols-outlined">lock</span>
                   Cerrar Folio
                 </button>
@@ -288,9 +383,9 @@
                   <dd class="dd-mono">{{ f.folioNumber }}</dd>
                 </div>
                 <div>
-                  <dt>Estado</dt>
-                  <dd>
-                    <span class="fl-status-dot" [class.dot-active]="statusClass() === 'open'" [class.dot-expired]="statusClass() === 'expired'" [class.dot-closed-no-invoice]="statusClass() === 'closed-no-invoice'" [class.dot-invoiced]="statusClass() === 'invoiced'"></span>
+                  <dt>Estado</dt>                    <dd>
+                    <span class="fl-status-dot" [class.dot-active]="statusClass() === 'open'" [class.dot-expired]="statusClass() === 'expired'" [class.dot-closed-no-invoice]="statusClass() === 'closed-no-invoice'" [class.dot-invoiced]="statusClass() === 'invoiced'" [class.dot-settled]="statusClass() === 'settled'" [class.dot-written-off]="statusClass() === 'written-off'" [class.dot-refunded]="statusClass() === 'refunded'"></span>
+
                     {{ statusLabel() }}
                   </dd>
                 </div>

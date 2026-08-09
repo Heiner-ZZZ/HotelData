@@ -60,6 +60,20 @@ export interface MaintenanceTaskItem {
   priority: string;
   scheduledDate: string;
   autoBlock: boolean;
+  estimatedCost: number | null;
+  actualCost: number | null;
+  currency: string;
+  vendorName: string | null;
+  vendorId: string | null;
+  expenseInvoiceId: string | null;
+  ledgerJournalId: string | null;
+  inventoryConsumptionIds: string[];
+  ledgerStatus?: 'pending' | 'posted' | 'failed' | 'not_linked' | string;
+  ledgerPostingStatus?: 'posted' | 'failed' | 'pending' | string | null;
+  ledgerPostingError?: string | null;
+  financialLinkStatus?: 'linked' | 'pending' | 'invalid_invoice' | 'invoice_not_found_or_foreign' | 'not_linked' | string;
+  financialLinkError?: string | null;
+  costStatus?: string | null;
   createdAt: string;
   completedAt: string | null;
 }
@@ -137,6 +151,19 @@ export interface AdditionalChargeItem {
   note: string;
   createdAt: string;
   chargeDate: string;
+  postingStatus?: 'pending' | 'posted' | 'posting_failed' | 'reversal_failed' | 'reversed' | string;
+  postingError?: string | null;
+  postingId?: string | null;
+  postingReference?: string | null;
+  postingReferenceType?: string | null;
+  domainEventId?: string | null;
+  domainEventStatus?: 'posted' | 'failed' | string;
+  folioId?: string | null;
+  folioNumber?: string | null;
+  invoiceReconciliationStatus?: 'posted' | 'failed' | string;
+  invoiceReconciliationError?: string | null;
+  reversedAt?: string | null;
+  status?: 'active' | 'reversed' | string;
 }
 
 export interface DashboardRoomItem {
@@ -333,11 +360,11 @@ export class HousekeepingApiService {
     return this.http.get<PaginatedResponse<MaintenanceTaskItem>>('/housekeeping/maintenance', { params });
   }
 
-  createMaintenance(payload: { prop_id: number; room_id: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string }) {
+  createMaintenance(payload: { prop_id: number; room_id: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string; estimated_cost?: number; actual_cost?: number; currency?: string; vendor_name?: string; vendor_id?: string; expense_invoice_id?: string; ledger_journal_id?: string; inventory_consumption_ids?: string[] }) {
     return this.http.post<MaintenanceTaskItem>('/housekeeping/maintenance', payload);
   }
 
-  updateMaintenance(taskId: string, payload: { prop_id: number; room_id: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string }) {
+  updateMaintenance(taskId: string, payload: { prop_id: number; room_id: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string; estimated_cost?: number; actual_cost?: number; currency?: string; vendor_name?: string; vendor_id?: string; expense_invoice_id?: string; ledger_journal_id?: string; inventory_consumption_ids?: string[] }) {
     return this.http.put<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}`, payload);
   }
 
@@ -345,8 +372,16 @@ export class HousekeepingApiService {
     return this.http.post<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}/complete`, { note });
   }
 
+  reconcileNoCostMaintenance(taskId: string) {
+    return this.http.post<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}/reconcile-no-cost`, {});
+  }
+
   deleteMaintenance(taskId: string) {
     return this.http.delete<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}`);
+  }
+
+  recoverCharge(chargeId: string) {
+    return this.http.post<AdditionalChargeItem>(`/housekeeping/charges/${chargeId}/recover`, {});
   }
 
   // ── Additional Charges ──
@@ -364,6 +399,14 @@ export class HousekeepingApiService {
 
   updateCharge(chargeId: string, payload: { concept?: string; amount?: number; quantity?: number; note?: string; charge_date?: string }) {
     return this.http.put<AdditionalChargeItem>(`/housekeeping/charges/${chargeId}`, payload);
+  }
+
+  repairChargePosting(chargeId: string) {
+    return this.http.post<AdditionalChargeItem>(
+      `/housekeeping/charges/${chargeId}/repair-posting`,
+      {},
+      { withCredentials: true },
+    );
   }
 
   deleteCharge(chargeId: string) {

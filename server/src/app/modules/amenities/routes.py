@@ -87,9 +87,13 @@ def guest_amenity_catalog_by_prop_api(
                 "items": active_items,
             })
 
+    from src.app.modules.partner.services.content.special_requests import special_requests_payload_for_prop
+    special_requests = special_requests_payload_for_prop(prop_id)
+
     return {
         "catalog": filtered_catalog,
         "active_amenities": amenities_data.get("active_amenities", []),
+        "special_requests": special_requests,
     }
 
 

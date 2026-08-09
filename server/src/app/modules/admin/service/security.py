@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from src.app.security.navigation import get_navigation_for_role
-from src.app.security.permissions import expand_permissions
+from src.app.security.permissions import GUEST_PERMISSION_CODES, expand_permissions
 from src.database.connection import get_database
 
 from ._helpers import _clean, ensure_user_status_field
@@ -12,8 +12,9 @@ from ._helpers import _clean, ensure_user_status_field
 def role_permission_map() -> dict[str, list[str]]:
     """Return role_name → [permission_code, ...] from the embedded ``roles.permissions`` array.
 
-    ``super_admin`` is always mapped to every permission in the catalog so it
-    appears with all permissions in the dashboard and role editor.
+    ``super_admin`` is mapped to every permission in the catalog EXCEPT the
+    guest-facing ones (``GUEST_PERMISSION_CODES``) so the dashboard and role
+    editor show it without the Cliente box (auto-servicio del huésped).
     """
     db = get_database()
     mapping: dict[str, list[str]] = {}
@@ -22,7 +23,11 @@ def role_permission_map() -> dict[str, list[str]]:
     for role in db.roles.find({}, {"role_name": 1, "permissions": 1}):
         role_name = role.get("role_name")
         if role_name == "super_admin":
-            mapping[role_name] = all_permission_codes
+            # Conserva el bypass ``*.*`` de AUTH (permissions.py), pero en el
+            # editor/dashboard aparece sin los códigos de huésped (Cliente).
+            mapping[role_name] = [
+                code for code in all_permission_codes if code not in GUEST_PERMISSION_CODES
+            ]
             continue
         perms = role.get("permissions", [])
         if role_name and perms:

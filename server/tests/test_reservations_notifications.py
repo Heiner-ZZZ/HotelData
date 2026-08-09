@@ -157,3 +157,45 @@ async def test_notify_guest_status_change_renders_dash_only_without_price(monkey
         total_nights=7,
     )
     assert ">—<" in captured["html"]
+
+
+async def test_notify_staff_new_booking_renders_recipient_name(monkeypatch, db):
+    """El correo al staff debe saludar al nombre real, nunca al placeholder."""
+    db.users.insert_one({
+        "username": "socio.gta6",
+        "display_name": "Socio GTA6",
+        "email": "socio@example.com",
+        "primary_role": "gerente_hotel",
+        "is_active": True,
+        "assigned_hotels": [1],
+    })
+    db.dim_hotels.insert_one({"prop_id": 1, "display_name": "Hotel Lima Centro"})
+
+    captured: dict = {}
+    from src.app.modules.reservations.notifications import staff as staff_mod
+
+    def _fake_send_email(to, subject, html):
+        captured.update(to=to, subject=subject, html=html)
+        return True
+
+    monkeypatch.setattr(staff_mod, "send_email", _fake_send_email)
+
+    staff_mod.notify_staff_new_booking(
+        prop_id=1,
+        booking_id="BK-NOTIF-STAFF-0001",
+        guest_name="Prueba Llegada Tarde",
+        guest_email="late@test.com",
+        check_in_date="2026-08-09",
+        check_out_date="2026-08-11",
+        adults=2,
+        children=0,
+        rooms=1,
+        total_price=218.0,
+        currency="USD",
+        total_nights=2,
+        comment="E2E late checkin",
+    )
+
+    assert captured["to"] == "socio@example.com"
+    assert "Socio GTA6" in captured["html"]
+    assert "{STAFF_NAME}" not in captured["html"]

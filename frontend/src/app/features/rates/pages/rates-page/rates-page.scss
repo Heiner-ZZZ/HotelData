@@ -194,10 +194,6 @@ select option {
   animation: fade-in 180ms ease;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.92); }
@@ -407,5 +403,12 @@ select option {
     border-radius: 4px;
     white-space: nowrap;
   }
+}
+
+/* Caja del form de promoción: transición del borde fino que el directive
+   [appModeHighlight] tiñe con el color del mode-indicator (insert=ámbar,
+   update=naranja). El look del estado `mode-active` es global (scss-mode-highlight). */
+.promo-form-panel {
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 

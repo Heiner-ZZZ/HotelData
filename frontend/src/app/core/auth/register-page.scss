@@ -72,9 +72,6 @@ button[type="submit"] { margin-top: 4px; }
   font-size: 1.2rem;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 /* ── Code verification step ── */
 .code-head p strong { color: var(--accent); }

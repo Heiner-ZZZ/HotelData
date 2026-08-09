@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { HttpClient, HttpParams, HttpErrorResponse, HttpResourceRequest, httpResource } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResourceRequest, httpResource } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,6 +13,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { API_CONFIG } from '../../../../core/api/api.config';
+import { getErrorStatus } from '../../../../shared/utils/http-error.util';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -98,16 +99,19 @@ export class AuditLogPageComponent {
   });
 
   readonly viewState = computed<ViewState>(() => {
+    // error() ANTES de value(): value() lanza cuando el request falló.
+    const err = this.auditResource.error();
+    if (err) return getErrorStatus(err) === 404 ? 'empty' : 'error';
     const v = this.auditResource.value();
     if (this.auditResource.isLoading() && !v) return 'loading';
-    const err = this.auditResource.error();
-    if (err instanceof HttpErrorResponse && err.status === 404) return 'empty';
-    if (err) return 'error';
     return v?.items.length ? 'success' : 'empty';
   });
 
   /** Snapshot of filter UI state for the URL write-back. */
-  readonly data = computed(() => this.auditResource.value() ?? null);
+  readonly data = computed(() => {
+    if (this.auditResource.error()) return null;
+    return this.auditResource.value() ?? null;
+  });
   readonly filterOptions = signal<FilterOptions>({ entity_types: [], actions: [] });
   readonly selectedEntry = signal<AuditEntry | null>(null);
   readonly showDetail = signal(false);

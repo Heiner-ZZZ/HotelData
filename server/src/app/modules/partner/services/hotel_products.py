@@ -114,6 +114,7 @@ def create_hotel_product(
         "description": clean_text(description),
         "unit_price": round(float(unit_price), 2),
         "quantity_available": int(quantity_available),
+        "stock_tracked": bool(quantity_available > 0),
         "category": clean_text(category) or "Otros",
         "is_active": bool(is_active),
         "created_by": changed_by,
@@ -147,6 +148,7 @@ def update_hotel_product(
         set_doc["unit_price"] = round(float(unit_price), 2)
     if quantity_available is not None:
         set_doc["quantity_available"] = int(quantity_available)
+        set_doc["stock_tracked"] = bool(quantity_available > 0)
     if category is not None:
         set_doc["category"] = clean_text(category)
     if is_active is not None:
@@ -177,6 +179,8 @@ def restock_product(
     supplier_name: str = "",
     invoice_ref: str = "",
     invoice_id: str = "",
+    ledger_source_id: str | None = None,
+    inventory_event_id: str | None = None,
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
     """Manual restock for a hotel product.
@@ -225,6 +229,53 @@ def restock_product(
     if not product:
         return None
 
+    inventory_key = inventory_event_id or invoice_id
+    # A vendor bill line is the business idempotency key. Retrying the same
+    # invoice/product line must return the existing acquisition without incrementing
+    # stock, creating another layer, or posting another journal pair.
+    if invoice_id:
+        existing_layer = db.fact_inventory.find_one({
+            "prop_id": prop_id,
+            "product_id": product_id,
+            "source": "restock",
+            "$or": [
+                {"inventory_event_id": str(inventory_key)},
+                {"invoice_ref": str(inventory_key)},
+            ],
+        })
+        if existing_layer:
+            # A retry may repair a missing/partial journal, but never receives
+            # the same goods twice.
+            journal_id = ""
+            if ledger_source_id:
+                try:
+                    from src.app.modules.expenses.service.ledger_hooks import post_journal_entry
+                    journal_id = post_journal_entry(
+                        amount=round(float(existing_layer.get("qty_initial", 0)) * float(existing_layer.get("cost_per_unit", 0)), 2),
+                        dr_account_code="1050",
+                        dr_account_name="Inventario",
+                        cr_account_code="2010",
+                        cr_account_name="Cuentas por Pagar Proveedores",
+                        description=f"Reintento restock {product_id}",
+                        prop_id=prop_id,
+                        source="hotel_product_restock",
+                        source_id=ledger_source_id,
+                    )
+                except Exception:
+                    logger.exception("Failed to retry ledger entry for restock %s", product_id)
+            return {
+                "quantity_available": product.get("quantity_available", 0),
+                "cost_price": product.get("cost_price", 0),
+                "default_supplier": product.get("default_supplier", ""),
+                "last_purchase_invoice_ref": str(invoice_id),
+                "inventory_event_id": str(inventory_key),
+                "product_id": product_id,
+                "prop_id": prop_id,
+                "total_cost": round(float(existing_layer.get("qty_initial", 0)) * float(existing_layer.get("cost_per_unit", 0)), 2),
+                "ledger_journal_id": journal_id or f"skip:hotel_product_restock/{invoice_id}",
+                "fact_inventory_layer_id": existing_layer.get("layer_id", ""),
+            }
+
     # Resolve the expense invoice link (real FK) when an id is provided.
     if invoice_id:
         try:
@@ -250,12 +301,64 @@ def restock_product(
     old_qty = float(product.get("quantity_available", 0) or 0)
     old_cost = float(product.get("cost_price", 0.0) or 0.0)
     supplier = supplier_name or product.get("default_supplier") or ""
-    new_qty = old_qty + qty
     total_cost = round(qty * unit_cost, 2)
     now = now_utc()
+    # When the caller supplies a stable acquisition event id, claim the stock
+    # delta once. A retry that already claimed this event skips the increment
+    # and continues repairing the ledger/layer projection.
+    claimed_event = False
+    if inventory_event_id:
+        event_filter = {"prop_id": prop_id, "event_id": str(inventory_event_id)}
+        event_doc = db.hotel_product_restock_events.find_one(event_filter)
+        if event_doc and event_doc.get("stock_applied") is True:
+            claimed_event = False
+        else:
+            try:
+                with db.client.start_session() as session:
+                    with session.start_transaction():
+                        current = db.hotel_product_restock_events.find_one(event_filter, session=session)
+                        if current and current.get("stock_applied") is True:
+                            claimed_event = False
+                        else:
+                            if not current:
+                                db.hotel_product_restock_events.insert_one({
+                                    **event_filter,
+                                    "product_id": product_id,
+                                    "qty": qty,
+                                    "unit_cost": round(unit_cost, 2),
+                                    "stock_applied": False,
+                                    "created_at": now,
+                                }, session=session)
+                            db.hotel_products.update_one(
+                                {"prop_id": prop_id, "product_id": product_id},
+                                {"$inc": {"quantity_available": qty}, "$set": {
+                                    "cost_price": round(unit_cost, 2),
+                                    "default_supplier": supplier,
+                                    "last_purchase_invoice_ref": invoice_ref or None,
+                                    "last_purchase_at": now,
+                                    "last_purchase_qty": qty,
+                                    "updated_at": now,
+                                    "updated_by": changed_by,
+                                }},
+                                session=session,
+                            )
+                            db.hotel_product_restock_events.update_one(
+                                event_filter,
+                                {"$set": {"stock_applied": True, "applied_at": now}},
+                                session=session,
+                            )
+                            claimed_event = True
+            except Exception:
+                committed = db.hotel_product_restock_events.find_one(event_filter)
+                if committed and committed.get("stock_applied") is True:
+                    claimed_event = False
+                else:
+                    raise
 
     update_doc = {
-        "quantity_available": new_qty,
+        # Returned to callers/audit as the expected post-operation snapshot.
+        # The actual persisted quantity is updated with $inc below.
+        "quantity_available": old_qty + qty,
         "cost_price": round(unit_cost, 2),
         "default_supplier": supplier,
         "last_purchase_invoice_ref": invoice_ref or None,
@@ -264,10 +367,22 @@ def restock_product(
         "updated_at": now,
         "updated_by": changed_by,
     }
-    db.hotel_products.update_one(
-        {"prop_id": prop_id, "product_id": product_id},
-        {"$set": update_doc},
-    )
+    # Keep the stock delta atomic. The read above is only for the audit
+    # snapshot; never write a stale absolute quantity over a concurrent sale or
+    # restock.
+    if not inventory_event_id:
+        db.hotel_products.update_one(
+            {"prop_id": prop_id, "product_id": product_id},
+            {"$inc": {"quantity_available": qty}, "$set": {
+                "cost_price": round(unit_cost, 2),
+                "default_supplier": supplier,
+                "last_purchase_invoice_ref": invoice_ref or None,
+                "last_purchase_at": now,
+                "last_purchase_qty": qty,
+                "updated_at": now,
+                "updated_by": changed_by,
+            }},
+        )
 
     # Post DR 1050 / CR 2010 — best-effort (stock update is the source of truth).
     journal_id = ""
@@ -285,7 +400,7 @@ def restock_product(
             ),
             prop_id=prop_id,
             source="hotel_product_restock",
-            source_id=invoice_ref or f"manual:{product_id}:{now.isoformat()}",
+            source_id=ledger_source_id or invoice_ref or f"manual:{product_id}:{now.isoformat()}",
         )
     except Exception:
         logger.exception("Failed to post ledger entry for restock %s", product_id)
@@ -308,6 +423,7 @@ def restock_product(
             source="restock",
             supplier_name=supplier,
             invoice_ref=invoice_ref or "",
+            inventory_event_id=str(inventory_key),
             acquired_at=now,
             created_by=changed_by,
         )
@@ -330,7 +446,7 @@ def restock_product(
             ),
             changed_by=changed_by,
             diff={
-                "quantity_available": {"old": old_qty, "new": new_qty},
+                "quantity_available": {"old": old_qty, "new": old_qty + qty},
                 "cost_price": {"old": old_cost, "new": round(unit_cost, 2)},
                 "default_supplier": {
                     "old": product.get("default_supplier"),
@@ -411,7 +527,7 @@ def add_booking_line_item(
     # Validate product exists for this hotel — use DB values, not frontend input
     product = db.hotel_products.find_one(
         {"product_id": product_id, "prop_id": booking["prop_id"]},
-        {"_id": 0, "name": 1, "unit_price": 1, "quantity_available": 1},
+        {"_id": 0, "name": 1, "unit_price": 1, "quantity_available": 1, "stock_tracked": 1},
     )
     if not product:
         return None
@@ -419,14 +535,35 @@ def add_booking_line_item(
     # Use DB values for name and price (don't trust frontend)
     safe_name = product.get("name", name)
     safe_price = product.get("unit_price", unit_price)
-    total = round(float(safe_price) * int(quantity), 2)
+    quantity = int(quantity)
+    if quantity <= 0:
+        return None
+    total = round(float(safe_price) * quantity, 2)
+
+    # Inventory policy is explicit. Legacy products without the field remain
+    # unlimited for compatibility; tracked products continue to be tracked at
+    # zero instead of silently becoming unlimited.
+    stock_decremented = False
+    if bool(product.get("stock_tracked", float(product.get("quantity_available", 0) or 0) > 0)):
+        stock_result = db.hotel_products.update_one(
+            {
+                "prop_id": booking["prop_id"],
+                "product_id": product_id,
+                "quantity_available": {"$gte": quantity},
+            },
+            {"$inc": {"quantity_available": -quantity}, "$set": {"updated_at": now_utc()}},
+        )
+        if stock_result.modified_count != 1:
+            return None
+        stock_decremented = True
+
     import secrets
     item_id = f"LI-{secrets.token_hex(4).upper()}"
     line_item = {
         "item_id": item_id,
         "product_id": product_id,
         "name": safe_name,
-        "quantity": int(quantity),
+        "quantity": quantity,
         "unit_price": round(float(safe_price), 2),
         "total": total,
         "added_at": now_utc(),
@@ -442,21 +579,6 @@ def add_booking_line_item(
         },
     )
 
-    # Decrement product inventory (only if stock is tracked and sufficient)
-    qty_avail = product.get("quantity_available", 0)
-    if qty_avail > 0:
-        if qty_avail >= quantity:
-            db.hotel_products.update_one(
-                {"product_id": product_id},
-                {"$inc": {"quantity_available": -quantity}},
-            )
-        else:
-            # Stock insufficient — decrement what's available to avoid negative
-            db.hotel_products.update_one(
-                {"product_id": product_id},
-                {"$set": {"quantity_available": 0}},
-            )
-
     # Also log in status history
     db.booking_status_history.insert_one({
         "booking_id": booking_id,
@@ -470,7 +592,7 @@ def add_booking_line_item(
     # ── Post to guest folio (same pattern as create_additional_charge) ──
     try:
         from src.app.modules.billing.service.folio import post_to_folio
-        post_to_folio(
+        folio = post_to_folio(
             booking_id,
             posting_type="charge",
             category="Productos",
@@ -480,10 +602,26 @@ def add_booking_line_item(
             reference_id=item_id,
             reference_type="hotel_product",
         )
+        if folio is None:
+            raise RuntimeError("guest folio not found or closed")
     except Exception:
-        logger.exception(
-            "Failed to auto-post product to folio for booking %s", booking_id
+        # Do not leave an inventory decrement and a booking line without the
+        # corresponding folio evidence. Roll back both local effects; a later
+        # retry can safely try the complete operation again.
+        db.booking_orders.update_one(
+            {"booking_id": booking_id, "line_items.item_id": item_id},
+            {
+                "$pull": {"line_items": {"item_id": item_id}},
+                "$inc": {"total_charges": -total},
+            },
         )
+        if stock_decremented:
+            db.hotel_products.update_one(
+                {"prop_id": booking["prop_id"], "product_id": product_id},
+                {"$inc": {"quantity_available": quantity}},
+            )
+        logger.exception("Failed to auto-post product to folio for booking %s", booking_id)
+        return None
 
     # ── Sync with active invoice (if one exists) ──
     try:
@@ -496,7 +634,7 @@ def add_booking_line_item(
                 "item_id": item_id,
                 "type": "hotel_product",
                 "name": safe_name,
-                "quantity": int(quantity),
+                "quantity": quantity,
                 "unit_price": round(float(safe_price), 2),
                 "total": total,
                 "category": "Productos",
@@ -543,7 +681,7 @@ def remove_booking_line_item(
     # Read the line item first to get its total and product_id
     booking = db.booking_orders.find_one(
         {"booking_id": booking_id, "line_items.item_id": item_id},
-        {"_id": 0, "line_items": 1},
+        {"_id": 0, "prop_id": 1, "line_items": 1},
     )
     item = None
     if booking:
@@ -571,11 +709,70 @@ def remove_booking_line_item(
         if item:
             pid = item.get("product_id", "")
             if pid:
-                qty = item.get("quantity", 1)
-                db.hotel_products.update_one(
-                    {"product_id": pid, "quantity_available": {"$gt": 0}},
-                    {"$inc": {"quantity_available": qty}},
+                product = db.hotel_products.find_one(
+                    {"prop_id": booking.get("prop_id"), "product_id": pid},
+                    {"stock_tracked": 1},
                 )
+                if product and product.get("stock_tracked") is True:
+                    qty = item.get("quantity", 1)
+                    db.hotel_products.update_one(
+                        {"prop_id": booking.get("prop_id"), "product_id": pid},
+                        {"$inc": {"quantity_available": qty}},
+                    )
+
+        # ── Reverse the folio charge posted by add_booking_line_item ──
+        # The add path posts to the folio keyed by item_id; removing the
+        # product must post a compensating charge_reversal so the folio never
+        # keeps orphan revenue. Best-effort — the booking removal already
+        # succeeded; a later retry of the removal is a no-op.
+        if item_total and item:
+            try:
+                from src.app.modules.billing.service.folio import post_to_folio
+                post_to_folio(
+                    booking_id,
+                    posting_type="charge_reversal",
+                    category="Productos",
+                    concept=f"Anulación: {item.get('name', '')} x{item.get('quantity', 1)}",
+                    amount=item_total,
+                    quantity=int(item.get("quantity", 1) or 1),
+                    reference_id=item_id,
+                    reference_type="hotel_product_reversal",
+                )
+            except Exception:
+                logger.exception("Failed to reverse folio charge for removed line item %s on booking %s", item_id, booking_id)
+
+        # ── Sync with active invoice (mirror of the add path) ──
+        try:
+            inv = db.reservation_invoices.find_one(
+                {"booking_id": booking_id, "status": "issued"},
+                {"line_items": 1, "room_subtotal": 1, "extras_total": 1, "subtotal": 1, "taxes": 1, "total": 1},
+            )
+            if inv:
+                combined = [li for li in (inv.get("line_items") or []) if not (isinstance(li, dict) and li.get("item_id") == item_id)]
+                extras_total = round(
+                    sum(float(it.get("total", 0)) for it in combined if it.get("type") != "room"), 2
+                )
+                room_subtotal = inv.get("room_subtotal", 0) or 0
+                new_subtotal = round(room_subtotal + extras_total, 2)
+                new_taxes = round(new_subtotal * 0.16, 2)
+                new_total = round(new_subtotal + new_taxes, 2)
+
+                inv_update = {
+                    "$set": {
+                        "line_items": combined,
+                        "extras_total": extras_total,
+                        "subtotal": new_subtotal,
+                        "taxes": new_taxes,
+                        "total": new_total,
+                        "updated_at": now_utc(),
+                    }
+                }
+                db.reservation_invoices.update_one({"_id": inv["_id"]}, inv_update)
+                db.fact_reservation_invoices.update_one({"_id": inv["_id"]}, inv_update)
+        except Exception:
+            logger.exception(
+                "Failed to sync product removal to invoice for booking %s", booking_id
+            )
 
         db.booking_status_history.insert_one({
             "booking_id": booking_id,

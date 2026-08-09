@@ -47,20 +47,19 @@ def upsert_room_status(payload: RoomStatusLogCreate) -> dict[str, Any]:
     db = get_database()
     now = now_iso()
 
+    if payload.status not in ROOM_STATUSES:
+        raise ValueError(f"estado de habitación desconocido: {payload.status}")
+
     # Get old status before updating
     old_status = _get_current_status(payload.prop_id, payload.room_label)
 
     # ── Validate transition ──
     if old_status is not None and old_status != payload.status:
         if not is_valid_transition(old_status, payload.status):
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                "Invalid status transition for room %s (prop %s): %s → %s",
-                payload.room_label, payload.prop_id, old_status, payload.status,
+            raise ValueError(
+                f"transición de habitación inválida: {old_status} → {payload.status}"
             )
-            # Allow the transition anyway with warning (PMS should be flexible)
-            # but log it for audit
+
 
     # ── Auto-transition: if syncing from hotel_rooms, default to vacant_clean ──
 
@@ -143,7 +142,12 @@ def update_room_status_bulk(prop_id: int, room_labels: list[str], new_status: st
     db = get_database()
     now = now_iso()
 
-    # Fetch old statuses before bulk update
+    if new_status not in ROOM_STATUSES:
+        raise ValueError(f"estado de habitación desconocido: {new_status}")
+
+    # Fetch and validate every current state before the first write. The old
+    # implementation updated the whole batch first and only logged history;
+    # one invalid transition could therefore silently corrupt several rooms.
     old_docs = list(
         db[ROOM_STATUS_COLLECTION].find(
             {"prop_id": prop_id, "room_label": {"$in": room_labels}},
@@ -151,6 +155,13 @@ def update_room_status_bulk(prop_id: int, room_labels: list[str], new_status: st
         )
     )
     old_status_map: dict[str, str] = {d["room_label"]: d["status"] for d in old_docs}
+    invalid = [
+        f"{label}: {old_status} → {new_status}"
+        for label, old_status in old_status_map.items()
+        if old_status != new_status and not is_valid_transition(old_status, new_status)
+    ]
+    if invalid:
+        raise ValueError(f"transición de habitación inválida: {'; '.join(invalid)}")
 
     result = db[ROOM_STATUS_COLLECTION].update_many(
         {"prop_id": prop_id, "room_label": {"$in": room_labels}},

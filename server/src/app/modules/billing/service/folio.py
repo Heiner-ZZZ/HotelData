@@ -77,6 +77,74 @@ def _find_booking(booking_id: str) -> dict | None:
     return booking
 
 
+def resolve_checkout_at(db: Any, booking_id: str) -> datetime | None:
+    """Resolve checkout evidence from actual fields or immutable status history."""
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"check_out_date_actual": 1, "check_out_time_actual": 1},
+    ) or {}
+    date_value = booking.get("check_out_date_actual")
+    time_value = booking.get("check_out_time_actual")
+    if date_value and time_value:
+        try:
+            return datetime.fromisoformat(f"{str(date_value)[:10]}T{str(time_value)[:8]}")
+        except ValueError:
+            pass
+    history = db.booking_status_history.find_one(
+        {"booking_id": booking_id, "status": "checked_out", "changed_at": {"$exists": True}},
+        {"changed_at": 1},
+        sort=[("changed_at", -1)],
+    )
+    changed_at = (history or {}).get("changed_at")
+    if isinstance(changed_at, datetime):
+        return changed_at.replace(tzinfo=None)
+    return None
+
+
+def get_folio_posting_trace(
+    db: Any,
+    *,
+    booking_id: str,
+    reference_id: str,
+    reference_type: str,
+) -> dict[str, Any] | None:
+    """Return stable source references for one committed folio posting.
+
+    Folio postings are the operational source of truth for guest charges. The
+    source document should retain the same links after a successful post so a
+    reconciliation reader does not have to rediscover them by scanning an
+    embedded array. This helper is read-only and deliberately does not create
+    any financial event.
+    """
+    folio = db[FOLIO_COLLECTION].find_one({
+        "booking_id": booking_id,
+        "postings": {"$elemMatch": {
+            "reference_id": reference_id,
+            "reference_type": reference_type,
+        }},
+    })
+    if not folio:
+        return None
+    posting = next(
+        (
+            item for item in folio.get("postings", [])
+            if item.get("reference_id") == reference_id
+            and item.get("reference_type") == reference_type
+        ),
+        None,
+    )
+    if not posting or not posting.get("posting_id"):
+        return None
+    return {
+        "folio_id": folio["_id"],
+        "folio_number": folio.get("folio_number"),
+        "posting_id": posting["posting_id"],
+        "posting_reference": reference_id,
+        "posting_type": posting.get("type"),
+        "posting_reference_type": reference_type,
+    }
+
+
 def _enrich_folio(doc: dict) -> dict:
     """Convert _id to id and format datetimes."""
     doc["id"] = str(doc.pop("_id"))
@@ -97,6 +165,293 @@ def _enrich_folio(doc: dict) -> dict:
 # ── Core Operations ──
 
 
+def _sync_issued_invoice_line_item(
+    db: Any,
+    booking_id: str,
+    item: dict,
+    *,
+    removing: bool = False,
+) -> None:
+    """Add/remove a folio-mirrored line item on the active issued invoice.
+
+    Best-effort (never fails the folio posting): an issued invoice that
+    exists for the booking is kept in sync with the booking's line items so
+    the guest bill reflects folio charges without a manual rebuild.
+    """
+    try:
+        item_id = str(item.get("item_id") or "")
+        if not item_id:
+            return
+        inv = db.reservation_invoices.find_one(
+            {"booking_id": booking_id, "status": "issued"},
+            {"line_items": 1, "room_subtotal": 1},
+        )
+        if not inv:
+            return
+        existing = inv.get("line_items") or []
+        if removing:
+            remaining = [li for li in existing if not (isinstance(li, dict) and li.get("item_id") == item_id)]
+        else:
+            already = any(isinstance(li, dict) and li.get("item_id") == item_id for li in existing)
+            if already:
+                return
+            remaining = existing + [item]
+        extras_total = round(sum(
+            float(li.get("total", 0) or 0)
+            for li in remaining
+            if isinstance(li, dict) and li.get("type") != "room"
+        ), 2)
+        room_subtotal = float(inv.get("room_subtotal", 0) or 0)
+        new_subtotal = round(room_subtotal + extras_total, 2)
+        new_taxes = round(new_subtotal * 0.16, 2)
+        new_total = round(new_subtotal + new_taxes, 2)
+        update = {
+            "$set": {
+                "line_items": remaining,
+                "extras_total": extras_total,
+                "subtotal": new_subtotal,
+                "taxes": new_taxes,
+                "total": new_total,
+                "updated_at": _now(),
+            }
+        }
+        db.reservation_invoices.update_one({"_id": inv["_id"]}, update)
+        db.fact_reservation_invoices.update_one({"_id": inv["_id"]}, update)
+    except Exception:
+        logger = __import__("logging").getLogger(__name__)
+        logger.exception("Failed to sync invoice line item for booking %s", booking_id)
+
+
+def _mirror_folio_charge_to_booking(db: Any, booking_id: str, posting: dict) -> None:
+    """Mirror a folio charge into the booking's line items.
+
+    Direct folio charges ("Agregar cargo", reference_type ``manual``) must
+    appear in ``booking.line_items`` so the reservation detail and invoice
+    see them — closing the two-source gap. Postings that already have their
+    own booking representation (hotel products, reservation-time additional
+    charges) are skipped to avoid double counting.
+    """
+    if posting.get("type") != "charge":
+        return
+    # Only direct folio charges from the stay view ("Agregar cargo") are
+    # mirrored. Every other reference_type belongs to a dedicated flow that
+    # already has its own booking/invoice representation (hotel products,
+    # reservation-time additional charges and their revisions, no-show
+    # penalties, payments, the initial room charge) and must not be mirrored
+    # to avoid double counting.
+    reference_type = str(posting.get("reference_type") or "")
+    if reference_type != "manual":
+        return
+    item_id = str(posting.get("posting_id") or "")
+    if not item_id:
+        return
+    already = db.booking_orders.find_one(
+        {"booking_id": booking_id, "line_items.item_id": item_id},
+        {"_id": 1},
+    )
+    if already:
+        return
+    line_item = {
+        "item_id": item_id,
+        "type": "folio_charge",
+        "name": posting.get("concept", ""),
+        "category": posting.get("category", "Otros"),
+        "quantity": int(posting.get("quantity", 1) or 1),
+        "unit_price": round(float(posting.get("unit_price", posting.get("amount", 0)) or 0), 2),
+        "total": round(float(posting.get("amount", 0) or 0), 2),
+        "reference_id": str(posting.get("reference_id") or ""),
+        "reference_type": reference_type,
+        "added_at": posting.get("posted_at"),
+        "source": "folio",
+    }
+    db.booking_orders.update_one(
+        {"booking_id": booking_id},
+        {
+            "$push": {"line_items": line_item},
+            "$inc": {"total_charges": line_item["total"]},
+        },
+    )
+    _sync_issued_invoice_line_item(db, booking_id, line_item)
+
+
+def _unmirror_folio_charge_from_booking(db: Any, booking_id: str, posting: dict) -> None:
+    """Remove the booking line item mirrored from a folio charge on reversal.
+
+    A ``charge_reversal`` is a compensating event: the original charge stays
+    in the folio history, but the booking line item it mirrored (keyed by the
+    original posting id passed as ``reference_id``) is removed and totals are
+    restored. Best-effort — a no-op when no mirror exists.
+    """
+    reference_id = str(posting.get("reference_id") or "")
+    if not reference_id:
+        return
+    item = db.booking_orders.find_one(
+        {"booking_id": booking_id, "line_items.item_id": reference_id},
+        {"_id": 0, "line_items": 1},
+    )
+    target = next(
+        (li for li in (item or {}).get("line_items", []) if li.get("item_id") == reference_id),
+        None,
+    )
+    if not target:
+        return
+    total = float(target.get("total", 0) or 0)
+    db.booking_orders.update_one(
+        {"booking_id": booking_id, "line_items.item_id": reference_id},
+        {
+            "$pull": {"line_items": {"item_id": reference_id}},
+            "$inc": {"total_charges": -total},
+        },
+    )
+    _sync_issued_invoice_line_item(db, booking_id, target, removing=True)
+
+
+def _reconcile_pending_additional_charges(db: Any, booking_id: str, prop_id: int) -> None:
+    """Post pre-folio charges once the guest folio exists.
+
+    Reservation-time amenities can be recorded before check-in creates the
+    folio. Reconcile only pending charges, and use the charge ObjectId as the
+    stable posting reference so retries cannot invent a second financial event.
+    """
+    pending = db.additional_charges.find({
+        "booking_id": booking_id,
+        "prop_id": prop_id,
+        "posting_status": {"$in": ["pending", "posting_failed"]},
+    }).sort("_id", 1)
+    for charge in pending:
+        charge_id = str(charge["_id"])
+        already_posted = db.guest_folios.find_one({
+            "booking_id": booking_id,
+            "postings": {"$elemMatch": {
+                "reference_id": charge_id,
+                "reference_type": "additional_charge",
+            }},
+        }, {"_id": 1})
+        if already_posted:
+            trace = get_folio_posting_trace(
+                db,
+                booking_id=booking_id,
+                reference_id=charge_id,
+                reference_type="additional_charge",
+            )
+            update = {"posting_status": "posted", "posting_error": None}
+            if trace:
+                update.update(trace)
+                from src.app.modules.housekeeping.service.lifecycle.charges import _record_charge_posted_event
+                event = _record_charge_posted_event(
+                    prop_id=prop_id,
+                    booking_id=booking_id,
+                    charge_id=charge_id,
+                    total=float(charge.get("total", charge.get("amount", 0)) or 0),
+                    trace=trace,
+                    changed_by="folio_reconciliation",
+                )
+                update["domain_event_id"] = event.get("event_id") if event else None
+                update["domain_event_status"] = "posted" if event else "failed"
+            db.additional_charges.update_one(
+                {"_id": charge["_id"]},
+                {"$set": update},
+            )
+            continue
+
+        try:
+            posted = post_to_folio(
+                booking_id,
+                posting_type="charge",
+                category=charge.get("category", "Otros"),
+                concept=charge.get("concept", ""),
+                amount=float(charge.get("total", charge.get("amount", 0)) or 0),
+                quantity=int(charge.get("quantity", 1) or 1),
+                reference_id=charge_id,
+                reference_type="additional_charge",
+            )
+            if posted is None:
+                raise RuntimeError("guest folio is not open")
+            trace = get_folio_posting_trace(
+                db,
+                booking_id=booking_id,
+                reference_id=charge_id,
+                reference_type="additional_charge",
+            )
+            if not trace:
+                raise RuntimeError("folio posting committed without trace")
+            update = {"posting_status": "posted", "posting_error": None}
+            update.update(trace)
+            from src.app.modules.housekeeping.service.lifecycle.charges import _record_charge_posted_event
+            event = _record_charge_posted_event(
+                prop_id=prop_id,
+                booking_id=booking_id,
+                charge_id=charge_id,
+                total=float(charge.get("total", charge.get("amount", 0)) or 0),
+                trace=trace,
+                changed_by="folio_reconciliation",
+            )
+            update["domain_event_id"] = event.get("event_id") if event else None
+            update["domain_event_status"] = "posted" if event else "failed"
+            db.additional_charges.update_one(
+                {"_id": charge["_id"]},
+                {"$set": update},
+            )
+        except Exception as exc:
+            db.additional_charges.update_one(
+                {"_id": charge["_id"]},
+                {"$set": {"posting_status": "posting_failed", "posting_error": str(exc)}},
+            )
+
+
+def _reconcile_confirmed_payments(db: Any, booking_id: str) -> None:
+    """Attach confirmed payments created before the folio existed.
+
+    Payment creation is allowed before check-in for online/pre-authorized
+    flows. Once the folio is created, replay only payments without their stable
+    payment reference in the folio postings. This makes retries idempotent and
+    preserves the original payment document as the source of truth.
+    """
+    for payment in db.reservation_payments.find({
+        "booking_id": booking_id,
+        "status": "confirmed",
+    }).sort("_id", 1):
+        payment_ref = str(payment.get("reference") or payment.get("_id"))
+        already_posted = db[FOLIO_COLLECTION].find_one({
+            "booking_id": booking_id,
+            "postings": {"$elemMatch": {
+                "reference_id": payment_ref,
+                "reference_type": "payment",
+            }},
+        }, {"_id": 1})
+        if already_posted:
+            continue
+        posted = post_to_folio(
+            booking_id,
+            posting_type="payment",
+            category=str(payment.get("method") or "Payment").title(),
+            concept=f"Pago {payment_ref}",
+            amount=float(payment.get("amount", 0) or 0),
+            reference_id=payment_ref,
+            reference_type="payment",
+        )
+        if posted is None:
+            # Keep the payment traceable but explicit: it is confirmed at the
+            # gateway level and remains unapplied until an operator resolves
+            # the mismatch; never pretend it was charged to the folio.
+            db.reservation_payments.update_one(
+                {"_id": payment["_id"], "status": "confirmed"},
+                {"$set": {
+                    "status": "unapplied",
+                    "unapplied_reason": "folio_balance_or_closed",
+                    "updated_at": _now(),
+                }},
+            )
+            db.fact_reservation_payments.update_one(
+                {"_id": payment["_id"], "status": "confirmed"},
+                {"$set": {
+                    "status": "unapplied",
+                    "unapplied_reason": "folio_balance_or_closed",
+                    "updated_at": _now(),
+                }},
+            )
+
+
 def create_folio(booking_id: str, *, shift_id: str | None = None) -> dict | None:
     """Create a new folio for a booking at check-in.
 
@@ -115,7 +470,10 @@ def create_folio(booking_id: str, *, shift_id: str | None = None) -> dict | None
     # Check if folio already exists
     existing = db[FOLIO_COLLECTION].find_one({"booking_id": booking_id})
     if existing:
-        return _enrich_folio(existing)
+        _reconcile_pending_additional_charges(db, booking_id, prop_id=int(booking.get("prop_id", 0) or 0))
+        _reconcile_confirmed_payments(db, booking_id)
+        refreshed = db[FOLIO_COLLECTION].find_one({"booking_id": booking_id})
+        return _enrich_folio(refreshed) if refreshed else None
 
     # Resolve room label and hotel_room_id
     assigned_rooms: list[str] = booking.get("assigned_rooms") or []
@@ -192,7 +550,10 @@ def create_folio(booking_id: str, *, shift_id: str | None = None) -> dict | None
     }
 
     db[FOLIO_COLLECTION].insert_one(doc)
-    return _enrich_folio(doc)
+    _reconcile_pending_additional_charges(db, booking_id, prop_id=prop_id)
+    _reconcile_confirmed_payments(db, booking_id)
+    refreshed = db[FOLIO_COLLECTION].find_one({"booking_id": booking_id})
+    return _enrich_folio(refreshed) if refreshed else None
 
 
 def get_folio(booking_id: str) -> dict | None:
@@ -258,6 +619,7 @@ def post_to_folio(
     unit_price: float | None = None,
     reference_id: str = "",
     reference_type: str = "additional_charge",
+    posted_at: datetime | None = None,
 ) -> dict | None:
     """Post a transaction to the folio.
 
@@ -273,7 +635,34 @@ def post_to_folio(
     if unit_price is None:
         unit_price = round(amount / max(quantity, 1), 2)
 
-    now = _now()
+    now = posted_at or _now()
+    if reference_id and reference_type:
+        existing = db[FOLIO_COLLECTION].find_one(
+            {
+                "booking_id": booking_id,
+                "postings": {"$elemMatch": {
+                    "reference_id": reference_id,
+                    "reference_type": reference_type,
+                }},
+            },
+        )
+        if existing is not None:
+            matching = next(
+                (
+                    posting for posting in existing.get("postings", [])
+                    if posting.get("reference_id") == reference_id
+                    and posting.get("reference_type") == reference_type
+                ),
+                None,
+            )
+            if matching and (
+                round(float(matching.get("amount", 0) or 0), 2) != amount
+                or int(matching.get("quantity", 1) or 1) != int(quantity or 1)
+                or matching.get("type") != posting_type
+            ):
+                return None
+            return _enrich_folio(existing)
+
     posting = {
         "posting_id": ObjectId(),
         "type": posting_type,
@@ -293,6 +682,16 @@ def post_to_folio(
     if posting_type == "charge":
         inc_fields["total_charges"] = amount
         inc_fields["total_due"] = amount
+    elif posting_type == "refund":
+        # A refund reverses a prior payment without rewriting history. Keep the
+        # original payment posting and add a compensating event.
+        inc_fields["total_payments"] = -abs(amount)
+        inc_fields["total_due"] = abs(amount)
+    elif posting_type == "charge_reversal":
+        # A voided charge is a compensating event: preserve the original
+        # charge posting and decrease the charge/due accumulators atomically.
+        inc_fields["total_charges"] = -abs(amount)
+        inc_fields["total_due"] = -abs(amount)
     elif posting_type == "discount":
         inc_fields["total_discounts"] = abs(amount)
         inc_fields["total_due"] = -abs(amount)
@@ -307,8 +706,26 @@ def post_to_folio(
             inc_fields["total_discounts"] = abs(amount)
         inc_fields["total_due"] = amount
 
+    # Refunds and charge reversals are immutable compensating events and may
+    # be recorded against a closed folio. Ordinary charges/payments still
+    # require an open folio.
+    folio_query: dict[str, Any] = {"booking_id": booking_id}
+    if posting_type not in {"refund", "charge_reversal"}:
+        folio_query["status"] = "open"
+    if reference_id and reference_type:
+        # The preliminary read is only an optimization. Repeating the
+        # idempotency predicate in the atomic update prevents concurrent
+        # retries from appending the same event twice.
+        folio_query["postings"] = {"$not": {"$elemMatch": {
+            "reference_id": reference_id,
+            "reference_type": reference_type,
+        }}}
+    if posting_type == "payment":
+        # Do not silently floor an overpayment to zero.
+        folio_query["total_due"] = {"$gte": amount}
+
     result = db[FOLIO_COLLECTION].find_one_and_update(
-        {"booking_id": booking_id},
+        folio_query,
         {
             "$push": {"postings": posting},
             "$inc": {**inc_fields, "posting_count": 1},
@@ -317,22 +734,540 @@ def post_to_folio(
         return_document=ReturnDocument.AFTER,
     )
     if result is None:
+        # A concurrent retry may have won the atomic append after the
+        # preliminary idempotency read. Return that committed event instead of
+        # making the caller treat a harmless duplicate as a posting failure.
+        if reference_id and reference_type:
+            committed = db[FOLIO_COLLECTION].find_one({
+                "booking_id": booking_id,
+                "postings": {"$elemMatch": {
+                    "reference_id": reference_id,
+                    "reference_type": reference_type,
+                }},
+            })
+            if committed is not None:
+                return _enrich_folio(committed)
         return None
 
-    # Floor total_due at 0 in the rare case $inc drove it negative
-    if result.get("total_due", 0) < 0:
-        db[FOLIO_COLLECTION].update_one(
-            {"booking_id": booking_id},
-            {"$set": {"total_due": 0}},
-        )
-        result["total_due"] = 0
+    if result:
+        try:
+            from src.app.modules.financial_reconciliation.domain_events import append_domain_event
+            folio_id = str(result.get("_id", ""))
+            posting_id = str(posting.get("posting_id", ""))
+            append_domain_event(
+                prop_id=int(result.get("prop_id", 0) or 0),
+                event_type=f"guest_ar.folio_posting.{posting_type}",
+                aggregate_type="guest_ar",
+                aggregate_id=folio_id,
+                idempotency_key=f"live:folio-posting:{folio_id}:{posting_id}",
+                payload={"booking_id": booking_id, "amount": amount, "posting_type": posting_type, "reference_id": reference_id},
+                source_collection=FOLIO_COLLECTION,
+                source_id=folio_id,
+            )
+        except Exception:
+            # Financial posting remains the source of truth; reconciliation
+            # will surface a missing event if the event store is unavailable.
+            pass
+        # Keep booking.line_items in sync with the folio (bidirectional
+        # reconciliation). Manual charges are mirrored; reversals remove the
+        # mirror. Best-effort — the folio posting already succeeded.
+        try:
+            if posting.get("type") == "charge_reversal":
+                _unmirror_folio_charge_from_booking(db, booking_id, posting)
+            else:
+                _mirror_folio_charge_to_booking(db, booking_id, posting)
+        except Exception:
+            __import__("logging").getLogger(__name__).exception(
+                "Failed to mirror folio charge for booking %s", booking_id
+            )
     return _enrich_folio(result) if result else None
+
+
+def _ensure_settlement_indexes(db: Any) -> None:
+    """Ensure settlement idempotency indexes without renaming legacy indexes."""
+    key = [("booking_id", 1), ("idempotency_key", 1)]
+    for collection_name in ("folio_settlement_events", "fact_folio_settlement_events"):
+        collection = db[collection_name]
+        existing = next(
+            (
+                index for index in collection.list_indexes()
+                if list(index.get("key", {}).items()) == key
+                and index.get("unique") is True
+            ),
+            None,
+        )
+        if existing is None:
+            collection.create_index(key, unique=True, name="idx_folio_settlement_booking_key")
+
+
+def _write_settlement_event(db: Any, event: dict) -> None:
+    """Persist the operational settlement event and its denormalized mirror."""
+    db.folio_settlement_events.insert_one(event)
+    db.fact_folio_settlement_events.replace_one(
+        {"_id": event["_id"]},
+        dict(event),
+        upsert=True,
+    )
+
+
+def is_historical_cash_shift_eligible(shift: dict, booking_id: str) -> bool:
+    """Accept a reconstructed shift or the closed shift that recorded checkout.
+
+    Historical cash reconciliation must never use an arbitrary closed drawer.
+    A real checkout transaction is equally strong evidence when the checkout
+    already belongs to an existing operational shift.
+    """
+    if not shift or shift.get("status") != "closed":
+        return False
+    category = shift.get("metadata", {}).get("reconciliation", {}).get("category")
+    if category == "historical_reconstructed":
+        return True
+    return any(
+        str(transaction.get("booking_id")) == str(booking_id)
+        and str(transaction.get("type", "")).lower() in {"check_out", "checkout"}
+        for transaction in shift.get("transactions", [])
+    )
+
+
+def _parse_settlement_at(value: Any) -> datetime | None:
+    """Parse an optional effective settlement timestamp in UTC."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("settlement_at debe ser una fecha ISO válida") from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _link_settlement_payment_to_shift(
+    db: Any,
+    *,
+    shift_id: str,
+    payment: dict,
+    booking_id: str,
+    folio_id: ObjectId,
+    effective_at: datetime,
+) -> None:
+    """Add a historical payment to its reconstructed shift exactly once."""
+    try:
+        shift_oid = ObjectId(shift_id)
+    except Exception as exc:
+        raise ValueError("shift_id histórico inválido para el pago") from exc
+    shift = db["reception_shifts"].find_one({"_id": shift_oid})
+    if not shift:
+        raise ValueError("No existe el turno histórico asociado al checkout")
+    if int(shift.get("prop_id", 0) or 0) != int(payment.get("prop_id", 0) or 0):
+        raise ValueError("El turno histórico no pertenece al hotel del folio")
+
+    payment_id = payment.get("_id")
+    if payment_id is None and payment.get("id"):
+        payment_id = ObjectId(str(payment["id"]))
+    if payment_id is None:
+        raise ValueError("El pago histórico no tiene identificador")
+    transaction_id = f"settlement:{payment.get('reference', payment_id)}"
+    existing = db["reception_shifts"].find_one(
+        {"_id": shift_oid, "transactions.transaction_id": transaction_id},
+        {"_id": 1},
+    )
+    if existing:
+        db["reception_shifts"].update_one(
+            {"_id": shift_oid},
+            {
+                "$addToSet": {
+                    "payment_ids": payment_id,
+                    "folio_ids": folio_id,
+                },
+                "$set": {
+                    "transactions.$[txn].folio_id": folio_id,
+                    "transactions.$[txn].actor_user_id": payment.get("actor_user_id"),
+                    "transactions.$[txn].actor_username": payment.get("actor_username"),
+                },
+            },
+            array_filters=[{"txn.transaction_id": transaction_id}],
+        )
+        return
+
+    transaction = {
+        "transaction_id": transaction_id,
+        "type": "payment",
+        "booking_id": booking_id,
+        "folio_id": folio_id,
+        "payment_id": payment_id,
+        "actor_user_id": payment.get("actor_user_id"),
+        "actor_username": payment.get("actor_username"),
+        "amount": round(float(payment.get("amount", 0) or 0), 2),
+        "payment_method": payment.get("method", ""),
+        "timestamp": effective_at.isoformat(),
+        "description": f"Pago histórico de folio {payment.get('reference', '')}",
+        "evidence_reference": payment.get("evidence_reference"),
+    }
+    db["reception_shifts"].update_one(
+        {"_id": shift_oid, "transactions.transaction_id": {"$ne": transaction_id}},
+        {
+            "$addToSet": {
+                "payment_ids": payment_id,
+                "folio_ids": folio_id,
+            },
+            "$push": {"transactions": transaction},
+            "$inc": {
+                "total_collected": transaction["amount"],
+                "payment_breakdown.cash" if payment.get("method") in {"cash", "efectivo"} else "payment_breakdown.other": transaction["amount"],
+                "payment_breakdown.total": transaction["amount"],
+            },
+        },
+    )
+
+
+def _record_settlement_audit(
+    *,
+    prop_id: int,
+    booking_id: str,
+    settlement_type: str,
+    amount: float,
+    changed_by: str,
+    idempotency_key: str,
+    effective_at: datetime | None,
+    evidence_reference: str | None,
+    actor_user_id: ObjectId | None = None,
+) -> None:
+    """Persist the settlement action independently of the API request log."""
+    try:
+        from src.app.modules.partner.services.audit import register_action
+        register_action(
+            prop_id=prop_id,
+            entity_type="folio_settlement",
+            entity_id=booking_id,
+            action=settlement_type,
+            summary=f"Resolución de folio por {settlement_type}: ${amount:,.2f}",
+            changed_by=changed_by,
+            metadata={
+                "idempotency_key": idempotency_key,
+                "effective_at": effective_at,
+                "evidence_reference": evidence_reference,
+                "actor_user_id": str(actor_user_id) if actor_user_id else None,
+            },
+        )
+    except Exception:
+        # The settlement event remains the durable operational audit if the
+        # best-effort universal audit writer is temporarily unavailable.
+        pass
+
+
+def settle_folio(
+    booking_id: str,
+    payload: dict,
+    *,
+    changed_by: str = "system",
+    actor_user_id: ObjectId | str | None = None,
+    shift_id: str | None = None,
+) -> dict | None:
+    """Resolve a positive folio balance through one explicit outcome.
+
+    ``payment`` records a confirmed payment (partial payments keep the folio
+    open); ``write_off`` and ``external_settlement`` require a reason plus an
+    approval reference. A full non-cash outcome appends an immutable folio
+    event, posts a balanced GL pair, and marks the folio settled without
+    pretending that cash was received. ``idempotency_key`` is mandatory so a
+    retry cannot duplicate money, ledger rows, or settlement documents.
+    """
+    db = get_database()
+    _ensure_settlement_indexes(db)
+    actor_oid = None
+    if actor_user_id:
+        try:
+            actor_oid = actor_user_id if isinstance(actor_user_id, ObjectId) else ObjectId(str(actor_user_id))
+        except Exception as exc:
+            raise ValueError("actor_user_id inválido") from exc
+
+    settlement_type = str(payload.get("settlement_type") or "").strip().lower()
+    if settlement_type not in {"payment", "write_off", "external_settlement"}:
+        raise ValueError("settlement_type debe ser payment, write_off o external_settlement")
+    idempotency_key = str(payload.get("idempotency_key") or "").strip()
+    if not idempotency_key:
+        raise ValueError("idempotency_key es requerido")
+
+    existing_event = db.folio_settlement_events.find_one({
+        "booking_id": booking_id,
+        "idempotency_key": idempotency_key,
+    })
+    if existing_event:
+        current = db[FOLIO_COLLECTION].find_one({"_id": existing_event["folio_id"]})
+        return _enrich_folio(current) if current else None
+
+    folio = db[FOLIO_COLLECTION].find_one({
+        "booking_id": booking_id,
+        "status": "open",
+        "total_due": {"$gt": 0.005},
+    })
+    if not folio:
+        return None
+
+    due = round(float(folio.get("total_due", 0) or 0), 2)
+    now = _now()
+    reason = str(payload.get("reason") or "").strip()
+    approval_reference = str(payload.get("approval_reference") or "").strip()
+    external_reference = str(payload.get("external_reference") or "").strip()
+    evidence_type = str(payload.get("evidence_type") or "").strip() or None
+    evidence_reference = str(payload.get("evidence_reference") or "").strip() or None
+    effective_at = _parse_settlement_at(payload.get("settlement_at"))
+
+    if settlement_type == "payment" and effective_at is not None:
+        if not shift_id and str(payload.get("method") or "").strip().lower() in {"cash", "efectivo"}:
+            raise ValueError("Un pago histórico en efectivo requiere el turno del checkout")
+        if not evidence_reference:
+            raise ValueError("evidence_reference es obligatorio para un pago histórico")
+        evidence_type = evidence_type or "manager_attestation"
+
+    if settlement_type in {"write_off", "external_settlement"}:
+        if not reason or not approval_reference:
+            raise ValueError("reason y approval_reference son obligatorios para una liquidación aprobada")
+        if settlement_type == "external_settlement" and not external_reference:
+            raise ValueError("external_reference es obligatorio para una liquidación externa")
+
+        source = "folio_write_off" if settlement_type == "write_off" else "folio_external_settlement"
+        debit_code, debit_name = (
+            ("6800", "Gasto por cuentas incobrables")
+            if settlement_type == "write_off"
+            else ("6790", "Pérdida por liquidación externa autorizada")
+        )
+        from src.app.modules.expenses.service.ledger_hooks import post_journal_entry
+        ledger_reference = post_journal_entry(
+            amount=due,
+            dr_account_code=debit_code,
+            dr_account_name=debit_name,
+            cr_account_code="1030",
+            cr_account_name="Cuentas por Cobrar Huéspedes",
+            description=f"Liquidación de folio {folio.get('folio_number', booking_id)} — {reason}",
+            prop_id=int(folio.get("prop_id", 0) or 0),
+            source=source,
+            source_id=idempotency_key,
+            booking_id=booking_id,
+        )
+
+        posting = {
+            "posting_id": ObjectId(),
+            "type": settlement_type,
+            "category": "Liquidación",
+            "concept": reason,
+            "amount": due,
+            "quantity": 1,
+            "unit_price": due,
+            "reference_id": idempotency_key,
+            "reference_type": settlement_type,
+            "posted_at": now,
+        }
+        updated = db[FOLIO_COLLECTION].find_one_and_update(
+            {
+                "_id": folio["_id"],
+                "status": "open",
+                "total_due": due,
+                "postings": {"$not": {"$elemMatch": {"reference_id": idempotency_key}}},
+            },
+            {"$push": {"postings": posting}, "$inc": {"posting_count": 1}, "$set": {
+                "status": "written_off" if settlement_type == "write_off" else "settled",
+                "total_due": 0.0,
+                "settlement_type": settlement_type,
+                "settlement_amount": due,
+                "settlement_reason": reason,
+                "approval_reference": approval_reference,
+                "external_reference": external_reference or None,
+                "settled_at": now,
+                "settled_by": changed_by,
+                "settled_by_user_id": actor_oid,
+                "updated_at": now,
+            }},
+            return_document=ReturnDocument.AFTER,
+        )
+        if not updated:
+            current = db[FOLIO_COLLECTION].find_one({"_id": folio["_id"]})
+            return _enrich_folio(current) if current else None
+
+        event = {
+            "_id": ObjectId(),
+            "booking_id": booking_id,
+            "folio_id": folio["_id"],
+            "prop_id": folio.get("prop_id", 0),
+            "folio_number": folio.get("folio_number", ""),
+            "settlement_type": settlement_type,
+            "amount": due,
+            "reason": reason,
+            "approval_reference": approval_reference,
+            "external_reference": external_reference or None,
+            "idempotency_key": idempotency_key,
+            "ledger_reference": ledger_reference,
+            "status": "written_off" if settlement_type == "write_off" else "settled",
+            "changed_by": changed_by,
+            "actor_user_id": actor_oid,
+            "created_at": now,
+        }
+        try:
+            _write_settlement_event(db, event)
+        except Exception:
+            # Do not hide a committed settlement behind a duplicate retry. The
+            # unique key means the next call will recover the event if another
+            # worker won the race; a real persistence failure is explicit.
+            if not db.folio_settlement_events.find_one({"booking_id": booking_id, "idempotency_key": idempotency_key}):
+                raise
+        _record_settlement_audit(
+            prop_id=int(folio.get("prop_id", 0) or 0),
+            booking_id=booking_id,
+            settlement_type=settlement_type,
+            amount=due,
+            changed_by=changed_by,
+            idempotency_key=idempotency_key,
+            effective_at=effective_at,
+            evidence_reference=evidence_reference,
+            actor_user_id=actor_oid,
+        )
+        return _enrich_folio(updated)
+
+    amount = round(float(payload.get("amount", 0) or 0), 2)
+    if amount <= 0 or amount > due + 0.005:
+        raise ValueError("El pago debe ser positivo y no exceder el saldo del folio")
+    method = str(payload.get("method") or "").strip().lower()
+    if not method:
+        raise ValueError("method es requerido para una liquidación por pago")
+
+    from src.app.modules.billing.schemas import PaymentCreate
+    from src.app.modules.billing.service.lifecycle.payments import create_payment
+    payment_reference = f"PAY-SETTLEMENT-{idempotency_key}"
+    existing_payment = db.reservation_payments.find_one({
+        "booking_id": booking_id,
+        "reference": payment_reference,
+    })
+    payment = existing_payment
+    if payment is None:
+        payment = create_payment(
+            PaymentCreate(
+                booking_id=booking_id,
+                amount=amount,
+                method=method,
+            ),
+            reference=payment_reference,
+            shift_id=shift_id,
+            paid_at=effective_at,
+            evidence_type=evidence_type,
+            evidence_reference=evidence_reference,
+            payment_source="historical_attestation" if effective_at else None,
+            actor_user_id=actor_oid,
+            actor_username=changed_by,
+        )
+    elif round(float(payment.get("amount", 0) or 0), 2) != amount or payment.get("status") != "confirmed":
+        raise ValueError("La clave de idempotencia ya fue usada con un pago incompatible")
+    if not payment or payment.get("status") != "confirmed":
+        raise ValueError("No se pudo confirmar el pago y el saldo permanece abierto")
+
+    refreshed = db[FOLIO_COLLECTION].find_one({"_id": folio["_id"]})
+    if not refreshed:
+        return None
+    remaining = round(float(refreshed.get("total_due", 0) or 0), 2)
+    final_status = "settled" if remaining <= 0.005 else "open"
+    if final_status == "settled":
+        refreshed = db[FOLIO_COLLECTION].find_one_and_update(
+            {"_id": folio["_id"], "status": "open", "total_due": {"$lte": 0.005}},
+            {"$set": {
+                "status": "settled",
+                "settlement_type": "payment",
+                "settlement_amount": round(float(refreshed.get("total_payments", amount) or amount), 2),
+                "settled_at": effective_at or now,
+                "settled_recorded_at": now,
+                "settled_by": changed_by,
+                "settled_by_user_id": actor_oid,
+                "settlement_evidence_type": evidence_type,
+                "settlement_evidence_reference": evidence_reference,
+                "updated_at": now,
+            }},
+            return_document=ReturnDocument.AFTER,
+        ) or refreshed
+
+    payment_id = payment.get("_id") or ObjectId(payment["id"])
+    # Keep the operational payment and its fact mirror explicitly linked to
+    # the folio. The posting reference is useful for reconciliation, but it is
+    # not a stable foreign-key path for API consumers or audit screens.
+    payment_trace_update = {
+        "folio_id": folio["_id"],
+        "folio_number": folio.get("folio_number", ""),
+        "updated_at": now,
+    }
+    db.reservation_payments.update_one({"_id": payment_id}, {"$set": payment_trace_update})
+    db.fact_reservation_payments.update_one({"_id": payment_id}, {"$set": payment_trace_update})
+    payment.update(payment_trace_update)
+    if effective_at is not None and method in {"cash", "efectivo"}:
+        _link_settlement_payment_to_shift(
+            db,
+            shift_id=shift_id or "",
+            payment=payment,
+            booking_id=booking_id,
+            folio_id=folio["_id"],
+            effective_at=effective_at,
+        )
+    event = {
+        "_id": ObjectId(),
+        "booking_id": booking_id,
+        "folio_id": folio["_id"],
+        "prop_id": folio.get("prop_id", 0),
+        "folio_number": folio.get("folio_number", ""),
+        "settlement_type": "payment",
+        "amount": amount,
+        "payment_id": payment_id,
+        "payment_reference": payment.get("reference"),
+        "invoice_id": refreshed.get("invoice_id") or folio.get("invoice_id"),
+        "shift_id": payment.get("shift_id") or _to_object_id_ref(shift_id),
+        "idempotency_key": idempotency_key,
+        "status": final_status,
+        "effective_at": effective_at or payment.get("paid_at") or now,
+        "evidence_type": evidence_type,
+        "evidence_reference": evidence_reference,
+        "changed_by": changed_by,
+        "actor_user_id": actor_oid,
+        "created_at": now,
+    }
+    try:
+        _write_settlement_event(db, event)
+    except Exception:
+        if not db.folio_settlement_events.find_one({"booking_id": booking_id, "idempotency_key": idempotency_key}):
+            raise
+    trace_update = {
+        "settlement_payment_id": payment_id,
+        "settlement_event_id": event["_id"],
+        "settlement_shift_id": event.get("shift_id"),
+        "settlement_invoice_id": event.get("invoice_id"),
+        "updated_at": now,
+    }
+    trace_update_operator = {"$set": trace_update, "$addToSet": {
+        "settlement_event_ids": event["_id"],
+        "settlement_payment_ids": payment_id,
+    }}
+    if event.get("shift_id"):
+        trace_update_operator["$addToSet"]["settlement_shift_ids"] = event["shift_id"]
+    db[FOLIO_COLLECTION].update_one({"_id": folio["_id"]}, trace_update_operator)
+    db.reservation_payments.update_one({"_id": payment_id}, {"$set": {"settlement_event_id": event["_id"]}})
+    db.fact_reservation_payments.update_one({"_id": payment_id}, {"$set": {"settlement_event_id": event["_id"]}})
+    _record_settlement_audit(
+        prop_id=int(folio.get("prop_id", 0) or 0),
+        booking_id=booking_id,
+        settlement_type="payment",
+        amount=amount,
+        changed_by=changed_by,
+        idempotency_key=idempotency_key,
+        effective_at=effective_at,
+        evidence_reference=evidence_reference,
+        actor_user_id=actor_oid,
+    )
+    return _enrich_folio(refreshed)
 
 
 def close_folio(
     booking_id: str,
     invoice_id: str | ObjectId | None = None,
     closed_by: str = "system",
+    close_reason: str | None = None,
 ) -> dict | None:
     """Close a folio at check-out after invoice and payment are settled.
 
@@ -341,6 +1276,22 @@ def close_folio(
     """
     db = get_database()
     now = _now()
+
+    # A closed folio is immutable. A positive balance may only be closed with
+    # an explicit, auditable exception (write-off, complimentary stay, or
+    # approved external settlement). Historical dirty folios remain closed and
+    # are handled by reconciliation; this guard applies to new mutations.
+    current = db[FOLIO_COLLECTION].find_one(
+        {"booking_id": booking_id, "status": "open"},
+        {"total_due": 1},
+    )
+    if current is None:
+        return None
+    balance = round(float(current.get("total_due", 0) or 0), 2)
+    allowed_exception_reasons = {"approved_write_off", "complimentary_stay", "approved_external_settlement"}
+    reason_code = (close_reason or "").strip().split(":", 1)[0].strip().lower()
+    if balance > 0 and reason_code not in allowed_exception_reasons:
+        return None
 
     # Canonical FK type: ``guest_folios.invoice_id`` references
     # ``reservation_invoices._id`` and must be stored as ObjectId (same
@@ -357,12 +1308,76 @@ def close_folio(
                 "closed_at": now,
                 "closed_by": closed_by,
                 "invoice_id": invoice_oid,
+                "close_reason": close_reason.strip() if close_reason else None,
                 "updated_at": now,
             }
         },
         return_document=ReturnDocument.AFTER,
     )
     return _enrich_folio(result) if result else None
+
+
+def reopen_folio_with_balance(
+    booking_id: str,
+    *,
+    changed_by: str = "historical_reconciliation",
+) -> dict | None:
+    """Reopen a historically closed folio whose positive balance is collectible.
+
+    This is an explicit reconciliation operation, not a second close path.
+    It preserves the original close timestamp/user, records the reason in the
+    folio metadata and emits one status-history event. Repeating the operation
+    is a no-op once the folio is open, so retries cannot duplicate audit rows.
+    """
+    db = get_database()
+    folio = db[FOLIO_COLLECTION].find_one({"booking_id": booking_id})
+    if not folio:
+        return None
+    if folio.get("status") == "open":
+        return _enrich_folio(folio)
+    previous_status = str(folio.get("status") or "")
+    if previous_status not in {"closed", "settled"} or round(float(folio.get("total_due", 0) or 0), 2) <= 0:
+        return None
+
+    now = _now()
+    reconciliation = {
+        "action": "reopened_collectible_balance",
+        "reason": "settled_or_closed_folio_has_positive_balance",
+        "previous_status": previous_status,
+        "changed_by": changed_by,
+        "changed_at": now,
+    }
+    result = db[FOLIO_COLLECTION].find_one_and_update(
+        {
+            "_id": folio["_id"],
+            "status": {"$in": ["closed", "settled"]},
+            "total_due": {"$gt": 0},
+        },
+        {"$set": {
+            "status": "open",
+            "reopened_at": now,
+            "reopened_by": changed_by,
+            "metadata.reconciliation": reconciliation,
+            "updated_at": now,
+        }},
+        return_document=ReturnDocument.AFTER,
+    )
+    if not result:
+        current = db[FOLIO_COLLECTION].find_one({"_id": folio["_id"]})
+        return _enrich_folio(current) if current else None
+
+    # The metadata action is the idempotency marker. Only the winner of the
+    # closed→open CAS writes the operational history event.
+    db.booking_status_history.insert_one({
+        "booking_id": booking_id,
+        "status": "folio_reopened_for_collection",
+        "changed_at": now,
+        "reason": "settled_or_closed_folio_has_positive_balance",
+        "changed_by": changed_by,
+        "is_test": False,
+        "metadata": {"folio_id": str(folio["_id"])},
+    })
+    return _enrich_folio(result)
 
 
 def cleanup_expired_folios(prop_id: int | None = None) -> dict:
@@ -387,7 +1402,11 @@ def cleanup_expired_folios(prop_id: int | None = None) -> dict:
     closed = 0
     if expired_ids:
         result = db[FOLIO_COLLECTION].update_many(
-            {"booking_id": {"$in": expired_ids}, "status": "open"},
+            {
+                "booking_id": {"$in": expired_ids},
+                "status": "open",
+                "$or": [{"total_due": {"$lte": 0}}, {"total_due": {"$exists": False}}],
+            },
             {"$set": {
                 "status": "closed",
                 "closed_at": _now(),

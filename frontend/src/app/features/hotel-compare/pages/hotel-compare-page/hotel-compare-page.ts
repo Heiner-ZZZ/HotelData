@@ -1,9 +1,10 @@
-import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CompareMapComponent } from './components/compare-map';
 import { amenityIcon, carouselImages, categorizeAmenities, computeComparisonFlags, minRate, policyIcon } from './hotel-compare.helpers';
+import { getErrorStatus } from '../../../../shared/utils/http-error.util';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ComparisonFlags, HotelCompareData } from '../../models/hotel-compare.model';
 import { mapHotelCompareResponse } from '../../mappers/hotel-compare.mapper';
@@ -38,15 +39,16 @@ export class HotelComparePageComponent {
   readonly viewState = computed<ViewState>(() => {
     const ids = this.propIdsParam();
     if (!ids.length) return 'empty';
+    // error() ANTES de value(): value() lanza cuando el request falló.
+    const err = this.compareResource.error();
+    if (err) return getErrorStatus(err) === 404 ? 'empty' : 'error';
     const v = this.compareResource.value();
     if (this.compareResource.isLoading() && !v) return 'loading';
-    const err = this.compareResource.error();
-    if (err instanceof HttpErrorResponse) return err.status === 404 ? 'empty' : 'error';
-    if (err) return 'error';
     return v?.items.length ? 'success' : 'empty';
   });
 
   readonly compareData = computed(() => {
+    if (this.compareResource.error()) return null;
     const dto = this.compareResource.value();
     return dto ? mapHotelCompareResponse(dto) : null;
   });

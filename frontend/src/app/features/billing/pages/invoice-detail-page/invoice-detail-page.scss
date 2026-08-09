@@ -17,3 +17,31 @@
 @use 'partials/inv-quick-charge';
 @use 'partials/inv-folio';
 @use 'partials/inv-print';
+
+.inv-ledger-warning {
+  display: flex;
+  gap: .65rem;
+  align-items: flex-start;
+  margin-top: 1rem;
+  padding: .75rem .85rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  border-radius: .75rem;
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  color: var(--text-primary);
+
+  .material-symbols-outlined { color: var(--warning); }
+  strong { display: block; }
+  p { margin: .2rem 0 0; color: var(--text-secondary); font-size: .82rem; }
+}
+
+.inv-ledger-ok {
+  display: flex;
+  gap: .45rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding: .65rem .75rem;
+  border-radius: .75rem;
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
+  font-size: .82rem;
+}

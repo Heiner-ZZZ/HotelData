@@ -110,6 +110,26 @@ tbody tr:hover {
   color: var(--muted-text);
 }
 
+/* Llegada tardía: badge ámbar de late check-in en la columna Hora */
+.badge-late {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--warning-light);
+  color: var(--warning);
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+  }
+}
+
+.arrival-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 /* ─── Edit time button ─── */
 .btn-edit-time {
   color: var(--purple);
@@ -337,10 +357,6 @@ tbody tr:hover {
   }
 }
 
-@keyframes menu-drop-in {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 
 /* ─── History item hotel label ─── */
 

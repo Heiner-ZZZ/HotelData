@@ -8,7 +8,7 @@
 
     <app-pp-tab-bar [tabs]="tabs()" [activeTab]="activeTab()" (setTab)="handleSetTab($event)" />
 
-    <form class="profile-form" [formGroup]="form" (ngSubmit)="save()">
+    <form class="profile-form" [formGroup]="form" appModeHighlight (ngSubmit)="save()">
       @if (activeTab() === 'personal') {
         <app-pp-avatar-section
           [form]="form"
@@ -47,6 +47,12 @@
       }
 
       <div class="form-footer">
+        @if (hasUnsavedChanges()) {
+          <span class="form-status" role="status">
+            <span class="material-symbols-outlined">edit</span>
+            Editando · cambios sin guardar
+          </span>
+        }
         <button type="submit" class="btn-primary" [disabled]="saving()">
           @if (saving()) {
             <span class="material-symbols-outlined spin">sync</span>
@@ -54,6 +60,9 @@
           } @else {
             <span class="material-symbols-outlined">save</span>
             Guardar cambios
+          }
+          @if (hasUnsavedChanges() && !saving()) {
+            <span class="unsaved-dot" aria-hidden="true" title="Cambios sin guardar"></span>
           }
         </button>
       </div>

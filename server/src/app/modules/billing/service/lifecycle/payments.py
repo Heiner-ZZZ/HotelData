@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+from datetime import datetime
 
 from bson import ObjectId
 from pymongo import ReturnDocument
@@ -27,7 +28,47 @@ from src.app.modules.billing.service.lifecycle._helpers import (
 )
 
 
-def create_payment(payload: PaymentCreate, *, shift_id: str | None = None) -> dict | None:
+def _emit_payment_domain_event(payment: dict) -> None:
+    """Emit one canonical AR payment event without breaking legacy writes."""
+    try:
+        from src.app.modules.financial_reconciliation.domain_events import append_domain_event
+        payment_id = payment.get("_id") or payment.get("id") or payment.get("reference", "")
+        status = str(payment.get("status") or "unknown").lower()
+        append_domain_event(
+            prop_id=int(payment.get("prop_id", 0) or 0),
+            event_type=f"guest_ar.payment.{status}",
+            aggregate_type="guest_ar",
+            aggregate_id=str(payment_id),
+            idempotency_key=f"live:payment:{payment_id}:{status}",
+            payload={
+                "booking_id": payment.get("booking_id"),
+                "amount": payment.get("amount", 0),
+                "status": status,
+                "evidence_type": payment.get("evidence_type"),
+                "evidence_reference": payment.get("evidence_reference"),
+                "actor_user_id": str(payment.get("actor_user_id")) if payment.get("actor_user_id") else None,
+                "actor_username": payment.get("actor_username"),
+            },
+            source_collection=PAYMENTS,
+            source_id=str(payment_id),
+            actor_id=str(payment.get("actor_user_id")) if payment.get("actor_user_id") else payment.get("actor_username"),
+        )
+    except Exception:
+        logger.exception("Failed to emit canonical payment domain event")
+
+
+def create_payment(
+    payload: PaymentCreate,
+    *,
+    shift_id: str | None = None,
+    reference: str | None = None,
+    paid_at: datetime | None = None,
+    evidence_type: str | None = None,
+    evidence_reference: str | None = None,
+    payment_source: str | None = None,
+    actor_user_id: ObjectId | None = None,
+    actor_username: str | None = None,
+) -> dict | None:
     db = get_database()
     booking = _find_booking(payload.booking_id)
     if not booking:
@@ -36,13 +77,18 @@ def create_payment(payload: PaymentCreate, *, shift_id: str | None = None) -> di
     if payload.invoice_id:
         try:
             from bson.errors import InvalidId
-            inv = db[INVOICES].find_one({"_id": ObjectId(payload.invoice_id)})
+            invoice_oid = ObjectId(payload.invoice_id)
         except InvalidId:
-            # Un id de factura malformado se ignora (no rompe el registro);
-            # el id opcional es solo un vínculo de contexto para el pago.
-            inv = None
-        if inv:
-            invoice_id = ObjectId(payload.invoice_id)
+            raise ValueError("Factura inválida: invoice_id no es un ObjectId válido") from None
+        inv = db[INVOICES].find_one({"_id": invoice_oid})
+        if not inv:
+            raise ValueError("Factura no encontrada")
+        if (
+            str(inv.get("booking_id")) != str(booking.get("booking_id") or payload.booking_id)
+            or int(inv.get("prop_id", booking.get("prop_id", 0)) or 0) != int(booking.get("prop_id", 0) or 0)
+        ):
+            raise ValueError("La factura no pertenece a la reserva indicada")
+        invoice_id = invoice_oid
 
     # Un gateway puede registrar intentos fallidos/rechazados; esos pagos NO
     # marcan la factura como pagada (solo ``confirmed`` lo hace).
@@ -50,6 +96,45 @@ def create_payment(payload: PaymentCreate, *, shift_id: str | None = None) -> di
     if status not in {"confirmed", "failed", "rejected", "declined", "error"}:
         status = "confirmed"
 
+    if status == "confirmed":
+        booking_key = booking.get("booking_id") or payload.booking_id
+        open_folio = db.guest_folios.find_one(
+            {"booking_id": booking_key, "status": "open"},
+            {"total_due": 1},
+        )
+        if open_folio is not None:
+            available_balance = float(open_folio.get("total_due", 0) or 0)
+        else:
+            # Online/pre-authorized payments may precede check-in, but they
+            # still cannot exceed the immutable sold amount. Without this
+            # guard, a pre-folio overpayment becomes a confirmed orphan that
+            # reconciliation can no longer apply to the future folio.
+            invoice_total = db[INVOICES].find_one(
+                {"booking_id": booking_key, "status": {"$nin": ["cancelled", "refunded"]}},
+                {"total": 1},
+                sort=[("issued_at", -1)],
+            )
+            target_total = float((invoice_total or {}).get("total", 0) or 0)
+            if target_total <= 0:
+                target_total = float(booking.get("total_price", 0) or 0)
+            # Some legacy callers create a payment before any price or invoice
+            # exists. Preserve that compatibility; enforce the guard whenever
+            # the system has a known monetary ceiling.
+            if target_total > 0:
+                paid_before = sum(
+                    float(row.get("amount", 0) or 0)
+                    for row in db[PAYMENTS].find(
+                        {"booking_id": booking_key, "status": "confirmed"},
+                        {"amount": 1},
+                    )
+                )
+                available_balance = target_total - paid_before
+            else:
+                available_balance = None
+        if available_balance is not None and round(float(payload.amount), 2) > round(available_balance, 2) + 0.01:
+            raise ValueError("El pago excede el saldo pendiente")
+
+    effective_paid_at = paid_at or _now()
     doc = {
         "booking_id": booking.get("booking_id") or payload.booking_id,
         "prop_id": booking.get("prop_id", 0),
@@ -58,24 +143,139 @@ def create_payment(payload: PaymentCreate, *, shift_id: str | None = None) -> di
         "invoice_id": invoice_id,
         "amount": round(payload.amount, 2),
         "method": payload.method,
+        # Confirmed payments created before check-in remain confirmed and are
+        # reconciled when the folio is created. When an open folio exists, the
+        # status is downgraded to failed below if its atomic posting loses a
+        # balance race or a required side effect fails.
         "status": status,
-        "reference": f"PAY-{secrets.token_hex(6).upper()}",
-        "paid_at": _now(),
+        "reference": reference or f"PAY-{secrets.token_hex(6).upper()}",
+        "paid_at": effective_paid_at,
     }
+    if evidence_type:
+        doc["evidence_type"] = evidence_type
+    if evidence_reference:
+        doc["evidence_reference"] = evidence_reference
+    if payment_source:
+        doc["payment_source"] = payment_source
+    if actor_user_id:
+        doc["actor_user_id"] = actor_user_id
+    if actor_username:
+        doc["actor_username"] = actor_username
     _write_both(PAYMENTS, FACT_PAYMENTS, doc)
 
-    # Generate double-entry ledger entries for this payment (only when confirmed)
+    # A confirmed payment must not become an orphan when an open folio exists.
+    # The folio guard is atomic, so post it before creating the ledger entry:
+    # if two tellers pay the last balance concurrently, only one payment can
+    # remain confirmed. Payments created before check-in are intentionally
+    # allowed to remain confirmed without a folio; create_folio() reconciles
+    # them later by their stable payment reference.
     if status == "confirmed":
+        open_folio_exists = db.guest_folios.find_one(
+            {"booking_id": doc["booking_id"], "status": "open"},
+            {"_id": 1},
+        ) is not None
+        folio = None
+        try:
+            from src.app.modules.billing.service.folio import post_to_folio
+            folio = post_to_folio(
+                doc["booking_id"],
+                posting_type="payment",
+                category=doc.get("method", "Payment").title(),
+                concept=f"Pago {doc.get('reference', '')}",
+                amount=float(doc.get("amount", 0) or 0),
+                reference_id=doc.get("reference", ""),
+                reference_type="payment",
+                posted_at=doc.get("paid_at"),
+            )
+        except Exception:
+            logger.exception("Failed to post payment %s to guest folio", doc.get("reference", ""))
+
+        if open_folio_exists and folio is None:
+            # The payment document and its fact mirror already exist. Mark the
+            # attempt failed through the same dual-write path instead of
+            # silently returning a confirmed payment with no folio evidence.
+            failure_time = _now()
+            _update_both(
+                PAYMENTS,
+                FACT_PAYMENTS,
+                doc["_id"],
+                {"$set": {
+                    "status": "failed",
+                    "failure_reason": "folio_balance_or_posting_conflict",
+                    "updated_at": failure_time,
+                }},
+            )
+            doc["status"] = "failed"
+            doc["failure_reason"] = "folio_balance_or_posting_conflict"
+            _emit_payment_domain_event(doc)
+            return _enrich_payment(doc)
+
         try:
             from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_payment
-            generate_ledger_from_payment(doc)
+            ledger_entries = generate_ledger_from_payment(doc)
+            if ledger_entries != 2:
+                raise RuntimeError(
+                    f"payment ledger incomplete: expected 2 entries, got {ledger_entries}"
+                )
         except Exception:
+            # Keep the payment retryable rather than exposing a confirmed
+            # payment with no GL evidence. The folio posting is compensated by
+            # a durable reversal event so totals also return to their prior
+            # state.
             logger.exception("Failed to generate ledger entries for payment %s", doc.get("reference", ""))
+            try:
+                from src.app.modules.billing.service.folio import post_to_folio
+                post_to_folio(
+                    doc["booking_id"],
+                    posting_type="refund",
+                    category="Payment rollback",
+                    concept=f"Rollback de pago {doc.get('reference', '')}",
+                    amount=float(doc.get("amount", 0) or 0),
+                    reference_id=f"ROLLBACK-{doc.get('reference', '')}",
+                    reference_type="payment_rollback",
+                )
+            except Exception:
+                logger.exception("Failed to compensate folio for payment %s", doc.get("reference", ""))
+            failure_time = _now()
+            _update_both(
+                PAYMENTS,
+                FACT_PAYMENTS,
+                doc["_id"],
+                {"$set": {
+                    "status": "failed",
+                    "failure_reason": "ledger_posting_failed",
+                    "updated_at": failure_time,
+                }},
+            )
+            doc["status"] = "failed"
+            doc["failure_reason"] = "ledger_posting_failed"
+            _emit_payment_domain_event(doc)
+            return _enrich_payment(doc)
 
-    if invoice_id and status == "confirmed":
-        upd = {"$set": {"status": "paid", "paid_at": _now()}}
+        # The payment was inserted as confirmed and all required side effects
+        # succeeded. Mirror the timestamp without changing its state.
+        confirmed_time = _now()
+        _update_both(
+            PAYMENTS,
+            FACT_PAYMENTS,
+            doc["_id"],
+            {"$set": {"status": "confirmed", "updated_at": confirmed_time}},
+        )
+        doc["status"] = "confirmed"
+
+    if invoice_id and status == "confirmed" and doc.get("status") == "confirmed":
+        confirmed_total = round(sum(
+            float(row.get("amount", 0) or 0)
+            for row in db[PAYMENTS].find({"invoice_id": invoice_id, "status": "confirmed"}, {"amount": 1})
+        ), 2)
+        invoice = db[INVOICES].find_one({"_id": invoice_id}, {"total": 1})
+        invoice_total = round(float((invoice or {}).get("total", 0) or 0), 2)
+        next_status = "paid" if confirmed_total >= invoice_total - 0.01 else "partially_paid"
+        upd = {"$set": {"status": next_status, "paid_at": _now() if next_status == "paid" else None,
+                         "total_paid_amount": confirmed_total}}
         _update_both(INVOICES, FACT_INVOICES, invoice_id, upd)
 
+    _emit_payment_domain_event(doc)
     doc["_id"] = doc.pop("_id", None)
     return _enrich_payment(doc)
 
@@ -123,7 +323,56 @@ def get_payment(payment_id: str) -> dict | None:
     return _enrich_payment(doc) if doc else None
 
 
-def refund_payment(payment_id: str) -> dict | None:
+def classify_failed_payment_informational(
+    payment_id: str,
+    *,
+    changed_by: str = "historical_reconciliation",
+) -> dict | None:
+    """Mark a failed payment without invoice as informational only.
+
+    The failed gateway attempt remains in payment facts and never creates an
+    invoice, folio posting, or ledger movement. The explicit marker keeps
+    reconciliation and UI behavior stable on retries.
+    """
+    db = get_database()
+    try:
+        pay_id = ObjectId(payment_id)
+    except Exception:
+        return None
+    payment = db[PAYMENTS].find_one({"_id": pay_id})
+    if not payment or str(payment.get("status", "")).lower() not in {"failed", "rejected", "declined", "error"}:
+        return None
+    if payment.get("invoice_id") not in (None, ""):
+        return None
+    now = _now()
+    update = {
+        "reconciliation_status": "informational",
+        "reconciliation_reason": "failed_payment_without_invoice_no_balance_effect",
+        "reconciliation_changed_by": changed_by,
+        "reconciliation_changed_at": now,
+        "updated_at": now,
+    }
+    _update_both(PAYMENTS, FACT_PAYMENTS, pay_id, {"$set": update})
+    refreshed_payment = db[PAYMENTS].find_one({"_id": pay_id})
+    if refreshed_payment:
+        db[FACT_PAYMENTS].replace_one({"_id": pay_id}, dict(refreshed_payment), upsert=True)
+    db.payment_reconciliation_events.update_one(
+        {"payment_id": str(pay_id), "event": "classified_informational"},
+        {"$setOnInsert": {
+            "payment_id": str(pay_id),
+            "prop_id": payment.get("prop_id", 0),
+            "event": "classified_informational",
+            "reason": update["reconciliation_reason"],
+            "changed_by": changed_by,
+            "changed_at": now,
+        }},
+        upsert=True,
+    )
+    refreshed = db[PAYMENTS].find_one({"_id": pay_id})
+    return _enrich_payment(refreshed) if refreshed else None
+
+
+def refund_payment(payment_id: str, *, refund_id: str | None = None) -> dict | None:
     db = get_database()
     try:
         from bson.errors import InvalidId
@@ -131,25 +380,95 @@ def refund_payment(payment_id: str) -> dict | None:
     except (InvalidId, Exception):
         return None
 
-    existing_pay = db[PAYMENTS].find_one({"_id": pay_id}, {"status": 1})
-    if not existing_pay:
+    pay = db[PAYMENTS].find_one({"_id": pay_id})
+    if not pay:
         return None
 
-    # Validate with central StateMachine
+    current_status = pay.get("status", "")
+    requested_refund_id = str(refund_id or "").strip() or None
+    if current_status == "refunded":
+        # An explicit refund id makes a retry safe and observable. Legacy calls
+        # without one retain the old duplicate-refund response so clients can
+        # migrate deliberately instead of silently changing their contract.
+        if requested_refund_id and pay.get("refund_id") == requested_refund_id:
+            return _enrich_payment(pay)
+        return None
     try:
-        payment_sm.validate_transition(existing_pay.get("status", ""), "refunded")
+        payment_sm.validate_transition(current_status, "refunded")
     except ValueError:
         return None
 
-    pay = db[PAYMENTS].find_one_and_update(
-        {"_id": pay_id, "status": existing_pay["status"]},
-        {"$set": {"status": "refunded", "updated_at": _now()}},
+    # Refund side effects are compensating, idempotent events. They must finish
+    # before the payment is marked refunded; otherwise a ledger/folio outage
+    # makes the state terminal and prevents a retry from repairing it.
+    payment_ref = str(pay.get("reference") or pay_id)
+    event_id = requested_refund_id or payment_ref
+    booking_id = pay.get("booking_id") or ""
+    folio_exists = db.guest_folios.find_one(
+        {"booking_id": booking_id}, {"_id": 1}
+    ) is not None
+    try:
+        from src.app.modules.billing.service.folio import post_to_folio
+        folio_result = post_to_folio(
+            booking_id,
+            posting_type="refund",
+            category="Refund",
+            concept=f"Reembolso {payment_ref}",
+            amount=float(pay.get("amount", 0) or 0),
+            reference_id=event_id,
+            reference_type="payment_refund",
+        )
+        if folio_exists and folio_result is None:
+            raise RuntimeError("guest folio is unavailable for refund reversal")
+
+        from src.app.modules.expenses.service.ledger_hooks import post_journal_entry
+        post_journal_entry(
+            amount=float(pay.get("amount", 0) or 0),
+            dr_account_code="1030",
+            dr_account_name="Cuentas por Cobrar Huéspedes",
+            cr_account_code="1010",
+            cr_account_name="Caja / Bancos",
+            description=f"Reembolso {event_id}",
+            prop_id=int(pay.get("prop_id", 0) or 0),
+            source="payment_refund",
+            source_id=event_id,
+            booking_id=booking_id,
+        )
+        # The ledger event is retained for compatibility, but every refund now
+        # also has a formal receipt/credit note and a denormalized fact mirror.
+        from src.app.modules.billing.service.lifecycle.refunds import ensure_refund_document_for_payment
+        refund_document = ensure_refund_document_for_payment(
+            str(pay_id),
+            changed_by="billing_refund",
+        )
+        if refund_document is None:
+            raise RuntimeError("refund document could not be issued")
+    except Exception:
+        logger.exception("Failed to complete refund reversal for %s; payment remains retryable", payment_ref)
+        return None
+
+    now = _now()
+    updated = db[PAYMENTS].find_one_and_update(
+        {"_id": pay_id, "status": current_status},
+        {"$set": {"status": "refunded", "refund_id": event_id, "refunded_at": now, "updated_at": now}},
         return_document=ReturnDocument.AFTER,
     )
-    if pay:
-        _update_both(PAYMENTS, FACT_PAYMENTS, pay_id, {"$set": {"status": "refunded", "updated_at": _now()}})
-        if pay.get("invoice_id"):
-            inv_id = pay["invoice_id"]
-            upd = {"$set": {"status": "refunded", "updated_at": _now()}}
-            _update_both(INVOICES, FACT_INVOICES, inv_id, upd)
-    return _enrich_payment(pay) if pay else None
+    if not updated:
+        return None
+    _update_both(
+        PAYMENTS,
+        FACT_PAYMENTS,
+        pay_id,
+        {"$set": {"status": "refunded", "refund_id": event_id, "refunded_at": now, "updated_at": now}},
+    )
+
+    if updated.get("invoice_id"):
+        inv_id = updated["invoice_id"]
+        _update_both(
+            INVOICES,
+            FACT_INVOICES,
+            inv_id,
+            {"$set": {"status": "refunded", "updated_at": now}},
+        )
+    _emit_payment_domain_event(updated)
+    return _enrich_payment(updated)

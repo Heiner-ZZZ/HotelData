@@ -243,6 +243,7 @@
                   <th class="th-prio">Prioridad</th>
                   <th class="th-status">Estado</th>
                   <th class="th-date">Programado</th>
+                  <th class="th-finance">Finanzas</th>
                   <th class="th-actions">Acciones</th>
                 </tr>
               </thead>
@@ -307,6 +308,44 @@
                         <span class="material-symbols-outlined date-icon">calendar_today</span>
                         {{ formatDate(item.scheduledDate) }}
                       </span>
+                    </td>
+
+                    <!-- Financial traceability -->
+                    <td class="td-finance">
+                      @if (item.financialLinkStatus === 'linked' && item.ledgerStatus === 'posted') {
+                        <span class="finance-badge linked" title="Factura de proveedor vinculada y asiento AP publicado">
+                          <span class="material-symbols-outlined">account_balance</span>
+                          {{ item.actualCost != null ? (item.actualCost | number:'1.2-2') : 'Costo pendiente' }} {{ item.currency }} · AP publicado
+                        </span>
+                      } @else if (item.financialLinkStatus === 'linked' && item.ledgerStatus === 'failed') {
+                        <span class="finance-badge failed" [title]="item.ledgerPostingError || 'Falló el asiento AP'">
+                          <span class="material-symbols-outlined">error</span> AP con error
+                        </span>
+                      } @else if (item.financialLinkStatus === 'linked') {
+                        <span class="finance-badge pending" title="Factura vinculada; falta publicar el asiento AP">
+                          <span class="material-symbols-outlined">pending</span> AP pendiente
+                        </span>
+                      } @else if (item.financialLinkStatus === 'invalid_invoice' || item.financialLinkStatus === 'invoice_not_found_or_foreign') {
+                        <span class="finance-badge failed" title="La factura no pudo vincularse al hotel">
+                          <span class="material-symbols-outlined">error</span> Vínculo inválido
+                        </span>
+                      } @else if (item.financialLinkStatus === 'no_cost_recorded') {
+                        <span class="finance-badge neutral" title="No se registró costo, proveedor, factura ni asiento">
+                          <span class="material-symbols-outlined">money_off</span> Sin costo registrado
+                        </span>
+                      } @else {
+                        <span class="finance-badge pending" title="Sin factura de proveedor vinculada">
+                          <span class="material-symbols-outlined">pending</span> Sin vínculo
+                        </span>
+                        @if (canClassifyNoCost(item)) {
+                          <button type="button" class="btn-action repair"
+                            (click)="classifyNoCost(item)"
+                            title="Clasificar sin costo registrado"
+                            aria-label="Clasificar sin costo registrado">
+                            <span class="material-symbols-outlined">money_off</span>
+                          </button>
+                        }
+                      }
                     </td>
 
                     <!-- Actions -->

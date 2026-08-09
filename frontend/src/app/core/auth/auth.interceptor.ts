@@ -1,8 +1,9 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 
+import { getErrorStatus } from '../../shared/utils/http-error.util';
 import { toast } from '../toast/toast.service';
 
 /**
@@ -32,7 +33,9 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 
   return next(credentialedRequest).pipe(
     catchError((error: unknown) => {
-      if (error instanceof HttpErrorResponse && error.status === 401 && credentialUrl) {
+      // getErrorStatus cubre HttpErrorResponse (tests) y ApiError (defensivo
+      // ante reorden de interceptores) — el 401 credentialed siempre redirige.
+      if (getErrorStatus(error) === 401 && credentialUrl) {
         // ── Cualquier 401 en endpoint credentialed → sesión inválida ──
         //   El middleware solo retorna 401 cuando `not user`, es decir,
         //   cuando la cookie de sesión no es válida o no existe.

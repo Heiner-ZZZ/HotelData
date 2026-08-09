@@ -27,7 +27,7 @@
   } @else {
     <!-- ════════════════ SEGURIDAD ════════════════ -->
     @if (activeTab() === 'security') {
-      <section class="surface-card settings-card">
+      <section class="surface-card settings-card" appModeHighlight>
         <div class="card-head">
           <span class="material-symbols-outlined card-icon">password</span>
           <div>
@@ -85,6 +85,12 @@
           </div>
 
           <div class="card-actions">
+            @if (passwordEntry()) {
+              <span class="form-status" role="status">
+                <span class="material-symbols-outlined">edit</span>
+                Editando · cambios sin guardar
+              </span>
+            }
             <button type="button" class="btn-primary" (click)="changePassword()" [disabled]="changingPassword()">
               @if (changingPassword()) {
                 <span class="material-symbols-outlined spin">sync</span>
@@ -92,6 +98,9 @@
               } @else {
                 <span class="material-symbols-outlined">key</span>
                 Cambiar contraseña
+              }
+              @if (passwordEntry() && !changingPassword()) {
+                <span class="unsaved-dot" aria-hidden="true" title="Cambios sin guardar"></span>
               }
             </button>
           </div>
@@ -103,7 +112,7 @@
 
     <!-- ════════════════ PREFERENCIAS ════════════════ -->
     @if (activeTab() === 'preferences') {
-      <form [formGroup]="form" class="settings-form">
+      <form [formGroup]="form" class="settings-form" appModeHighlight>
         <section class="surface-card settings-card">
           <div class="card-head">
             <span class="material-symbols-outlined card-icon">space_dashboard</span>
@@ -149,6 +158,12 @@
         </section>
 
         <div class="card-actions card-actions--form">
+          @if (hasUnsavedChanges()) {
+            <span class="form-status" role="status">
+              <span class="material-symbols-outlined">edit</span>
+              Editando · cambios sin guardar
+            </span>
+          }
           <button type="button" class="btn-primary" (click)="save()" [disabled]="saving()">
             @if (saving()) {
               <span class="material-symbols-outlined spin">sync</span>
@@ -156,6 +171,9 @@
             } @else {
               <span class="material-symbols-outlined">save</span>
               Guardar cambios
+            }
+            @if (hasUnsavedChanges() && !saving()) {
+              <span class="unsaved-dot" aria-hidden="true" title="Cambios sin guardar"></span>
             }
           </button>
         </div>

@@ -272,10 +272,13 @@ ROOM_STATES: dict[str, str] = {
 }
 
 ROOM_TRANSITIONS: dict[str, list[str]] = {
-    "vacant_dirty": ["cleaning_in_progress", "maintenance_requested"],
-    "vacant_clean": ["occupied_clean", "cleaning_in_progress"],
-    "occupied_clean": ["occupied_dirty", "vacant_dirty"],
-    "occupied_dirty": ["cleaning_in_progress", "vacant_dirty"],
+    # Dirty rooms may still accept a check-in; reception's check-in gate
+    # permits this state and the room becomes occupied_clean after inspection
+    # of the incoming stay.
+    "vacant_dirty": ["cleaning_in_progress", "occupied_clean", "maintenance_requested"],
+    "vacant_clean": ["occupied_clean", "cleaning_in_progress", "maintenance_requested"],
+    "occupied_clean": ["occupied_dirty", "vacant_dirty", "maintenance_requested"],
+    "occupied_dirty": ["cleaning_in_progress", "vacant_dirty", "maintenance_requested"],
     "cleaning_in_progress": ["cleaning_completed", "maintenance_requested"],
     "cleaning_completed": ["inspected", "cleaning_in_progress", "maintenance_requested"],
     "inspected": ["vacant_clean", "occupied_clean", "maintenance_requested"],

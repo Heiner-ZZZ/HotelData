@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -39,6 +40,7 @@ type ActiveTab = 'hotels' | 'taxes' | 'commissions' | 'config';
 export class GlobalSettingsPageComponent {
   private readonly api = inject(GlobalSettingsApiService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
   private configInitialized = false;
 
@@ -54,7 +56,6 @@ export class GlobalSettingsPageComponent {
   readonly editCommission = signal(5.0);
   readonly editIva = signal(16.0);
   readonly configSaving = signal(false);
-  readonly configMessage = signal('');
 
   // Hotels (kept manual because of pagination + search)
   readonly hotelsState = signal<ViewState>('loading');
@@ -69,7 +70,6 @@ export class GlobalSettingsPageComponent {
   readonly editProvince = signal('');
   readonly editGroup = signal('');
   readonly hotelSaving = signal(false);
-  readonly hotelMessage = signal('');
 
   pagesArray(): number[] {
     return Array.from({ length: this.hotelsPages() }, (_, i) => i + 1);
@@ -88,7 +88,6 @@ export class GlobalSettingsPageComponent {
   readonly editingTax = signal<number | null>(null);
   readonly editTaxIva = signal(16.0);
   readonly taxSaving = signal(false);
-  readonly taxMessage = signal('');
 
   // Commission Rates
   readonly commissionRatesResource = httpResource<CommissionRate[]>(
@@ -102,7 +101,6 @@ export class GlobalSettingsPageComponent {
   readonly editingCommission = signal<number | null>(null);
   readonly editCommissionPct = signal(5.0);
   readonly commissionSaving = signal(false);
-  readonly commissionMessage = signal('');
 
   constructor() {
     this.loadHotels();
@@ -137,7 +135,6 @@ export class GlobalSettingsPageComponent {
 
   saveConfig() {
     this.configSaving.set(true);
-    this.configMessage.set('');
     this.api
       .updateConfig({
         default_commission_pct: this.editCommission(),
@@ -147,14 +144,14 @@ export class GlobalSettingsPageComponent {
       .subscribe({
         next: (cfg) => {
           this.configSaving.set(false);
-          this.configMessage.set('Configuración guardada correctamente');
+          this.toast.success('Configuración guardada correctamente');
           this.editCommission.set(cfg.defaultCommissionPct);
           this.editIva.set(cfg.defaultIvaPct);
           this.configResource.reload();
         },
         error: () => {
           this.configSaving.set(false);
-          this.configMessage.set('Error al guardar la configuración');
+          this.toast.error('Error al guardar la configuración');
         },
       });
   }
@@ -195,7 +192,6 @@ export class GlobalSettingsPageComponent {
     this.editCity.set(hotel.city);
     this.editProvince.set(hotel.province);
     this.editGroup.set(hotel.hotelGroup);
-    this.hotelMessage.set('');
   }
 
   cancelEditHotel() {
@@ -204,7 +200,6 @@ export class GlobalSettingsPageComponent {
 
   saveHotel(propId: number) {
     this.hotelSaving.set(true);
-    this.hotelMessage.set('');
     this.api
       .updateHotel(propId, {
         country_name: this.editCountry() || null,
@@ -217,12 +212,12 @@ export class GlobalSettingsPageComponent {
         next: () => {
           this.hotelSaving.set(false);
           this.editingHotel.set(null);
-          this.hotelMessage.set('Hotel actualizado correctamente');
+          this.toast.success('Hotel actualizado correctamente');
           this.loadHotels();
         },
         error: () => {
           this.hotelSaving.set(false);
-          this.hotelMessage.set('Error al actualizar el hotel');
+          this.toast.error('Error al actualizar el hotel');
         },
       });
   }
@@ -233,7 +228,6 @@ export class GlobalSettingsPageComponent {
     const countryId = this.newTaxCountryId();
     if (countryId === null) return;
     this.taxSaving.set(true);
-    this.taxMessage.set('');
     this.api
       .createTaxRate({
         country_id: countryId,
@@ -251,7 +245,7 @@ export class GlobalSettingsPageComponent {
         },
         error: () => {
           this.taxSaving.set(false);
-          this.taxMessage.set('Error al crear la tasa de IVA');
+          this.toast.error('Error al crear la tasa de IVA');
         },
       });
   }
@@ -259,7 +253,6 @@ export class GlobalSettingsPageComponent {
   startEditTax(rate: TaxRate) {
     this.editingTax.set(rate.countryId);
     this.editTaxIva.set(rate.ivaPct);
-    this.taxMessage.set('');
   }
 
   cancelEditTax() {
@@ -268,7 +261,6 @@ export class GlobalSettingsPageComponent {
 
   saveTaxRate(countryId: number) {
     this.taxSaving.set(true);
-    this.taxMessage.set('');
     this.api
       .updateTaxRate(countryId, { iva_pct: this.editTaxIva() })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -280,7 +272,7 @@ export class GlobalSettingsPageComponent {
         },
         error: () => {
           this.taxSaving.set(false);
-          this.taxMessage.set('Error al actualizar la tasa de IVA');
+          this.toast.error('Error al actualizar la tasa de IVA');
         },
       });
   }
@@ -299,7 +291,7 @@ export class GlobalSettingsPageComponent {
       .subscribe({
         next: () => this.taxRatesResource.reload(),
         error: () => {
-          this.taxMessage.set('Error al eliminar la tasa de IVA');
+          this.toast.error('Error al eliminar la tasa de IVA');
         },
       });
   }
@@ -310,7 +302,6 @@ export class GlobalSettingsPageComponent {
     const propId = this.newCommissionPropId();
     if (propId === null) return;
     this.commissionSaving.set(true);
-    this.commissionMessage.set('');
     this.api
       .createCommissionRate({ prop_id: propId, commission_pct: this.newCommissionPct() })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -323,7 +314,7 @@ export class GlobalSettingsPageComponent {
         },
         error: () => {
           this.commissionSaving.set(false);
-          this.commissionMessage.set('Error al crear la comisión');
+          this.toast.error('Error al crear la comisión');
         },
       });
   }
@@ -331,7 +322,6 @@ export class GlobalSettingsPageComponent {
   startEditCommission(rate: CommissionRate) {
     this.editingCommission.set(rate.propId);
     this.editCommissionPct.set(rate.commissionPct);
-    this.commissionMessage.set('');
   }
 
   cancelEditCommission() {
@@ -340,7 +330,6 @@ export class GlobalSettingsPageComponent {
 
   saveCommissionRate(propId: number) {
     this.commissionSaving.set(true);
-    this.commissionMessage.set('');
     this.api
       .updateCommissionRate(propId, { commission_pct: this.editCommissionPct() })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -352,7 +341,7 @@ export class GlobalSettingsPageComponent {
         },
         error: () => {
           this.commissionSaving.set(false);
-          this.commissionMessage.set('Error al actualizar la comisión');
+          this.toast.error('Error al actualizar la comisión');
         },
       });
   }
@@ -371,7 +360,7 @@ export class GlobalSettingsPageComponent {
       .subscribe({
         next: () => this.commissionRatesResource.reload(),
         error: () => {
-          this.commissionMessage.set('Error al eliminar la comisión');
+          this.toast.error('Error al eliminar la comisión');
         },
       });
   }

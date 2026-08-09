@@ -1,15 +1,10 @@
+<app-confirm-dialog />
+
 <app-page-header
   eyebrow="Sistema"
   title="Monedas"
-  description="Administra las monedas disponibles para las propiedades. Las monedas activas aparecen en el selector de cada hotel."
+  description="Catálogo de monedas que usan las propiedades en pricing y facturación. Activa las que quieras ofrecer a cada hotel."
 />
-
-<div class="currencies-toolbar">
-  <button class="btn-primary" (click)="openAdd()">
-    <span class="material-symbols-outlined">add</span>
-    Nueva moneda
-  </button>
-</div>
 
 @switch (viewState()) {
   @case ('loading') {
@@ -24,56 +19,161 @@
   @case ('empty') {
     <app-empty-state
       title="Sin monedas"
-      description="No hay monedas configuradas. Crea la primera con el botón de arriba."
+      description="No hay monedas configuradas todavía."
     />
+    <div class="empty-actions">
+      <button class="btn-primary" (click)="openAdd()">
+        <span class="material-symbols-outlined">add</span>
+        Crear la primera moneda
+      </button>
+    </div>
   }
   @default {
     @if (currenciesResource.value(); as currencies) {
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Nombre</th>
-              <th>Símbolo</th>
-              <th>Decimales</th>
-              <th>Estado</th>
-              <th class="actions-col">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (cur of currencies; track cur.code) {
-              <tr>
-                <td>
-                  <code class="currency-code">{{ cur.code }}</code>
-                </td>
-                <td>{{ cur.name }}</td>
-                <td class="symbol-cell">{{ cur.symbol }}</td>
-                <td>{{ cur.decimals }}</td>
-                <td>
-                  <span
-                    class="status-badge"
-                    [class.badge-success]="cur.active"
-                    [class.badge-danger]="!cur.active"
-                  >
-                    {{ cur.active ? 'Activo' : 'Inactivo' }}
-                  </span>
-                </td>
-                <td class="actions-col">
-                  <button class="icon-btn" title="Editar" (click)="openEdit(cur)">
-                    <span class="material-symbols-outlined">edit</span>
-                  </button>
-                  <button class="icon-btn" [title]="cur.active ? 'Desactivar' : 'Activar'" (click)="toggle(cur)">
-                    <span class="material-symbols-outlined">{{ cur.active ? 'toggle_off' : 'toggle_on' }}</span>
-                  </button>
-                  <button class="icon-btn icon-btn-danger" title="Eliminar" (click)="requestDelete(cur.code)">
-                    <span class="material-symbols-outlined">delete</span>
-                  </button>
-                </td>
-              </tr>
+      <!-- ─── Stats cards ─── -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--total">
+            <span class="material-symbols-outlined">payments</span>
+          </div>
+          <div class="stat-body">
+            <span class="stat-value">{{ stats().total }}</span>
+            <span class="stat-label">Monedas del catálogo</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--active">
+            <span class="material-symbols-outlined">check_circle</span>
+          </div>
+          <div class="stat-body">
+            <span class="stat-value">{{ stats().active }}</span>
+            <span class="stat-label">Activas para los hoteles</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--zero">
+            <span class="material-symbols-outlined">looks_one</span>
+          </div>
+          <div class="stat-body">
+            <span class="stat-value">{{ stats().zeroDecimal }}</span>
+            <span class="stat-label">Cero decimales (sin centavos)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Table card ─── -->
+      <div class="currencies-card">
+        <div class="table-toolbar">
+          <div class="search-wrap">
+            <span class="material-symbols-outlined search-icon">search</span>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Buscar por código o nombre…"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+            />
+            @if (search()) {
+              <button class="search-clear" (click)="search.set('')" aria-label="Limpiar búsqueda">
+                <span class="material-symbols-outlined">close</span>
+              </button>
             }
-          </tbody>
-        </table>
+          </div>
+
+          <div class="segmented" role="group" aria-label="Filtrar por estado">
+            @for (opt of statusOptions; track opt[0]) {
+              <button
+                type="button"
+                class="segmented-btn"
+                [class.is-selected]="statusFilter() === opt[0]"
+                (click)="statusFilter.set(opt[0])"
+              >{{ opt[1] }}</button>
+            }
+          </div>
+
+          <button class="btn-primary" (click)="openAdd()">
+            <span class="material-symbols-outlined">add</span>
+            Nueva moneda
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Moneda</th>
+                <th>Símbolo</th>
+                <th>Decimales</th>
+                <th>Estado</th>
+                <th class="actions-col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cur of filteredCurrencies(); track cur.code) {
+                <tr [class.row-inactive]="!cur.active">
+                  <td>
+                    <div class="code-cell">
+                      <code class="currency-code">{{ cur.code }}</code>
+                      @if (isZeroDecimal(cur)) {
+                        <span class="zero-tag" title="Moneda de cero decimales: los importes no llevan centavos">0 dec</span>
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    <div class="name-cell">
+                      <span class="currency-name">{{ cur.name }}</span>
+                      <span class="format-preview">{{ formatPreview(cur) }}</span>
+                    </div>
+                  </td>
+                  <td class="symbol-cell">{{ cur.symbol }}</td>
+                  <td class="decimals-cell">{{ cur.decimals }}</td>
+                  <td>
+                    <app-status-badge
+                      [tone]="cur.active ? 'success' : 'neutral'"
+                      [label]="cur.active ? 'Activa' : 'Inactiva'"
+                    />
+                  </td>
+                  <td class="actions-col">
+                    <button class="icon-btn" title="Editar" (click)="openEdit(cur)">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button
+                      class="cur-switch"
+                      [class.is-on]="cur.active"
+                      [attr.aria-label]="cur.active ? 'Desactivar ' + cur.code : 'Activar ' + cur.code"
+                      [title]="cur.active ? 'Desactivar' : 'Activar'"
+                      (click)="toggle(cur)"
+                    >
+                      <span class="cur-switch-knob"></span>
+                    </button>
+                    <button class="icon-btn icon-btn-danger" title="Eliminar" (click)="requestDelete(cur)">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-filter-row">
+                    <div class="empty-filter-msg">
+                      <span class="material-symbols-outlined">search_off</span>
+                      <span>Ninguna moneda coincide con la búsqueda.</span>
+                      <button class="btn-outline btn-sm" (click)="search.set(''); statusFilter.set('all')">
+                        Limpiar filtros
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <span class="footer-count">
+            {{ filteredCurrencies().length }} de {{ currencies.length }} monedas
+          </span>
+        </div>
       </div>
     }
   }
@@ -85,7 +185,7 @@
     <div class="modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>{{ editingCode() ? 'Editar moneda' : 'Nueva moneda' }}</h3>
-        <button class="modal-close" (click)="closeModal()">
+        <button class="modal-close" (click)="closeModal()" aria-label="Cerrar">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -145,6 +245,15 @@
             </div>
           </div>
         </div>
+
+        <!-- Preview en vivo del formato que verán los hoteles -->
+        <div class="format-preview-box">
+          <span class="material-symbols-outlined">preview</span>
+          <div>
+            <span class="preview-label">Formato de importe</span>
+            <span class="preview-sample">{{ formatPreview(form()) }}</span>
+          </div>
+        </div>
       </div>
       <div class="modal-actions">
         <button class="btn-outline" (click)="closeModal()">Cancelar</button>
@@ -155,28 +264,6 @@
           } @else {
             {{ editingCode() ? 'Actualizar' : 'Crear' }}
           }
-        </button>
-      </div>
-    </div>
-  </div>
-}
-
-<!-- ═══ Delete Confirmation Modal ═══ -->
-@if (confirmDeleteCode()) {
-  <div class="modal-overlay" (click)="cancelDelete()">
-    <div class="modal-card modal-card-danger" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Eliminar moneda</h3>
-      </div>
-      <div class="modal-body">
-        <p>¿Estás seguro de eliminar la moneda <strong>{{ confirmDeleteCode() }}</strong>?</p>
-        <p class="warning-text">Esta acción no se puede deshacer. Las propiedades que usen esta moneda quedarán sin moneda base.</p>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-outline" (click)="cancelDelete()">Cancelar</button>
-        <button class="btn-danger" (click)="confirmDelete(confirmDeleteCode()!)">
-          <span class="material-symbols-outlined">delete</span>
-          Eliminar
         </button>
       </div>
     </div>

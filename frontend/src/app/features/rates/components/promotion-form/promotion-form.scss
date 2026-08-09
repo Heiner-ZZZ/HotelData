@@ -96,88 +96,69 @@ select option {
 
 /* ── Form actions ── */
 .form-actions {
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
   padding-top: 0.25rem;
 }
 
-/* ── Button ── */
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.6rem 1.35rem;
-  border: 0;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), var(--accent));
-  color: var(--on-accent);
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: box-shadow 180ms ease, opacity 180ms ease, transform 120ms ease;
-  font-family: inherit;
-
-  &:hover:not(:disabled) {
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
-    transform: translateY(-1px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
+/* ── Botones ── .btn-primary, .btn-secondary y .unsaved-dot viven en los
+   SCSS globales (styles/_scss-forms.scss y styles/_scss-form-status.scss). */
 
 .btn-icon {
   font-size: 1.05rem;
   --icon-opsz: 20;
 }
 
-/* ── Editing banner ── */
-.editing-banner {
+/* ── Advertencia de reducción de cupones ── */
+.reduction-warning {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1rem;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
   border-radius: 10px;
-  background: var(--accent-light);
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-  font-size: 0.85rem;
-  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
   color: var(--app-text);
+  font-size: 0.8rem;
 
   .material-symbols-outlined {
-    font-size: 1.1rem;
-    color: var(--accent);
+    color: var(--warning);
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* Variante de bloqueo/error: por debajo de usados o error del backend. */
+  &.danger {
+    border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+    background: color-mix(in srgb, var(--danger-light) 55%, var(--surface));
+
+    .material-symbols-outlined {
+      color: var(--danger);
+    }
+
+    strong {
+      color: var(--danger);
+    }
   }
 }
 
-.cancel-edit-btn {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted-text);
-  cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+.reduction-warning-body {
+  display: grid;
+  gap: 0.15rem;
 
-  &:hover {
-    background: var(--accent-light);
-    color: var(--accent);
+  strong {
+    font-weight: 700;
   }
 
-  .material-symbols-outlined {
-    font-size: 1rem;
+  span {
+    color: var(--muted-text);
+    line-height: 1.4;
   }
 }
+
+/* ── Editing banner ── .editing-banner y .cancel-edit-btn viven en styles/_scss-forms.scss (global). */
 
 @media (max-width: 600px) {
   .field-row {

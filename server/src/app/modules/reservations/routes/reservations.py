@@ -244,6 +244,39 @@ def reservation_detail_api(booking_id: str, current_user: dict = Depends(require
     return BookingResponse.model_validate(to_json_safe(data))
 
 
+@api_router.patch("/{booking_id}/special-requests")
+def reservation_special_request_status_api(
+    booking_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_permission("reservations.update")),
+):
+    """Flip one checklist item's fulfillment status (pending ↔ fulfilled).
+
+    Body: ``{"kind": "special_request" | "amenity", "label": "Cama extra",
+    "status": "fulfilled"}``. ``kind`` defaults to ``special_request`` for
+    backward compatibility. Returns the normalized fulfillment list after the
+    update, with the ``fulfilled_at`` date on fulfilled entries.
+    """
+    from src.app.modules.reservations.service.special_request_fulfillment import (
+        update_amenity_fulfillment,
+        update_special_request_fulfillment,
+    )
+
+    label = str(payload.get("label") or "").strip()
+    status_value = str(payload.get("status") or "").strip()
+    kind = str(payload.get("kind") or "special_request").strip()
+    if not label or not status_value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="label y status son requeridos.")
+    try:
+        if kind == "amenity":
+            updated = update_amenity_fulfillment(booking_id, label, status_value)
+        else:
+            updated = update_special_request_fulfillment(booking_id, label, status_value)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return {"ok": True, "kind": kind, "fulfillment": updated}
+
+
 @api_router.get("/{booking_id}/cancel-preview")
 def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
     """Preview cancellation penalty without actually cancelling."""

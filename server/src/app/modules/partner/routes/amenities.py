@@ -47,6 +47,40 @@ def amenities_options_api(prop_id: int | None = Query(default=None, ge=1), curre
     return response
 
 
+@api_router.put("/amenities/special-requests")
+def special_requests_update_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_permission("amenities.manage")),
+):
+    """Replace the hotel's special-requests catalog + high_floor_from threshold.
+
+    Body: ``{"prop_id", "special_requests": [{label, unit_price, flags}],
+    "high_floor_from"}``. Returns the normalized catalog + threshold.
+    """
+    from src.app.modules.partner.services.content.save import save_special_requests
+    from src.app.modules.partner.services.content.special_requests import special_requests_payload_for_prop
+
+    prop_id = require_prop_id(int(payload.get("prop_id") or 0))
+    raw = payload.get("special_requests")
+    if not isinstance(raw, list):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="special_requests debe ser una lista")
+    try:
+        saved = save_special_requests(
+            prop_id,
+            special_requests=raw,
+            high_floor_from=payload.get("high_floor_from"),
+            changed_by=current_user.get("username", "system"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return {
+        "special_requests": special_requests_payload_for_prop(prop_id),
+        "high_floor_from": int(saved.get("high_floor_from") or 3),
+    }
+
+
 @api_router.put("/amenities")
 def amenities_update_api(
     payload: dict = Body(...),

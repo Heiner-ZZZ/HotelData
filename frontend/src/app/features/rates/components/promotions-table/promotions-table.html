@@ -6,6 +6,7 @@
         <th>Nombre / código</th>
         <th>Dto.</th>
         <th>Cupones</th>
+        <th>Usados</th>
         <th>Vigencia</th>
         <th>Estado</th>
         <th></th>
@@ -27,6 +28,19 @@
           <td>{{ promo.discountPercent }}%</td>
           <td>
             <small>{{ promo.couponAvailable }}/{{ promo.couponTotal }} disp.</small>
+            @if (promo.couponDeleted > 0) {
+              <br><small class="coupons-retired" title="Cupones retirados por reducciones previas (borrado lógico)">{{ promo.couponDeleted }} retirados</small>
+            }
+          </td>
+          <td>
+            @if (promo.couponUsed > 0) {
+              <span class="coupons-used frozen" title="Campaña congelada por cupones usados: no se puede editar">
+                <span class="material-symbols-outlined">lock</span>
+                {{ promo.couponUsed }} usados
+              </span>
+            } @else {
+              <span class="coupons-used">0</span>
+            }
           </td>
           <td><small>{{ promo.startDate }} → {{ promo.endDate }}</small></td>
           <td>
@@ -47,19 +61,19 @@
               <span class="material-symbols-outlined">edit</span>
             </button>
             <button type="button" class="delete-btn" (click)="deletePromo.emit(promo.campaignId)" title="Desactivar promoción">
-              <span class="material-symbols-outlined">toggle_off</span>
+              <span class="material-symbols-outlined">delete</span>
             </button>
           </td>
         </tr>
-      }
-      @for (coupon of coupons(); track coupon.code) {
-        <tr>
+        @for (coupon of promo.coupons; track coupon.code) {
+        <tr class="coupon-row">
           <td>
             <span class="material-symbols-outlined table-icon icon-coupon-blue">confirmation_number</span>
             Cupón
           </td>
           <td><code>{{ coupon.code }}</code></td>
           <td>—</td>
+          <td><small>—</small></td>
           <td><small>—</small></td>
           <td><small>—</small></td>
           <td>
@@ -70,6 +84,32 @@
           </td>
           <td></td>
         </tr>
+        }
+      }
+      @if (coupons().length) {
+        <tr class="group-header">
+          <td colspan="8">Cupones sin campaña asociada</td>
+        </tr>
+        @for (coupon of coupons(); track coupon.code) {
+          <tr class="coupon-row orphan-row">
+            <td>
+              <span class="material-symbols-outlined table-icon icon-coupon-blue">confirmation_number</span>
+              Cupón
+            </td>
+            <td><code>{{ coupon.code }}</code></td>
+            <td>—</td>
+            <td><small>—</small></td>
+            <td><small>—</small></td>
+            <td><small>—</small></td>
+            <td>
+              <span class="status-badge" [class.active]="coupon.activeLabel === 'Sí'" [class.inactive]="coupon.activeLabel !== 'Sí'">
+                <span class="material-symbols-outlined badge-icon">{{ coupon.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
+                {{ coupon.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+            <td></td>
+          </tr>
+        }
       }
     </tbody>
   </table>

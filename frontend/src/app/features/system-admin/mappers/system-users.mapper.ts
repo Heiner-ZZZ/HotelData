@@ -18,6 +18,8 @@ function formatDate(value: string | null): string {
 }
 
 function mapUser(item: SystemUsersResponseDto['users'][number]): SystemUserListItem {
+  const isCurrentUser = item.is_current_user;
+  const isProtected = item.is_protected;
   return {
     userId: item.user_id,
     username: item.username,
@@ -28,6 +30,10 @@ function mapUser(item: SystemUsersResponseDto['users'][number]): SystemUserListI
     roleNamesLabel: item.role_names.length ? item.role_names.join(', ') : 'Sin roles',
     isActive: item.is_active,
     createdAtLabel: formatDate(item.created_at),
+    assignedHotels: (item.assigned_hotels || []).map((h) => ({ propId: h.prop_id, label: h.label })),
+    isCurrentUser,
+    isProtected,
+    canEdit: !isCurrentUser && !isProtected,
     canToggle: item.can_toggle,
     toggleLabel: item.toggle_label,
     actionHint: item.action_hint || ''
@@ -39,7 +45,11 @@ export function mapSystemUsersResponse(dto: SystemUsersResponseDto): SystemUsers
     totalUsers: dto.counts.users,
     totalRoles: dto.counts.roles,
     currentUsername: dto.current_user.username,
-    items: dto.users.map(mapUser)
+    items: dto.users.map(mapUser),
+    roles: (dto.roles || []).map((role) => ({
+      roleName: role.role_name,
+      description: role.description
+    }))
   };
 }
 

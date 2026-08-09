@@ -139,6 +139,9 @@ def create_ownership_user(
         "email": email,
         "password_hash": password_context.hash(password),
         "display_name": display_name or username,
+        # Keep the transitional role fields synchronized: permission checks
+        # prefer the FK, while legacy readers still consume primary_role.
+        "primary_role": primary_role,
         "primary_role_id": resolve_role_id(primary_role),
         "is_active": True,
         "assigned_hotels": hotels,

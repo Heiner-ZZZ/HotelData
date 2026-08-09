@@ -173,9 +173,26 @@ PERMISSION_CATALOG = [
     ("search.read", "Buscar hoteles y ver resultados"),
 ]
 
+# ── Guest-facing codes (auto-servicio del huésped — sección "Cliente" del
+#    editor de roles). super_admin conserva el bypass ``*.*`` de AUTH, pero NO
+#    los tiene en el editor ni en su menú: Buscar Hoteles / Mis Reservas /
+#    Mi Perfil son del huésped, no del administrador del sistema. Decisión
+#    2026-08.
+# KEEP IN SYNC: src/app/security/permissions.py (GUEST_PERMISSION_CODES).
+GUEST_PERMISSION_CODES = frozenset({
+    "account.manage",
+    "account.read",
+    "account.update",
+    "account.bookings.read",
+    "search.manage",
+    "search.read",
+})
+
 # ── Role → embedded permissions (CRUD granular, stored directly on roles.permissions) ──
 ROLE_PERMISSION_CODES: dict[str, list[str]] = {
-    "super_admin": [code for code, _ in PERMISSION_CATALOG],
+    "super_admin": [
+        code for code, _ in PERMISSION_CATALOG if code not in GUEST_PERMISSION_CODES
+    ],
     "admin_sistema": [
         "users.manage", "roles.read",
         "dashboard.read",

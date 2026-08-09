@@ -166,6 +166,8 @@
                   <th>Monto</th>
                   <th>Cant.</th>
                   <th>Total</th>
+                  <th>Folio</th>
+                  <th>Estado</th>
                   <th>Nota</th>
                   <th>Fecha</th>
                   <th class="th-actions"></th>
@@ -187,6 +189,44 @@
                     <td>${{ item.amount.toFixed(2) }}</td>
                     <td>{{ item.quantity }}</td>
                     <td><strong>${{ item.total.toFixed(2) }}</strong></td>
+                    <td class="cell-folio">
+                      @if (item.folioNumber) {
+                        <code>{{ item.folioNumber }}</code>
+                        @if (item.postingId) {
+                          <small class="trace-reference" title="Identificador del posting en el folio">
+                            Posting {{ item.postingId | slice:0:8 }}…
+                          </small>
+                        }
+                        @if (item.domainEventStatus === 'failed') {
+                          <small class="trace-reference trace-reference-warning" title="El evento de integración necesita reintento">
+                            Evento pendiente
+                          </small>
+                        }
+                      } @else {
+                        <span class="text-muted">Sin folio</span>
+                      }
+                    </td>
+                    <td>
+                      <span class="charge-status" [class.charge-status-posted]="item.postingStatus === 'posted' && item.invoiceReconciliationStatus !== 'failed'" [class.charge-status-failed]="item.postingStatus === 'posting_failed' || item.postingStatus === 'reversal_failed' || item.invoiceReconciliationStatus === 'failed'" [class.charge-status-reversed]="item.postingStatus === 'reversed' || item.status === 'reversed'">
+                        @switch (item.invoiceReconciliationStatus === 'failed' ? 'invoice_failed' : (item.postingStatus || item.status || 'pending')) {
+                          @case ('posted') { Publicado }
+                          @case ('reversed') { Anulado }
+                          @case ('posting_failed') { Pendiente de publicar }
+                          @case ('reversal_failed') { Error al anular }
+                          @case ('invoice_failed') { Error contable pendiente }
+                          @default { Pendiente }
+                        }
+                      </span>
+                      @if (item.postingStatus === 'posting_failed') {
+                        <button type="button" class="btn-action repair"
+                          (click)="repairChargePosting(item)"
+                          [disabled]="repairingId() !== null"
+                          title="Enlazar al folio y publicar"
+                          aria-label="Enlazar al folio y publicar">
+                          <span class="material-symbols-outlined">sync</span>
+                        </button>
+                      }
+                    </td>
                     <td class="cell-notes">
                       @if (item.note) {
                         <div class="cell-notes-inner">

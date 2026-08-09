@@ -1,14 +1,17 @@
-import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { getErrorStatus, getErrorMessage } from '../../../../shared/utils/http-error.util';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReviewDetailViewModel } from '../../models/reviews.model';
+import type { ReviewDetailDto } from '../../models/reviews.dto';
+import { mapReviewDetail } from '../../mappers/reviews.mapper';
 import { ReviewsApiService } from '../../services/reviews-api.service';
 import { FormsModule } from '@angular/forms';
 
@@ -33,16 +36,27 @@ export class ReviewDetailPageComponent {
   readonly detailResource = httpResource<ReviewDetailViewModel>(() => {
     const id = this.reviewId();
     return id ? `/api/reviews/${id}` : undefined;
+  }, {
+    // Canonical mapper: the wire is snake_case (moderation_status,
+    // staff_response, user_display_name, …); the ViewModel is camelCase.
+    // Skipping this parse left every camelCase field undefined — the badge
+    // always rendered 'Pendiente', moderation was silently blocked
+    // (r.moderationStatus !== 'pending' with undefined), and the staff
+    // response prefill was empty. Same bug class as ownership-user-detail.
+    parse: (dto) => mapReviewDetail(dto as ReviewDetailDto),
   });
 
-  readonly review = computed(() => this.detailResource.value() ?? null);
+  readonly review = computed(() => {
+    if (this.detailResource.error()) return null;
+    return this.detailResource.value() ?? null;
+  });
 
   readonly viewState = computed<ViewState>(() => {
+    // error() ANTES de value(): value() lanza cuando el request falló.
+    const err = this.detailResource.error();
+    if (err) return getErrorStatus(err) === 404 ? 'empty' : 'error';
     const v = this.detailResource.value();
     if (this.detailResource.isLoading() && !v) return 'loading';
-    const err = this.detailResource.error();
-    if (err instanceof HttpErrorResponse) return err.status === 404 ? 'empty' : 'error';
-    if (err) return 'error';
     return v ? 'success' : 'loading';
   });
 
@@ -66,6 +80,7 @@ export class ReviewDetailPageComponent {
 
   constructor() {
     effect(() => {
+      if (this.detailResource.error()) return;
       const detail = this.detailResource.value();
       if (!detail) return;
       if (this.initializedReviewId === detail.id) return;
@@ -139,8 +154,7 @@ export class ReviewDetailPageComponent {
           this.rejectionReason.set('');
         },
       error: (err) => {
-        const detail = err?.error?.detail || 'No se pudo moderar la reseña. Intenta nuevamente.';
-        this.actionError.set(detail);
+        this.actionError.set(getErrorMessage(err) || 'No se pudo moderar la reseña. Intenta nuevamente.');
       },
     });
   }
@@ -158,8 +172,7 @@ export class ReviewDetailPageComponent {
         this.actionMessage.set('Respuesta guardada correctamente.');
       },
       error: (err) => {
-        const detail = err?.error?.detail || 'No se pudo guardar la respuesta. Intenta nuevamente.';
-        this.actionError.set(detail);
+        this.actionError.set(getErrorMessage(err) || 'No se pudo guardar la respuesta. Intenta nuevamente.');
       },
     });
   }

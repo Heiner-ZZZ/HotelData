@@ -73,7 +73,7 @@ def list_lost_items(
 ) -> dict[str, Any]:
     """List lost & found items with optional filters and pagination."""
     db = get_database()
-    query: dict[str, Any] = {}
+    query: dict[str, Any] = {"status": {"$ne": "archived"}}
 
     if prop_id is not None:
         query["prop_id"] = prop_id
@@ -140,10 +140,15 @@ def update_lost_item(item_id: str, payload: LostItemUpdate) -> dict[str, Any] | 
 
 
 def delete_lost_item(item_id: str) -> dict[str, Any] | None:
-    """Permanently delete a lost & found item."""
+    """Archive a lost-and-found item instead of physically deleting evidence."""
     db = get_database()
     try:
-        doc = db[LOST_AND_FOUND_COLLECTION].find_one_and_delete({"_id": ObjectId(item_id)})
+        now = now_iso()
+        doc = db[LOST_AND_FOUND_COLLECTION].find_one_and_update(
+            {"_id": ObjectId(item_id), "status": {"$ne": "archived"}},
+            {"$set": {"status": "archived", "archived_at": now, "updated_at": now}},
+            return_document=True,
+        )
         return _enrich(doc) if doc else None
     except Exception:
         return None
