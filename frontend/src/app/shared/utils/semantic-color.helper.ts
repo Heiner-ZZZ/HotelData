@@ -79,7 +79,7 @@ export type SemanticToken =
   | '--warning' | '--warning-strong' | '--warning-light'
   | '--danger' | '--danger-strong' | '--danger-light'
   | '--accent' | '--accent-strong' | '--accent-light'
-  | '--teal' | '--cyan'
+  | '--cyan' | '--teal'
   | '--purple' | '--purple-strong' | '--purple-light'
   | '--indigo' | '--indigo-strong' | '--indigo-light'
   | '--yellow'

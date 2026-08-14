@@ -82,4 +82,21 @@ export class AvailabilityCalendarComponent {
     return chunks;
   });
 
+  /**
+   * Noches ÚNICAS del rango con disponibilidad pero sin tarifa abierta
+   * (no vendibles en el search público) — contador resumen del pie.
+   */
+  readonly noRateNights = computed(() => {
+    const cal = this.calendar();
+    if (!cal) return 0;
+    const dates = new Set<string>();
+    for (const day of cal.days) {
+      const hasNoRate = day.roomTypes.some(
+        (cell) => cell.availableRooms > 0 && cell.hasRate === false,
+      );
+      if (hasNoRate) dates.add(day.date);
+    }
+    return dates.size;
+  });
+
 }

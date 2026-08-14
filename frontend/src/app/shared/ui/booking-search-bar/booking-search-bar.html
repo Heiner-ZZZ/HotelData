@@ -1,0 +1,61 @@
+<form
+  class="booking-bar"
+  [class.booking-bar--compact]="compact()"
+  [formGroup]="form"
+  (ngSubmit)="submit()"
+  role="search"
+  aria-label="Buscar hoteles"
+>
+  <div class="booking-bar__field">
+    <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">location_on</span>
+    <div class="booking-bar__body">
+      <label class="booking-bar__label" for="booking-bar-dest">Destino</label>
+      <app-destination-autocomplete
+        inputId="booking-bar-dest"
+        [value]="form.controls.destination.value"
+        (valueChange)="onDestinationChange($event)"
+      />
+    </div>
+  </div>
+  <div class="booking-bar__field booking-bar__field--dates">
+    <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">calendar_month</span>
+    <div class="booking-bar__body">
+      <span class="booking-bar__label">Entrada — Salida</span>
+      <app-date-range-picker
+        [minDate]="minDate()"
+        [startDate]="form.controls.checkIn.value"
+        [endDate]="form.controls.checkOut.value"
+        (startChange)="onStartDateChange($event)"
+        (endChange)="onEndDateChange($event)"
+      />
+    </div>
+  </div>
+  <div class="booking-bar__field booking-bar__field--guests">
+    <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">group</span>
+    <div class="booking-bar__body">
+      <span class="booking-bar__label">Huéspedes</span>
+      <app-guests-picker
+        [adults]="guestCounts().adults"
+        [children]="guestCounts().children"
+        [rooms]="guestCounts().rooms"
+        (adultsChange)="onAdultsChange($event)"
+        (childrenChange)="onChildrenChange($event)"
+        (roomsChange)="onRoomsChange($event)"
+      />
+    </div>
+  </div>
+  <button
+    type="button"
+    class="booking-bar__clear"
+    [disabled]="!hasClearable()"
+    (click)="clearFilters()"
+    aria-label="Limpiar búsqueda"
+    [title]="'Limpiar destino, fechas y huéspedes'"
+  >
+    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+  </button>
+  <button type="submit" class="booking-bar__cta">
+    <span class="material-symbols-outlined" aria-hidden="true">search</span>
+    {{ submitLabel() }}
+  </button>
+</form>

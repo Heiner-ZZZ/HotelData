@@ -128,6 +128,11 @@ export interface FolioPosting {
   referenceId: string;
   referenceType: string;
   postedAt: string;
+  /** Cashier attribution stamped on money postings (optional). */
+  shiftId?: string | null;
+  shiftEmployee?: string | null;
+  shiftOpenedBy?: string | null;
+  shiftType?: string | null;
 }
 
 export interface FolioPostingsResponse {

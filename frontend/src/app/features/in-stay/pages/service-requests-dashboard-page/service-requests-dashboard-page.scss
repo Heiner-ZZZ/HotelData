@@ -187,9 +187,9 @@
 
     &.total > .material-symbols-outlined { color: var(--accent); }
     &.pending > .material-symbols-outlined { color: var(--warning); }
-    &.in-progress > .material-symbols-outlined { color: #3b82f6; }
+    &.in-progress > .material-symbols-outlined { color: var(--accent-active); }
     &.completed > .material-symbols-outlined { color: var(--success); }
-    &.resolution > .material-symbols-outlined { color: #a78bfa; }
+    &.resolution > .material-symbols-outlined { color: var(--purple); }
   }
 }
 

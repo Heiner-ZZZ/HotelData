@@ -19,17 +19,16 @@ export interface SystemPermissionsResponseDto {
 }
 
 export interface NavigationItemDto {
+  slug: string;
+  parentSlug: string | null;
+  position: number;
+  nodeType: string | null;
   label: string;
   href: string;
   icon: string;
   visible: boolean;
-  section?: string | null;
-  is_section_header?: boolean;
-  /** El server emite camelCase (``requiredPermission``), igual que ``permissionId``. */
-  requiredPermission?: string | null;
-  /** Defensa: acepta también snake_case si algún endpoint legacy lo emite. */
-  required_permission?: string | null;
   permissionId?: string | null;
+  permissionCode?: string | null;
 }
 
 export interface RoleDetailResponseDto {

@@ -120,7 +120,7 @@ export function createHotelSearchFilters(
     destination: partial.destination ?? '',
     checkIn: partial.checkIn ?? '',
     checkOut: partial.checkOut ?? '',
-    adults: partial.adults ?? '1',
+    adults: partial.adults ?? '2',
     children: partial.children ?? '0',
     rooms: partial.rooms ?? '1',
     minPrice: partial.minPrice ?? '',

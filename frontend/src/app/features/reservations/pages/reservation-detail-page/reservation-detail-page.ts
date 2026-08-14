@@ -7,6 +7,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ReservationsAuthService } from '../../services/reservations-auth.service';
 import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
+import { NoShowService } from '../../../../shared/services/no-show.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -68,6 +69,7 @@ export class ReservationDetailPageComponent {
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly productsApi = inject(ProductsApiService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly noShow = inject(NoShowService);
   private readonly instayApi = inject(InStayApiService);
   private readonly actionService = inject(ReservationActionService);
   private readonly router = inject(Router);
@@ -279,16 +281,16 @@ export class ReservationDetailPageComponent {
   readonly canReject = computed(() => this.canConfirm());
 
   /**
-   * No-show manual: solo aplica a reservas confirmadas cuyo check-in sigue
-   * pendiente (stay_status pending) Y cuya fecha de check-in ya pasó — el
-   * backend valida exactamente eso y devolvería 400 antes de tiempo.
+   * No-show manual: aplica a reservas confirmadas cuyo check-in ya pasó y que
+   * NO tienen estancia activa/terminal. Incluye `stay_status` ausente (reservas
+   * legacy sin check-in registrado) y `pending` — el backend (process_no_show)
+   * acepta ambos; checked_in/checked_out/no_show quedan excluidos.
    */
   readonly canMarkNoShow = computed(() => {
     const vm = this.detailResource.value();
     if (!vm || !this.isStaff()) return false;
-    return vm.status === 'confirmed'
-      && (vm.stayStatus ?? '') === 'pending'
-      && vm.checkInDate <= this.todayStr();
+    if (vm.status !== 'confirmed' || vm.checkInDate > this.todayStr()) return false;
+    return !['checked_in', 'checked_out', 'no_show'].includes(vm.stayStatus ?? '');
   });
 
   readonly todayStr = computed(() => {
@@ -629,46 +631,30 @@ export class ReservationDetailPageComponent {
   /**
    * Marca la reserva como no-show (penalización de la primera noche). El
    * huésped no llegó al check-in: se restaura inventario, se crea el folio
-   * con la penalización y se notifica por email. Confirmación previa con
-   * modo delete en el nav (acción terminal).
+   * con la penalización y se notifica por email. Flujo compartido con
+   * confirmación previa + modo delete en el nav (acción terminal).
    */
   async markNoShow() {
     const current = this.detailResource.value();
     if (!current || !this.canMarkNoShow() || this.noShowPending()) return;
 
-    const ok = await this.confirmDialog.open({
-      title: 'Marcar no-show',
-      message: `¿Confirmar que ${current.guestName} no se presentó al check-in? Se cobrará la penalización de la primera noche.`,
-      confirmLabel: 'Marcar no-show',
-      variant: 'danger',
-      mode: 'delete',
-      modeDetail: `Reserva ${current.bookingId}`,
-    });
-    if (!ok) return;
-
     this.noShowPending.set(true);
     this.successMessage.set('');
+    this.errorMessage.set('');
     this.operationMode.setMode('delete', current.bookingId);
-    this.reservationsApi.markNoShow(current.bookingId).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (result) => {
-        this.detailResource.reload();
-        this.noShowPending.set(false);
-        this.operationMode.reset();
-        const penalty = result.penalty_amount > 0
-          ? ` Se cobró $${result.penalty_amount.toFixed(2)} como penalización.`
-          : '';
-        this.successMessage.set(`No-show registrado.${penalty}`);
-        setTimeout(() => this.successMessage.set(''), 5000);
-      },
-      error: (err: unknown) => {
-        this.noShowPending.set(false);
-        this.operationMode.reset();
-        this.errorMessage.set(getErrorMessage(err) || 'No fue posible marcar el no-show.');
-        setTimeout(() => this.errorMessage.set(''), 6000);
-      },
-    });
+    try {
+      const result = await this.noShow.markNoShowWithConfirm(current.bookingId, current.guestName);
+      if (!result) return; // cancelado — el finally libera pending + opMode
+      this.successMessage.set(this.noShow.successMessage(result));
+      this.detailResource.reload();
+      setTimeout(() => this.successMessage.set(''), 5000);
+    } catch (err) {
+      this.errorMessage.set(getErrorMessage(err) || 'No fue posible marcar el no-show.');
+      setTimeout(() => this.errorMessage.set(''), 6000);
+    } finally {
+      this.noShowPending.set(false);
+      this.operationMode.reset();
+    }
   }
 
   // ── Room Assignment ──

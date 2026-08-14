@@ -1201,7 +1201,7 @@ def get_folio_postings(
         posted = p.get("posted_at")
         if isinstance(posted, datetime):
             posted = posted.isoformat()
-        result.append({
+        item: dict[str, Any] = {
             "posting_id": str(p.get("posting_id", "")),
             "type": p.get("type", ""),
             "category": p.get("category", ""),
@@ -1212,7 +1212,17 @@ def get_folio_postings(
             "reference_id": p.get("reference_id", ""),
             "reference_type": p.get("reference_type", ""),
             "posted_at": posted or "",
-        })
+        }
+        # Money postings (charges/payments/discounts) are stamped with the
+        # responsible cash shift; pass the attribution through so the folio UI
+        # can show who handled each movement (same as the payments list).
+        shift_id = p.get("shift_id")
+        if shift_id is not None:
+            item["shift_id"] = str(shift_id)
+        for key in ("shift_employee", "shift_opened_by", "shift_type"):
+            if p.get(key) is not None:
+                item[key] = p[key]
+        result.append(item)
 
     return FolioPostingsResponse.model_validate({
         "folio_id": folio_id,

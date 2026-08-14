@@ -4,6 +4,39 @@
   display: grid;
   gap: 1.25rem;
   padding-bottom: 6rem;
+
+  /* El <form> envuelve todas las cajas: sin esto las secciones quedan pegadas
+     (el grid del .edit-page solo separa al form como un único ítem). */
+  form.edit-form {
+    display: grid;
+    gap: 1.25rem;
+  }
+}
+
+/* ─── Back link ─── */
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  justify-self: start;
+  color: var(--muted-text);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+  transition: background 120ms, color 120ms;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--surface-soft);
+    color: var(--accent);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
 }
 
 /* ─── Toast ─── */

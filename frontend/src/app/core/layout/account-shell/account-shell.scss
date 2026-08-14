@@ -1,11 +1,4 @@
 .account-shell {
-  /* The account-shell wants the dark-teal accent used across account
-   * pages. We point the local `--accent` at the global `--teal` token
-   * (`#107a95` — within RGB delta ≤ 4 of the original hardcoded
-   * `#0F7892`) so the page renders identically without bypassing the
-   * design-token system. Light/dark theme switches `--teal` automatically. */
-  --accent: var(--teal);
-
   min-height: 100vh;
   padding: 0 1rem 1.25rem;
   background: linear-gradient(180deg, var(--surface-soft) 0%, var(--app-bg) 28%);

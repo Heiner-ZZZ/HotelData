@@ -1,0 +1,70 @@
+<div class="modal-overlay" (click)="close.emit()">
+  <div class="link-shift-modal" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <span class="material-symbols-outlined modal-head-icon">link</span>
+      <h2>Vincular pago a turno</h2>
+      <button type="button" class="modal-close" (click)="close.emit()" aria-label="Cerrar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <p class="modal-intro">
+        Este pago no tiene turno asociado (pago legacy). Vincúlalo al turno
+        responsable para que aparezca en la reconciliación de caja.
+        @if (paymentReference(); as ref) {
+          <strong>{{ ref }}</strong>
+        }
+      </p>
+
+      @if (loading()) {
+        <div class="lazy-state">
+          <span class="material-symbols-outlined spinner">progress_activity</span>
+          Cargando turnos del hotel…
+        </div>
+      } @else if (loadError(); as error) {
+        <div class="error-box">{{ error }}</div>
+      } @else if (!candidates().length) {
+        <div class="error-box">No hay turnos registrados para este hotel.</div>
+      } @else {
+        <div class="form-field">
+          <label>Turno responsable *</label>
+          <select
+            class="text-input"
+            [ngModel]="selectedShiftId()"
+            (ngModelChange)="selectShift($event)"
+            [disabled]="submitting()"
+          >
+            @for (shift of candidates(); track shift.id) {
+              <option [value]="shift.id">{{ shiftLabel(shift) }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      @if (submitError(); as error) {
+        <div class="error-box">{{ error }}</div>
+      }
+    </div>
+
+    <div class="modal-foot">
+      <button type="button" class="btn-ghost" (click)="close.emit()" [disabled]="submitting()">
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-primary"
+        (click)="confirm()"
+        [disabled]="submitting() || loading() || !selectedShiftId()"
+      >
+        @if (submitting()) {
+          <span class="material-symbols-outlined spinner">progress_activity</span>
+          Vinculando…
+        } @else {
+          <span class="material-symbols-outlined">link</span>
+          Vincular pago
+        }
+      </button>
+    </div>
+  </div>
+</div>

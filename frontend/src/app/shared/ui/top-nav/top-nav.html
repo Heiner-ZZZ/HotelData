@@ -5,7 +5,7 @@
         <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </button>
-    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData" />
+    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=20260813c" alt="HotelData" />
   </div>
 
   <nav class="primary-nav" aria-label="Navegación principal">
@@ -70,7 +70,7 @@
     @if (showNotificationBell()) {
       <div class="menu-shell notif-wrapper">
         <button type="button" class="icon-btn notif-bell" [class.has-unread]="unreadCount() > 0" [class.is-reviewed]="showNotifications()" (click)="toggleNotifications()" aria-label="Notificaciones">
-          <span class="material-symbols-outlined">notifications</span>
+          <span class="material-symbols-outlined notif-icon">notifications</span>
           @if (unreadCount() > 0) {
             <span class="notif-badge-sm">{{ unreadCount() }}</span>
           }

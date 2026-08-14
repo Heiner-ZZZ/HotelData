@@ -20,10 +20,12 @@
       </div>
     </div>
     <div class="att-header-right">
-      <button class="btn btn-export" (click)="exportCSV()" title="Exportar a CSV">
-        <span class="material-symbols-outlined">download</span>
-        CSV
-      </button>
+      @if (canExport()) {
+        <button class="btn btn-export" (click)="exportCSV()" title="Exportar a CSV">
+          <span class="material-symbols-outlined">download</span>
+          CSV
+        </button>
+      }
       <div class="month-nav">
         <button class="btn btn-icon" (click)="prevMonth()" title="Mes anterior">
           <span class="material-symbols-outlined">chevron_left</span>

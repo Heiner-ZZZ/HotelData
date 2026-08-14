@@ -237,10 +237,26 @@ def list_review_reports_api(
 def reputation_analytics_api(
     prop_id: int | None = Query(default=None),
     days: int = Query(default=30, ge=1, le=365),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
     current_user: dict = Depends(require_login),
 ):
-    """Return the hourly ClickHouse reputation aggregate when available."""
-    return get_reputation_analytics(prop_id=prop_id, days=days)
+    """Return the hourly ClickHouse reputation aggregate when available.
+
+    Filtra ``kpi_review_daily`` por ``date_from``/``date_to`` (ambos límites);
+    sin ellos usa los últimos ``days`` días hasta hoy.
+    """
+    try:
+        return get_reputation_analytics(
+            prop_id=prop_id,
+            days=days,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
 
 @api_router.get("/reputation/dashboard")

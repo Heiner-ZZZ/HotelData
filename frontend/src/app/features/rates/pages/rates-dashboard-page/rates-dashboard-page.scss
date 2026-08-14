@@ -201,7 +201,7 @@
     }
 
     &.adr > .material-symbols-outlined { color: var(--accent); }
-    &.revpar > .material-symbols-outlined { color: #a78bfa; }
+    &.revpar > .material-symbols-outlined { color: var(--purple); }
     &.occupancy > .material-symbols-outlined { color: var(--success); }
     &.revenue > .material-symbols-outlined { color: var(--warning); }
     &.cancelled > .material-symbols-outlined { color: var(--danger); }

@@ -27,13 +27,13 @@
 }
 
 .ciw-room-ok {
-  border-color: rgba(22, 163, 74, 0.2);
-  background: rgba(22, 163, 74, 0.03);
+  border-color: color-mix(in srgb, var(--success) 20%, transparent);
+  background: color-mix(in srgb, var(--success) 3%, transparent);
 }
 
 .ciw-room-blocked {
-  border-color: rgba(186, 26, 26, 0.2);
-  background: rgba(186, 26, 26, 0.03);
+  border-color: color-mix(in srgb, var(--danger) 20%, transparent);
+  background: color-mix(in srgb, var(--danger) 3%, transparent);
 }
 
 .ciw-room-icon {
@@ -102,7 +102,7 @@
 
   &:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(0, 96, 118, 0.08);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
   }
 }
 
@@ -204,7 +204,7 @@
 
 .ciw-checked {
   border-color: var(--accent);
-  background: rgba(0, 96, 118, 0.03);
+  background: color-mix(in srgb, var(--accent) 3%, transparent);
 }
 
 .ciw-check-icon {

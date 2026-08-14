@@ -171,6 +171,8 @@ TEST_COLLECTIONS = [
     "lost_and_found",
     # --- Reception (turnos de caja) ------------------------------------
     "reception_shifts",
+    "reception_shift_config",  # ventanas de turno configurables por hotel
+    "shift_notification_dedup",  # dedup de notificaciones internas de turno
     # --- Account / notificaciones / tracking ----------------------------
     "user_favorites",
     "notification_log",
@@ -257,6 +259,7 @@ def _run_module_ensures_once() -> None:
         ensure_rate_collections,
     )
     from src.app.modules.revenue.service import ensure_revenue_collections
+    from src.app.modules.reception.collections import ensure_reception_collections
     from src.app.security.collections import ensure_hotel_permission_collections
 
     ensure_hotel_content_collections()
@@ -265,6 +268,7 @@ def _run_module_ensures_once() -> None:
     ensure_rate_collections()
     ensure_hotels_collections()
     ensure_revenue_collections()
+    ensure_reception_collections()  # turnos de caja + dedup de notificaciones
     ensure_hotel_permission_collections()
 
 

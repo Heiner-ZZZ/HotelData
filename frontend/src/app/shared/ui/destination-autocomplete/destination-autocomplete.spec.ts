@@ -117,6 +117,22 @@ describe('DestinationAutocompleteComponent', () => {
     expect(last).toBe('Bar');
   });
 
+  it('da al input un id/name propio (default destination-input) para el label del padre', () => {
+    const { fixture } = setup();
+    const input = fixture.nativeElement.querySelector('input.da-input') as HTMLInputElement;
+    expect(input.id).toBe('destination-input');
+    expect(input.name).toBe('destination-input');
+  });
+
+  it('respeta un inputId custom (p.ej. booking-bar-dest del booking-bar)', () => {
+    const { fixture } = setup();
+    fixture.componentRef.setInput('inputId', 'booking-bar-dest');
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input.da-input') as HTMLInputElement;
+    expect(input.id).toBe('booking-bar-dest');
+    expect(input.name).toBe('booking-bar-dest');
+  });
+
   it('keeps the dropdown closed when suggestions are empty', () => {
     const { fixture, comp } = setup();
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;

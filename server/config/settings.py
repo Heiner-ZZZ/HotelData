@@ -20,10 +20,15 @@ class Settings:
     clickhouse_user: str
     clickhouse_password: str
     clickhouse_database: str
+    # Retención histórica de las tablas KPI (TTL en ClickHouse): filas con
+    # ``date`` más antigua que N meses se purgan en el merge. 0 = sin TTL.
+    kpi_ttl_months: int
     raw_csv_path: Path
     staging_dir: Path
     processed_dir: Path
     reports_dir: Path
+    dato_dir: Path
+    dato_dir_host: Path
     chunk_size: int
     batch_size: int
     min_dataset_rows: int
@@ -67,6 +72,7 @@ def get_settings() -> Settings:
     if not raw_csv.is_absolute():
         raw_csv = root / raw_csv
     task_number = os.getenv("TASK_NUMBER", "03")
+    dato_dir = Path(os.getenv("HOTELDATA_DATO_DIR", str(root.parent / "Dato"))).resolve()
     generic_pocketbase_collection = os.getenv("POCKETBASE_COLLECTION")
     default_ga03_collection = "hotel_reservation_events_03"
     if task_number == "03" and generic_pocketbase_collection and generic_pocketbase_collection != "hotel_reservation_events__2":
@@ -85,10 +91,20 @@ def get_settings() -> Settings:
         clickhouse_user=os.getenv("CLICKHOUSE_USER", "default"),
         clickhouse_password=os.getenv("CLICKHOUSE_PASSWORD", ""),
         clickhouse_database=os.getenv("CLICKHOUSE_DB", "hoteldata"),
+        # 24 meses por defecto; 0 desactiva la retención.
+        kpi_ttl_months=int(os.getenv("CLICKHOUSE_KPI_TTL_MONTHS", "24")),
         raw_csv_path=raw_csv,
         staging_dir=root / "data" / "staging",
         processed_dir=root / "data" / "processed",
         reports_dir=root / "data" / "reports",
+        # Directorio Dato (afuera del proyecto) para .parquet por secciones.
+        # En contenedores lo fija el compose (HOTELDATA_DATO_DIR); en local
+        # por defecto es la carpeta hermana ``Dato`` junto al proyecto.
+        dato_dir=dato_dir,
+        # Ruta para mostrar en la UI (ruta del host Windows). En contenedores
+        # la fija el compose (HOTELDATA_DATO_DIR_HOST); por defecto coincide
+        # con dato_dir (desarrollo local sin Docker).
+        dato_dir_host=Path(os.getenv("HOTELDATA_DATO_DIR_HOST", str(dato_dir))),
         chunk_size=int(os.getenv("HOTELDATA_CHUNK_SIZE", "50000")),
         batch_size=int(os.getenv("HOTELDATA_BATCH_SIZE", "5000")),
         min_dataset_rows=int(os.getenv("HOTELDATA_MIN_DATASET_ROWS", "100000")),

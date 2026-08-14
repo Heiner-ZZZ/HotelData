@@ -2,30 +2,63 @@ from __future__ import annotations
 
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from bson import ObjectId
 
 from src.app.core.resolvers import resolve_hotel_id, resolve_employee_id, resolve_user_id
 
-from .collections import RECEPTION_SHIFTS_COLLECTION
+from .collections import (
+    RECEPTION_SHIFT_CONFIG_COLLECTION,
+    RECEPTION_SHIFTS_COLLECTION,
+)
 from src.database.connection import get_database
 
 logger = logging.getLogger(__name__)
 
 SHIFT_TYPES = ("morning", "afternoon", "evening")
 
-SHIFT_TYPE_LABELS = {
-    "morning": "Matutino (08:00-16:00)",
-    "afternoon": "Vespertino (16:00-00:00)",
-    "evening": "Nocturno (00:00-08:00)",
+# Display names per shift type; labels pair the name with the effective
+# window (e.g. "Matutino (08:00-16:00)") so a per-hotel config change is
+# reflected everywhere the type is shown.
+SHIFT_TYPE_NAMES = {
+    "morning": "Matutino",
+    "afternoon": "Vespertino",
+    "evening": "Nocturno",
 }
 
 DEFAULT_SHIFT_HOURS = {
     "morning": {"start": "08:00", "end": "16:00"},
     "afternoon": {"start": "16:00", "end": "00:00"},
     "evening": {"start": "00:00", "end": "08:00"},
+}
+
+# A shift may stay open at most this many hours before front-desk cash
+# operations (cash payments, walk-ins, check-in/out) are blocked. Per-hotel
+# override lives in ``reception_shift_config.max_open_hours``.
+DEFAULT_MAX_OPEN_HOURS = 12.0
+
+# Hard cap on the configurable limit (30 days) — prevents a misconfiguration
+# from effectively disabling the control.
+MAX_OPEN_HOURS_CAP_HOURS = 24 * 30
+
+# A shift that has been open at least this many hours triggers an internal
+# ``shift_open_long`` notification to the hotel manager as a heads-up
+# (before the max-open block kicks in). Per-hotel override lives in
+# ``reception_shift_config.notify_manager_hours``.
+DEFAULT_NOTIFY_MANAGER_HOURS = 8.0
+
+
+def _window_to_label(shift_type: str, start: str, end: str) -> str:
+    return f"{SHIFT_TYPE_NAMES.get(shift_type, shift_type)} ({start}-{end})"
+
+
+# Default labels — kept as a constant for backward-compatible imports; the
+# live labels for a property are resolved from ``get_shift_labels(prop_id)``.
+SHIFT_TYPE_LABELS = {
+    t: _window_to_label(t, DEFAULT_SHIFT_HOURS[t]["start"], DEFAULT_SHIFT_HOURS[t]["end"])
+    for t in SHIFT_TYPES
 }
 
 # Identifiers used by the service layer when no real user is responsible
@@ -90,6 +123,44 @@ class ActiveShiftExistsError(Exception):
         self.last_closed_over_short = last_closed_over_short
 
 
+class ShiftExpiredError(Exception):
+    """The active shift for a property has exceeded its max-open hours.
+
+    Front-desk cash operations stay blocked until the shift is closed; the
+    shift itself remains ``status=open`` (the drawer still holds cash) but
+    no new cash movements may be recorded against it.
+    """
+
+    def __init__(
+        self,
+        *,
+        shift_id: str,
+        prop_id: int,
+        opened_at: str | None = None,
+        max_open_hours: float = DEFAULT_MAX_OPEN_HOURS,
+        opened_by: str | None = None,
+    ) -> None:
+        super().__init__(
+            f"Active shift {shift_id} for prop_id={prop_id} exceeded max open hours"
+        )
+        self.shift_id = shift_id
+        self.prop_id = prop_id
+        self.opened_at = opened_at
+        self.max_open_hours = max_open_hours
+        self.opened_by = opened_by
+
+    @property
+    def message(self) -> str:
+        opened = (
+            f" (abierto el {self.opened_at})" if self.opened_at else ""
+        )
+        return (
+            f"El turno activo lleva más de {self.max_open_hours:g} horas sin cerrarse"
+            f"{opened}. Cierra el turno en Cajas y Turnos para desbloquear las "
+            "operaciones de caja."
+        )
+
+
 class ScheduleMismatchError(Exception):
     """Raised when ``open_shift`` is called with a ``shift_type`` that does
     not match the EXPECTED shift_type for the current moment.
@@ -125,18 +196,44 @@ class ScheduleMismatchError(Exception):
         self.expected_window = expected_window
 
 
-def _shift_type_for_hour(hour: int) -> str:
-    """Pure time-of-day heuristic matching ``DEFAULT_SHIFT_HOURS``.
+def _hour_in_window(hour: int, window: dict) -> bool:
+    """Whether ``hour`` (0-23) falls inside a ``{start, end}`` HH:MM window.
 
+    Windows that wrap past midnight (e.g. 22:00-06:00) are handled by
+    testing the minute-of-day and the minute-of-day+24h against the
+    unwrapped span.
+    """
+    start = _parse_hhmm(str(window.get("start", "")))
+    end = _parse_hhmm(str(window.get("end", "")))
+    if start is None or end is None:
+        return False
+    s_min = start[0] * 60 + start[1]
+    e_min = end[0] * 60 + end[1]
+    if e_min <= s_min:
+        e_min += 24 * 60
+    m = (hour % 24) * 60
+    return s_min <= m < e_min or s_min <= m + 24 * 60 < e_min
+
+
+def _shift_type_for_hour(hour: int, windows: dict | None = None) -> str:
+    """Time-of-day heuristic over the (optionally configured) windows.
+
+    With the canonical defaults:
     - 00:00–07:59  → evening
     - 08:00–15:59  → morning
     - 16:00–23:59  → afternoon
+
+    When ``windows`` (per-property config) is provided, the hour is
+    classified against those windows instead. Hours not covered by any
+    configured window — or an ambiguous overlap — fall back to the
+    canonical defaults so the heuristic never returns None.
     """
-    if 0 <= hour < 8:
-        return "evening"
-    if 8 <= hour < 16:
-        return "morning"
-    return "afternoon"
+    cfg = windows or DEFAULT_SHIFT_HOURS
+    hits = [t for t in SHIFT_TYPES if _hour_in_window(hour, cfg[t])]
+    if len(hits) == 1:
+        return hits[0]
+    default_hits = [t for t in SHIFT_TYPES if _hour_in_window(hour, DEFAULT_SHIFT_HOURS[t])]
+    return default_hits[0] if len(default_hits) == 1 else "morning"
 
 
 def _parse_hhmm(text: str) -> tuple[int, int] | None:
@@ -154,13 +251,15 @@ def _parse_hhmm(text: str) -> tuple[int, int] | None:
     return None
 
 
-def _shift_type_for_window(start_hhmm: str, end_hhmm: str) -> tuple[str, str] | None:
+def _shift_type_for_window(start_hhmm: str, end_hhmm: str, windows: dict | None = None) -> tuple[str, str] | None:
     """Map an HR-schedule window ``start-end`` (HH:MM-HH:MM) into the closest
     of our 3 cashier ``shift_type`` buckets.
 
     Handles wrap-past-midnight windows (e.g. afternoon 16:00 -> 00:00) by
-    inspecting the midpoint of the window. Returns ``None`` for empty/
-    malformed windows so the caller can fall back to the clock heuristic.
+    inspecting the midpoint of the window, classified against the
+    property's configured windows when provided. Returns ``None`` for
+    empty/malformed windows so the caller can fall back to the clock
+    heuristic.
     """
     start = _parse_hhmm(start_hhmm)
     end = _parse_hhmm(end_hhmm)
@@ -182,21 +281,30 @@ def _shift_type_for_window(start_hhmm: str, end_hhmm: str) -> tuple[str, str] | 
     # Use the midpoint of the window (also unwrapped) to assign the bucket.
     mid_minutes = s_minutes + duration_min // 2
     mid_hour = (mid_minutes // 60) % 24
-    bucket = _shift_type_for_hour(mid_hour)
+    bucket = _shift_type_for_hour(mid_hour, windows)
     return bucket, f"{start_hhmm}-{end_hhmm}"
 
 
-def resolve_expected_shift_type(opened_by: str, at_dt: datetime) -> tuple[str, str]:
+def resolve_expected_shift_type(
+    opened_by: str,
+    at_dt: datetime,
+    prop_id: int | None = None,
+) -> tuple[str, str]:
     """Resolve the EXPECTED ``shift_type`` for ``opened_by`` at ``at_dt``.
 
     Returns ``(expected_shift_type, source)`` where ``source`` is one of:
       - ``"schedule"``: an HR ``employee_shifts`` row exists for this user today.
       - ``"time_of_day"``: no HR record; using clock-hour heuristic.
 
+    When ``prop_id`` is given, the configured per-property windows drive
+    the classification; otherwise the canonical ``DEFAULT_SHIFT_HOURS``
+    are used.
+
     A MOCK for payroll/hr hours — once HR wires the schedule properly, the
     fallback will rarely fire in production.
     """
     db = get_database()
+    windows = get_shift_windows(prop_id) if prop_id else None
 
     # ── Source 1: HR schedule (per-opener, today) ────────────────────
     try:
@@ -224,6 +332,7 @@ def resolve_expected_shift_type(opened_by: str, at_dt: datetime) -> tuple[str, s
                     mapped = _shift_type_for_window(
                         today_shift.get("scheduled_start", ""),
                         today_shift.get("scheduled_end", ""),
+                        windows,
                     )
                     if mapped is not None:
                         return mapped[0], "schedule"
@@ -233,7 +342,7 @@ def resolve_expected_shift_type(opened_by: str, at_dt: datetime) -> tuple[str, s
         logger.debug("HR schedule lookup failed for %s; using time-of-day", opened_by)
 
     # ── Source 2: time-of-day heuristic (mock fallback) ───────────────
-    return _shift_type_for_hour(at_dt.hour), "time_of_day"
+    return _shift_type_for_hour(at_dt.hour, windows), "time_of_day"
 
 
 def _now_iso() -> str:
@@ -242,6 +351,251 @@ def _now_iso() -> str:
 
 def _now_dt() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# ── Per-hotel shift-window configuration ─────────────────────────────────
+
+
+def get_shift_windows(prop_id: int) -> dict[str, dict[str, str]]:
+    """Effective HH:MM windows for a property (custom config over defaults)."""
+    db = get_database()
+    doc = db[RECEPTION_SHIFT_CONFIG_COLLECTION].find_one({"prop_id": prop_id})
+    windows = {
+        t: {"start": DEFAULT_SHIFT_HOURS[t]["start"], "end": DEFAULT_SHIFT_HOURS[t]["end"]}
+        for t in SHIFT_TYPES
+    }
+    if doc and isinstance(doc.get("windows"), dict):
+        for t in SHIFT_TYPES:
+            w = doc["windows"].get(t)
+            if isinstance(w, dict) and w.get("start") and w.get("end"):
+                windows[t] = {"start": str(w["start"]), "end": str(w["end"])}
+    return windows
+
+
+def get_shift_labels(prop_id: int) -> dict[str, str]:
+    """Human labels for each shift type at a property ("Matutino (10:00-18:00)")."""
+    windows = get_shift_windows(prop_id)
+    return {
+        t: _window_to_label(t, windows[t]["start"], windows[t]["end"])
+        for t in SHIFT_TYPES
+    }
+
+
+def _max_open_hours_for_doc(doc: dict | None) -> float:
+    """Effective max-open-hours from a config doc (custom over default)."""
+    if doc and isinstance(doc.get("max_open_hours"), (int, float)):
+        try:
+            value = float(doc["max_open_hours"])
+        except (TypeError, ValueError):
+            return DEFAULT_MAX_OPEN_HOURS
+        if 0 < value <= MAX_OPEN_HOURS_CAP_HOURS:
+            return value
+    return DEFAULT_MAX_OPEN_HOURS
+
+
+def _shift_expired(start_time: Any, max_open_hours: float, now: datetime) -> bool:
+    """Whether a shift started at ``start_time`` is past its max-open window."""
+    if not start_time:
+        return False
+    try:
+        start = datetime.fromisoformat(str(start_time))
+    except (TypeError, ValueError):
+        return False
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    return now >= start + timedelta(hours=max_open_hours)
+
+
+def get_shift_config(prop_id: int) -> dict[str, Any]:
+    """Full shift config for a property (windows + labels + audit + max hours).
+
+    When no custom doc exists, returns the canonical defaults with
+    ``is_custom=False`` so clients can render the same shape either way.
+    """
+    db = get_database()
+    doc = db[RECEPTION_SHIFT_CONFIG_COLLECTION].find_one({"prop_id": prop_id})
+    windows = get_shift_windows(prop_id)
+    return {
+        "prop_id": prop_id,
+        "windows": windows,
+        "labels": {
+            t: _window_to_label(t, windows[t]["start"], windows[t]["end"])
+            for t in SHIFT_TYPES
+        },
+        "max_open_hours": _max_open_hours_for_doc(doc),
+        "notify_manager_hours": _notify_manager_hours_for_doc(doc),
+        "is_custom": doc is not None,
+        "updated_at": (
+            doc["updated_at"].isoformat()
+            if doc and isinstance(doc.get("updated_at"), datetime)
+            else None
+        ),
+        "updated_by": doc.get("updated_by") if doc else None,
+    }
+
+
+def _window_minutes(window: dict) -> tuple[int, int] | None:
+    """Raw ``(start_min, end_min)`` of a HH:MM window (no midnight unwrap)."""
+    start = _parse_hhmm(str(window.get("start", "")))
+    end = _parse_hhmm(str(window.get("end", "")))
+    if start is None or end is None:
+        return None
+    return start[0] * 60 + start[1], end[0] * 60 + end[1]
+
+
+def _window_intervals(window: dict) -> list[tuple[int, int]]:
+    """Coverage of a window as minute-of-day intervals within [0, 1440).
+
+    A window that wraps past midnight (end < start) covers two intervals:
+    [start, 1440) and [0, end).
+    """
+    raw = _window_minutes(window)
+    if raw is None:
+        return []
+    s, e = raw
+    if e == s:
+        return []
+    if e > s:
+        return [(s, e)]
+    return [(s, 1440), (0, e)]
+
+
+def _intervals_overlap(a: list[tuple[int, int]], b: list[tuple[int, int]]) -> bool:
+    for s1, e1 in a:
+        for s2, e2 in b:
+            if s1 < e2 and s2 < e1:
+                return True
+    return False
+
+
+def _validate_windows(windows: dict) -> dict[str, dict[str, str]]:
+    """Normalize + validate a full set of per-type windows.
+
+    Raises ``ValueError`` (human-readable Spanish message) on any malformed
+    window: bad HH:MM, zero/overlong duration, or overlapping coverage.
+    """
+    if not isinstance(windows, dict):
+        raise ValueError("windows debe ser un objeto con las 3 ventanas")
+    normalized: dict[str, dict[str, str]] = {}
+    parsed: dict[str, list[tuple[int, int]]] = {}
+    for t in SHIFT_TYPES:
+        w = windows.get(t)
+        if not isinstance(w, dict):
+            raise ValueError(f"Falta la ventana para el turno {t}")
+        start = str(w.get("start", "")).strip()
+        end = str(w.get("end", "")).strip()
+        raw = _window_minutes({"start": start, "end": end})
+        if raw is None:
+            raise ValueError(f"Horario inválido para el turno {t}: usa HH:MM (ej. 08:00)")
+        s_min, e_min = raw
+        # ``e == s`` is ambiguous (0 minutes vs 24h) — reject as zero-length.
+        duration = e_min - s_min if e_min >= s_min else (24 * 60 - s_min) + e_min
+        if duration <= 0:
+            raise ValueError(f"Duración inválida para el turno {t}: debe ser mayor a 0 minutos")
+        if duration > 24 * 60:
+            raise ValueError(f"Duración inválida para el turno {t}: no puede superar 24 horas")
+        normalized[t] = {"start": start, "end": end}
+        parsed[t] = _window_intervals({"start": start, "end": end})
+    for i, a in enumerate(SHIFT_TYPES):
+        for b in SHIFT_TYPES[i + 1:]:
+            if _intervals_overlap(parsed[a], parsed[b]):
+                raise ValueError(
+                    f"Las ventanas de {a} y {b} se superponen: "
+                    "cada hora debe pertenecer a un solo turno"
+                )
+    return normalized
+
+
+def _notify_manager_hours_for_doc(doc: dict | None) -> float:
+    """Effective notify-manager hours from a config doc (custom over default)."""
+    if doc and isinstance(doc.get("notify_manager_hours"), (int, float)):
+        try:
+            value = float(doc["notify_manager_hours"])
+        except (TypeError, ValueError):
+            return DEFAULT_NOTIFY_MANAGER_HOURS
+        if 0 < value <= MAX_OPEN_HOURS_CAP_HOURS:
+            return value
+    return DEFAULT_NOTIFY_MANAGER_HOURS
+
+
+def upsert_shift_config(
+    prop_id: int,
+    windows: dict,
+    max_open_hours: float | None = None,
+    notify_manager_hours: float | None = None,
+    updated_by: str = "system",
+) -> dict[str, Any]:
+    """Persist custom cash-shift windows for a property (upsert).
+
+    ``max_open_hours`` (optional) sets the per-hotel limit a shift may stay
+    open before front-desk cash operations are blocked. When omitted, the
+    existing value (or the default) is kept.
+
+    ``notify_manager_hours`` (optional) sets the per-hotel threshold at
+    which an internal ``shift_open_long`` notification is sent to the hotel
+    manager. When omitted, the existing value (or the default) is kept.
+    """
+    normalized = _validate_windows(windows)
+    now = _now_dt()
+    set_doc: dict[str, Any] = {
+        "windows": normalized,
+        "updated_at": now,
+        "updated_by": updated_by,
+    }
+    if max_open_hours is not None:
+        try:
+            value = float(max_open_hours)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Máximo de horas abierto inválido: debe ser un número") from exc
+        if not (0 < value <= MAX_OPEN_HOURS_CAP_HOURS):
+            raise ValueError(
+                f"Máximo de horas abierto inválido: debe estar entre 0 y "
+                f"{MAX_OPEN_HOURS_CAP_HOURS} horas"
+            )
+        set_doc["max_open_hours"] = round(value, 2)
+    if notify_manager_hours is not None:
+        try:
+            value = float(notify_manager_hours)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Aviso al gerente inválido: debe ser un número") from exc
+        if not (0 < value <= MAX_OPEN_HOURS_CAP_HOURS):
+            raise ValueError(
+                f"Aviso al gerente inválido: debe estar entre 0 y "
+                f"{MAX_OPEN_HOURS_CAP_HOURS} horas"
+            )
+        set_doc["notify_manager_hours"] = round(value, 2)
+    db = get_database()
+    db[RECEPTION_SHIFT_CONFIG_COLLECTION].update_one(
+        {"prop_id": prop_id},
+        {"$set": set_doc},
+        upsert=True,
+    )
+    return get_shift_config(prop_id)
+
+
+def ensure_shift_not_expired(prop_id: int) -> None:
+    """Raise ``ShiftExpiredError`` when the active shift is past its limit.
+
+    No-op when there is no active shift (the callers already 409 on that
+    case with their own message). Front-desk cash operations call this right
+    after resolving the active shift id.
+    """
+    db = get_database()
+    doc = db[RECEPTION_SHIFTS_COLLECTION].find_one(
+        {"prop_id": prop_id, "status": "open"},
+    )
+    if not doc:
+        return
+    config_doc = db[RECEPTION_SHIFT_CONFIG_COLLECTION].find_one({"prop_id": prop_id})
+    max_open_hours = _max_open_hours_for_doc(config_doc)
+    if _shift_expired(doc.get("start_time"), max_open_hours, _now_dt()):
+        raise ShiftExpiredError(
+            shift_id=str(doc["_id"]),
+            prop_id=prop_id,
+            opened_at=doc.get("start_time"),
+            max_open_hours=max_open_hours,
+            opened_by=doc.get("opened_by"),
+        )
 
 
 def _generate_txn_id() -> str:
@@ -451,15 +805,16 @@ def open_shift(
     #    warning behind a schedule-hour error. ──
     now_dt = _now_dt()
     if not bypass_schedule_check:
-        expected, source = resolve_expected_shift_type(opened_by, now_dt)
+        expected, source = resolve_expected_shift_type(opened_by, now_dt, prop_id=prop_id)
         if expected != shift_type:
             logger.info(
                 "Schedule validation REJECTED — prop_id=%s opener=%s requested=%s "
                 "expected=%s source=%s",
                 prop_id, opened_by, shift_type, expected, source,
             )
-            default_window = (
-                f"{DEFAULT_SHIFT_HOURS[expected]['start']}-{DEFAULT_SHIFT_HOURS[expected]['end']}"
+            windows = get_shift_windows(prop_id)
+            expected_window = (
+                f"{windows[expected]['start']}-{windows[expected]['end']}"
             )
             raise ScheduleMismatchError(
                 requested=shift_type,
@@ -467,7 +822,7 @@ def open_shift(
                 source=source,
                 opener_username=opened_by,
                 now_local=now_dt,
-                expected_window=default_window,
+                expected_window=expected_window,
             )
     else:
         logger.warning(
@@ -554,6 +909,8 @@ def close_shift(
     deposits: list[dict] | None = None,
     closing_notes: str = "",
     closed_by: str,
+    emergency: bool = False,
+    emergency_reason: str = "",
 ) -> dict[str, Any] | None:
     """Close an open shift, calculating cash expected, over/short, cash left,
     and linking related payments, folios and bookings via ObjectId references.
@@ -566,6 +923,12 @@ def close_shift(
             Each item: {"amount": float, "method": str, "notes": str}
         closing_notes: Free-text observations at close time.
         closed_by: Username or system identifier closing the shift.
+        emergency: Mark this close as an *emergency close* (manager-only,
+            for expired shifts that block cash operations). Stamps
+            ``close_mode="emergency"`` and the reason on the shift doc so
+            the simplified arqueo is traceable.
+        emergency_reason: Why the shift needed an emergency close. Defaults
+            to ``"vencimiento"`` when ``emergency=True``.
     """
     db = get_database()
     now_dt = _now_dt()
@@ -614,6 +977,12 @@ def close_shift(
 
     cash_over_short = round(cash_counted - cash_expected, 2)
 
+    # Emergency close markers (simplified arqueo for expired shifts). The
+    # permission gate (``shifts.manage``) is enforced in the route layer.
+    # Only stamped when emergency=True so normal closes stay unpolluted.
+    close_mode = "emergency" if emergency else None
+    close_reason = (emergency_reason or "vencimiento").strip() if emergency else ""
+
     # Collect related ObjectId references within the shift window
     start_dt = shift.get("start_time")
     if isinstance(start_dt, str):
@@ -641,6 +1010,9 @@ def close_shift(
             "booking_ids": related["booking_ids"],
         }
     }
+    if close_mode:
+        update["$set"]["close_mode"] = close_mode
+        update["$set"]["emergency_reason"] = close_reason or "vencimiento"
     db[RECEPTION_SHIFTS_COLLECTION].update_one({"_id": ObjectId(shift_id)}, update)
 
     logger.info(
@@ -658,15 +1030,218 @@ def close_shift(
     return enriched
 
 
+def _stamped_drawer_breakdown(doc: dict) -> tuple[float, int, dict[str, float]]:
+    """Stamped payments missing from the drawer, with per-method totals.
+
+    The shift's ``total_collected`` only reflects movements registered via
+    ``register_transaction`` (check-out settlements, counter payments).
+    Payments created through the billing module are stamped with
+    ``shift_id`` but never push a shift transaction, so they would be
+    invisible in the open-shifts view. We add them here, EXCLUDING any
+    payment already represented as a ``check_out``/``payment`` transaction
+    (matched by booking_id + amount) so the check-out settlement is not
+    double-counted. Only ``confirmed`` payments count; failed/refunded/
+    unapplied money never entered the drawer.
+
+    Returns ``(additional_total, stamped_count, by_method)`` where
+    ``by_method`` is ``{cash, card, transfer, other}`` of the additions —
+    the per-method slice needed for the expected-arqueo summary.
+    """
+    db = get_database()
+    shift_id = doc.get("_id")
+    empty = {"cash": 0.0, "card": 0.0, "transfer": 0.0, "other": 0.0}
+    if not shift_id:
+        return 0.0, 0, empty
+
+    counted: set[tuple[str, float]] = set()
+    for txn in doc.get("transactions") or []:
+        if txn.get("type") in ("check_out", "payment"):
+            amount = round(float(txn.get("amount", 0) or 0), 2)
+            if amount > 0:
+                counted.add((str(txn.get("booking_id") or ""), amount))
+
+    docs = list(
+        db.reservation_payments.find(
+            {"shift_id": shift_id, "status": "confirmed"},
+            {"booking_id": 1, "amount": 1, "method": 1},
+        )
+    )
+    total = 0.0
+    stamped = 0
+    by_method = dict(empty)
+    for payment in docs:
+        amount = round(float(payment.get("amount", 0) or 0), 2)
+        if amount <= 0:
+            continue
+        key = (str(payment.get("booking_id") or ""), amount)
+        if key in counted:
+            continue
+        total += amount
+        stamped += 1
+        method = str(payment.get("method") or "").lower()
+        if method in ("cash", "efectivo"):
+            by_method["cash"] = round(by_method["cash"] + amount, 2)
+        elif method in ("card", "credit_card"):
+            by_method["card"] = round(by_method["card"] + amount, 2)
+        elif method in ("bank_transfer", "transfer", "transferencia"):
+            by_method["transfer"] = round(by_method["transfer"] + amount, 2)
+        else:
+            by_method["other"] = round(by_method["other"] + amount, 2)
+    return round(total, 2), stamped, by_method
+
+
+def _stamped_drawer_addition(doc: dict) -> tuple[float, int]:
+    """Backward-compatible wrapper: just the total + count."""
+    total, stamped, _ = _stamped_drawer_breakdown(doc)
+    return total, stamped
+
+
+def list_open_shifts_overview() -> list[dict[str, Any]]:
+    """Management overview of EVERY open shift across all hotels.
+
+    A gerente/super_admin view to spot forgotten shifts: each row carries
+    the hotel label, the configured shift label, age in hours
+    (``hours_open``), the per-hotel ``max_open_hours`` limit and whether
+    the shift is already past it (``is_expired``). ``total_collected`` is
+    the UNIFIED drawer total: the shift's registered transactions plus the
+    confirmed payments stamped with its ``shift_id`` (without double-
+    counting the check-out settlement). Sorted by age descending.
+    """
+    db = get_database()
+    docs = list(
+        db[RECEPTION_SHIFTS_COLLECTION]
+        .find({"status": "open"})
+        .sort("start_time", 1)
+    )
+    now = _now_dt()
+    hotel_cache: dict[int, str] = {}
+
+    rows: list[dict[str, Any]] = []
+    for doc in docs:
+        prop_id = int(doc.get("prop_id") or 0)
+        if prop_id and prop_id not in hotel_cache:
+            hotel = db.dim_hotels.find_one(
+                {"prop_id": prop_id},
+                {"_id": 0, "display_name": 1, "hotel_name": 1},
+            )
+            hotel_cache[prop_id] = (
+                (hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel {prop_id}")
+                if hotel
+                else f"Hotel {prop_id}"
+            )
+
+        config_doc = db[RECEPTION_SHIFT_CONFIG_COLLECTION].find_one({"prop_id": prop_id})
+        max_open_hours = _max_open_hours_for_doc(config_doc)
+
+        start_raw = doc.get("start_time")
+        hours_open = 0.0
+        expires_at: str | None = None
+        try:
+            start = datetime.fromisoformat(str(start_raw))
+            if start.tzinfo is None:
+                start = start.replace(tzinfo=timezone.utc)
+            hours_open = round(max((now - start).total_seconds() / 3600.0, 0.0), 2)
+            expires_at = (start + timedelta(hours=max_open_hours)).isoformat()
+        except (TypeError, ValueError):
+            hours_open = 0.0
+
+        shift_type = doc.get("shift_type", "morning")
+        labels = get_shift_labels(prop_id)
+        stamped_total, stamped_count, stamped_methods = _stamped_drawer_breakdown(doc)
+        drawer_total = round(float(doc.get("total_collected") or 0) + stamped_total, 2)
+        # Desglose por método del arqueo esperado: transacciones del turno
+        # (por payment_method) + pagos estampados (por method), sin dedupe
+        # cruzado porque los estampados ya excluyen la liquidación contada.
+        txn_breakdown = _calc_payment_breakdown(doc.get("transactions") or [])
+        payment_breakdown = {
+            "cash": round(txn_breakdown["cash"] + stamped_methods["cash"], 2),
+            "card": round(txn_breakdown["card"] + stamped_methods["card"], 2),
+            "transfer": round(txn_breakdown["transfer"] + stamped_methods["transfer"], 2),
+            "other": round(txn_breakdown["other"] + stamped_methods["other"], 2),
+        }
+        payment_breakdown["total"] = round(sum(payment_breakdown.values()), 2)
+        rows.append(
+            {
+                "id": str(doc["_id"]),
+                "prop_id": prop_id,
+                "hotel_name": hotel_cache.get(prop_id, f"Hotel {prop_id}"),
+                "shift_type": shift_type,
+                "shift_label": labels.get(shift_type, shift_type),
+                "employee": doc.get("employee") or "—",
+                "opened_by": doc.get("opened_by"),
+                "start_time": start_raw,
+                "cash_initial": float(doc.get("cash_initial") or 0),
+                # Drawer total unificado: transacciones del turno + pagos
+                # estampados con shift_id (sin doble-contar el check-out).
+                "total_collected": drawer_total,
+                "stamped_payments_count": stamped_count,
+                "payment_breakdown": payment_breakdown,
+                "transaction_count": len(doc.get("transactions") or []),
+                "hours_open": hours_open,
+                "max_open_hours": max_open_hours,
+                "is_expired": _shift_expired(start_raw, max_open_hours, now),
+                "expires_at": expires_at,
+            }
+        )
+
+    rows.sort(key=lambda r: r["hours_open"], reverse=True)
+    return rows
+
+
+def get_shift_attribution(shift_id: str | None) -> dict[str, Any] | None:
+    """Employee/opener attribution of a shift, for stamping on money docs.
+
+    Money-handling documents (payments, refunds, folio postings) carry the
+    responsible cashier: the shift's visual ``employee`` label and the
+    authenticated opener. Returns ``None`` when the shift cannot be resolved
+    so callers can stamp ``shift_id`` alone without failing the write.
+    """
+    if not shift_id:
+        return None
+    try:
+        doc = get_database()[RECEPTION_SHIFTS_COLLECTION].find_one(
+            {"_id": ObjectId(shift_id)},
+            {"employee": 1, "opened_by": 1, "opened_by_id": 1, "shift_type": 1},
+        )
+    except Exception:
+        return None
+    if not doc:
+        return None
+    return {
+        "shift_employee": doc.get("employee"),
+        "shift_opened_by": doc.get("opened_by"),
+        "shift_opened_by_id": doc.get("opened_by_id"),
+        "shift_type": doc.get("shift_type"),
+    }
+
+
 def get_active_shift(prop_id: int) -> dict[str, Any] | None:
-    """Get the currently active (open) shift for a property."""
+    """Get the currently active (open) shift for a property.
+
+    The returned payload carries the max-open control fields (``is_expired``,
+    ``max_open_hours``, ``expires_at``) so the UI can alert when the shift
+    has been open too long and cash operations are blocked.
+    """
     db = get_database()
     doc = db[RECEPTION_SHIFTS_COLLECTION].find_one(
         {"prop_id": prop_id, "status": "open"},
     )
     if not doc:
         return None
-    return _enrich_shift(doc)
+    enriched = _enrich_shift(dict(doc))
+    config_doc = db[RECEPTION_SHIFT_CONFIG_COLLECTION].find_one({"prop_id": prop_id})
+    max_open_hours = _max_open_hours_for_doc(config_doc)
+    now = _now_dt()
+    enriched["max_open_hours"] = max_open_hours
+    enriched["is_expired"] = _shift_expired(doc.get("start_time"), max_open_hours, now)
+    try:
+        start = datetime.fromisoformat(str(doc.get("start_time")))
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        enriched["expires_at"] = (start + timedelta(hours=max_open_hours)).isoformat()
+    except (TypeError, ValueError):
+        enriched["expires_at"] = None
+    return enriched
 
 
 def get_active_shift_id(prop_id: int) -> str | None:
@@ -756,7 +1331,112 @@ def list_shifts_for_cash_control(
         .sort("closed_at", -1)
         .limit(limit)
     )
-    return [_enrich_shift(d) for d in docs]
+    shifts = [_enrich_shift(d) for d in docs]
+    # Manager view: resolve each shift's payments with their cashier
+    # attribution so the UI can show a "Responsable" column per payment,
+    # plus a per-employee summary of what each cashier collected (for
+    # detecting discrepancies between stamped and deposited cash).
+    for shift in shifts:
+        shift["payments"] = _resolve_shift_payments(shift.get("payment_ids", []))
+        shift["employee_summary"] = _shift_employee_summary(shift.get("id") or "")
+    return shifts
+
+
+def _resolve_shift_payments(payment_ids: list[Any]) -> list[dict[str, Any]]:
+    """Resolve shift-stamped payments to compact wire entries.
+
+    Returns the payment's own shift attribution (``shift_employee`` /
+    ``shift_opened_by`` / ``shift_type`` — null for payments collected
+    outside the cashier gate, e.g. web-channel) so the manager cash-control
+    view can attribute every money movement to the responsible cashier.
+    """
+    if not payment_ids:
+        return []
+    db = get_database()
+    docs = list(
+        db.reservation_payments.find(
+            {"_id": {"$in": payment_ids}},
+            {
+                "amount": 1,
+                "method": 1,
+                "reference": 1,
+                "paid_at": 1,
+                "shift_employee": 1,
+                "shift_opened_by": 1,
+                "shift_type": 1,
+            },
+        )
+    )
+    result: list[dict[str, Any]] = []
+    for doc in docs:
+        paid_at = doc.get("paid_at")
+        if isinstance(paid_at, datetime):
+            paid_at = paid_at.isoformat()
+        result.append({
+            "payment_id": str(doc.get("_id", "")),
+            "amount": round(float(doc.get("amount", 0) or 0), 2),
+            "method": doc.get("method", ""),
+            "reference": doc.get("reference"),
+            "paid_at": paid_at or "",
+            "shift_employee": doc.get("shift_employee"),
+            "shift_opened_by": doc.get("shift_opened_by"),
+            "shift_type": doc.get("shift_type"),
+        })
+    result.sort(key=lambda p: p.get("paid_at", ""), reverse=True)
+    return result
+
+
+def _shift_employee_summary(shift_id: str) -> list[dict[str, Any]]:
+    """Group the shift's stamped payments by responsible cashier.
+
+    Uses the ``shift_id`` FK (payments stamped on THIS exact shift, confirmed
+    only) as the source of truth for what was collected. Each payment is
+    attributed to its denormalized ``shift_employee`` (falls back to
+    ``shift_opened_by``); payments without any attribution group under
+    "Sin atribución" so discrepancies between stamped and deposited cash
+    are visible to the manager.
+    """
+    if not shift_id:
+        return []
+    try:
+        shift_oid = ObjectId(shift_id)
+    except Exception:
+        return []
+    db = get_database()
+    docs = list(
+        db.reservation_payments.find(
+            {"shift_id": shift_oid, "status": "confirmed"},
+            {"amount": 1, "method": 1, "shift_employee": 1, "shift_opened_by": 1},
+        )
+    )
+    groups: dict[str, dict[str, Any]] = {}
+    for doc in docs:
+        employee = doc.get("shift_employee") or doc.get("shift_opened_by") or "Sin atribución"
+        group = groups.setdefault(
+            employee,
+            {
+                "employee": employee,
+                "count": 0,
+                "total": 0.0,
+                "cash": 0.0,
+                "card": 0.0,
+                "transfer": 0.0,
+                "other": 0.0,
+            },
+        )
+        amount = round(float(doc.get("amount", 0) or 0), 2)
+        group["count"] += 1
+        group["total"] = round(group["total"] + amount, 2)
+        method = str(doc.get("method") or "").lower()
+        if method in ("cash", "efectivo"):
+            group["cash"] = round(group["cash"] + amount, 2)
+        elif method in ("card", "credit_card"):
+            group["card"] = round(group["card"] + amount, 2)
+        elif method in ("bank_transfer", "transfer", "transferencia"):
+            group["transfer"] = round(group["transfer"] + amount, 2)
+        else:
+            group["other"] = round(group["other"] + amount, 2)
+    return sorted(groups.values(), key=lambda g: g["total"], reverse=True)
 
 
 def register_transaction(

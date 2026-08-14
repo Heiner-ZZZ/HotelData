@@ -340,6 +340,74 @@
   }
 }
 
+.mcc-employee-summary {
+  display: block;
+
+  .mcc-emp-total {
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted-text);
+  }
+
+  .mcc-emp-hint {
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted-text);
+  }
+}
+
+.mcc-emp-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+
+  th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-text);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--app-border);
+    white-space: nowrap;
+
+    &.text-right {
+      text-align: right;
+    }
+
+    &.text-center {
+      text-align: center;
+    }
+  }
+
+  td {
+    font-size: 13px;
+    color: var(--app-text);
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--app-border);
+    vertical-align: middle;
+
+    &.text-right {
+      text-align: right;
+    }
+
+    &.text-center {
+      text-align: center;
+    }
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tr.unattributed .mcc-responsible-chip {
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    border-color: color-mix(in srgb, var(--danger) 25%, transparent);
+  }
+}
+
 .mcc-deposit-row,
 .mcc-transaction-row {
   display: flex;
@@ -359,6 +427,79 @@
 .mcc-transactions {
   max-height: 260px;
   overflow-y: auto;
+}
+
+.mcc-payments {
+  display: block;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.mcc-payments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+
+  th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-text);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--app-border);
+    white-space: nowrap;
+
+    &.text-right {
+      text-align: right;
+    }
+  }
+
+  td {
+    font-size: 13px;
+    color: var(--app-text);
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--app-border);
+    vertical-align: middle;
+
+    &.text-right {
+      text-align: right;
+    }
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.mcc-pay-ref {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted-text);
+}
+
+.mcc-pay-muted {
+  color: var(--muted-text);
+}
+
+.mcc-responsible-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  font-size: 0.72rem;
+  color: var(--app-text);
+  white-space: nowrap;
+  cursor: help;
+
+  .material-symbols-outlined {
+    font-size: 13px;
+    color: var(--accent);
+  }
 }
 
 .mcc-detail-row {
@@ -406,8 +547,113 @@
 .mcc-modal-footer {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
   padding: 16px 24px;
   border-top: 1px solid var(--app-border);
+}
+
+.mcc-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--app-text);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+
+  &:hover {
+    background: var(--surface-soft);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+/* Encabezado del arqueo: solo visible en la impresión/PDF. */
+.mcc-print-header {
+  display: none;
+}
+
+/* Firmas del arqueo: solo visibles en la impresión/PDF. */
+.mcc-signatures {
+  display: none;
+}
+
+.mcc-txn-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+
+  th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-text);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--app-border);
+    white-space: nowrap;
+
+    &.text-right {
+      text-align: right;
+    }
+  }
+
+  td {
+    font-size: 13px;
+    color: var(--app-text);
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--app-border);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.mcc-txn-date {
+  white-space: nowrap;
+  color: var(--muted-text);
+  font-size: 12px;
+}
+
+.mcc-txn-type {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--surface-soft);
+  color: var(--muted-text);
+
+  &.type-check_in {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent-strong, var(--accent));
+  }
+
+  &.type-check_out {
+    background: color-mix(in srgb, var(--success) 14%, transparent);
+    color: var(--success-strong);
+  }
+
+  &.type-payment {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent-strong, var(--accent));
+  }
+
+  &.type-cancellation {
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+  }
 }
 
 .text-right {
@@ -428,4 +674,186 @@
 
 .positive {
   color: var(--success-strong);
+}
+
+
+/* ═══ Print / PDF — Arqueo del cierre de turno ═══ */
+
+@media print {
+  /* Sólo el detalle del cierre se imprime: el overlay fijo se vuelve
+     estático y todo lo demás de la página desaparece. */
+  .mcc-container > *:not(.mcc-modal-overlay),
+  .mcc-modal-header,
+  .mcc-modal-footer,
+  .mcc-btn-icon,
+  .material-symbols-outlined {
+    display: none !important;
+  }
+
+  .mcc-modal-overlay {
+    position: static !important;
+    inset: auto !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  .mcc-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .mcc-modal-body {
+    padding: 0 !important;
+  }
+
+  /* Encabezado del arqueo (solo impresión): título + hotel + empleado + fecha. */
+  .mcc-print-header {
+    display: block !important;
+    margin-bottom: 16px;
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #000;
+    }
+
+    p {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: #333;
+    }
+
+    hr {
+      border: none;
+      border-top: 2px solid #000;
+      margin: 0;
+    }
+  }
+
+  .mcc-detail-grid,
+  .mcc-detail-breakdown,
+  .mcc-emp-table,
+  .mcc-payments-table {
+    background: transparent !important;
+    color: #000 !important;
+    border-color: #999 !important;
+  }
+
+  .mcc-detail-row,
+  .mcc-deposit-row,
+  .mcc-transaction-row,
+  .mcc-emp-row td,
+  .mcc-payments-table td,
+  .mcc-payments-table th,
+  .mcc-emp-table td,
+  .mcc-emp-table th,
+  .mcc-txn-table td,
+  .mcc-txn-table th {
+    color: #000 !important;
+    border-color: #999 !important;
+  }
+
+  .mcc-txn-type {
+    background: transparent !important;
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    color: #000 !important;
+  }
+
+  .mcc-txn-date {
+    color: #000 !important;
+  }
+
+  /* Secciones completas (pagos, transacciones, resumen) sin scroll: todo se imprime. */
+  .mcc-payments,
+  .mcc-transactions,
+  .mcc-employee-summary {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+    break-inside: avoid;
+  }
+
+  /* Firmas manuscritas: líneas en blanco para quien abrió y quien cerró la caja. */
+  .mcc-signatures {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid #000;
+    break-inside: avoid;
+  }
+
+  .mcc-signature-line {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 90px;
+  }
+
+  .mcc-signature-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #000 !important;
+  }
+
+  .mcc-signature-name {
+    font-size: 13px;
+    color: #000 !important;
+  }
+
+  .mcc-signature-blank {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    border-bottom: 1px solid #000;
+    font-size: 10px;
+    color: #666;
+    padding-bottom: 4px;
+  }
+
+  .mcc-detail-breakdown {
+    border-color: #999 !important;
+  }
+
+  .mcc-responsible-chip {
+    display: inline-flex !important;
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding: 1px 6px !important;
+    font-size: 0.62rem !important;
+    color: #000 !important;
+  }
+
+  .mcc-os-badge,
+  .mcc-kpi-card,
+  .mcc-table-card {
+    background: transparent !important;
+    border-color: #000 !important;
+    color: #000 !important;
+  }
+
+  .negative,
+  .positive {
+    color: #000 !important;
+    font-weight: 700;
+  }
+
+  .mono {
+    font-variant-numeric: tabular-nums;
+  }
 }

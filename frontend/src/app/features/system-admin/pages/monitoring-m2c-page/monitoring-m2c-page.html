@@ -91,6 +91,20 @@
                     <span class="mode-toggle-text">{{ scheduleEnabled() ? 'Activo' : 'Pausado' }}</span>
                   </button>
                 </div>
+                <div class="schedule-field schedule-mode">
+                  <label for="m2cRefreshMode">Modo de actualización</label>
+                  <select
+                    id="m2cRefreshMode"
+                    [value]="refreshMode()"
+                    (change)="setRefreshMode($any($event.target).value)"
+                  >
+                    <option value="full">Sobrescribir todo — barrido completo</option>
+                    <option value="incremental">Incremental — solo data nueva/actualizada</option>
+                  </select>
+                  <small class="field-hint">
+                    El DAG horario y el botón "Run pipeline" usan este modo en cada corrida.
+                  </small>
+                </div>
                 <button
                   type="button"
                   class="action-btn"
@@ -282,6 +296,77 @@
             }
           </section>
         }
+
+        <!-- Directorio Dato (parquet) -->
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('dato')">
+            <div>
+              <h2>Directorio Dato (parquet)</h2>
+              <p>
+                @if (dato()?.exists) {
+                  {{ datoSections().length }} secciones · corrida del {{ dato()?.run_date }}
+                } @else {
+                  Sin corrida registrada todavía.
+                }
+              </p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'dato' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'dato') {
+            <div class="accordion-body dato-body">
+              @if (dato(); as dato) {
+                <div class="dato-overview">
+                  <div class="dato-metric">
+                    <span class="execution-label">Ruta (host)</span>
+                    <code>{{ dato.root || '—' }}</code>
+                  </div>
+                  <div class="dato-metric">
+                    <span class="execution-label">Contenedor</span>
+                    <code>{{ dato.container_path || '—' }}</code>
+                  </div>
+                  <div class="dato-metric">
+                    <span class="execution-label">Fecha de la corrida</span>
+                    <strong>{{ dato.run_date || '—' }}</strong>
+                  </div>
+                </div>
+
+                @if (datoSections().length === 0) {
+                  <p class="dato-empty">
+                    Aún no hay parquet escritos. Ejecuta el pipeline para generar las secciones
+                    Crudo, Procesado y Terminado en <code>Dato/&lt;Sección&gt;/&lt;YYYY-MM-DD&gt;/</code>.
+                  </p>
+                }
+
+                @for (section of datoSections(); track section.key) {
+                  <div class="dato-section">
+                    <div class="dato-section-head">
+                      <span class="dato-section-name">{{ section.key }}</span>
+                      <span class="dato-section-meta">{{ section.files }} archivos · {{ section.rows | number }} filas</span>
+                    </div>
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Tabla</th>
+                            <th>Filas</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (table of section.tables; track table.name) {
+                            <tr>
+                              <td><code>{{ table.name }}</code></td>
+                              <td class="dato-row-count">{{ table.rows | number }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </section>
       }
     }
   }

@@ -1,10 +1,10 @@
 import {
+  computeNavVisibility,
   countSectionCodes,
   countSectionCodesWithHidden,
   expandManageCodes,
   filterResourcesByQuery,
   isMatrixVisibleCode,
-  isNavItemVisible,
   MATRIX_BASE_ACTIONS,
   MATRIX_CONDITIONAL_ACTIONS,
   matrixActionColumns,
@@ -398,45 +398,72 @@ describe('sectionForResource', () => {
 });
 
 describe('sectionForNavItem', () => {
-  it('uses the nav section field when it is a known group', () => {
-    expect(sectionForNavItem({ section: 'PMS', href: '/management/profile' })).toBe('PMS');
-    expect(sectionForNavItem({ section: 'CRS', href: '/management/rates' })).toBe('CRS');
+  it('uses the tree slug prefix to bucket known groups', () => {
+    expect(sectionForNavItem({ slug: 'gestion.pms.perfil', href: '/management/profile' })).toBe('PMS');
+    expect(sectionForNavItem({ slug: 'gestion.reservas.tarifas', href: '/management/rates' })).toBe('CRS');
+    expect(sectionForNavItem({ slug: 'gestion.housekeeping.mantenimiento' })).toBe('Housekeeping');
+    expect(sectionForNavItem({ slug: 'gestion.rrhh.portal' })).toBe('RRHH');
+    expect(sectionForNavItem({ slug: 'gestion.revenue.reportes' })).toBe('Revenue');
+    expect(sectionForNavItem({ slug: 'gestion.billing.pagos' })).toBe('Billing');
+    expect(sectionForNavItem({ slug: 'huesped.buscar' })).toBe('Cliente');
   });
 
-  it('buckets system/admin/ownership hrefs into Sistema', () => {
-    expect(sectionForNavItem({ href: '/system/audit' })).toBe('Sistema');
+  it('buckets system/admin/ownership slugs and hrefs into Sistema', () => {
+    expect(sectionForNavItem({ slug: 'sistema.usuarios', href: '/system/users' })).toBe('Sistema');
+    expect(sectionForNavItem({ slug: 'propietario.usuarios', href: '/ownership/users' })).toBe('Sistema');
+    // fallback por href
     expect(sectionForNavItem({ href: '/admin/global-settings' })).toBe('Sistema');
-    expect(sectionForNavItem({ href: '/ownership/users' })).toBe('Sistema');
   });
 
-  it('buckets search/account hrefs into Cliente', () => {
+  it('buckets search/account hrefs into Cliente (fallback)', () => {
     expect(sectionForNavItem({ href: '/search' })).toBe('Cliente');
     expect(sectionForNavItem({ href: '/account/bookings' })).toBe('Cliente');
   });
 
-  it('falls back to PMS for management items without a section', () => {
+  it('falls back to PMS for management items without a slug', () => {
     expect(sectionForNavItem({ href: '/management/profile' })).toBe('PMS');
   });
 });
 
-describe('isNavItemVisible (live preview, no server round-trip)', () => {
-  it('is visible when the required code is selected', () => {
-    expect(isNavItemVisible({ requiredPermission: 'reservations.read' }, ['reservations.read'])).toBe(true);
+describe('computeNavVisibility (live top-down preview, no server round-trip)', () => {
+  const tree = [
+    { slug: 'gestion', parentSlug: null, permissionCode: null },
+    { slug: 'gestion.reservas', parentSlug: 'gestion', permissionCode: 'reservations.read' },
+    { slug: 'gestion.reservas.tarifas', parentSlug: 'gestion.reservas', permissionCode: 'rates.read' },
+    { slug: 'gestion.reservas.informes', parentSlug: 'gestion.reservas', permissionCode: 'reports.tactical.read' },
+    { slug: 'gestion.reservas.informes.adr', parentSlug: 'gestion.reservas.informes', permissionCode: 'reports.rates.adr.read' },
+  ];
+
+  it('marks a node visible when its code and ancestors are selected', () => {
+    const vis = computeNavVisibility(tree, ['reservations.read', 'rates.read']);
+    expect(vis.get('gestion.reservas')).toBe(true);
+    expect(vis.get('gestion.reservas.tarifas')).toBe(true);
   });
 
-  it('is visible when manage expands into the required code', () => {
-    expect(isNavItemVisible({ requiredPermission: 'reservations.read' }, ['reservations.manage'])).toBe(true);
+  it('expands manage into the required read code', () => {
+    const vis = computeNavVisibility(tree, ['reservations.manage', 'rates.read']);
+    expect(vis.get('gestion.reservas.tarifas')).toBe(true);
   });
 
-  it('is hidden when the code is missing', () => {
-    expect(isNavItemVisible({ requiredPermission: 'housekeeping.read' }, ['reservations.read'])).toBe(false);
+  it('hides a leaf whose area container is not satisfied (top-down pruning)', () => {
+    // tiene el fino pero NO reports.tactical.read → el container Informes queda oculto
+    const vis = computeNavVisibility(tree, ['reservations.read', 'reports.rates.adr.read']);
+    expect(vis.get('gestion.reservas.informes')).toBe(false);
+    expect(vis.get('gestion.reservas.informes.adr')).toBe(false);
   });
 
-  it('is visible when the item requires nothing', () => {
-    expect(isNavItemVisible({ requiredPermission: null }, [])).toBe(true);
+  it('hides descendants when an ancestor is missing', () => {
+    const vis = computeNavVisibility(tree, ['rates.read']); // sin reservations.read
+    expect(vis.get('gestion.reservas.tarifas')).toBe(false);
+  });
+
+  it('is visible for nodes requiring nothing', () => {
+    const vis = computeNavVisibility(tree, []);
+    expect(vis.get('gestion')).toBe(true);
   });
 
   it('is visible for the super-admin wildcard', () => {
-    expect(isNavItemVisible({ requiredPermission: 'users.read' }, ['*.*'])).toBe(true);
+    const vis = computeNavVisibility(tree, ['*.*']);
+    expect(vis.get('gestion.reservas.informes.adr')).toBe(true);
   });
 });

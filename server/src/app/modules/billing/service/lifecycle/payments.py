@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import secrets
 from datetime import datetime
 
@@ -26,6 +27,38 @@ from src.app.modules.billing.service.lifecycle._helpers import (
     INVOICES,
     PAYMENTS,
 )
+
+
+def _valid_object_id(value: str) -> bool:
+    """Whether a string is a valid Mongo ObjectId hex."""
+    if not value:
+        return False
+    try:
+        ObjectId(value)
+        return True
+    except Exception:
+        return False
+
+
+def _shift_attribution(shift_id: str) -> dict | None:
+    """Denormalized cashier attribution of a shift (best-effort).
+
+    Resolves the shift's employee/opener so money documents carry the
+    responsible cashier without a join. Never raises: an unresolvable shift
+    still leaves the ``shift_id`` FK on the document.
+    """
+    try:
+        from src.app.modules.reception import get_shift_attribution
+        attr = get_shift_attribution(shift_id)
+        if not attr:
+            return None
+        return {
+            key: attr[key]
+            for key in ("shift_employee", "shift_opened_by", "shift_opened_by_id", "shift_type")
+            if attr.get(key) is not None
+        }
+    except Exception:
+        return None
 
 
 def _emit_payment_domain_event(payment: dict) -> None:
@@ -151,6 +184,12 @@ def create_payment(
         "reference": reference or f"PAY-{secrets.token_hex(6).upper()}",
         "paid_at": effective_paid_at,
     }
+    # The shift FK alone already ties the payment to the cashier; stamp the
+    # employee/opener denormalized so reports don't need the join.
+    if shift_id:
+        attr = _shift_attribution(shift_id)
+        if attr:
+            doc.update(attr)
     if evidence_type:
         doc["evidence_type"] = evidence_type
     if evidence_reference:
@@ -285,6 +324,9 @@ def list_payments(
     prop_id: int | None = None,
     page: int = 1,
     page_size: int = 20,
+    sin_turno: bool = False,
+    shift_id: str | None = None,
+    employee: str | None = None,
 ) -> dict:
     db = get_database()
     query: dict = {}
@@ -294,6 +336,20 @@ def list_payments(
         booking = _find_booking(booking_id)
         booking_str_id = booking.get("booking_id") if booking else booking_id
         query["booking_id"] = booking_str_id
+    if sin_turno:
+        # Legacy payments without shift attribution: `shift_id` missing or null.
+        query["shift_id"] = None
+    if shift_id:
+        # Audit filter: exact shift that collected the payment.
+        try:
+            query["shift_id"] = ObjectId(shift_id)
+        except Exception:
+            query["shift_id"] = shift_id
+    if employee and employee.strip():
+        # Audit filter: cashier that handled the money — matches the shift's
+        # employee label OR the IAM opener (case-insensitive contains).
+        rx = {"$regex": re.escape(employee.strip()), "$options": "i"}
+        query["$or"] = [{"shift_employee": rx}, {"shift_opened_by": rx}]
     total = db[PAYMENTS].count_documents(query)
     cursor = (
         db[PAYMENTS]
@@ -303,6 +359,13 @@ def list_payments(
         .limit(page_size)
     )
     items = [_enrich_payment(doc) for doc in cursor]
+    # Badge for the payments list: how many legacy (unattributed) payments the
+    # hotel still has pending shift-linking. Scoped to the same prop (or all
+    # hotels when no prop filter), matching exactly what ``sin_turno`` shows.
+    legacy_query: dict = {"shift_id": None}
+    if prop_id:
+        legacy_query["prop_id"] = prop_id
+    legacy_pending_count = db[PAYMENTS].count_documents(legacy_query)
     return {
         "items": items,
         "total": total,
@@ -310,7 +373,60 @@ def list_payments(
         "page_size": page_size,
         "has_next": page * page_size < total,
         "has_prev": page > 1,
+        "legacy_pending_count": legacy_pending_count,
     }
+
+
+def link_payment_to_shift(
+    payment_id: str,
+    shift_id: str,
+    *,
+    changed_by: str = "system",
+) -> dict:
+    """Link a legacy payment (without attribution) to the responsible shift.
+
+    Stamps the shift FK plus the denormalized employee/opener attribution on
+    the payment and its fact mirror, so cash-control reconciliation and the
+    payments list show who handled the collection.
+
+    Raises ``ValueError`` with a machine-readable code on conflicts:
+    - ``payment_not_found`` / ``shift_not_found``
+    - ``payment_already_linked`` (the payment already carries a shift)
+    - ``shift_prop_mismatch`` (shift belongs to another property)
+    """
+    db = get_database()
+    try:
+        pay_id = ObjectId(payment_id)
+    except Exception:
+        raise ValueError("payment_not_found") from None
+    payment = db[PAYMENTS].find_one({"_id": pay_id})
+    if not payment:
+        raise ValueError("payment_not_found")
+    if payment.get("shift_id"):
+        raise ValueError("payment_already_linked")
+
+    try:
+        shift_oid = ObjectId(shift_id)
+    except Exception:
+        raise ValueError("shift_not_found") from None
+    shift = db.reception_shifts.find_one({"_id": shift_oid})
+    if not shift:
+        raise ValueError("shift_not_found")
+    if int(shift.get("prop_id", 0) or 0) != int(payment.get("prop_id", 0) or 0):
+        raise ValueError("shift_prop_mismatch")
+
+    update: dict = {"shift_id": shift_oid, "updated_at": _now()}
+    attr = _shift_attribution(str(shift_oid))
+    if attr:
+        update.update(attr)
+    update["shift_linked_by"] = changed_by
+    update["shift_linked_at"] = _now()
+
+    _update_both(PAYMENTS, FACT_PAYMENTS, pay_id, {"$set": update})
+    refreshed = db[PAYMENTS].find_one({"_id": pay_id})
+    if refreshed:
+        db[FACT_PAYMENTS].replace_one({"_id": pay_id}, dict(refreshed), upsert=True)
+    return _enrich_payment(refreshed)
 
 
 def get_payment(payment_id: str) -> dict | None:
@@ -372,7 +488,24 @@ def classify_failed_payment_informational(
     return _enrich_payment(refreshed) if refreshed else None
 
 
-def refund_payment(payment_id: str, *, refund_id: str | None = None) -> dict | None:
+def refund_payment(
+    payment_id: str,
+    *,
+    refund_id: str | None = None,
+    refund_reason: str | None = None,
+    changed_by: str | None = None,
+    shift_id: str | None = None,
+) -> dict | None:
+    """Refund a confirmed payment, persisting the refund history on the doc.
+
+    ``refund_reason`` (motivo/nota del reembolso) y ``changed_by`` (quién lo
+    ejecutó) quedan guardados en Mongo sobre el pago y su espejo de hechos,
+    para que el historial del reembolso sea auditable. Ambos son opcionales:
+    una llamada sin ellos conserva el comportamiento legacy (sin campos extra).
+
+    ``shift_id`` (opcional) estampa el turno del cajero responsable del
+    reembolso (``refund_shift_id`` + atribución) sobre el pago y su espejo.
+    """
     db = get_database()
     try:
         from bson.errors import InvalidId
@@ -386,6 +519,7 @@ def refund_payment(payment_id: str, *, refund_id: str | None = None) -> dict | N
 
     current_status = pay.get("status", "")
     requested_refund_id = str(refund_id or "").strip() or None
+    normalized_reason = str(refund_reason or "").strip() or None
     if current_status == "refunded":
         # An explicit refund id makes a retry safe and observable. Legacy calls
         # without one retain the old duplicate-refund response so clients can
@@ -448,9 +582,24 @@ def refund_payment(payment_id: str, *, refund_id: str | None = None) -> dict | N
         return None
 
     now = _now()
+    refund_set: dict = {"status": "refunded", "refund_id": event_id, "refunded_at": now, "updated_at": now}
+    # Historial auditable del reembolso: motivo/nota y quién lo ejecutó. Solo se
+    # escriben cuando se proveen, para no contaminar el doc legacy.
+    if normalized_reason:
+        refund_set["refund_reason"] = normalized_reason
+    if changed_by:
+        refund_set["refunded_by"] = changed_by
+    # Turno responsable del reembolso (opcional): estampa el FK + atribución.
+    if shift_id:
+        refund_set["refund_shift_id"] = ObjectId(shift_id) if _valid_object_id(shift_id) else shift_id
+        attr = _shift_attribution(shift_id)
+        if attr:
+            for key in ("shift_employee", "shift_opened_by", "shift_opened_by_id", "shift_type"):
+                if attr.get(key) is not None:
+                    refund_set[f"refund_{key}"] = attr[key]
     updated = db[PAYMENTS].find_one_and_update(
         {"_id": pay_id, "status": current_status},
-        {"$set": {"status": "refunded", "refund_id": event_id, "refunded_at": now, "updated_at": now}},
+        {"$set": refund_set},
         return_document=ReturnDocument.AFTER,
     )
     if not updated:
@@ -459,7 +608,7 @@ def refund_payment(payment_id: str, *, refund_id: str | None = None) -> dict | N
         PAYMENTS,
         FACT_PAYMENTS,
         pay_id,
-        {"$set": {"status": "refunded", "refund_id": event_id, "refunded_at": now, "updated_at": now}},
+        {"$set": refund_set},
     )
 
     if updated.get("invoice_id"):

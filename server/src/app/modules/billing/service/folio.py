@@ -556,6 +556,40 @@ def create_folio(booking_id: str, *, shift_id: str | None = None) -> dict | None
     return _enrich_folio(refreshed) if refreshed else None
 
 
+def _resolve_created_shift(doc: dict) -> dict | None:
+    """Resolve the shift that opened the folio (check-in cash shift).
+
+    ``create_folio`` ties the folio to the active cash shift at check-in via
+    the ``shift_id`` FK. Returns the responsible cashier + shift label, or
+    ``None`` when the folio has no shift (web-channel stays) or the shift
+    cannot be resolved — the UI then shows no attribution instead of failing.
+    """
+    raw_shift_id = doc.get("shift_id")
+    if not raw_shift_id:
+        return None
+    try:
+        from src.app.modules.reception import get_shift
+        from src.app.modules.reception.shifts import get_shift_labels
+        shift_id = str(raw_shift_id)
+        shift_doc = get_shift(shift_id)
+        if not shift_doc:
+            return None
+        shift_type = shift_doc.get("shift_type") or ""
+        prop_id = int(doc.get("prop_id") or 0)
+        return {
+            "shift_id": shift_id,
+            "shift_type": shift_type,
+            "shift_label": get_shift_labels(prop_id).get(shift_type, shift_type) or None,
+            "employee": shift_doc.get("employee"),
+            "opened_by": shift_doc.get("opened_by"),
+            "start_time": shift_doc.get("start_time"),
+        }
+    except Exception:
+        logger = __import__("logging").getLogger(__name__)
+        logger.exception("Failed to resolve created_shift for folio %s", doc.get("booking_id"))
+        return None
+
+
 def get_folio(booking_id: str) -> dict | None:
     """Get the active folio for a booking by booking_id.
 
@@ -593,7 +627,9 @@ def get_folio(booking_id: str) -> dict | None:
         db[FOLIO_COLLECTION].update_one({"booking_id": booking_id}, {"$set": updates})
         doc.update(updates)
 
-    return _enrich_folio(doc)
+    enriched = _enrich_folio(doc)
+    enriched["created_shift"] = _resolve_created_shift(doc)
+    return enriched
 
 
 def get_folio_by_id(folio_id: str) -> dict | None:
@@ -605,7 +641,11 @@ def get_folio_by_id(folio_id: str) -> dict | None:
         return None
     db = get_database()
     doc = db[FOLIO_COLLECTION].find_one({"_id": doc_id})
-    return _enrich_folio(doc) if doc else None
+    if not doc:
+        return None
+    enriched = _enrich_folio(doc)
+    enriched["created_shift"] = _resolve_created_shift(doc)
+    return enriched
 
 
 def post_to_folio(
@@ -620,12 +660,18 @@ def post_to_folio(
     reference_id: str = "",
     reference_type: str = "additional_charge",
     posted_at: datetime | None = None,
+    shift_id: str | None = None,
+    shift_attribution: dict | None = None,
 ) -> dict | None:
     """Post a transaction to the folio.
 
     Supports types: charge, discount, payment, adjustment.
     Automatically recalculates total_charges, total_discounts,
     total_payments, and total_due on the folio.
+
+    ``shift_id``/``shift_attribution`` (optional) stamp the responsible
+    cashier shift on the posting entry — used by the front-desk routes so
+    every money movement is attributable.
 
     Returns the updated folio, or None if not found.
     """
@@ -675,6 +721,15 @@ def post_to_folio(
         "reference_type": reference_type,
         "posted_at": now,
     }
+    if shift_id:
+        try:
+            posting["shift_id"] = ObjectId(shift_id)
+        except Exception:
+            posting["shift_id"] = shift_id
+    if shift_attribution:
+        for key in ("shift_employee", "shift_opened_by", "shift_opened_by_id", "shift_type"):
+            if shift_attribution.get(key) is not None:
+                posting[key] = shift_attribution[key]
 
     # Build atomic $inc fields — total_due is incremented atomically
     # alongside its component fields, eliminating the TOCTOU race.

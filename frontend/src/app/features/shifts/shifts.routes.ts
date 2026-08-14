@@ -16,4 +16,9 @@ export const SHIFTS_ROUTES: Routes = [
     loadComponent: () =>
       import('./pages/manager-cash-control-page/manager-cash-control-page').then(m => m.ManagerCashControlPageComponent),
   },
+  {
+    path: 'open-shifts',
+    loadComponent: () =>
+      import('./pages/open-shifts-overview-page/open-shifts-overview-page').then(m => m.OpenShiftsOverviewPageComponent),
+  },
 ];

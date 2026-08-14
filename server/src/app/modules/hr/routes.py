@@ -1575,7 +1575,46 @@ def list_employees(
         .skip((page - 1) * page_size)
         .limit(page_size)
     )
-    items = [EmployeeResponse.model_validate(_serialize_hr_doc(doc)) for doc in cursor]
+    docs = list(cursor)
+
+    # Estado de cuenta + rol por hotel (para el indicador del directorio):
+    # has_user_account = employees.user_id resuelve a un users._id vivo
+    # (un user_id huérfano cuenta como "sin cuenta"); role_assigned =
+    # existe role_assignments para ese user EN EL prop_id del empleado.
+    live_user_ids: set[ObjectId] = set()
+    assigned_pairs: set[tuple[ObjectId, int]] = set()
+    candidate_user_ids = {
+        _to_object_id_ref(doc.get("user_id"))
+        for doc in docs
+        if isinstance(_to_object_id_ref(doc.get("user_id")), ObjectId)
+    }
+    if candidate_user_ids:
+        live_user_ids = {
+            u["_id"]
+            for u in db.users.find({"_id": {"$in": list(candidate_user_ids)}}, {"_id": 1})
+        }
+        emp_prop_ids = {doc.get("prop_id") for doc in docs if doc.get("prop_id")}
+        assigned_rows = db.role_assignments.find(
+            {
+                "user_id": {"$in": list(candidate_user_ids)},
+                "prop_id": {"$in": list(emp_prop_ids)},
+            },
+            {"user_id": 1, "prop_id": 1},
+        )
+        assigned_pairs = {
+            (row["user_id"], row["prop_id"])
+            for row in assigned_rows
+            if isinstance(row.get("user_id"), ObjectId) and isinstance(row.get("prop_id"), int)
+        }
+
+    items = []
+    for doc in docs:
+        payload = _serialize_hr_doc(doc)
+        user_ref = _to_object_id_ref(doc.get("user_id"))
+        has_account = isinstance(user_ref, ObjectId) and user_ref in live_user_ids
+        payload["has_user_account"] = has_account
+        payload["role_assigned"] = has_account and (user_ref, doc.get("prop_id")) in assigned_pairs
+        items.append(EmployeeResponse.model_validate(payload))
 
     register_action(
         prop_id=prop_id or 0,

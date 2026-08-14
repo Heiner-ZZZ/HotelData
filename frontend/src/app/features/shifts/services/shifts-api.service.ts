@@ -37,8 +37,20 @@ export interface ShiftInfo {
   cash_difference?: number;
   cash_expected?: number;
   payment_ids?: string[];
+  /** Resolved payments with their cashier attribution (manager cash-control). */
+  payments?: ShiftPayment[];
+  /** Per-employee totals of what each cashier collected in the shift
+   *  (stamped payments grouped by responsible, for detecting discrepancies
+   *  between stamped and deposited cash). */
+  employee_summary?: EmployeeSummary[];
   folio_ids?: string[];
   booking_ids?: string[];
+  /** Max-open-hours control: true when the shift is past its hotel limit. */
+  is_expired?: boolean;
+  /** Effective per-hotel max-open-hours limit (hours). */
+  max_open_hours?: number;
+  /** ISO timestamp when the shift reaches its max-open-hours limit. */
+  expires_at?: string | null;
 }
 
 export interface ShiftTransaction {
@@ -49,6 +61,29 @@ export interface ShiftTransaction {
   payment_method: string;
   timestamp: string;
   description: string;
+}
+
+/** A payment collected during the shift, with its responsible cashier. */
+export interface EmployeeSummary {
+  employee: string;
+  count: number;
+  total: number;
+  cash: number;
+  card: number;
+  transfer: number;
+  other: number;
+}
+
+export interface ShiftPayment {
+  payment_id: string;
+  amount: number;
+  method: string;
+  reference: string | null;
+  paid_at: string;
+  /** Cashier attribution stamped on the payment (null when not shift-gated). */
+  shift_employee: string | null;
+  shift_opened_by: string | null;
+  shift_type: string | null;
 }
 
 export interface PaymentBreakdown {
@@ -68,6 +103,28 @@ export interface DepositRecord {
 /** Methods that reduce the physical cash left in the drawer. */
 export const CASH_DEPOSIT_METHODS = ['cash', 'efectivo', ''];
 
+/** The three cashier shift buckets (hours are configurable per hotel). */
+export const SHIFT_TYPES = ['morning', 'afternoon', 'evening'] as const;
+
+export interface ShiftWindow {
+  start: string;
+  end: string;
+}
+
+/** Per-hotel shift-window config (windows + computed labels + audit). */
+export interface ShiftConfig {
+  prop_id: number;
+  windows: Record<string, ShiftWindow>;
+  labels: Record<string, string>;
+  /** Max hours a shift may stay open before front-desk cash ops are blocked. */
+  max_open_hours: number;
+  /** Hours after which an internal heads-up notification is sent to the manager. */
+  notify_manager_hours: number;
+  is_custom: boolean;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
 export interface ShiftCloseSummary {
   cash_initial: number;
   cash_final: number;
@@ -84,6 +141,31 @@ export interface ShiftCloseSummary {
   payment_count: number;
   folio_count: number;
   booking_count: number;
+}
+
+/** One open shift across the chain (gerencia view: forgotten-shift detection). */
+export interface OpenShiftOverview {
+  id: string;
+  prop_id: number;
+  hotel_name: string;
+  shift_type: string;
+  /** Human label including the effective window, e.g. "Matutino (07:00-15:00)". */
+  shift_label: string;
+  employee: string;
+  opened_by?: string | null;
+  start_time: string;
+  cash_initial: number;
+  total_collected: number;
+  /** Expected drawer breakdown by method (fondo + cobrado unificado), for
+   *  the arqueo summary shown before a forced close. */
+  payment_breakdown?: PaymentBreakdown;
+  transaction_count: number;
+  /** Hours since the shift was opened (age). */
+  hours_open: number;
+  /** Per-hotel max-open-hours limit. */
+  max_open_hours: number;
+  is_expired: boolean;
+  expires_at: string | null;
 }
 
 /** Returned in the error.detail when POST /shifts/open hits an active shift. */
@@ -183,12 +265,16 @@ export class ShiftsApiService {
 
   /** Close an active shift with full cash register data.
    *
-   * @param shiftId      Shift to close.
-   * @param cashCounted  Physical cash counted in the drawer.
-   * @param cashLeft     Cash left in drawer for next shift (optional).
-   * @param deposits     Deposit/drop records (optional).
-   * @param closingNotes Free-text observations (optional).
-   * @param closedBy     User closing the shift (optional).
+   * @param shiftId         Shift to close.
+   * @param cashCounted     Physical cash counted in the drawer.
+   * @param cashLeft        Cash left in drawer for next shift (optional).
+   * @param deposits        Deposit/drop records (optional).
+   * @param closingNotes    Free-text observations (optional).
+   * @param closedBy        User closing the shift (optional).
+   * @param emergency       Manager-only emergency close of an expired shift
+   *                        (simplified arqueo). Requires ``shifts.manage``.
+   * @param emergencyReason Why the shift needed an emergency close
+   *                        (defaults to ``vencimiento`` on the server).
    */
   closeShift(
     shiftId: string,
@@ -197,6 +283,8 @@ export class ShiftsApiService {
     deposits?: DepositRecord[],
     closingNotes?: string,
     closedBy?: string,
+    emergency?: boolean,
+    emergencyReason?: string,
   ) {
     interface ShiftClosePayload {
       cash_counted: number;
@@ -204,6 +292,8 @@ export class ShiftsApiService {
       deposits?: DepositRecord[];
       closing_notes?: string;
       closed_by?: string;
+      emergency?: boolean;
+      emergency_reason?: string;
     }
 
     const body: ShiftClosePayload = { cash_counted: cashCounted };
@@ -211,6 +301,10 @@ export class ShiftsApiService {
     if (deposits?.length) body.deposits = deposits;
     if (closingNotes !== undefined) body.closing_notes = closingNotes;
     if (closedBy) body.closed_by = closedBy;
+    if (emergency) {
+      body.emergency = true;
+      body.emergency_reason = emergencyReason || 'vencimiento';
+    }
 
     return this.http.post<{ shift: ShiftInfo; message: string; summary: ShiftCloseSummary }>(
       `/api/reception/shifts/${shiftId}/close`,
@@ -257,6 +351,53 @@ export class ShiftsApiService {
     return this.http.get<{ items: ShiftInfo[]; total: number }>(
       '/api/reception/shifts/manager-control',
       { params, withCredentials: true },
+    );
+  }
+
+  /** Effective shift-window config for a property (defaults when no custom doc). */
+  getShiftConfig(propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.get<{ config: ShiftConfig }>(
+      '/api/reception/shifts/config',
+      { params, withCredentials: true },
+    );
+  }
+
+  /**
+   * Management view: every open cash shift across all hotels, with age.
+   *
+   * Requires `shifts.manage`.
+   */
+  getOpenShiftsOverview() {
+    return this.http.get<{ items: OpenShiftOverview[]; total: number }>(
+      '/api/reception/shifts/open-overview',
+      { withCredentials: true },
+    );
+  }
+
+  /**
+   * Persist custom cash-shift windows (HH:MM start/end) for a property.
+   *
+   * Requires `shifts.manage`; the server rejects overlapping / malformed
+   * windows with HTTP 400 and a Spanish detail message.
+   */
+  updateShiftConfig(
+    propId: number,
+    windows: Record<string, ShiftWindow>,
+    maxOpenHours?: number,
+    notifyManagerHours?: number,
+  ) {
+    const body: Record<string, unknown> = { prop_id: propId, windows };
+    if (maxOpenHours !== null && maxOpenHours !== undefined) {
+      body['max_open_hours'] = maxOpenHours;
+    }
+    if (notifyManagerHours !== null && notifyManagerHours !== undefined) {
+      body['notify_manager_hours'] = notifyManagerHours;
+    }
+    return this.http.put<{ config: ShiftConfig; message: string }>(
+      '/api/reception/shifts/config',
+      body,
+      { withCredentials: true },
     );
   }
 }

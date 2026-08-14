@@ -66,6 +66,12 @@
                     }
                     <span class="tx-row-date">{{ p.postedAt | date:'dd/MM/yy HH:mm' }}</span>
                   </div>
+                  @if (shiftLabel(p); as responsible) {
+                    <span class="tx-shift-chip" [title]="shiftTitle(p)">
+                      <span class="material-symbols-outlined">point_of_sale</span>
+                      {{ responsible }}
+                    </span>
+                  }
                 </div>
                 <div class="tx-row-amount mono" [class.tx-positive]="p.type === 'payment'" [class.tx-negative]="p.type === 'charge' || p.type === 'room'">
                   {{ p.type === 'payment' ? '−' : p.type === 'discount' || p.type === 'adjustment' ? '−' : '+' }}{{ p.amount | currency:'USD':'symbol':'1.0-2' }}

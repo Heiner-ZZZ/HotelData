@@ -4,10 +4,12 @@
     title="Tablero de Control Estratégico"
     [description]="(bscResource.value()?.periodLabel) ?? 'Indicadores clave por perspectiva'"
   >
-    <button type="button" class="header-action-btn" slot="actions" (click)="exportReport()">
-      <span class="material-symbols-outlined" aria-hidden="true">download</span>
-      Exportar reporte
-    </button>
+    @if (canExport()) {
+      <button type="button" class="header-action-btn" slot="actions" (click)="exportReport()">
+        <span class="material-symbols-outlined" aria-hidden="true">download</span>
+        Exportar reporte
+      </button>
+    }
   </app-page-header>
 
   @switch (viewState()) {

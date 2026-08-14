@@ -38,7 +38,7 @@ def get_check_out_detail(booking_id: str) -> dict[str, Any]:
             "check_in_date_actual": 1, "check_in_time_actual": 1,
             "total_price": 1, "currency": 1, "total_nights": 1,
             "rooms": 1, "room_type_id": 1,
-            "assigned_rooms": 1, "folio": 1, "check_in_by": 1,
+            "assigned_rooms": 1, "folio": 1, "check_in_by": 1, "shift_id": 1,
             "payment_method": 1, "booking_source": 1, "status": 1, "stay_status": 1,
             "total_charges": 1,
             "check_out_date_actual": 1, "check_out_time_actual": 1, "check_out_by": 1,
@@ -137,6 +137,27 @@ def get_check_out_detail(booking_id: str) -> dict[str, Any]:
     deposit = booking.get("check_in_deposit_received", False)
     payment_pending = booking.get("check_in_payment_pending", True)
 
+    # Shift attribution: the front-desk cash shift that handled the check-out
+    # (stamped at completion). Resolves the responsible cashier + shift label
+    # so the liquidation page can show who processed the money movement.
+    check_out_shift_id: str | None = None
+    check_out_shift: dict[str, Any] | None = None
+    raw_shift_id = booking.get("shift_id")
+    if raw_shift_id:
+        from src.app.modules.reception import get_shift
+        from src.app.modules.reception.shifts import get_shift_labels
+        check_out_shift_id = str(raw_shift_id)
+        shift_doc = get_shift(check_out_shift_id)
+        if shift_doc:
+            shift_type = shift_doc.get("shift_type") or ""
+            check_out_shift = {
+                "shift_type": shift_type,
+                "shift_label": get_shift_labels(prop_id).get(shift_type, shift_type) or None,
+                "employee": shift_doc.get("employee"),
+                "opened_by": shift_doc.get("opened_by"),
+                "start_time": shift_doc.get("start_time"),
+            }
+
     # Check-out fields
     check_out_fields = {
         "check_out_room_inspected": booking.get("check_out_room_inspected", False),
@@ -151,6 +172,8 @@ def get_check_out_detail(booking_id: str) -> dict[str, Any]:
         "check_out_date_actual": booking.get("check_out_date_actual"),
         "check_out_time_actual": booking.get("check_out_time_actual"),
         "check_out_by": booking.get("check_out_by"),
+        "check_out_shift_id": check_out_shift_id,
+        "check_out_shift": check_out_shift,
     }
 
     return {

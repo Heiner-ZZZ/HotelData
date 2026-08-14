@@ -273,3 +273,7 @@ dashboardsTacticos/
 .freebuff/preview-db026961-5e72-4cbe-b640-8d799b5b942f.log
 .freebuff/run.md
 .freebuff/settings.json
+dashboardEstratégicos/
+dashboardEstratégicos/css/layout.css
+dashboardEstratégicos/css/theme.css
+dashboardEstratégicos/js/app.js

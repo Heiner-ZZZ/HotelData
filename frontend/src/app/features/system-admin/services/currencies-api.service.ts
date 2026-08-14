@@ -21,6 +21,18 @@ export class CurrenciesApiService {
       .pipe(map((res) => res.currencies.map(mapCurrency)));
   }
 
+  /**
+   * Monedas activas vía el endpoint público — sin permiso `settings.read`.
+   * Lo usan páginas de gestión (ej. Editar Propiedad) donde un rol restringido
+   * (gerente_hotel) necesita el catálogo para el select de moneda pero no tiene
+   * acceso al catálogo administrativo (`/management/currencies` → 403).
+   */
+  listActivePublic(): Observable<Currency[]> {
+    return this.http
+      .get<{ currencies: CurrencyDto[] }>(`${this.apiConfig.baseUrl}/public/currencies`)
+      .pipe(map((res) => res.currencies.map(mapCurrency)));
+  }
+
   get(code: string): Observable<Currency> {
     return this.http
       .get<CurrencyDto>(`${this.apiConfig.baseUrl}/management/currencies/${code}`, {

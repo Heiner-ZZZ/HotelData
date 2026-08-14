@@ -66,7 +66,7 @@
 .alert-success {
   background: color-mix(in srgb, var(--success) 12%, transparent);
   color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  border: 1px solid color-mix(in srgb, var(--success) 15%, transparent);
   align-items: center;
   flex-wrap: wrap;
 }

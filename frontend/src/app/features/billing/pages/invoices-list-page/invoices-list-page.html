@@ -102,6 +102,25 @@
         <span class="invl-date-sep">→</span>
         <input type="date" class="invl-date-input" [value]="dateTo()" (change)="onDateToChange(($any($event.target)?.value ?? ''))" placeholder="Hasta" />
       </div>
+      <div class="invl-audit-group">
+        <span class="material-symbols-outlined invl-audit-icon">schedule</span>
+        <select class="invl-audit-select" [title]="'Filtrar por turno de emisión'" [value]="turnoFilter()" (change)="setTurnoFilter(($any($event.target)?.value ?? ''))">
+          <option value="">Todos los turnos</option>
+          @for (opt of shiftOptions(); track opt.id) {
+            <option [value]="opt.id">{{ opt.label }}</option>
+          }
+        </select>
+        <span class="invl-audit-sep"></span>
+        <span class="material-symbols-outlined invl-audit-icon">badge</span>
+        <input
+          type="text"
+          class="invl-audit-input"
+          placeholder="Cajero que emitió…"
+          [title]="'Filtrar por empleado u opener de la estampa de emisión'"
+          [value]="cajeroFilter()"
+          (input)="setCajeroFilter(($any($event.target)?.value ?? ''))"
+        />
+      </div>
       @if (activeFilterCount() > 0) {
         <button type="button" class="invl-clear-btn" (click)="clearAllFilters()">
           <span class="material-symbols-outlined">filter_alt_off</span>
@@ -202,6 +221,18 @@
                     </span>
                   </td>
                   <td class="td-actions">
+                    @if (canCancel(item)) {
+                      <button
+                        type="button"
+                        class="invl-cancel-btn"
+                        (click)="$event.stopPropagation(); cancelInvoice(item)"
+                        [disabled]="cancellingId() === item.id"
+                        title="Anular factura"
+                      >
+                        <span class="material-symbols-outlined">cancel</span>
+                        {{ cancellingId() === item.id ? 'Anulando…' : 'Anular' }}
+                      </button>
+                    }
                     <a [routerLink]="[item.id]" class="invl-detail-link" title="Ver detalle">
                       <span class="material-symbols-outlined">arrow_forward</span>
                     </a>

@@ -27,6 +27,7 @@ from src.app.modules.billing.service import (
     list_folios,
     list_invoices,
     list_payments,
+    link_payment_to_shift,
     module_status,
     post_to_folio,
     refund_payment,
@@ -37,8 +38,17 @@ from src.app.modules.billing.service import (
 )
 from src.app.modules.billing.service.services import get_billable_services
 from src.app.core.types import ObjectIdStr, to_json_safe
-from src.app.modules.partner.services.audit import register_action
-from src.app.modules.reception import get_active_shift_id
+from src.app.modules.partner.services.audit import (
+    register_action,
+    register_shift_attribution_access,
+)
+from src.app.modules.reception import (
+    ShiftExpiredError,
+    ensure_shift_not_expired,
+    get_active_shift_id,
+    get_shift_attribution,
+    list_shifts,
+)
 from src.app.security.dependencies import require_any_permission, require_permission
 from src.database.connection import get_database
 
@@ -62,6 +72,32 @@ def _require_billing_scope(value: Any) -> int:
             detail="prop_id es obligatorio para consultar datos de Guest AR del hotel",
         )
     return prop_id
+
+
+def _require_active_shift_for_money(prop_id: int) -> str:
+    """Require an open (non-expired) cash shift before a money operation.
+
+    Every front-desk operation that moves money — payments of ANY method,
+    refunds, invoice payment, folio settlement and folio postings — must be
+    attributable to the cashier on duty, so the resulting document is stamped
+    with the shift and its employee. Returns the active shift id, or raises
+    HTTP 409 (missing / expired shift).
+    """
+    shift_id = get_active_shift_id(prop_id)
+    if shift_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No hay un turno de caja activo para esta propiedad. "
+                "Abre un turno primero en Cajas y Turnos antes de registrar "
+                "operaciones de dinero."
+            ),
+        )
+    try:
+        ensure_shift_not_expired(prop_id)
+    except ShiftExpiredError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
+    return shift_id
 
 
 
@@ -332,9 +368,18 @@ def create_invoice_api(
     payload: InvoiceCreate = Body(...),
     current_user: dict = Depends(require_any_permission("billing.manage", "check-outs.manage")),
 ):
+    db = get_database()
+    # Issuing a fiscal document is a money operation: it must be attributable
+    # to the cashier on duty, so the whole fiscal cycle (emisión → pago →
+    # anulación) requires an open shift. The checkout flow reuses this route
+    # and already opens a shift, so this gate does not break it.
+    booking = db.booking_orders.find_one({"booking_id": payload.booking_id}, {"prop_id": 1})
+    shift_id = None
+    if booking is not None:
+        shift_id = _require_active_shift_for_money(int(booking.get("prop_id") or 0))
+
     # Checkout can revisit this step after a reload. Reuse the active invoice
     # for the booking instead of creating a duplicate fiscal document.
-    db = get_database()
     existing = db.reservation_invoices.find_one(
         {"booking_id": payload.booking_id, "status": {"$ne": "cancelled"}},
         {"_id": 1},
@@ -344,7 +389,11 @@ def create_invoice_api(
         if existing_result is not None:
             return InvoiceResponse.model_validate(to_json_safe(existing_result))
 
-    result = create_invoice(payload)
+    result = create_invoice(
+        payload,
+        shift_id=shift_id,
+        shift_attribution=get_shift_attribution(shift_id) if shift_id else None,
+    )
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -364,7 +413,10 @@ def create_invoice_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return InvoiceResponse.model_validate(result)
+    # Belt-and-suspenders (same rationale as close_folio_api): create_invoice
+    # returns raw datetimes (issued_at/created_at); to_json_safe normalizes
+    # them to ISO before the *Response wire validation.
+    return InvoiceResponse.model_validate(to_json_safe(result))
 
 
 @api_router.get("/invoices", response_model=InvoiceListResponse)
@@ -376,6 +428,8 @@ def list_invoices_api(
     q: str | None = Query(default=None),
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
+    shift_id: str | None = Query(default=None, alias="turno"),
+    employee: str | None = Query(default=None, alias="cajero"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
     current_user: dict = Depends(require_permission("billing.read")),
@@ -384,6 +438,7 @@ def list_invoices_api(
     result = list_invoices(
         booking_id=booking_id, prop_id=prop_id, status=status_filter, q=q,
         date_from=date_from, date_to=date_to, page=page, page_size=page_size,
+        shift_id=shift_id, employee=employee,
     )
     # Belt-and-suspenders: defensive JSON-safe wrap (ObjectId → str, datetime → isoformat)
     # catches anything list_invoices may have left raw (e.g. nested ObjectIds/dates).
@@ -400,6 +455,8 @@ def list_invoices_api(
             "prop_id": prop_id,
             "status": status_filter,
             "q": q,
+            "shift_id": shift_id,
+            "employee": employee,
             "page": page,
             "page_size": page_size,
             "url": str(request.url),
@@ -418,7 +475,7 @@ def invoice_dashboard_api(
     status: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
-    current_user: dict = Depends(require_permission("billing.read")),
+    current_user: dict = Depends(require_permission("reports.billing.invoices.read")),
 ):
     """Dashboard táctico F1.4: monto facturado por período (ClickHouse).
 
@@ -468,7 +525,7 @@ def payments_dashboard_api(
     status: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
-    current_user: dict = Depends(require_permission("billing.read")),
+    current_user: dict = Depends(require_permission("reports.billing.payments.read")),
 ):
     """Dashboard táctico F1.5: pagos por método/estado y saldo pendiente.
 
@@ -575,6 +632,9 @@ def add_line_item_api(
     from bson import ObjectId
     from bson.errors import InvalidId
     before_raw = _scoped_invoice(invoice_id, prop_id)
+    # An added charge moves money on the invoice: attributable to the cashier
+    # on duty, so it also requires an open (non-expired) shift for the hotel.
+    _require_active_shift_for_money(int((before_raw or {}).get("prop_id") or 0))
     result = add_line_item(
         invoice_id,
         name=payload.get("name", ""),
@@ -602,7 +662,10 @@ def add_line_item_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return InvoiceResponse.model_validate(result)
+    # Belt-and-suspenders (same rationale as cancel_invoice_api): add_line_item
+    # returns created_at/updated_at as raw datetimes; to_json_safe normalizes
+    # them to ISO before the *Response wire validation.
+    return InvoiceResponse.model_validate(to_json_safe(result))
 
 
 @api_router.delete("/invoices/{invoice_id}/items/{item_id}", response_model=InvoiceResponse)
@@ -677,10 +740,17 @@ def create_credit_note_api(
     current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Issue/reuse the formal credit note for a cancelled/refunded invoice."""
-    _scoped_invoice(invoice_id, prop_id)
+    invoice = _scoped_invoice(invoice_id, prop_id)
+    # A credit note reverses money on a fiscal document: the whole fiscal
+    # cycle must be attributable to the cashier on duty, so emission also
+    # requires an open (non-expired) shift for the hotel, and the shift +
+    # employee are stamped on the refund document at write time.
+    shift_id = _require_active_shift_for_money(int((invoice or {}).get("prop_id") or 0))
     result = create_credit_note_for_invoice(
         invoice_id,
         changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
+        shift_id=shift_id,
+        shift_attribution=get_shift_attribution(shift_id) if shift_id else None,
     )
     if result is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La factura no tiene un reverso contable válido")
@@ -704,25 +774,44 @@ def create_credit_note_api(
 def cancel_invoice_api(
     invoice_id: str,
     prop_id: int | None = Query(default=None, ge=1),
+    payload: dict = Body(default={}),
     current_user: dict = Depends(require_permission("billing.manage")),
 ):
     before_raw = _scoped_invoice(invoice_id, prop_id)
-    result = cancel_invoice(invoice_id)
+    # Voiding a fiscal document reverses money: the whole fiscal cycle must be
+    # attributable to the cashier on duty, so cancellation also requires an
+    # open (non-expired) shift for the hotel.
+    cancel_shift_id = _require_active_shift_for_money(int((before_raw or {}).get("prop_id") or 0))
+    if not isinstance(payload, dict):
+        payload = {}
+    cancel_reason = str(payload.get("reason") or "").strip() or None
+    result = cancel_invoice(
+        invoice_id,
+        cancel_reason=cancel_reason,
+        cancelled_by=str(current_user.get("username", "system")),
+        shift_id=cancel_shift_id,
+        shift_attribution=get_shift_attribution(cancel_shift_id) if cancel_shift_id else None,
+    )
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo cancelar la factura")
     diff = {
         "status": {"old": before_raw.get("status") if before_raw else None, "new": "cancelled"},
+        "cancel_reason": {"old": before_raw.get("cancel_reason") if before_raw else None, "new": cancel_reason},
     }
     register_action(
         prop_id=(result.get("prop_id") or 0),
         entity_type="billing_invoice",
         entity_id=invoice_id,
         action="update",
-        summary=f"Cancelación de factura {result.get('invoice_number', invoice_id)}",
+        summary=f"Cancelación de factura {result.get('invoice_number', invoice_id)}"
+        + (f" — {cancel_reason}" if cancel_reason else ""),
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return InvoiceResponse.model_validate(result)
+    # Belt-and-suspenders (same rationale as close_folio_api): cancel_invoice
+    # sets cancelled_at as a raw datetime; to_json_safe normalizes it to ISO
+    # before the *Response wire validation.
+    return InvoiceResponse.model_validate(to_json_safe(result))
 
 
 @api_router.post("/invoices/{invoice_id}/pay", response_model=ActionResponse)
@@ -741,6 +830,9 @@ def pay_invoice_api(
     if inv.get("status") != "issued":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La factura no está pendiente de pago")
 
+    # Staff invoice payment is a money operation: attribute it to the shift.
+    shift_id = _require_active_shift_for_money(int((inv.get("prop_id") or 0)))
+
     before = get_invoice(invoice_id)
     pay_payload = PaymentCreate(
         booking_id=str(inv.get("booking_id", "")),
@@ -749,7 +841,7 @@ def pay_invoice_api(
         method="simulated",
     )
     try:
-        result = create_payment(pay_payload)
+        result = create_payment(pay_payload, shift_id=shift_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:
@@ -838,27 +930,16 @@ def create_payment_api(
     payload: PaymentCreate = Body(...),
     current_user: dict = Depends(require_permission("payments.manage")),
 ):
-    # Cashier payments (cash at the front desk) require an open cash shift for
-    # the property; the shift id is stamped on the payment at write time so the
-    # close-of-shift reconciliation is FK-driven, not window-guessed. Card /
-    # transfer / gateway payments are NOT gated — only the cash drawer is.
-    shift_id: str | None = None
-    method = (payload.method or "").strip().lower()
-    if method in ("cash", "efectivo"):
-        booking_doc = get_database().booking_orders.find_one(
-            {"booking_id": payload.booking_id},
-            {"prop_id": 1},
-        )
-        prop_id = int((booking_doc or {}).get("prop_id", 0))
-        shift_id = get_active_shift_id(prop_id)
-        if shift_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=(
-                    "No hay un turno de caja activo para esta propiedad. "
-                    "Abre un turno primero en Cajas y Turnos para registrar pagos en efectivo."
-                ),
-            )
+    # Every payment at the front desk — cash, card, transfer or gateway — is a
+    # money operation that must be attributable to the cashier on duty. The
+    # shift id (and its employee) are stamped on the payment at write time so
+    # the close-of-shift reconciliation is FK-driven, not window-guessed.
+    booking_doc = get_database().booking_orders.find_one(
+        {"booking_id": payload.booking_id},
+        {"prop_id": 1},
+    )
+    prop_id = int((booking_doc or {}).get("prop_id", 0))
+    shift_id = _require_active_shift_for_money(prop_id)
 
     try:
         result = create_payment(payload, shift_id=shift_id)
@@ -896,10 +977,13 @@ def list_payments_api(
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
+    sin_turno: bool = Query(default=False, alias="sin_turno"),
+    shift_id: str | None = Query(default=None, alias="turno"),
+    employee: str | None = Query(default=None, alias="cajero"),
     current_user: dict = Depends(require_permission("payments.read")),
 ):
     prop_id = _require_billing_scope(prop_id)
-    result = list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size)
+    result = list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size, sin_turno=sin_turno, shift_id=shift_id, employee=employee)
     # Belt-and-suspenders: defensive JSON-safe wrap (same rationale as list_invoices)
     result = to_json_safe(result)
     register_action(
@@ -909,7 +993,14 @@ def list_payments_api(
         action="read",
         summary=f"Listado de pagos (total={result.get('total', 0)}, page={page})",
         changed_by=current_user.get("username", "system"),
-        metadata={"booking_id": booking_id, "prop_id": prop_id, "page": page, "url": str(request.url)},
+        metadata={
+            "booking_id": booking_id,
+            "prop_id": prop_id,
+            "shift_id": shift_id,
+            "employee": employee,
+            "page": page,
+            "url": str(request.url),
+        },
     )
     return PaymentListResponse.model_validate(to_json_safe(result))
 
@@ -935,6 +1026,65 @@ def classify_failed_payment_informational_api(
         entity_id=payment_id,
         action="repair",
         summary=f"Pago fallido clasificado como informativo {result.get('reference', payment_id)}",
+        changed_by=current_user.get("username", "system"),
+    )
+    return PaymentResponse.model_validate(result)
+
+
+@api_router.get("/payments/{payment_id}/link-candidates")
+def payment_link_candidates_api(
+    payment_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_permission("payments.manage")),
+):
+    """Candidate shifts of the payment's property for linking a legacy payment."""
+    payment = _scoped_payment(payment_id, prop_id)
+    shifts = list_shifts(prop_id=int(payment.get("prop_id", 0) or 0), limit=50)
+    return {"payment": payment, "shifts": shifts}
+
+
+@api_router.post("/payments/{payment_id}/link-shift", response_model=PaymentResponse)
+def link_payment_shift_api(
+    payment_id: str,
+    payload: dict = Body(default={}),
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_permission("payments.manage")),
+):
+    """Link a legacy payment (without shift) to the responsible shift.
+
+    Stamps the shift FK + denormalized employee/opener on the payment and its
+    fact mirror. The shift must belong to the same hotel as the payment.
+    """
+    _scoped_payment(payment_id, prop_id)
+    shift_id = (payload or {}).get("shift_id")
+    if not shift_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Se requiere shift_id")
+    try:
+        result = link_payment_to_shift(
+            payment_id,
+            str(shift_id),
+            changed_by=current_user.get("username", "system"),
+        )
+    except ValueError as exc:
+        code = str(exc)
+        if code == "payment_already_linked":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El pago ya está vinculado a un turno",
+            ) from exc
+        if code == "shift_prop_mismatch":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El turno pertenece a otro hotel",
+            ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago o turno no encontrado") from exc
+    result = to_json_safe(result)
+    register_action(
+        prop_id=int(result.get("prop_id") or 0),
+        entity_type="billing_payment",
+        entity_id=payment_id,
+        action="link_shift",
+        summary=f"Pago {result.get('reference', payment_id)} vinculado al turno {shift_id}",
         changed_by=current_user.get("username", "system"),
     )
     return PaymentResponse.model_validate(result)
@@ -975,13 +1125,25 @@ def refund_payment_api(
     before = _scoped_payment(payment_id, prop_id)
     if not isinstance(payload, dict):
         payload = {}
+    # A refund moves money back to the guest — it must be attributable to the
+    # cashier on duty, same as any other cash movement.
+    refund_prop_id = int((before or {}).get("prop_id", 0) or 0)
+    shift_id = _require_active_shift_for_money(refund_prop_id)
     refund_id = str(payload.get("refund_id") or "").strip() or None
-    result = refund_payment(payment_id, refund_id=refund_id)
+    refund_reason = str(payload.get("reason") or "").strip() or None
+    result = refund_payment(
+        payment_id,
+        refund_id=refund_id,
+        refund_reason=refund_reason,
+        changed_by=str(current_user.get("username", "system")),
+        shift_id=shift_id,
+    )
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo reembolsar el pago")
     result = to_json_safe(result)
     diff = {
         "status": {"old": before.get("status") if before else None, "new": "refunded"},
+        "refund_reason": {"old": before.get("refund_reason") if before else None, "new": refund_reason},
     }
     register_action(
         prop_id=(result.get("prop_id") or 0),
@@ -1153,6 +1315,18 @@ def get_folio_api(
         changed_by=current_user.get("username", "system"),
         metadata={"url": str(request.url)},
     )
+    # Traza de acceso a datos sensibles: quién consultó la atribución de
+    # turno (turno que abrió el folio + cajero responsable).
+    if result.get("created_shift") or result.get("shift_id"):
+        register_shift_attribution_access(
+            prop_id=(result.get("prop_id") or 0),
+            entity_id=booking_id,
+            source="folio",
+            shift_id=result.get("shift_id"),
+            shift=result.get("created_shift"),
+            changed_by=current_user.get("username", "system"),
+            url=str(request.url),
+        )
     return FolioResponse.model_validate(result)
 
 
@@ -1176,6 +1350,11 @@ def post_to_folio_api(
     }
     """
     before = get_folio(booking_id)
+    # Folio postings (charges/discounts/payments) are money operations: the
+    # responsible shift and cashier are stamped on every posting entry.
+    post_prop_id = int((before or {}).get("prop_id", 0) or 0)
+    shift_id = _require_active_shift_for_money(post_prop_id)
+    shift_attribution = get_shift_attribution(shift_id)
     result = post_to_folio(
         booking_id,
         posting_type=payload.get("posting_type", "charge"),
@@ -1185,6 +1364,8 @@ def post_to_folio_api(
         quantity=int(payload.get("quantity", 1)),
         reference_id=payload.get("reference_id", ""),
         reference_type=payload.get("reference_type", "manual"),
+        shift_id=shift_id,
+        shift_attribution=shift_attribution,
     )
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado")
@@ -1241,7 +1422,7 @@ def settle_folio_api(
 ):
     """Resolve a folio balance with a payment or an approved exception."""
     settlement_shift_id: str | None = None
-    if payload.settlement_type.strip().lower() == "payment" and (payload.method or "").strip().lower() in {"cash", "efectivo"}:
+    if payload.settlement_type.strip().lower() == "payment":
         db = get_database()
         booking = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1, "shift_id": 1})
         prop_id = int((booking or {}).get("prop_id", 0) or 0)
@@ -1260,12 +1441,9 @@ def settle_folio_api(
                 )
             settlement_shift_id = str(historical_shift["_id"])
         else:
-            settlement_shift_id = get_active_shift_id(prop_id)
-            if settlement_shift_id is None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="No hay un turno de caja activo para registrar el pago en efectivo.",
-                )
+            # Every settlement is a money operation — cash, card or transfer —
+            # and must be attributable to the cashier on duty.
+            settlement_shift_id = _require_active_shift_for_money(prop_id)
     try:
         result = settle_folio(
             booking_id,

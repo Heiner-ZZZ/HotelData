@@ -8,11 +8,14 @@ from datetime import datetime
 from fastapi import APIRouter, Body, Depends, Form, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
+from src.app.security.permissions import READ_DEP_ACTIONS
 from src.app.security.session import ensure_utc
 
 _logger = logging.getLogger(__name__)
 
 from src.app.modules.admin.schemas import (
+    NavigationNodeResponse,
+    NavigationResponse,
     PermissionsOverviewResponse,
     UsersOverviewResponse,
 )
@@ -44,8 +47,9 @@ api_router = APIRouter(prefix="/api/admin", tags=["admin-api"])
 
 # Actions whose grant implies the resource's ``read`` permission. Any other
 # action (e.g. the compound ``hotel.manage_roles``) is a standalone code that
-# must pass through the preview unchanged.
-_PREVIEW_READ_DEP_ACTIONS = {"create", "update", "delete", "manage", "execute"}
+# must pass through the preview unchanged. Shared constant with the save
+# path (admin/service/role_update.py) — see src/app/security/permissions.py.
+_PREVIEW_READ_DEP_ACTIONS = READ_DEP_ACTIONS
 
 
 def _filter_preview_codes(codes: set[str], available_codes: set[str]) -> set[str]:
@@ -476,9 +480,9 @@ def ownership_roles_list(current_user: dict = Depends(require_permission("users.
 
 # ─── Navigation (sidebar menu driven by permissions) ────────────────────
 
-@api_router.get("/navigation")
+@api_router.get("/navigation", response_model=NavigationResponse)
 def navigation_items_api(request: Request, current_user: dict = Depends(require_login)):
-    """Return all navigation items with a ``visible`` flag based on the
+    """Return all navigation nodes with a ``visible`` flag based on the
     current user's expanded permission set.
 
     Uses the already-computed ``request.state.permission_codes`` (set by
@@ -487,4 +491,4 @@ def navigation_items_api(request: Request, current_user: dict = Depends(require_
 
     codes = getattr(request.state, "permission_codes", set())
     items = get_all_navigation_items(codes)
-    return {"items": items}
+    return NavigationResponse(items=[NavigationNodeResponse.model_validate(i) for i in items])

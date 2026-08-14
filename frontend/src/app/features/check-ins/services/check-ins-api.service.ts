@@ -62,6 +62,7 @@ export class CheckInsApiService {
       payload,
     ).pipe(catchAuthError());
   }
+
 }
 
 export interface CheckInDetailDto {

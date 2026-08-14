@@ -1,108 +1,104 @@
 <aside class="sidebar" [class.is-collapsed]="sidebarCollapsed()">
   <div class="sidebar-header">
     <div class="sidebar-brand">
-      <img src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData" class="sidebar-logo" />
+      <img src="/assets/logo-hoteldata.png?v=20260813c" alt="HotelData" class="sidebar-logo" />
+      <img src="/assets/logo-hoteldata-Minimo.png?v=20260813c" alt="HotelData" class="sidebar-logo-min" />
     </div>
     <button type="button" class="collapse-btn" (click)="sidebarCollapsed.set(!sidebarCollapsed())" aria-label="Colapsar menú">
       <span class="material-symbols-outlined">menu_open</span>
     </button>
   </div>
 
+  <ng-template #nodeTemplate let-node let-depth="depth">
+    @if (node.nodeType === 'leaf') {
+      <a
+        class="section-link"
+        [class.sub-link]="depth > 0"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        [routerLink]="node.href"
+        [queryParams]="getLinkParams(node.href ?? '')"
+      >
+        <span class="material-symbols-outlined link-icon">{{ node.icon }}</span>
+        <span class="link-label">{{ node.label }}</span>
+      </a>
+    } @else if (node.horizontalMenu) {
+      <a
+        class="section-link"
+        [class.sub-link]="depth > 0"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: false }"
+        [routerLink]="firstChildHref(node)"
+        [queryParams]="getLinkParams(firstChildHref(node) ?? '')"
+      >
+        <span class="material-symbols-outlined link-icon">{{ node.icon }}</span>
+        <span class="link-label">{{ node.label }}</span>
+      </a>
+    } @else {
+      <div class="sidebar-subsection">
+        <div class="sub-section-header" [class.is-open]="isOpen(node.slug)">
+          @if (node.href) {
+            <a
+              class="sub-section-label"
+              routerLinkActive="is-active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              [routerLink]="node.href"
+              [queryParams]="getLinkParams(node.href)"
+            >
+              <span class="material-symbols-outlined link-icon">{{ node.icon }}</span>
+              <span class="link-label">{{ node.label }}</span>
+            </a>
+          } @else {
+            <span class="sub-section-label">
+              <span class="material-symbols-outlined link-icon">{{ node.icon }}</span>
+              <span class="link-label">{{ node.label }}</span>
+            </span>
+          }
+          <button
+            type="button"
+            class="sub-section-toggle"
+            (click)="toggle(node.slug)"
+            [attr.aria-label]="isOpen(node.slug) ? 'Colapsar ' + node.label : 'Expandir ' + node.label"
+            [attr.aria-expanded]="isOpen(node.slug)"
+          >
+            <span class="material-symbols-outlined sub-chevron">expand_more</span>
+          </button>
+        </div>
+
+        <div class="sub-section-items" [class.is-open]="isOpen(node.slug)">
+          <div class="section-items">
+            @for (child of node.children; track child.slug) {
+              <ng-container *ngTemplateOutlet="nodeTemplate; context: { $implicit: child, depth: depth + 1 }"></ng-container>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </ng-template>
+
   <nav class="sidebar-body" aria-label="Navegación lateral">
-    @for (section of visibleSections(); track section.id) {
+    @for (root of roots(); track root.slug) {
       <div class="sidebar-section">
         <button
           type="button"
           class="section-header"
-          [class.is-open]="openSection() === section.id"
-          (click)="toggleSection(section.id)"
-          aria-expanded="openSection() === section.id"
+          [class.is-open]="isOpen(root.slug)"
+          (click)="toggle(root.slug)"
+          [attr.aria-expanded]="isOpen(root.slug)"
         >
-          <span class="material-symbols-outlined section-icon">{{ section.icon }}</span>
-          <span class="section-label">{{ section.label }}</span>
+          <span class="material-symbols-outlined section-icon">{{ root.icon }}</span>
+          <span class="section-label">{{ root.label }}</span>
           <span class="material-symbols-outlined section-chevron">chevron_left</span>
         </button>
 
-        <div class="section-items-wrapper" [class.is-open]="openSection() === section.id">
+        <div class="section-items-wrapper" [class.is-open]="isOpen(root.slug)">
           <div class="section-items">
-            <!-- Flat items (no sub-section grouping) -->
-            @for (item of section.items; track item.href) {
-              <a
-                class="section-link"
-                routerLinkActive="is-active"
-                [routerLinkActiveOptions]="{ exact: true }"
-                [routerLink]="item.href"
-                [queryParams]="getLinkParams(item.href)"
-              >
-                <span class="material-symbols-outlined link-icon">{{ item.icon }}</span>
-                <span class="link-label">{{ item.label }}</span>
-              </a>
-            }
-
-            <!-- Sub-sections (collapsible groups like RRHH, Housekeeping) -->
-            @for (sub of section.subSections; track sub.id) {
-              <div class="sidebar-subsection">                <div class="sub-section-header" [class.is-open]="openSubSection() === sub.id">
-                  <span class="sub-section-label">
-                    <span class="material-symbols-outlined link-icon">{{ sub.icon }}</span>
-                    <span class="link-label">{{ sub.label }}</span>
-                  </span>
-                  <button
-                    type="button"
-                    class="sub-section-toggle"
-                    (click)="toggleSubSection(sub.id)"
-                    aria-expanded="openSubSection() === sub.id"
-                    [attr.aria-label]="openSubSection() === sub.id ? 'Colapsar ' + sub.label : 'Expandir ' + sub.label"
-                  >
-                    <span class="material-symbols-outlined sub-chevron">expand_more</span>
-                  </button>
-                </div>
-
-                <div class="sub-section-items" [class.is-open]="openSubSection() === sub.id">
-                  <div class="section-items">
-                    @for (item of sub.items; track item.href) {
-                      <a
-                        class="section-link sub-link"
-                        routerLinkActive="is-active"
-                        [routerLinkActiveOptions]="{ exact: true }"
-                        [routerLink]="item.href"
-                        [queryParams]="getLinkParams(item.href)"
-                      >
-                        <span class="material-symbols-outlined link-icon">{{ item.icon }}</span>
-                        <span class="link-label">{{ item.label }}</span>
-                      </a>
-                    }
-                  </div>
-                </div>
-              </div>
+            @for (child of root.children; track child.slug) {
+              <ng-container *ngTemplateOutlet="nodeTemplate; context: { $implicit: child, depth: 0 }"></ng-container>
             }
           </div>
         </div>
       </div>
     }
   </nav>
-
-  <div class="sidebar-divider"></div>
-
-  <a
-    class="sidebar-bottom-link"
-    routerLinkActive="is-active"
-    [routerLinkActiveOptions]="{ exact: true }"
-    routerLink="/management/settings"
-  >
-    <span class="material-symbols-outlined link-icon">tune</span>
-    <span class="link-label">Configuración</span>
-  </a>
-
-  <div class="sidebar-actions">
-    <button
-      class="sidebar-icon-btn"
-      (click)="theme.toggle()"
-      [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'"
-    >
-      <span class="material-symbols-outlined">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</span>
-    </button>
-    <a class="sidebar-icon-btn" href="/auth/logout" aria-label="Cerrar sesión">
-      <span class="material-symbols-outlined">logout</span>
-    </a>
-  </div>
 </aside>

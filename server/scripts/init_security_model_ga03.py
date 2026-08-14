@@ -99,6 +99,19 @@ PERMISSION_CATALOG = [
     ("reports.read", "Ver reportes del sistema"),
     ("dashboard.manage", "Administrar dashboard — acceso total"),
     ("dashboard.read", "Ver dashboard principal"),
+    # Reports — granular táctico/estratégico (2026-08): cada informe con su
+    # propio código + dos códigos de área (táctico/estratégico).
+    ("reports.tactical.read", "Ver el área de informes tácticos (simples y compuestos)"),
+    ("reports.strategic.read", "Ver el área de informes estratégicos"),
+    ("reports.rates.adr.read", "Ver informe táctico ADR por fecha, tipo y canal (R1.2)"),
+    ("reports.rates.calendar.read", "Ver informe táctico de calendario de tarifas"),
+    ("reports.requests.read", "Ver informe táctico de solicitudes de servicio"),
+    ("reports.billing.invoices.read", "Ver informe táctico de facturación por período (F1.4)"),
+    ("reports.billing.payments.read", "Ver informe táctico de pagos por método (F1.5)"),
+    ("reports.housekeeping.dashboard.read", "Ver dashboard simple de housekeeping"),
+    ("reports.housekeeping.operations.read", "Ver informe compuesto de operaciones de housekeeping"),
+    ("reports.housekeeping.matrix.read", "Ver matriz de estado de habitaciones (O1.2)"),
+    ("reports.download", "Descargar/exportar informes (CSV/XLSX/PDF) — global a lo que ya puedes leer"),
     # Housekeeping & Maintenance
     ("housekeeping.manage", "Administrar housekeeping — acceso total"),
     ("housekeeping.create", "Crear tareas de limpieza"),
@@ -204,6 +217,8 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "hr.portal.read", "hr.directory.read", "hr.directory.manage",
         "hr.onboarding.create", "hr.shifts.read", "hr.shifts.manage",
         "properties.approve",
+        # Informes estratégicos (BSC) + descarga
+        "reports.strategic.read", "reports.download",
     ],
     "operador_datos": [
         "dashboard.read",
@@ -215,6 +230,8 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "etl.read",
         "audit.read", "monitoring.read",
         "reports.read",
+        # Informes estratégicos + descarga (evidencia de auditoría)
+        "reports.strategic.read", "reports.download",
     ],
     "hotel_partner": [
         "dashboard.read",
@@ -226,6 +243,9 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         # Reseñas: el ítem /management/reviews exige reviews.read (antes
         # properties.read); paridad para no perder la vista.
         "reviews.read",
+        # Informes tácticos de revenue del propietario
+        "reports.tactical.read", "reports.download",
+        "reports.rates.adr.read", "reports.rates.calendar.read",
     ],
     "gerente_hotel": [
         "dashboard.read",
@@ -243,6 +263,14 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "hotel.manage_roles",
         "properties.approve",
         "reviews.read",
+        # Informes: táctico completo + estratégico + descarga (nivel gerencial)
+        "reports.tactical.read", "reports.strategic.read", "reports.download",
+        "reports.rates.adr.read", "reports.rates.calendar.read", "reports.requests.read",
+        "reports.billing.invoices.read", "reports.billing.payments.read",
+        "reports.housekeeping.dashboard.read", "reports.housekeeping.operations.read",
+        "reports.housekeeping.matrix.read",
+        # Ancestros de dominio para ver los informes anidados
+        "billing.read", "housekeeping.read",
     ],
     "revenue_manager": [
         "dashboard.read",
@@ -251,6 +279,11 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "inventory.read",
         "reports.read",
         "promotions.read", "promotions.manage",
+        # Informes tácticos de revenue + facturación + descarga
+        "reports.tactical.read", "reports.download",
+        "reports.rates.adr.read", "reports.rates.calendar.read",
+        "reports.billing.invoices.read", "reports.billing.payments.read",
+        "billing.read",
     ],
     "marketing_hotelero": [
         "dashboard.read",
@@ -269,6 +302,9 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "hr.read",
         "hr.portal.read", "hr.directory.read",
         "lost-found.read", "lost-found.update",
+        # Informes tácticos de estado de habitaciones (operaciones + matriz)
+        "reports.tactical.read",
+        "reports.housekeeping.operations.read", "reports.housekeeping.matrix.read",
     ],
     "recepcionista": [
         "dashboard.read",
@@ -277,14 +313,23 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "check-outs.manage",
         "properties.read",
         "rooms.read",
-        "billing.read",
-        "payments.read",
+        # Front desk money: registrar/reembolsar pagos, pagar facturas,
+        # postings de folio, liquidación y cargos POS — todo estampado al turno
+        # de caja. ``*.manage`` expande a create/read/update/delete (ver
+        # src/app/security/permissions.py), así que cubre los .read históricos.
+        "billing.manage",
+        "payments.manage",
+        "charges.manage",
+        # Búsqueda de huéspedes para prefill rápido en recepción.
+        "users.read",
         "shifts.read",
         "shifts.create",
         "shifts.update",
         "hr.read",
         "hr.portal.read", "hr.directory.read",
         "reviews.read",
+        # Informe táctico de solicitudes (vista operativa, sin descarga)
+        "reports.tactical.read", "reports.requests.read",
     ],
     "housekeeping": [
         "dashboard.read",
@@ -297,6 +342,10 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         # Paridad con housekeeping.read/update — el módulo lost & found acepta
         # lost-found.* O housekeeping.* (require_any_permission).
         "lost-found.read", "lost-found.update",
+        # Informes tácticos de housekeeping (vista operativa, sin descarga)
+        "reports.tactical.read",
+        "reports.housekeeping.dashboard.read", "reports.housekeeping.operations.read",
+        "reports.housekeeping.matrix.read",
     ],
     "concierge": [
         "dashboard.read",
@@ -307,6 +356,8 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "amenities.read",
         "hr.read",
         "hr.portal.read", "hr.directory.read",
+        # Informe táctico de solicitudes (vista operativa)
+        "reports.tactical.read", "reports.requests.read",
     ],
     "cliente": [
         "search.read",
@@ -416,81 +467,137 @@ def embed_role_permissions(
     return updated
 
 
-# ── Navigation catalog (data-driven sidebar menu) ──
+# ── Navigation catalog (data-driven tree: sidebar + horizontal sub-menus) ──
+# Árbol normalizado (adjacency list): ``slug`` = identidad, ``parent_slug`` =
+# jerarquía (None = raíz/sección), ``position`` = orden local entre hermanos,
+# ``node_type`` = container|leaf, ``permission_code`` = gate por nodo. El MISMO
+# árbol alimenta el sidebar vertical y el menú horizontal de informes.
 NAVIGATION_CATALOG: list[dict[str, Any]] = [
-    {"label": "Usuarios",       "href": "/system/users",        "icon": "people",           "required_permission": "users.read",    "sort_order": 101},
-    {"label": "Permisos",       "href": "/system/permissions",  "icon": "admin_panel_settings", "required_permission": "roles.read", "sort_order": 102},
-    {"label": "Auditoría",      "href": "/system/audit",        "icon": "receipt_long",     "required_permission": "audit.read",    "sort_order": 103},
-    {"label": "Monitoreo",      "href": "/system/monitoring",   "icon": "monitoring",       "required_permission": "monitoring.read", "sort_order": 104},
-    {"label": "Notificaciones",  "href": "/system/notifications","icon": "notifications",    "required_permission": "settings.read", "sort_order": 105},
-    {"label": "Monedas",        "href": "/system/currencies",   "icon": "payments",         "required_permission": "settings.read", "sort_order": 106},
-    {"label": "BSC",            "href": "/system/bsc",          "icon": "bar_chart",        "required_permission": "dashboard.read","sort_order": 107},
-    {"label": "Dashboard",      "href": "/management",           "icon": "dashboard",       "required_permission": "dashboard.read", "section": "PMS","is_section_header": True,"sort_order": 201},
-    {"label": "Reservas",       "href": "/management/reservations","icon": "book_online",    "required_permission": "reservations.read","section": "CRS","is_section_header": True,"sort_order": 202},
-    {"label": "Disponibilidad", "href": "/management/availability","icon": "event_available","required_permission": "inventory.read",  "section": "CRS","sort_order": 203},
-    {"label": "Tarifas",        "href": "/management/rates",     "icon": "sell",            "required_permission": "rates.read",      "section": "CRS","sort_order": 204},
-    {"label": "Dashboard ADR",  "href": "/management/rates/dashboard","icon": "monitoring",   "required_permission": "rates.read",      "section": "CRS","sort_order": 204.5},
-    {"label": "Calendario Tarifas","href": "/management/rates/calendar","icon": "calendar_month","required_permission": "rates.read",    "section": "CRS","sort_order": 204.6},
-    {"label": "Propiedades",    "href": "/management/properties","icon": "apartment",       "required_permission": "properties.read", "section": "PMS","sort_order": 205},
-    {"label": "Habitaciones",   "href": "/management/rooms",     "icon": "bed",             "required_permission": "rooms.read",      "section": "PMS","sort_order": 206},
-    {"label": "Productos",      "href": "/management/products",  "icon": "inventory_2",     "required_permission": "properties.read", "section": "PMS","sort_order": 207},
-    {"label": "Amenities",      "href": "/management/amenities", "icon": "spa",             "required_permission": "amenities.read",  "section": "PMS","sort_order": 208},
-    {"label": "Recepción",      "href": "/management/recepcion",  "icon": "calendar_month",  "required_permission": "reservations.read","section": "PMS","sort_order": 209},
-    {"label": "Cajas y Turnos", "href": "/management/shifts",     "icon": "point_of_sale",  "required_permission": "shifts.read",     "section": "PMS","sort_order": 210},
-    {"label": "Dashboard Solicitudes","href": "/management/service-requests","icon": "room_service","required_permission": "reservations.read","section": "CRS","sort_order": 210.5},
-    {"label": "Check-ins",      "href": "/management/check-ins",  "icon": "login",           "required_permission": "check-ins.read",  "section": "CRS","sort_order": 211},
-    {"label": "Estancias Activas","href": "/management/stay-inbox","icon": "meeting_room",   "required_permission": "reservations.read","section": "CRS","sort_order": 212},
-    {"label": "Check-outs",     "href": "/management/check-outs", "icon": "logout",          "required_permission": "check-outs.read", "section": "CRS","sort_order": 213},
-    {"label": "Huéspedes",      "href": "/management/guests",     "icon": "people",          "required_permission": "reservations.read","section": "CRS","sort_order": 214},
-    {"label": "Políticas",      "href": "/management/policies",   "icon": "policy",          "required_permission": "properties.read", "section": "CRS","sort_order": 215},
-    {"label": "Reseñas",        "href": "/management/reviews",    "icon": "reviews",         "required_permission": "reviews.read", "section": "PMS","sort_order": 216},
-    {"label": "Auditoría Oper.","href": "/management/audit-log",  "icon": "receipt_long",    "required_permission": "audit.read",      "section": "PMS","sort_order": 217},
-    {"label": "Perfil",         "href": "/management/profile",    "icon": "account_circle",  "required_permission": "account.read",    "section": "PMS","sort_order": 218},
-    {"label": "Equipo y permisos","href": "/management/team-permissions","icon": "admin_panel_settings","required_permission": "hotel.manage_roles","section": "PMS","sort_order": 219},
-    {"label": "Housekeeping",   "href": "/management/housekeeping","icon": "cleaning_services","required_permission": "housekeeping.read","section": "Housekeeping","is_section_header": True,"sort_order": 301},
-    {"label": "Mantenimiento",  "href": "/management/housekeeping/maintenance","icon": "build","required_permission": "maintenance.read","section": "Housekeeping","sort_order": 302},
-    {"label": "Cargos",         "href": "/management/housekeeping/charges","icon": "attach_money","required_permission": "charges.read","section": "Housekeeping","sort_order": 303},
-    {"label": "Lost & Found",   "href": "/management/lost-and-found","icon": "search",          "required_permission": "lost-found.read","section": "Housekeeping","sort_order": 304},
-    {"label": "RRHH",           "href": "/management/hr",        "icon": "badge",           "required_permission": "hr.read",         "section": "RRHH","is_section_header": True,"sort_order": 401},
-    {"label": "Mi Portal",      "href": "/management/hr/my-portal","icon": "person",        "required_permission": "hr.portal.read",  "section": "RRHH","sort_order": 402},
-    {"label": "Directorio RRHH","href": "/management/hr/directory","icon": "groups",        "required_permission": "hr.directory.read","section": "RRHH","sort_order": 403},
-    {"label": "Onboarding",     "href": "/management/hr/onboarding","icon": "person_add",    "required_permission": "hr.onboarding.create","section": "RRHH","sort_order": 404},
-    {"label": "Turnos",         "href": "/management/hr/shifts",  "icon": "schedule",        "required_permission": "hr.shifts.read", "section": "RRHH","sort_order": 405},
-    {"label": "Revenue",        "href": "/management/revenue",   "icon": "trending_up",     "required_permission": "revenue.read",    "section": "Revenue","is_section_header": True,"sort_order": 501},
-    {"label": "Reportes",       "href": "/management/reports",   "icon": "description",     "required_permission": "reports.read",    "section": "Revenue","sort_order": 502},
-    {"label": "Facturación",    "href": "/management/billing",   "icon": "receipt",         "required_permission": "billing.read",    "section": "Billing","is_section_header": True,"sort_order": 503},
-    {"label": "Pagos",          "href": "/management/billing/payments","icon": "payments",      "required_permission": "payments.read",   "section": "Billing","sort_order": 504},
-    {"label": "Dashboard",      "href": "/management/billing/dashboard","icon": "monitoring",  "required_permission": "billing.read",    "section": "Billing","sort_order": 504.5},
-    {"label": "Dashboard Pagos","href": "/management/billing/payments-dashboard","icon": "payments","required_permission": "payments.read","section": "Billing","sort_order": 505},
-    {"label": "Finanzas",       "href": "/management/expenses",   "icon": "monetization_on", "required_permission": "revenue.read",    "section": "PMS","sort_order": 505.5},
-    {"label": "Buscar Hoteles", "href": "/search",               "icon": "search",          "required_permission": "search.read",     "sort_order": 601},
-    {"label": "Mis Reservas",   "href": "/account/bookings",     "icon": "confirmation_number","required_permission": "account.bookings.read","sort_order": 602},
-    {"label": "Mi Perfil",      "href": "/account/profile",      "icon": "account_circle",  "required_permission": "account.read",    "sort_order": 603},
-    {"label": "Configuración",  "href": "/admin/global-settings","icon": "settings",        "required_permission": "settings.read",   "sort_order": 604},
-    {"label": "Geo-Catálogo",   "href": "/admin/geo-catalog",    "icon": "map",             "required_permission": "settings.read",   "sort_order": 605},
-    {"label": "Propietarios",   "href": "/ownership/users",      "icon": "assignment_ind",  "required_permission": "users.manage",    "sort_order": 701},
+    # ── Raíz: Gestión ──
+    {"slug": "gestion", "label": "Gestión", "icon": "dashboard", "node_type": "container", "parent_slug": None, "position": 10, "permission_code": None, "href": None},
+    #   ── Grupo: PMS ──
+    {"slug": "gestion.pms", "label": "Dashboard", "icon": "dashboard", "node_type": "container", "parent_slug": "gestion", "position": 10, "permission_code": "dashboard.read", "href": "/management"},
+    {"slug": "gestion.pms.propiedades", "label": "Propiedades", "icon": "apartment", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 10, "permission_code": "properties.read", "href": "/management/properties"},
+    {"slug": "gestion.pms.habitaciones", "label": "Habitaciones", "icon": "bed", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 20, "permission_code": "rooms.read", "href": "/management/rooms"},
+    {"slug": "gestion.pms.productos", "label": "Productos", "icon": "inventory_2", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 30, "permission_code": "properties.read", "href": "/management/products"},
+    {"slug": "gestion.pms.amenities", "label": "Amenities", "icon": "spa", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 40, "permission_code": "amenities.read", "href": "/management/amenities"},
+    {"slug": "gestion.pms.recepcion", "label": "Recepción", "icon": "calendar_month", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 50, "permission_code": "reservations.read", "href": "/management/recepcion"},
+    {"slug": "gestion.pms.cajas-turnos", "label": "Cajas y Turnos", "icon": "point_of_sale", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 60, "permission_code": "shifts.read", "href": "/management/shifts"},
+    {"slug": "gestion.pms.resenas", "label": "Reseñas", "icon": "reviews", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 70, "permission_code": "reviews.read", "href": "/management/reviews"},
+    {"slug": "gestion.pms.auditoria", "label": "Auditoría Oper.", "icon": "receipt_long", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 80, "permission_code": "audit.read", "href": "/management/audit-log"},
+    {"slug": "gestion.pms.perfil", "label": "Perfil", "icon": "account_circle", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 90, "permission_code": "account.read", "href": "/management/profile"},
+    {"slug": "gestion.pms.equipo", "label": "Equipo y permisos", "icon": "admin_panel_settings", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 100, "permission_code": "hotel.manage_roles", "href": "/management/team-permissions"},
+    {"slug": "gestion.pms.finanzas", "label": "Finanzas", "icon": "monetization_on", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 110, "permission_code": "revenue.read", "href": "/management/expenses"},
+    #   ── Grupo: Reservas (CRS) ──
+    {"slug": "gestion.reservas", "label": "Reservas", "icon": "book_online", "node_type": "container", "parent_slug": "gestion", "position": 20, "permission_code": "reservations.read", "href": "/management/reservations"},
+    {"slug": "gestion.reservas.disponibilidad", "label": "Disponibilidad", "icon": "event_available", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 10, "permission_code": "inventory.read", "href": "/management/availability"},
+    {"slug": "gestion.reservas.tarifas", "label": "Tarifas", "icon": "sell", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 20, "permission_code": "rates.read", "href": "/management/rates"},
+    #     ── Informes (menú horizontal de dashboards tácticos) ──
+    {"slug": "gestion.reservas.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.reservas", "position": 30, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.reservas.informes.adr", "label": "Dashboard ADR", "icon": "monitoring", "node_type": "leaf", "parent_slug": "gestion.reservas.informes", "position": 10, "permission_code": "reports.rates.adr.read", "href": "/management/rates/dashboard"},
+    {"slug": "gestion.reservas.informes.calendario", "label": "Calendario Tarifas", "icon": "calendar_month", "node_type": "leaf", "parent_slug": "gestion.reservas.informes", "position": 20, "permission_code": "reports.rates.calendar.read", "href": "/management/rates/calendar"},
+    {"slug": "gestion.reservas.informes.solicitudes", "label": "Dashboard Solicitudes", "icon": "room_service", "node_type": "leaf", "parent_slug": "gestion.reservas.informes", "position": 30, "permission_code": "reports.requests.read", "href": "/management/service-requests"},
+    {"slug": "gestion.reservas.check-ins", "label": "Check-ins", "icon": "login", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 40, "permission_code": "check-ins.read", "href": "/management/check-ins"},
+    {"slug": "gestion.reservas.estancias", "label": "Estancias Activas", "icon": "meeting_room", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 50, "permission_code": "reservations.read", "href": "/management/stay-inbox"},
+    {"slug": "gestion.reservas.check-outs", "label": "Check-outs", "icon": "logout", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 60, "permission_code": "check-outs.read", "href": "/management/check-outs"},
+    {"slug": "gestion.reservas.huespedes", "label": "Huéspedes", "icon": "people", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 70, "permission_code": "reservations.read", "href": "/management/guests"},
+    {"slug": "gestion.reservas.politicas", "label": "Políticas", "icon": "policy", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 80, "permission_code": "properties.read", "href": "/management/policies"},
+    #   ── Grupo: Housekeeping ──
+    {"slug": "gestion.housekeeping", "label": "Housekeeping", "icon": "cleaning_services", "node_type": "container", "parent_slug": "gestion", "position": 30, "permission_code": "housekeeping.read", "href": "/management/housekeeping"},
+    {"slug": "gestion.housekeeping.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.housekeeping", "position": 10, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.housekeeping.informes.dashboard", "label": "Dashboard", "icon": "dashboard", "node_type": "leaf", "parent_slug": "gestion.housekeeping.informes", "position": 10, "permission_code": "reports.housekeeping.dashboard.read", "href": "/management/housekeeping/dashboard"},
+    {"slug": "gestion.housekeeping.informes.operaciones", "label": "Operaciones", "icon": "analytics", "node_type": "leaf", "parent_slug": "gestion.housekeeping.informes", "position": 20, "permission_code": "reports.housekeeping.operations.read", "href": "/management/housekeeping/operations"},
+    {"slug": "gestion.housekeeping.informes.matriz", "label": "Matriz", "icon": "grid_view", "node_type": "leaf", "parent_slug": "gestion.housekeeping.informes", "position": 30, "permission_code": "reports.housekeeping.matrix.read", "href": "/management/housekeeping/matrix"},
+    {"slug": "gestion.housekeeping.mantenimiento", "label": "Mantenimiento", "icon": "build", "node_type": "leaf", "parent_slug": "gestion.housekeeping", "position": 20, "permission_code": "maintenance.read", "href": "/management/housekeeping/maintenance"},
+    {"slug": "gestion.housekeeping.cargos", "label": "Cargos", "icon": "attach_money", "node_type": "leaf", "parent_slug": "gestion.housekeeping", "position": 30, "permission_code": "charges.read", "href": "/management/housekeeping/charges"},
+    {"slug": "gestion.housekeeping.lost-found", "label": "Lost & Found", "icon": "search", "node_type": "leaf", "parent_slug": "gestion.housekeeping", "position": 40, "permission_code": "lost-found.read", "href": "/management/lost-and-found"},
+    #   ── Grupo: RRHH ──
+    {"slug": "gestion.rrhh", "label": "RRHH", "icon": "badge", "node_type": "container", "parent_slug": "gestion", "position": 40, "permission_code": "hr.read", "href": "/management/hr"},
+    {"slug": "gestion.rrhh.portal", "label": "Mi Portal", "icon": "person", "node_type": "leaf", "parent_slug": "gestion.rrhh", "position": 10, "permission_code": "hr.portal.read", "href": "/management/hr/my-portal"},
+    {"slug": "gestion.rrhh.directorio", "label": "Directorio RRHH", "icon": "groups", "node_type": "leaf", "parent_slug": "gestion.rrhh", "position": 20, "permission_code": "hr.directory.read", "href": "/management/hr/directory"},
+    {"slug": "gestion.rrhh.onboarding", "label": "Onboarding", "icon": "person_add", "node_type": "leaf", "parent_slug": "gestion.rrhh", "position": 30, "permission_code": "hr.onboarding.create", "href": "/management/hr/onboarding"},
+    {"slug": "gestion.rrhh.turnos", "label": "Turnos", "icon": "schedule", "node_type": "leaf", "parent_slug": "gestion.rrhh", "position": 40, "permission_code": "hr.shifts.read", "href": "/management/hr/shifts"},
+    #   ── Grupo: Revenue ──
+    {"slug": "gestion.revenue", "label": "Revenue", "icon": "trending_up", "node_type": "container", "parent_slug": "gestion", "position": 50, "permission_code": "revenue.read", "href": "/management/revenue"},
+    {"slug": "gestion.revenue.reportes", "label": "Reportes", "icon": "description", "node_type": "leaf", "parent_slug": "gestion.revenue", "position": 10, "permission_code": "reports.read", "href": "/management/reports"},
+    #   ── Grupo: Facturación ──
+    {"slug": "gestion.billing", "label": "Facturación", "icon": "receipt", "node_type": "container", "parent_slug": "gestion", "position": 60, "permission_code": "billing.read", "href": "/management/billing"},
+    {"slug": "gestion.billing.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.billing", "position": 10, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.billing.informes.facturas", "label": "Dashboard", "icon": "monitoring", "node_type": "leaf", "parent_slug": "gestion.billing.informes", "position": 10, "permission_code": "reports.billing.invoices.read", "href": "/management/billing/dashboard"},
+    {"slug": "gestion.billing.informes.pagos", "label": "Dashboard Pagos", "icon": "payments", "node_type": "leaf", "parent_slug": "gestion.billing.informes", "position": 20, "permission_code": "reports.billing.payments.read", "href": "/management/billing/payments-dashboard"},
+    {"slug": "gestion.billing.pagos", "label": "Pagos", "icon": "payments", "node_type": "leaf", "parent_slug": "gestion.billing", "position": 20, "permission_code": "payments.read", "href": "/management/billing/payments"},
+    # ── Raíz: Sistema ──
+    {"slug": "sistema", "label": "Sistema", "icon": "admin_panel_settings", "node_type": "container", "parent_slug": None, "position": 20, "permission_code": None, "href": None},
+    {"slug": "sistema.usuarios", "label": "Usuarios", "icon": "people", "node_type": "leaf", "parent_slug": "sistema", "position": 10, "permission_code": "users.read", "href": "/system/users"},
+    {"slug": "sistema.permisos", "label": "Permisos", "icon": "admin_panel_settings", "node_type": "leaf", "parent_slug": "sistema", "position": 20, "permission_code": "roles.read", "href": "/system/permissions"},
+    {"slug": "sistema.auditoria", "label": "Auditoría", "icon": "receipt_long", "node_type": "leaf", "parent_slug": "sistema", "position": 30, "permission_code": "audit.read", "href": "/system/audit"},
+    {"slug": "sistema.monitoreo", "label": "Monitoreo", "icon": "monitoring", "node_type": "leaf", "parent_slug": "sistema", "position": 40, "permission_code": "monitoring.read", "href": "/system/monitoring"},
+    {"slug": "sistema.notificaciones", "label": "Notificaciones", "icon": "notifications", "node_type": "leaf", "parent_slug": "sistema", "position": 50, "permission_code": "settings.read", "href": "/system/notifications"},
+    {"slug": "sistema.monedas", "label": "Monedas", "icon": "payments", "node_type": "leaf", "parent_slug": "sistema", "position": 60, "permission_code": "settings.read", "href": "/system/currencies"},
+    {"slug": "sistema.bsc", "label": "BSC", "icon": "bar_chart", "node_type": "leaf", "parent_slug": "sistema", "position": 70, "permission_code": "dashboard.read", "href": "/system/bsc"},
+    {"slug": "sistema.config-global", "label": "Configuración", "icon": "settings", "node_type": "leaf", "parent_slug": "sistema", "position": 80, "permission_code": "settings.read", "href": "/admin/global-settings"},
+    {"slug": "sistema.geo-catalogo", "label": "Geo-Catálogo", "icon": "map", "node_type": "leaf", "parent_slug": "sistema", "position": 90, "permission_code": "settings.read", "href": "/admin/geo-catalog"},
+    # ── Raíz: Propietario ──
+    {"slug": "propietario", "label": "Propietario", "icon": "assignment_ind", "node_type": "container", "parent_slug": None, "position": 30, "permission_code": None, "href": None},
+    {"slug": "propietario.usuarios", "label": "Propietarios", "icon": "assignment_ind", "node_type": "leaf", "parent_slug": "propietario", "position": 10, "permission_code": "users.manage", "href": "/ownership/users"},
+    # ── Raíz: Huésped ──
+    {"slug": "huesped", "label": "Huésped", "icon": "person", "node_type": "container", "parent_slug": None, "position": 40, "permission_code": None, "href": None},
+    {"slug": "huesped.buscar", "label": "Buscar Hoteles", "icon": "search", "node_type": "leaf", "parent_slug": "huesped", "position": 10, "permission_code": "search.read", "href": "/search"},
+    {"slug": "huesped.reservas", "label": "Mis Reservas", "icon": "confirmation_number", "node_type": "leaf", "parent_slug": "huesped", "position": 20, "permission_code": "account.bookings.read", "href": "/account/bookings"},
+    {"slug": "huesped.perfil", "label": "Mi Perfil", "icon": "account_circle", "node_type": "leaf", "parent_slug": "huesped", "position": 30, "permission_code": "account.read", "href": "/account/profile"},
 ]
 
 
-def seed_navigation(navigation: Collection) -> int:
-    """Seed the navigation collection with canonical menu items."""
-    navigation.create_index("sort_order")
+def seed_navigation(navigation: Collection, permission_docs: dict[str, Any] | None = None) -> int:
+    """Seed the navigation collection with the canonical tree.
+
+    Si ``permission_docs`` (permission_code → doc con ``_id``) viene provisto,
+    resuelve ``permission_code`` → ``permission_id`` (FK ObjectId) al sembrar.
+    Sin él solo se guarda el código string y la FK se backfillea luego con los
+    scripts de migración (``migrate_navigation_tree.py``).
+    """
+    navigation.create_index("slug", unique=True)
+    navigation.create_index([("parent_slug", 1), ("position", 1)])
     seeded = 0
     for item in NAVIGATION_CATALOG:
+        set_fields: dict[str, Any] = {
+            **item,
+            "is_system": True,
+            "updated_at": utc_now(),
+        }
+        code = item.get("permission_code")
+        if permission_docs is not None and code:
+            perm_doc = permission_docs.get(code)
+            if perm_doc is not None:
+                set_fields["permission_id"] = perm_doc["_id"]
         result = navigation.update_one(
-            {"href": item["href"]},
+            {"slug": item["slug"]},
             {
-                "$set": {
-                    **item,
-                    "is_system": True,
-                    "updated_at": utc_now(),
-                },
+                "$set": set_fields,
                 "$setOnInsert": {"created_at": utc_now()},
             },
             upsert=True,
         )
         if result.upserted_id is not None:
             seeded += 1
+
+    # ── Segunda pasada: resolver parent_id (self-FK ObjectId) ──
+    # Igual que permission_id, el parent_id no se conoce hasta que el padre
+    # existe en BD. Tras el upsert de todo el árbol, mapeamos slug → _id y
+    # rellenamos la FK de cada nodo no raíz. Así el seed por sí solo produce
+    # un árbol íntegro (ambas FKs resueltas) sin depender del script de
+    # migración.
+    slug_to_id = {doc["slug"]: doc["_id"] for doc in navigation.find({"slug": {"$exists": True}}, {"slug": 1})}
+    for item in NAVIGATION_CATALOG:
+        parent_slug = item.get("parent_slug")
+        if parent_slug is None:
+            continue
+        parent_id = slug_to_id.get(parent_slug)
+        if parent_id is not None:
+            navigation.update_one(
+                {"slug": item["slug"]},
+                {"$set": {"parent_id": parent_id}},
+            )
     return seeded
 
 
@@ -553,9 +660,9 @@ def main() -> None:
     create_indexes(collections)
 
     role_docs = upsert_roles(collections["roles"])
-    permissions_seeded = upsert_permissions(collections["permissions"])
+    permission_docs = upsert_permissions(collections["permissions"])
     roles_with_embedded_perms = embed_role_permissions(collections["roles"], role_docs)
-    nav_seeded = seed_navigation(collections["navigation"])
+    nav_seeded = seed_navigation(collections["navigation"], permission_docs)
     superadmin_result = ensure_superadmin(collections["users"], role_docs)
     register_activity(collections["user_activity_logs"], superadmin_result)
 

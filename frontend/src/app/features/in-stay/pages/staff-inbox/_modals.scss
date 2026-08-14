@@ -5,7 +5,7 @@
 .si-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: t.$si-overlay;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -18,7 +18,7 @@
   border-radius: t.$si-radius;
   width: 440px;
   max-width: 90vw;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: t.$si-shadow-lg;
   overflow: hidden;
 }
 

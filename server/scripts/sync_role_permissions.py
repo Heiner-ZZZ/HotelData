@@ -1,4 +1,11 @@
-"""Sync canonical permissions for a given role_name from a definition map.
+"""Sync canonical permissions for a given role_name.
+
+The role → permission matrix lives in ONE place: ``ROLE_PERMISSION_CODES`` in
+``scripts/init_security_model_ga03.py``. This script no longer keeps its own
+copy of that map — it imports the canonical one, so a later ``$set`` can never
+drift from (and silently strip) permissions granted by the security-model init
+script. ``ROLE_PERMISSIONS`` is kept as an alias for the historical name that
+tests and ``_audit_permission_sources.py`` import.
 
 Usage:
     python scripts/sync_role_permissions.py             # sync all roles
@@ -7,122 +14,28 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import sys
+from pathlib import Path
+
+# Permitir ``python scripts/sync_role_permissions.py`` (el script vive en
+# scripts/, así que ``scripts`` no está en sys.path por defecto).
+SERVER_ROOT = Path(__file__).resolve().parents[1]
+if str(SERVER_ROOT) not in sys.path:
+    sys.path.insert(0, str(SERVER_ROOT))
 
 from pymongo import MongoClient, UpdateOne
 
-MONGO_URI = "mongodb://localhost:27018"
-DB_NAME = "hoteldata_hub"
+from scripts.init_security_model_ga03 import ROLE_PERMISSION_CODES
 
-ROLE_PERMISSIONS: dict[str, list[str]] = {
-    "super_admin": [
-        "users.manage", "users.create", "users.read", "users.update", "users.delete",
-        "roles.manage", "roles.create", "roles.read", "roles.update", "roles.delete",
-        "reservations.manage", "reservations.create", "reservations.read",
-        "reservations.update", "reservations.delete",
-        "check-ins.manage", "check-ins.read", "check-outs.manage", "check-outs.read",
-        "properties.manage", "properties.read", "properties.update",
-        "hotels.manage", "hotels.read", "hotels.update",
-        "rooms.manage", "rooms.read", "rooms.update",
-        "rates.manage", "rates.read", "rates.update",
-        "revenue.manage", "revenue.read",
-        "reports.manage", "reports.read",
-        "dashboard.manage", "dashboard.read",
-        "housekeeping.manage", "housekeeping.create", "housekeeping.read",
-        "housekeeping.update", "housekeeping.delete",
-        "lost-found.manage", "lost-found.create", "lost-found.read",
-        "lost-found.update", "lost-found.delete",
-        "maintenance.manage", "maintenance.read", "maintenance.update",
-        "charges.manage", "charges.read",
-        "inventory.manage", "inventory.read",
-        "inventory.products.cost.read", "inventory.products.cost.manage",
-        "hr.manage", "hr.create", "hr.read", "hr.update", "hr.delete",
-        "hr.portal.read", "hr.directory.read", "hr.directory.manage",
-        "hr.onboarding.create", "hr.shifts.read", "hr.shifts.manage",
-        "billing.manage", "billing.read",
-        "payments.manage", "payments.read",
-        "shifts.manage", "shifts.create", "shifts.read", "shifts.update",
-        "amenities.manage", "amenities.read",
-        "promotions.manage", "promotions.read",
-        "reviews.read", "reviews.moderate",
-        "settings.manage", "settings.read",
-        "audit.manage", "audit.read",
-        "monitoring.manage", "monitoring.read",
-        "etl.manage", "etl.read", "etl.execute",
-        "hotel.manage_roles", "properties.approve",
-        # Guest-facing (auto-servicio del huésped): super_admin NO los tiene —
-        # ver GUEST_PERMISSION_CODES en init_security_model_ga03.py (2026-08).
-    ],
-    "admin_sistema": [
-        "users.manage", "roles.read", "dashboard.read",
-        "etl.read", "etl.execute", "audit.read", "monitoring.read", "settings.read",
-        "shifts.read", "hr.manage", "properties.approve",
-        "hr.portal.read", "hr.directory.read", "hr.directory.manage",
-        "hr.onboarding.create", "hr.shifts.read", "hr.shifts.manage",
-    ],
-    "operador_datos": [
-        "dashboard.read", "etl.read", "etl.execute", "audit.read", "monitoring.read",
-    ],
-    "auditor_datos": [
-        "dashboard.read", "etl.read", "audit.read", "monitoring.read", "reports.read",
-    ],
-    "hotel_partner": [
-        "dashboard.read", "hotels.manage", "properties.read", "rooms.read",
-        "reservations.manage", "revenue.read",
-        "promotions.read", "promotions.manage",
-        "hotel.manage_roles",
-        "reviews.read",
-    ],
-    "gerente_hotel": [
-        "dashboard.read", "hotels.manage", "properties.read", "rooms.read",
-        "reservations.manage", "revenue.read", "rates.read",
-        "inventory.read",
-        "inventory.products.cost.read", "inventory.products.cost.manage",
-        "promotions.read", "promotions.manage",
-        "shifts.manage", "shifts.read",
-        "hr.manage",
-        "hr.portal.read", "hr.directory.read", "hr.directory.manage",
-        "hr.onboarding.create", "hr.shifts.read", "hr.shifts.manage",
-        "hotel.manage_roles",
-        "properties.approve",
-        "reviews.read",
-    ],
-    "revenue_manager": [
-        "dashboard.read", "revenue.manage", "rates.manage",
-        "reservations.read", "inventory.read", "reports.read",
-        "promotions.read", "promotions.manage",
-    ],
-    "marketing_hotelero": [
-        "dashboard.read", "properties.read", "amenities.manage",
-        "promotions.manage", "promotions.read", "revenue.read",
-        "reviews.read", "reviews.moderate",
-    ],
-    "cliente": [
-        "search.read", "account.read", "account.update",
-        "account.bookings.read",
-        "reservations.read", "reservations.create",
-        "billing.read", "payments.read",
-    ],
-    "maintenance": [
-        "dashboard.read",
-        "housekeeping.read", "housekeeping.update",
-        "maintenance.manage",
-        "inventory.read",
-        "hr.read",
-        "hr.portal.read", "hr.directory.read",
-        "lost-found.read", "lost-found.update",
-    ],
-    "recepcionista": [
-        "dashboard.read", "reservations.manage",
-        "check-ins.manage", "check-outs.manage",
-        "properties.read", "rooms.read",
-        "billing.read", "payments.read",
-        "shifts.read", "shifts.create", "shifts.update",
-        "hr.read",
-        "hr.portal.read", "hr.directory.read",
-        "reviews.read",
-    ],
-}
+# Mismo contrato de conexión que get_database()/get_settings(): la URI y la BD
+# vienen del entorno (compose inyecta MONGO_URI=mongodb://mongo:27018 dentro del
+# contenedor). Los defaults cubren la ejecución directa desde el host.
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27018")
+DB_NAME = os.getenv("MONGO_DATABASE", "hoteldata_hub")
+
+# Canonical single source of truth (single map, no duplication).
+ROLE_PERMISSIONS: dict[str, list[str]] = ROLE_PERMISSION_CODES
 
 
 def sync(role_name: str | None = None, uri: str = MONGO_URI, db_name: str = DB_NAME) -> None:

@@ -5,12 +5,12 @@ import { httpResource } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
-import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
+import { HorizontalSubNavComponent } from '../../../../shared/ui/horizontal-sub-nav/horizontal-sub-nav';
 import { HousekeepingApiService, type HousekeepingOperationsAnalytics } from '../../services/housekeeping-api.service';
 
 @Component({
   selector: 'app-housekeeping-operations-page',
-  imports: [DecimalPipe, PropertySelectorComponent, HousekeepingSubNavComponent],
+  imports: [DecimalPipe, PropertySelectorComponent, HorizontalSubNavComponent],
   templateUrl: './housekeeping-operations-page.html',
   styleUrl: './housekeeping-operations-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

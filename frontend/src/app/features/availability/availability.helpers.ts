@@ -45,6 +45,7 @@ function _roomTypesForDate(byDate: Map<string, AvailabilityInventoryItem[]>, dat
     availableRooms: inv.availableRooms,
     blockedRooms: inv.blockedRooms,
     occupancyPct: inv.occupancyPct,
+    hasRate: inv.hasRate,
   }));
 }
 
@@ -125,7 +126,11 @@ export function cellLabel(roomType: CalendarRoomTypeCell): string {
 
 /** Tooltip text for a cell */
 export function cellTooltip(roomType: CalendarRoomTypeCell, date: string): string {
-  return `${date} · ${roomType.roomTypeName}: ${roomType.availableRooms}/${roomType.totalRooms} disponibles (${roomType.occupancyPct}% ocupado)`;
+  const base = `${date} · ${roomType.roomTypeName}: ${roomType.availableRooms}/${roomType.totalRooms} disponibles (${roomType.occupancyPct}% ocupado)`;
+  if (roomType.availableRooms > 0 && roomType.hasRate === false) {
+    return `${base} · SIN TARIFA — no vendible`;
+  }
+  return base;
 }
 
 /** Active cell info label */

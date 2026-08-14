@@ -50,6 +50,133 @@
   }
 }
 
+// ─── Reserva sin check-in: no se puede liquidar ───
+.co-blocked {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px dashed color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+  border-radius: 10px;
+  margin-bottom: 24px;
+
+  > .material-symbols-outlined {
+    font-size: 22px;
+    color: var(--danger);
+    flex-shrink: 0;
+    --icon-wght: 300;
+    --icon-opsz: 22;
+  }
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    strong {
+      font-size: 14px;
+      color: var(--app-text);
+    }
+
+    span {
+      font-size: 13px;
+      color: var(--muted-text);
+      line-height: 1.45;
+    }
+  }
+
+  .co-noshow-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+    align-self: center;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1px solid var(--danger);
+    background: var(--danger);
+    color: var(--surface);
+    transition: all 0.15s;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--danger) 88%, black);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .material-symbols-outlined {
+      font-size: 17px;
+    }
+  }
+}
+
+// ─── Folio de penalización (no-show generado) ───
+.co-noshow-folio {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--app-border);
+  border-left: 3px solid var(--danger);
+  background: var(--surface);
+  border-radius: 10px;
+  margin-bottom: 16px;
+
+  > .material-symbols-outlined {
+    font-size: 20px;
+    color: var(--danger);
+    flex-shrink: 0;
+    --icon-wght: 300;
+    --icon-opsz: 22;
+  }
+
+  > div {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+
+    .co-label {
+      flex-basis: 100%;
+      margin-bottom: 0;
+    }
+
+    strong {
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      font-size: 14px;
+      color: var(--app-text);
+    }
+
+    .co-noshow-folio-amount {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--danger);
+    }
+
+    .co-noshow-folio-link {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
 // ─── Toast ───
 .toast {
   display: flex;
@@ -96,6 +223,14 @@
   &.completed {
     background: var(--accent-light);
     color: var(--accent);
+  }
+  &.blocked {
+    background: color-mix(in srgb, var(--gray-500) 15%, transparent);
+    color: var(--gray-600);
+  }
+  &.noshow {
+    background: color-mix(in srgb, var(--danger) 15%, transparent);
+    color: var(--danger);
   }
 }
 .co-folio-code {
@@ -212,6 +347,33 @@
 }
 .co-stay-paid { color: var(--success); }
 .co-stay-pending { color: var(--danger); }
+
+// ─── Shift chip (check-out attribution) ───
+.co-shift-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text);
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  em {
+    font-style: normal;
+    color: var(--muted-text);
+    font-weight: 500;
+    &::before { content: '· '; }
+  }
+}
 .co-stay-divider {
   height: 1px;
   margin: 4px 0;

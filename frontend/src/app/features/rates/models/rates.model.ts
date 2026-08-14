@@ -3,6 +3,8 @@ export interface RatesViewModel {
   hotelLabel: string;
   manualOverride: boolean;
   profileBadge: string;
+  /** Tarifa base mínima (system_config.min_base_rate) para validar el form. */
+  minBaseRate: number;
   roomTypes: { id: string; name: string }[];
   ratePlans: RatePlanItem[];
   calendar: RateCalendarItem[];
@@ -17,6 +19,17 @@ export interface RatesViewModel {
     activeLabel: string;
   }[];
   coupons: { code: string; activeLabel: string; campaignId: string }[];
+  /** Hueco tarifas-vs-inventario para el banner del overview (null = sin hueco). */
+  rateCoverage: RateCoverage | null;
+}
+
+/** Noches con habitaciones disponibles pero sin tarifa abierta. */
+export interface RateCoverage {
+  rateLastDate: string | null;
+  inventoryLastDate: string;
+  gapNights: number;
+  gapStart: string;
+  gapEnd: string;
 }
 
 export interface SeasonalRuleItem {
@@ -52,6 +65,8 @@ export interface RateCalendarItem {
   minStayNights: number;
   isClosed: boolean;
   closedLabel: string;
+  /** 'generated' = creada por Generar calendario (bulk); '' = editada a mano. */
+  source: string;
 }
 
 export interface RatePropertyOption {

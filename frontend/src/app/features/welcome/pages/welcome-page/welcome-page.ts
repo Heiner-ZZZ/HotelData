@@ -7,15 +7,11 @@ import {
   signal,
 } from '@angular/core';
 import { httpResource } from '@angular/common/http';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
-import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
-import { DestinationAutocompleteComponent } from '../../../../shared/ui/destination-autocomplete/destination-autocomplete';
-import { GuestsPickerComponent } from '../../../../shared/ui/guests-picker/guests-picker';
+import { BookingSearchBarComponent, type BookingSearchValues } from '../../../../shared/ui/booking-search-bar/booking-search-bar';
 import { API_CONFIG } from '../../../../core/api/api.config';
 
 import {
@@ -32,7 +28,7 @@ import {
 
 @Component({
   selector: 'app-welcome-page',
-  imports: [RouterLink, ReactiveFormsModule, DateRangePickerComponent, GuestsPickerComponent, DestinationAutocompleteComponent],
+  imports: [RouterLink, BookingSearchBarComponent],
   templateUrl: './welcome-page.html',
   styleUrls: [
     '../../../../../styles/_auth-shell.scss',
@@ -42,7 +38,6 @@ import {
 })
 export class WelcomePageComponent {
   private readonly authService = inject(AuthService);
-  private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly apiConfig = inject(API_CONFIG);
@@ -61,95 +56,40 @@ export class WelcomePageComponent {
     return `${d.getFullYear()}-${mm}-${dd}`;
   })();
 
-  readonly searchForm = this.formBuilder.nonNullable.group({
-    destination: [''],
-    checkIn: [''],
-    checkOut: [''],
-    adults: ['2'],
-    children: ['0'],
-    rooms: ['1'],
-  });
+  /** Estado inicial del booking-bar compartido: lo que el usuario dejó
+   *  guardado la última vez (o defaults si no hay nada persistido). */
+  readonly initialSearch: BookingSearchValues =
+    loadWelcomeSearchState(this.today) ?? { destination: '', checkIn: '', checkOut: '', adults: 2, children: 0, rooms: 1 };
 
-  /** Fecha de entrada desde el date-range-picker compartido (mismo widget
-   *  que /account/bookings/new): un solo calendario, clic o arrastre. */
-  onStartDateChange(date: string): void {
-    this.searchForm.controls.checkIn.setValue(date);
+  /** Último valor del booking-bar (para persistencia en vivo debounced). */
+  private readonly latestValues = signal<BookingSearchValues>(this.initialSearch);
+
+  /** Persistencia en vivo: cada cambio del booking-bar se guarda (debounced)
+   *  para que al volver al welcome el estado no se pierda. */
+  onValueChange(values: BookingSearchValues): void {
+    this.latestValues.set(values);
   }
 
-  onEndDateChange(date: string): void {
-    this.searchForm.controls.checkOut.setValue(date);
-  }
+  /** Buscar: persiste y navega a /search con los query params canónicos
+   *  (omite los valores por defecto para mantener la URL limpia). */
+  onSearch(values: BookingSearchValues): void {
+    this.persistSearchState(values);
 
-  // ── Destino dinámico ──────────────────────────────────────────────────
-
-  onDestinationChange(value: string): void {
-    this.searchForm.controls.destination.setValue(value);
-  }
-
-  // ── Huéspedes (guests-picker compartido) ──────────────────────────────
-
-  /** Snapshot reactivo del form: un toSignal sobre valueChanges para que
-   *  guestCounts (y cualquier binding) se recompute al escribir controles. */
-  private readonly formSnapshot = toSignal(this.searchForm.valueChanges, {
-    initialValue: this.searchForm.getRawValue(),
-  });
-
-  /** Los controles guardan strings; el picker necesita números (señal reactiva). */
-  readonly guestCounts = computed(() => {
-    const fv = this.formSnapshot() ?? this.searchForm.getRawValue();
-    return {
-      adults: Number(fv.adults) || 2,
-      children: Number(fv.children) || 0,
-      rooms: Number(fv.rooms) || 1,
-    };
-  });
-
-  onAdultsChange(value: number): void {
-    this.searchForm.controls.adults.setValue(String(value));
-  }
-
-  onChildrenChange(value: number): void {
-    this.searchForm.controls.children.setValue(String(value));
-  }
-
-  onRoomsChange(value: number): void {
-    this.searchForm.controls.rooms.setValue(String(value));
-  }
-
-  navigateToSearch(): void {
-    const fv = this.searchForm.getRawValue();
     const params: Record<string, string> = {};
-    if (fv.destination.trim()) params['destination'] = fv.destination.trim();
-    if (fv.checkIn) params['check_in'] = fv.checkIn;
-    if (fv.checkOut) params['check_out'] = fv.checkOut;
-    if (fv.adults !== '2') params['adults'] = fv.adults;
-    if (fv.children !== '0') params['children'] = fv.children;
-    if (fv.rooms !== '1') params['rooms'] = fv.rooms;
-
-    // Persistir antes de navegar: al volver al welcome el booking bar
-    // recarga estos valores (ver constructor).
-    this.persistSearchState();
+    if (values.destination.trim()) params['destination'] = values.destination.trim();
+    if (values.checkIn) params['check_in'] = values.checkIn;
+    if (values.checkOut) params['check_out'] = values.checkOut;
+    if (values.adults !== 2) params['adults'] = String(values.adults);
+    if (values.children !== 0) params['children'] = String(values.children);
+    if (values.rooms !== 1) params['rooms'] = String(values.rooms);
 
     const qs = new URLSearchParams(params).toString();
     void this.router.navigateByUrl(qs ? `/search?${qs}` : '/search');
   }
 
-  /** Serializa el estado actual del booking bar (fuente única del mapping). */
-  private serializeForm() {
-    const fv = this.searchForm.getRawValue();
-    return {
-      destination: fv.destination.trim(),
-      checkIn: fv.checkIn,
-      checkOut: fv.checkOut,
-      adults: Number(fv.adults) || 2,
-      children: Number(fv.children) || 0,
-      rooms: Number(fv.rooms) || 1,
-    };
-  }
-
-  /** Persiste el estado actual del booking bar a localStorage. */
-  private persistSearchState(): void {
-    saveWelcomeSearchState(this.serializeForm());
+  /** Persiste el estado del booking bar a localStorage (tolerante a fallos). */
+  private persistSearchState(values: BookingSearchValues): void {
+    saveWelcomeSearchState(values);
   }
 
   // ── Featured hotels ─────────────────────────────────────────────────────
@@ -219,20 +159,6 @@ export class WelcomePageComponent {
   readonly selectedCurrency = signal<string>(this.readStoredCurrency());
 
   constructor() {
-    // Precarga el último booking bar guardado (destino, fechas, huéspedes).
-    // loadWelcomeSearchState saneja fechas pasadas y rangos inválidos.
-    const saved = loadWelcomeSearchState(this.today);
-    if (saved) {
-      this.searchForm.patchValue({
-        destination: saved.destination,
-        checkIn: saved.checkIn,
-        checkOut: saved.checkOut,
-        adults: String(saved.adults),
-        children: String(saved.children),
-        rooms: String(saved.rooms),
-      });
-    }
-
     effect(() => {
       if (this.hasSession()) {
         const homeHref = this.authService.authState().homeHref;
@@ -252,10 +178,9 @@ export class WelcomePageComponent {
     // evita escribir localStorage en cada tecla. onCleanup cancela el timer
     // si el componente se destruye antes de los 600ms.
     effect((onCleanup) => {
-      const fv = this.formSnapshot();
-      if (!fv) return;
+      const values = this.latestValues();
       const timer = setTimeout(() => {
-        saveWelcomeSearchState(this.serializeForm());
+        saveWelcomeSearchState(values);
       }, 600);
       onCleanup(() => clearTimeout(timer));
     });

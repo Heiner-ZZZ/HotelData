@@ -60,6 +60,25 @@ def _execution_status() -> dict:
     }
 
 
+def _dato_status() -> dict:
+    """Directorio Dato: ruta visible + conteos parquet de la última corrida.
+
+    ``root`` es la ruta del host (Windows) que ve el usuario; la UI la muestra
+    para navegar a los .parquet. Los conteos por sección vienen del registro
+    que el pipeline escribe en cada corrida (``m2c_dato_export.json``).
+    """
+    settings = get_settings()
+    record = read_json_file(paths()["dato_export_json"])
+    return {
+        "exists": bool(record),
+        "root": str(settings.dato_dir_host),
+        "container_path": str(settings.dato_dir),
+        "run_date": record.get("run_date", ""),
+        "sections": record.get("sections", {}),
+        "generated_at": record.get("generated_at", ""),
+    }
+
+
 def consolidated() -> dict:
     return {
         "services": {
@@ -68,4 +87,5 @@ def consolidated() -> dict:
         "schedule": get_schedule(),
         "progress": m2c_progress(),
         "execution": _execution_status(),
+        "dato": _dato_status(),
     }

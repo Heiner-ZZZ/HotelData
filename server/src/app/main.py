@@ -297,6 +297,10 @@ async def lifespan(app: FastAPI):
         daemon=True,
     ).start()
     threading.Thread(target=refresh_kpis_background, daemon=True).start()
+    # Periodic internal notifications for forgotten open cash shifts
+    # (expired → block active; open_long → manager heads-up).
+    from src.app.modules.reception.notifications import sweep_shift_notifications_forever
+    sweep_shift_notifications_forever()
     yield
 
 

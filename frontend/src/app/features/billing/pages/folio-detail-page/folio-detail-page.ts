@@ -344,5 +344,30 @@ export class FolioDetailPageComponent {
     void this.router.navigate(['/management/billing/invoices']);
   }
 
+  printPage(): void {
+    window.print();
+  }
+
+  /** Responsible cashier label for a shift-stamped posting, or null. */
+  shiftLabel(p: FolioPosting): string | null {
+    return p.shiftEmployee || p.shiftOpenedBy || null;
+  }
+
+  /** Human label of the shift type ("Matutino" / "Vespertino" / "Nocturno"). */
+  shiftTypeLabel(type: string | null): string {
+    const map: Record<string, string> = {
+      morning: 'Matutino',
+      afternoon: 'Vespertino',
+      evening: 'Nocturno',
+    };
+    return (type && map[type]) || '';
+  }
+
+  /** Tooltip with the shift FK + type for full attribution. */
+  shiftTitle(p: FolioPosting): string {
+    const type = p.shiftType ? ` · ${p.shiftType}` : '';
+    return p.shiftId ? `Turno ${p.shiftId}${type}` : 'Sin turno asociado';
+  }
+
   readonly Math = Math;
 }

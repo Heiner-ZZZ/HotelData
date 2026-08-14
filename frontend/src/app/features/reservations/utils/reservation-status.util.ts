@@ -57,7 +57,7 @@ export const BOOKING_STATUS_LABELS: Record<string, string> = {
  */
 export const BOOKING_STATUS_COLORS: Record<string, string> = {
   pending: 'var(--cyan)',
-  confirmed: 'var(--teal)',
+  confirmed: 'var(--accent)',
   rejected: 'var(--danger)',
   checked_in: 'var(--success)',
   checked_out: 'var(--purple-strong)',

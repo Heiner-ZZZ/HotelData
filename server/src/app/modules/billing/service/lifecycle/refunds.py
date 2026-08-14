@@ -207,8 +207,16 @@ def create_credit_note_for_invoice(
     changed_by: str = "historical_reconciliation",
     payment_id: ObjectId | None = None,
     refund_id: str | None = None,
+    shift_id: str | None = None,
+    shift_attribution: dict | None = None,
 ) -> dict | None:
-    """Create or reuse the formal credit note for a cancelled/refunded invoice."""
+    """Create or reuse the formal credit note for a cancelled/refunded invoice.
+
+    ``shift_id``/``shift_attribution`` (optional) stamp the cashier on duty
+    that issued the reversal, denormalized on the refund document so reports
+    don't need the join (parity with invoices, payments and folio postings).
+    Null for legacy/service writes (historical reconciliation).
+    """
     try:
         invoice_oid = ObjectId(invoice_id)
     except (InvalidId, TypeError):
@@ -240,6 +248,15 @@ def create_credit_note_for_invoice(
             update["payment_id"] = payment_id
         if refund_id:
             update["refund_id"] = refund_id
+        if shift_id:
+            try:
+                update["shift_id"] = ObjectId(shift_id)
+            except Exception:
+                update["shift_id"] = shift_id
+            if shift_attribution:
+                for key in ("shift_employee", "shift_opened_by", "shift_opened_by_id", "shift_type"):
+                    if shift_attribution.get(key):
+                        update[key] = shift_attribution[key]
         db[REFUND_DOCUMENTS].update_one({"_id": existing["_id"]}, {"$set": update})
         existing = db[REFUND_DOCUMENTS].find_one({"_id": existing["_id"]})
     else:
@@ -265,6 +282,17 @@ def create_credit_note_for_invoice(
             "issued_by": changed_by,
             "updated_at": now,
         }
+        # Cashier attribution: the shift that issued the reversal and the
+        # employee/opener, denormalized (parity with invoices/payments/folios).
+        if shift_id:
+            try:
+                document["shift_id"] = ObjectId(shift_id)
+            except Exception:
+                document["shift_id"] = shift_id
+            if shift_attribution:
+                for key in ("shift_employee", "shift_opened_by", "shift_opened_by_id", "shift_type"):
+                    if shift_attribution.get(key):
+                        document[key] = shift_attribution[key]
         result = db[REFUND_DOCUMENTS].update_one(
             {"invoice_id": invoice_oid, "document_type": "credit_note"},
             {"$setOnInsert": {**document, "_id": ObjectId()}},

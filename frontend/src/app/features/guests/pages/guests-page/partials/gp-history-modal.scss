@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay);
   backdrop-filter: blur(4px);
   animation: gp-modal-fade-in 180ms ease-out;
 }
@@ -229,7 +229,7 @@
   color: var(--gray-500);
   white-space: nowrap;
 
-  &.active { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+  &.active { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
   &.warn { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
   &.danger { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
 }

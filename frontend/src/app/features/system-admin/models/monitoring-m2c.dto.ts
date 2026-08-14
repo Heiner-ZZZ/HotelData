@@ -15,12 +15,16 @@ export interface M2cClickhouseStatusDto {
   technical_detail?: string;
 }
 
+/** Modo de refresco de los KPIs: 'full' (barrido con TRUNCATE) o 'incremental' (INSERT + dedup, sin borrar historial). */
+export type M2cRefreshMode = 'full' | 'incremental';
+
 export interface M2cScheduleDto {
   id?: string;
   pipeline: string;
   schedule_cron: string;
   enabled: boolean;
   configured: boolean;
+  refresh_mode: M2cRefreshMode;
   updated_at: string;
   updated_by: string;
 }
@@ -54,6 +58,21 @@ export interface M2cExecutionDto {
   payload: Record<string, unknown>;
 }
 
+/** Conteos de parquet por tabla de una sección del directorio Dato. */
+export interface M2cDatoSectionDto {
+  [table: string]: number;
+}
+
+/** Directorio Dato: rutas + conteos de parquet de la última corrida. */
+export interface M2cDatoDto {
+  exists: boolean;
+  root: string;
+  container_path: string;
+  run_date: string;
+  sections: Record<string, M2cDatoSectionDto>;
+  generated_at: string;
+}
+
 export interface M2cConsolidatedDto {
   services: {
     clickhouse: M2cClickhouseStatusDto;
@@ -61,6 +80,7 @@ export interface M2cConsolidatedDto {
   schedule: M2cScheduleDto;
   progress: M2cProgressDto;
   execution: M2cExecutionDto;
+  dato: M2cDatoDto;
 }
 
 export interface M2cActionResponseDto {
@@ -74,4 +94,5 @@ export interface M2cActionResponseDto {
 export interface M2cScheduleUpdateDto {
   schedule_cron: string;
   enabled: boolean;
+  refresh_mode: M2cRefreshMode;
 }

@@ -208,7 +208,7 @@
     &.issued > .material-symbols-outlined { color: var(--warning); }
     &.paid > .material-symbols-outlined { color: var(--success); }
     &.cancelled > .material-symbols-outlined { color: var(--danger); }
-    &.taxes > .material-symbols-outlined { color: #a78bfa; }
+    &.taxes > .material-symbols-outlined { color: var(--purple); }
   }
 }
 

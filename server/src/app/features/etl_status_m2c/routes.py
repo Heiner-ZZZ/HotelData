@@ -15,6 +15,7 @@ from src.app.features.etl_status_m2c.services import (
     stop_pipeline,
     update_schedule,
 )
+from src.etl.mongo_to_clickhouse.config import REFRESH_MODES
 
 JSON_API = APIRouter(prefix="/api")
 
@@ -22,6 +23,10 @@ JSON_API = APIRouter(prefix="/api")
 class ScheduleUpdateRequest(BaseModel):
     schedule_cron: str = Field(..., min_length=5, max_length=64, description="Cron expression")
     enabled: bool = True
+    # Modo de refresco de los KPIs: "full" (barrido con TRUNCATE) o
+    # "incremental" (INSERT + dedup, sin borrar historial). El DAG horario
+    # lee este mismo valor en cada corrida.
+    refresh_mode: str = Field("full", description="full | incremental")
 
 
 @JSON_API.get("/etl-status/m2c/consolidated")
@@ -64,10 +69,27 @@ def api_etl_status_m2c_schedule_get():
 
 @JSON_API.put("/etl-status/m2c/schedule")
 def api_etl_status_m2c_schedule_put(payload: ScheduleUpdateRequest):
-    result = update_schedule(payload.schedule_cron, payload.enabled)
+    if payload.refresh_mode not in REFRESH_MODES:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": f"refresh_mode inválido: {payload.refresh_mode!r} (válidos: {', '.join(REFRESH_MODES)})",
+                "refresh_mode": payload.refresh_mode,
+            },
+        )
+    result = update_schedule(
+        payload.schedule_cron,
+        payload.enabled,
+        refresh_mode=payload.refresh_mode,
+    )
     return {
         "ok": True,
         "schedule": result,
         "display_message": "Horario del pipeline mongo→clickhouse actualizado.",
-        "summary_output": f"Cron interno: {payload.schedule_cron} · habilitado: {payload.enabled}",
+        "summary_output": (
+            f"Cron interno: {payload.schedule_cron} · habilitado: {payload.enabled} · "
+            f"modo: {payload.refresh_mode}"
+        ),
     }

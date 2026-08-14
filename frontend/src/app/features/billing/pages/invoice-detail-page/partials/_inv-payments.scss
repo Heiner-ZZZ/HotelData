@@ -36,3 +36,31 @@
 .inv-pay-method { font-weight: 600; font-size: 0.82rem; color: var(--app-text); }
 .inv-pay-meta { font-size: 0.7rem; color: var(--muted-text); margin-top: 0.1rem; }
 .inv-pay-amount { font-size: 0.9rem; font-weight: 700; color: var(--app-text); white-space: nowrap; }
+
+.inv-shift-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  font-size: 0.68rem;
+  color: var(--app-text);
+  white-space: nowrap;
+  cursor: help;
+  width: fit-content;
+
+  .material-symbols-outlined {
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  em {
+    font-style: normal;
+    color: var(--muted-text);
+    font-weight: 500;
+    &::before { content: '· '; }
+  }
+}

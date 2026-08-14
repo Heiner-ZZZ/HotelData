@@ -98,6 +98,11 @@ export interface FolioPostingDto {
   reference_id: string;
   reference_type: string;
   posted_at: string;
+  /** Cashier attribution stamped on money postings (optional). */
+  shift_id?: string | null;
+  shift_employee?: string | null;
+  shift_opened_by?: string | null;
+  shift_type?: string | null;
 }
 
 export interface FolioPostingsDto {

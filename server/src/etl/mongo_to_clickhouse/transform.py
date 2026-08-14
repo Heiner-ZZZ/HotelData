@@ -158,7 +158,12 @@ def _as_datetime(value: Any) -> Any:
 
 
 def _as_date(value: Any, default: str = "") -> Any:
-    """Convierte a ``datetime.date`` para columnas ClickHouse tipo Date."""
+    """Convierte a ``datetime.date`` para columnas ClickHouse tipo Date.
+
+    Devuelve ``None`` cuando el valor no es una fecha válida; la guarda de
+    ``transform_rows_with_stats`` descarta esas filas antes del load, así que
+    nunca llega un 1970-01-01 ficticio a ClickHouse.
+    """
     from datetime import date as _date
     from datetime import datetime as _datetime
 
@@ -172,7 +177,7 @@ def _as_date(value: Any, default: str = "") -> Any:
     try:
         return _date.fromisoformat(text)
     except ValueError:
-        return _date(1970, 1, 1)
+        return None
 
 
 def _kpi_booking_daily(doc: dict[str, Any]) -> list[Any]:
@@ -326,13 +331,36 @@ _MAPPERS = {
 }
 
 
-def transform_rows(table_name: str, raw_docs: list[dict[str, Any]]) -> list[list[Any]]:
-    """Mapea documentos crudos de Mongo a filas posicionales para ClickHouse.
+def transform_rows_with_stats(
+    table_name: str, raw_docs: list[dict[str, Any]]
+) -> tuple[list[list[Any]], int]:
+    """Mapea documentos y descarta filas sin fecha válida.
 
-    Devuelve listas alineadas con ``TABLE_COLUMNS[table_name]`` (mismos tipos
-    que el CREATE TABLE de ``load.py``).
+    La primera columna de toda tabla KPI es ``date``. Si el mapper devuelve
+    ``None`` en esa posición (fecha vacía o ilegible), la fila se descarta y
+    se cuenta en el segundo valor de retorno para el reporte de calidad
+    (``discarded_reason: invalid_date``).
     """
     mapper = _MAPPERS.get(table_name)
     if mapper is None:
         raise ValueError(f"Tabla sin mapper definido: {table_name}")
-    return [mapper(doc) for doc in raw_docs]
+    rows: list[list[Any]] = []
+    discarded = 0
+    for doc in raw_docs:
+        row = mapper(doc)
+        if row[0] is None:
+            discarded += 1
+            continue
+        rows.append(row)
+    return rows, discarded
+
+
+def transform_rows(table_name: str, raw_docs: list[dict[str, Any]]) -> list[list[Any]]:
+    """Mapea documentos crudos de Mongo a filas posicionales para ClickHouse.
+
+    Devuelve listas alineadas con ``TABLE_COLUMNS[table_name]`` (mismos tipos
+    que el CREATE TABLE de ``load.py``). Las filas sin fecha válida se
+    descartan (ver ``transform_rows_with_stats`` para obtener el conteo).
+    """
+    rows, _ = transform_rows_with_stats(table_name, raw_docs)
+    return rows

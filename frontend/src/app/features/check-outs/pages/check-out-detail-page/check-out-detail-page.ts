@@ -1,18 +1,20 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, ViewEncapsulation } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
-import { getErrorStatus } from '../../../../shared/utils/http-error.util';
+import { getErrorStatus, getErrorMessage } from '../../../../shared/utils/http-error.util';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
+import { NoShowService } from '../../../../shared/services/no-show.service';
 import { CheckOutsApiService, type BookingCharge, type CheckOutDetailDto } from '../../services/check-outs-api.service';
-import { STAY_CHECKED_OUT } from '../../../reservations/utils/reservation-status.util';
+import { STAY_CHECKED_IN, STAY_CHECKED_OUT, STAY_NO_SHOW } from '../../../reservations/utils/reservation-status.util';
 import { CoHeaderComponent } from './partials/co-header';
 import { CoStepBreadcrumbComponent } from './partials/co-step-breadcrumb';
 import { CoStepSummaryComponent } from './partials/co-step-summary';
@@ -26,6 +28,7 @@ import { CoCompletedViewComponent } from './partials/co-completed-view';
   selector: 'app-check-out-detail-page',
   imports: [
     FormsModule,
+    RouterLink,
     LoadingStateComponent, ErrorStateComponent, EmptyStateComponent,
     CoHeaderComponent,
     CoStepBreadcrumbComponent,
@@ -46,6 +49,8 @@ export class CheckOutDetailPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(CheckOutsApiService);
   private readonly opMode = inject(OperationModeService);
+  private readonly auth = inject(AuthService);
+  private readonly noShow = inject(NoShowService);
 
   readonly viewState = signal<ViewState>('loading');
   /**
@@ -60,6 +65,7 @@ export class CheckOutDetailPageComponent {
     return this.detailResource.value() ?? null;
   });
   readonly errorMessage = signal('');
+  readonly successMessage = signal('');
 
   // ── Reactive route param → httpResource (re-fires on bookingId change) ──
   private readonly paramMap = toSignal(this.activatedRoute.paramMap, {
@@ -143,6 +149,66 @@ export class CheckOutDetailPageComponent {
   readonly canComplete = signal(false);
   readonly checkoutDone = computed(() => this.data()?.stay_status === STAY_CHECKED_OUT);
 
+  // ── Guard: el check-out solo aplica a estancias con check-in activo ──
+  // Una reserva que nunca registró check-in (no-show, pendiente o sin estado)
+  // no tiene estancia que cerrar: se bloquea el wizard y se muestra el aviso.
+  readonly neverCheckedIn = computed(() => {
+    const d = this.data();
+    if (!d) return false;
+    return d.stay_status !== STAY_CHECKED_IN && d.stay_status !== STAY_CHECKED_OUT;
+  });
+  readonly noShowStay = computed(() => this.data()?.stay_status === STAY_NO_SHOW);
+
+  // ── No-show manual (cierre desde recepción) ──
+  readonly noShowPending = signal(false);
+  /**
+   * Folio de la penalización generado al marcar no-show (respuesta del API).
+   * Se muestra en el panel para enlazar a Facturación; persiste tras el reload
+   * y se limpia al cambiar de reserva.
+   */
+  readonly noShowResult = signal<{ folio_number: string | null; penalty_amount: number } | null>(null);
+
+  /**
+   * Botón de cierre: reserva sin check-in cuya estadía YA terminó (check-out
+   * pasado) y que aún no fue marcada no-show. Gate por permiso
+   * `reservations.update` — el mismo que exige el backend en el endpoint.
+   */
+  readonly canMarkNoShow = computed(() => {
+    const d = this.data();
+    if (!d || !this.neverCheckedIn()) return false;
+    if (d.stay_status === STAY_NO_SHOW) return false;
+    if (!d.check_out_date) return false;
+    const checkOut = new Date(d.check_out_date + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (checkOut >= today) return false;
+    return this.auth.hasPermission('reservations.update');
+  });
+
+  async markNoShow() {
+    const d = this.data();
+    if (!d || !this.canMarkNoShow() || this.noShowPending()) return;
+
+    this.noShowPending.set(true);
+    this.successMessage.set('');
+    this.errorMessage.set('');
+    try {
+      // Flujo compartido: diálogo de confirmación → POST no-show → folio.
+      const result = await this.noShow.markNoShowWithConfirm(d.booking_id, d.guest_name);
+      if (!result) return; // cancelado — el finally libera el pending
+      this.successMessage.set(this.noShow.successMessage(result));
+      this.noShowResult.set({
+        folio_number: result.folio_number ?? null,
+        penalty_amount: result.penalty_amount,
+      });
+      this.detailResource.reload();
+    } catch (err) {
+      this.errorMessage.set(getErrorMessage(err) || 'No fue posible marcar el no-show.');
+    } finally {
+      this.noShowPending.set(false);
+    }
+  }
+
   // ── Computed financials ──
   readonly roomTotal = computed(() => this.data()?.total_price ?? 0);
   readonly chargesTotal = computed(() => this.data()?.charges_total ?? 0);
@@ -174,6 +240,9 @@ export class CheckOutDetailPageComponent {
   });
 
   readonly currency = computed(() => this.data()?.currency ?? 'USD');
+
+  /** Responsible shift + cashier of the check-out (stamped at completion). */
+  readonly checkOutShift = computed(() => this.data()?.check_out_shift ?? null);
 
   // ── Category entries for partials ──
   readonly chargeCategoryEntries = computed(() => {
@@ -272,7 +341,9 @@ export class CheckOutDetailPageComponent {
       this.paymentMethod.set(detail.check_out_payment_method || 'credit_card');
       this.paymentRef.set(detail.check_out_payment_ref || '');
       this.observations.set(detail.check_out_observations || '');
-      this.canComplete.set(detail.assigned_rooms.length > 0 && detail.stay_status !== STAY_CHECKED_OUT);
+      this.canComplete.set(detail.assigned_rooms.length > 0 && detail.stay_status === STAY_CHECKED_IN);
+      // Nueva reserva → limpiar el folio de un no-show anterior
+      this.noShowResult.set(null);
       if (detail.stay_status === STAY_CHECKED_OUT) this.currentStep.set(5);
       this.viewState.set('success');
     }, { allowSignalWrites: true });

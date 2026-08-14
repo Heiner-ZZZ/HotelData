@@ -11,16 +11,14 @@
   color: var(--app-text);
 }
 
-// ── Nav tabs ──
+// ── Nav tabs (mismo diseño de píldoras que los dashboards de facturación) ──
 
 .invl-nav {
   display: flex;
+  align-items: center;
   gap: 0.25rem;
-  background: var(--surface);
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  padding: 0.25rem;
-  width: fit-content;
+  border-bottom: 1px solid var(--app-border);
+  padding-bottom: 0.5rem;
 }
 
 // ── Property Selector Bar ──
@@ -33,22 +31,23 @@
 .invl-nav-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.85rem;
-  border-radius: 6px;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
   text-decoration: none;
   color: var(--muted-text);
-  font-size: 0.82rem;
-  font-weight: 500;
-  transition: all 120ms;
+  font-size: 0.83rem;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
 
   &.active {
-    background: var(--accent);
-    color: var(--on-accent);
+    background: var(--accent-light);
+    color: var(--accent-strong);
   }
 
   &:hover:not(.active) {
     background: var(--surface-hover);
+    color: var(--app-text);
   }
 }
 

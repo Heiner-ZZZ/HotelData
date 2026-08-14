@@ -85,6 +85,59 @@ def register_action(
     enqueue_audit_log(db, entry)
 
 
+def register_shift_attribution_access(
+    *,
+    prop_id: int,
+    entity_id: str,
+    source: str,
+    shift_id: str | None,
+    shift: dict[str, Any] | None,
+    changed_by: str,
+    url: str = "",
+) -> None:
+    """Trace a READ of the cash-shift attribution of a money document.
+
+    The shift attribution (shift_id + responsible cashier/opener) is
+    sensitive operational data: who handled cash for a check-out or folio.
+    When an endpoint serves it, this writes a dedicated, filterable
+    ``audit_log`` row (entity_type="shift_attribution_access") so SIEM and
+    the Auditoría UI can answer "quién consultó el turno de qué documento y
+    cuándo" — separate from the generic document read.
+
+    ``source`` is the document kind ("check_out" | "folio"). Best-effort
+    via the outbox; never blocks the request.
+    """
+    metadata: dict[str, Any] = {"source": source}
+    if shift_id:
+        metadata["shift_id"] = str(shift_id)
+    if shift:
+        # Atribución con la misma nomenclatura de las estampas del sistema
+        # (payments/postings): shift_employee / shift_opened_by / shift_type.
+        key_map = {
+            "shift_type": "shift_type",
+            "shift_label": "shift_label",
+            "employee": "shift_employee",
+            "opened_by": "shift_opened_by",
+            "start_time": "shift_start_time",
+        }
+        for src_key, meta_key in key_map.items():
+            if shift.get(src_key) is not None:
+                metadata[meta_key] = shift[src_key]
+    if url:
+        metadata["url"] = url
+    entry: dict[str, Any] = {
+        "timestamp": now_utc(),
+        "prop_id": int(prop_id or 0),
+        "entity_type": "shift_attribution_access",
+        "entity_id": entity_id,
+        "action": "read",
+        "summary": f"Consulta de atribución de turno ({source}) para {entity_id}",
+        "changed_by": changed_by or "system",
+        "metadata": metadata,
+    }
+    enqueue_audit_log(get_database(), entry)
+
+
 def list_audit_entries(
     *,
     prop_id: int | None = None,

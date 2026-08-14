@@ -36,6 +36,7 @@ from src.app.modules.billing.service.lifecycle.payments import (
     create_payment,
     get_payment,
     list_payments,
+    link_payment_to_shift,
     refund_payment,
     classify_failed_payment_informational,
 )
@@ -61,6 +62,7 @@ __all__ = [
     "get_payment",
     "list_invoices",
     "list_payments",
+    "link_payment_to_shift",
     "refund_payment",
     "classify_failed_payment_informational",
     "remove_line_item",

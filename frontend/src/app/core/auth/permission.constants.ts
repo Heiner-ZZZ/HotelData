@@ -43,6 +43,10 @@ export const LOST_FOUND_DELETE = 'lost-found.delete';
 /** Gestionar roles y permisos del equipo en un hotel (gate del nav item). */
 export const HOTEL_MANAGE_ROLES = 'hotel.manage_roles';
 
+// ── Informes (server: server/src/app/modules/reports/routes.py + reports.* codes) ──
+/** Descargar/exportar informes (CSV/XLSX/PDF) — global a lo que ya puedes leer. */
+export const REPORTS_DOWNLOAD = 'reports.download';
+
 // ── RRHH granular por interfaz (server: server/src/app/modules/hr/routes.py) ──
 /** Mi Portal — auto-servicio del empleado. */
 export const HR_PORTAL_READ = 'hr.portal.read';
@@ -75,6 +79,7 @@ export type PermissionCode =
   | typeof LOST_FOUND_UPDATE
   | typeof LOST_FOUND_DELETE
   | typeof HOTEL_MANAGE_ROLES
+  | typeof REPORTS_DOWNLOAD
   | typeof HR_PORTAL_READ
   | typeof HR_DIRECTORY_READ
   | typeof HR_DIRECTORY_MANAGE

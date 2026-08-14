@@ -106,44 +106,95 @@ def get_default_redirect_for_role(role_name: str | None) -> str:
 
 
 def get_all_navigation_items(permission_codes: set[str] | None = None) -> list[dict[str, Any]]:
-    """Read ALL navigation items from the ``navigation`` DB collection.
+    """Read ALL navigation nodes from the ``navigation`` DB collection as a
+    flat list with ancestor-aware ``visible`` flags.
 
-    Each item includes a ``visible`` boolean based on whether the user's
-    permission_codes satisfy the item's required_permission.
-
-    Items may have an optional ``section`` field that groups them under a
-    collapsible sub-section header in the frontend sidebar.
+    Cada nodo lleva su posición en el árbol (``slug``, ``parent_slug``,
+    ``position``, ``node_type``). ``visible`` se computa top-down: un nodo es
+    visible solo si su ``permission_code`` está satisfecho Y todos sus
+    ancestros son visibles, así un container oculto nunca filtra sus hijos.
 
     Returns empty list if the collection doesn't exist yet (graceful degradation).
     """
     try:
         from src.database.connection import get_database
         db = get_database()
-        cursor = db.navigation.find({}).sort("sort_order", 1)
+        docs = list(db.navigation.find({}).sort([("parent_slug", 1), ("position", 1)]))
+
+        by_slug: dict[str, dict[str, Any]] = {}
+        for doc in docs:
+            slug = doc.get("slug")
+            if slug:
+                by_slug[slug] = doc
+
+        def _self_visible(required: str | None) -> bool:
+            if not required or permission_codes is None:
+                return True
+            if "*.*" in permission_codes:
+                # Bypass de super_admin: ve TODO el menú EXCEPTO el auto-servicio
+                # del huésped (account.*/search.*), igual que antes.
+                return required not in GUEST_PERMISSION_CODES
+            return required in permission_codes
+
+        memo: dict[str, bool] = {}
+
+        def _visible(slug: str | None) -> bool:
+            if not slug or slug not in by_slug:
+                return True
+            if slug in memo:
+                return memo[slug]
+            memo[slug] = False  # guard contra ciclos mientras se resuelve
+            doc = by_slug[slug]
+            parent_ok = _visible(doc.get("parent_slug"))
+            self_ok = _self_visible(doc.get("permission_code"))
+            result = parent_ok and self_ok
+            memo[slug] = result
+            return result
+
+        # Podar containers sin hojas visibles: una sección vacía (p.ej.
+        # "Huésped" para super_admin, cuyos hijos son todos auto-servicio del
+        # cliente) no debe aparecer en el sidebar. La visibilidad es top-down
+        # (``parent_ok`` corta la cadena), así que un nodo invisible no puede
+        # tener descendientes visibles: basta con verificar hojas visibles
+        # bajo cada container.
+        leaf_memo: dict[str, bool] = {}
+
+        def _has_visible_leaf(slug: str | None) -> bool:
+            if not slug or slug not in by_slug:
+                return False
+            if slug in leaf_memo:
+                return leaf_memo[slug]
+            leaf_memo[slug] = False  # guard contra ciclos mientras se resuelve
+            for child in by_slug.values():
+                if child.get("parent_slug") != slug:
+                    continue
+                child_slug = child.get("slug")
+                if not _visible(child_slug):
+                    continue
+                if child.get("node_type") == "leaf" or _has_visible_leaf(child_slug):
+                    leaf_memo[slug] = True
+                    break
+            return leaf_memo[slug]
+
         items: list[dict[str, Any]] = []
-        for doc in cursor:
-            required = doc.get("required_permission")
-            visible = True
-            if required and permission_codes is not None:
-                if "*.*" in permission_codes:
-                    # Bypass de super_admin (``get_user_permission_codes`` → ``*.*``):
-                    # ve TODO el menú EXCEPTO el auto-servicio del huésped. El rol
-                    # conserva el bypass de auth, pero los ítems que exigen
-                    # account.*/search.* (Buscar Hoteles / Mis Reservas / Mi Perfil)
-                    # no son para el administrador del sistema.
-                    visible = required not in GUEST_PERMISSION_CODES
-                else:
-                    visible = required in permission_codes
+        for doc in docs:
+            slug = doc.get("slug")
             pid = doc.get("permission_id")
+            visible = _visible(slug)
+            if visible and doc.get("node_type") != "leaf":
+                visible = _has_visible_leaf(slug)
             items.append({
+                "slug": slug or "",
+                "parentSlug": doc.get("parent_slug"),
+                "position": doc.get("position", 0),
+                "nodeType": doc.get("node_type"),
                 "label": doc.get("label", ""),
                 "href": doc.get("href", ""),
                 "icon": doc.get("icon", ""),
                 "visible": visible,
-                "section": doc.get("section"),
-                "is_section_header": doc.get("is_section_header", False),
                 "permissionId": str(pid) if pid else None,
-                "requiredPermission": doc.get("required_permission"),
+                "permissionCode": doc.get("permission_code"),
+                "horizontalMenu": bool(doc.get("horizontal_menu", False)),
             })
         return items
     except Exception:
@@ -159,7 +210,7 @@ def get_navigation_for_role(role_name: str | None, permission_codes: set[str] | 
     if db_items:
         return [
             {"label": item["label"], "href": item["href"], "icon": item["icon"]}
-            for item in db_items if item.get("visible")
+            for item in db_items if item.get("visible") and item.get("href")
         ]
 
     # ── Fallback to hardcoded NAVIGATION_BY_ROLE ──

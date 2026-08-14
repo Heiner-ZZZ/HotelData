@@ -7,6 +7,7 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
     hotelLabel: dto.hotel_label,
     manualOverride: dto.manual_override ?? false,
     profileBadge: dto.profile_badge || (dto.manual_override ? 'Nombre editado manualmente' : 'Nombre generado'),
+    minBaseRate: dto.min_base_rate ?? 10,
     roomTypes: (dto.room_types || []).map((rt) => ({
       id: rt.room_type_id,
       name: rt.name
@@ -32,7 +33,8 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
       rateAmountLabel: item.rate_amount_label,
       minStayNights: item.min_stay_nights,
       isClosed: item.is_closed,
-      closedLabel: item.is_closed ? 'Sí' : 'No'
+      closedLabel: item.is_closed ? 'Sí' : 'No',
+      source: item.source ?? ''
     })),
     rateRules: (dto.rate_rules || []).map((rule) => ({
       label: rule.rule_name || rule.rate_plan_id || 'Regla operativa',
@@ -61,7 +63,16 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
       code: coupon.coupon_code,
       activeLabel: coupon.is_active ? 'Sí' : 'No',
       campaignId: coupon.campaign_id || ''
-    }))
+    })),
+    rateCoverage: dto.rate_coverage
+      ? {
+          rateLastDate: dto.rate_coverage.rate_last_date,
+          inventoryLastDate: dto.rate_coverage.inventory_last_date,
+          gapNights: dto.rate_coverage.gap_nights,
+          gapStart: dto.rate_coverage.gap_start,
+          gapEnd: dto.rate_coverage.gap_end,
+        }
+      : null
   };
 }
 

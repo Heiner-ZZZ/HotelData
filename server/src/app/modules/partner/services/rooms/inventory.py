@@ -34,10 +34,23 @@ def _inventory_for_prop(prop_id: int, limit: int = 365, start_date: str = "", en
         item["room_type_id"]: item.get("name") or item["room_type_id"]
         for item in db.room_types.find({"prop_id": prop_id}, {"_id": 0, "room_type_id": 1, "name": 1})
     }
+    # Fechas con al menos una tarifa ABIERTA (is_closed != True) en el mismo
+    # rango. El search público exige inventario Y tarifa por noche: sin tarifa
+    # abierta la disponibilidad no es vendible, y el calendario de
+    # Disponibilidad marca esas celdas con el aviso visual "sin tarifa".
+    rate_query: dict[str, Any] = {"prop_id": prop_id, "is_closed": {"$ne": True}}
+    if start_date and end_date:
+        rate_query["date"] = {"$gte": start_date, "$lte": end_date}
+    elif start_date:
+        rate_query["date"] = {"$gte": start_date}
+    elif end_date:
+        rate_query["date"] = {"$lte": end_date}
+    rate_dates = set(db.hotel_rate_calendar.distinct("date", rate_query))
     for item in items:
         item["room_type_name"] = room_name_lookup.get(item["room_type_id"], item["room_type_id"])
         item["occupancy_label"] = _occupancy_label(item)
         item["occupancy_pct"] = _occupancy_pct(item)
+        item["has_rate"] = item["date"] in rate_dates
     return items
 
 

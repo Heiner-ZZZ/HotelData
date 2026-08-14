@@ -1,44 +1,63 @@
 import { mapNavigationItem } from './system-permissions.mapper';
 
 describe('mapNavigationItem (wire → model)', () => {
-  it('maps requiredPermission (camelCase as emitted by the server) into the model', () => {
+  it('maps the tree node fields (slug/parentSlug/position/nodeType) into the model', () => {
     const item = mapNavigationItem({
-      label: 'Reservas',
-      href: '/management/reservations',
-      icon: 'icon-booking',
+      slug: 'gestion.reservas.informes.adr',
+      parentSlug: 'gestion.reservas.informes',
+      position: 10,
+      nodeType: 'leaf',
+      label: 'Dashboard ADR',
+      href: '/management/rates/dashboard',
+      icon: 'monitoring',
       visible: true,
-      section: 'CRS',
-      is_section_header: true,
-      requiredPermission: 'reservations.read',
       permissionId: 'abc123',
+      permissionCode: 'reports.rates.adr.read',
     });
 
-    expect(item.requiredPermission).toBe('reservations.read');
-    expect(item.section).toBe('CRS');
-    expect(item.isSectionHeader).toBe(true);
+    expect(item.slug).toBe('gestion.reservas.informes.adr');
+    expect(item.parentSlug).toBe('gestion.reservas.informes');
+    expect(item.position).toBe(10);
+    expect(item.nodeType).toBe('leaf');
+    expect(item.label).toBe('Dashboard ADR');
+    expect(item.href).toBe('/management/rates/dashboard');
+    expect(item.permissionCode).toBe('reports.rates.adr.read');
     expect(item.permissionId).toBe('abc123');
   });
 
-  it('falls back to required_permission (snake_case) defensively', () => {
+  it('maps containers (empty href) and translates legacy icon names', () => {
     const item = mapNavigationItem({
-      label: 'Tarifas',
-      href: '/management/rates',
-      icon: 'icon-revenue',
+      slug: 'gestion.reservas.informes',
+      parentSlug: 'gestion.reservas',
+      position: 30,
+      nodeType: 'container',
+      label: 'Informes',
+      href: '',
+      icon: 'icon-analytics',
       visible: true,
-      required_permission: 'rates.read',
+      permissionCode: 'reports.tactical.read',
     });
 
-    expect(item.requiredPermission).toBe('rates.read');
+    expect(item.nodeType).toBe('container');
+    expect(item.href).toBe('');
+    expect(item.icon).toBe('analytics');
+    expect(item.permissionCode).toBe('reports.tactical.read');
   });
 
-  it('defaults requiredPermission to null when absent', () => {
+  it('defaults permissionId/permissionCode to null when absent', () => {
     const item = mapNavigationItem({
-      label: 'Dashboard',
-      href: '/management',
-      icon: 'icon-dashboard',
+      slug: 'gestion',
+      parentSlug: null,
+      position: 10,
+      nodeType: 'container',
+      label: 'Gestión',
+      href: '',
+      icon: 'dashboard',
       visible: true,
     });
 
-    expect(item.requiredPermission).toBeNull();
+    expect(item.parentSlug).toBeNull();
+    expect(item.permissionId).toBeNull();
+    expect(item.permissionCode).toBeNull();
   });
 });

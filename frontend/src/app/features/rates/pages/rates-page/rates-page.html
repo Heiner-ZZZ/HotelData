@@ -65,6 +65,24 @@
           <main class="rates-content">
             @switch (activeSection()) {
               @case ('overview') {
+                <!-- Banner: noches disponibles sin tarifa (no vendibles en la web) -->
+                @if (rateGap(); as gap) {
+                  <section class="rate-gap-banner" role="alert">
+                    <span class="material-symbols-outlined rate-gap-icon">warning</span>
+                    <div class="rate-gap-text">
+                      <strong>{{ gap.gapNights }} noches sin tarifa</strong>
+                      <span>Hay habitaciones disponibles del {{ formatShortDate(gap.gapStart) }} al {{ formatShortDate(gap.gapEnd) }}
+                        ({{ gap.gapStart }} → {{ gap.gapEnd }}) pero las tarifas llegan hasta
+                        {{ gap.rateLastDate ? formatShortDate(gap.rateLastDate) : 'ninguna fecha' }} — los huéspedes
+                        no pueden reservarlas en la web.</span>
+                    </div>
+                    <button type="button" class="rate-gap-btn" (click)="goToGenerateCalendar()">
+                      <span class="material-symbols-outlined btn-icon">auto_awesome</span>
+                      Ir a Generar calendario
+                    </button>
+                  </section>
+                }
+
                 <!-- Panel: Overview with summary tables -->
                 <section class="surface-card data-panel">
                   <div class="panel-head">
@@ -221,7 +239,7 @@
 
               @case ('plans') {
                 <!-- Generate Calendar Form -->
-                <section class="surface-card data-panel" appModeHighlight>
+                <section class="surface-card data-panel generate-panel" appModeHighlight>
                   <div class="panel-head">
                     <span class="material-symbols-outlined panel-head-icon" style="color: #10b981">auto_awesome</span>
                     <div>
@@ -231,7 +249,7 @@
                   </div>
                   <form (submit)="$event.preventDefault(); generateCalendar()" class="panel-form">
                     <label class="field">
-                      <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario (opcional)</span>
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
                       <select [value]="generateRatePlanId()" (change)="generateRatePlanId.set($any($event.target).value)">
                         <option value="">Todos los planes</option>
                         @for (plan of ratePlanOptions(); track plan.id) { <option [value]="plan.id">{{ plan.label }}</option> }
@@ -239,11 +257,11 @@
                     </label>
                     <div class="field-row">
                       <label class="field">
-                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Inicio (opcional)</span>
+                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Inicio</span>
                         <input type="date" [value]="generateStartDate()" (input)="generateStartDate.set($any($event.target).value)" />
                       </label>
                       <label class="field">
-                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Fin (opcional)</span>
+                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Fin</span>
                         <input type="date" [value]="generateEndDate()" (input)="generateEndDate.set($any($event.target).value)" />
                       </label>
                     </div>
@@ -311,7 +329,10 @@
                     </fieldset>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Tarifa base</span>
-                      <input type="number" min="0" step="0.01" [value]="planBaseRate()" (input)="planBaseRate.set(+$any($event.target).value)" placeholder="0.00">
+                      <input type="number" [min]="planMinBaseRate()" step="0.01" [value]="planBaseRate()" (input)="planBaseRate.set(+$any($event.target).value)" placeholder="0.00">
+                      @if (planBaseRate() > 0 && planBaseRate() < planMinBaseRate()) {
+                        <span class="field-error">La tarifa base mínima es ${{ planMinBaseRate() }}.</span>
+                      }
                     </label>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">currency_exchange</span>Moneda</span>
@@ -570,4 +591,7 @@
       </article>
     </div>
   }
+
+  <!-- Confirmación global de Generar calendario (conteo previo vía dry-run) -->
+  <app-confirm-dialog />
 </div>

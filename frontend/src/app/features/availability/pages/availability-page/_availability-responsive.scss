@@ -265,6 +265,10 @@
 .swatch-warning { background: color-mix(in srgb, var(--warning) 35%, transparent); }
 .swatch-danger { background: color-mix(in srgb, var(--danger) 30%, transparent); }
 .swatch-na { background: var(--app-border); }
+.swatch-no-rate {
+  background: repeating-linear-gradient(45deg, var(--warning) 0 3px, color-mix(in srgb, var(--warning) 35%, transparent) 3px 6px);
+  border-color: color-mix(in srgb, var(--warning) 70%, black);
+}
 .swatch-selected { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: var(--accent); }
 .swatch-week { background: transparent; border-color: var(--purple); border-width: 2px; }
 
@@ -401,6 +405,7 @@
   transition: transform 100ms ease, box-shadow 100ms ease, opacity 100ms ease;
   cursor: default;
   vertical-align: middle;
+  position: relative;
 }
 
 .cell-clickable {
@@ -448,6 +453,29 @@
 .cell-na {
   .cell-val { background: var(--app-border); color: var(--muted-text); }
   &:hover .cell-val { background: var(--muted-text); }
+}
+
+/* Disponible SIN tarifa abierta — la noche no se puede vender en el search
+   público (el search exige inventario Y tarifa por noche). El borde rayado
+   no tapa el color de ocupación; el punto ámbar marca la celda. */
+.cell-no-rate {
+  .cell-val {
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--warning) 65%, transparent);
+  }
+}
+
+.cell-no-rate-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 60%, black);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--surface) 90%, transparent);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .cell-selected {

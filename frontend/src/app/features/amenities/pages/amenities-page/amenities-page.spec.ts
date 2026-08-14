@@ -76,6 +76,35 @@ describe('AmenitiesPageComponent', () => {
     ctx.fixture.detectChanges();
   }
 
+  it('actualiza el título del documento según la pestaña activa (Servicios / Peticiones especiales)', async () => {
+    const ctx = setup();
+    await seedAmenities(ctx);
+    document.title = 'Base Test';
+
+    ctx.component.activeTab.set('requests');
+    ctx.fixture.detectChanges();
+    expect(document.title).toContain('Peticiones especiales');
+    expect(document.title).toContain('Hotel Test');
+
+    ctx.component.activeTab.set('amenities');
+    ctx.fixture.detectChanges();
+    expect(document.title).toContain('Servicios');
+    expect(document.title).toContain('Hotel Test');
+  });
+
+  it('restaura el título original al destruir el componente', async () => {
+    const ctx = setup();
+    await seedAmenities(ctx);
+    document.title = 'Base Test';
+
+    ctx.component.activeTab.set('requests');
+    ctx.fixture.detectChanges();
+    expect(document.title).toContain('Peticiones especiales');
+
+    ctx.fixture.destroy();
+    expect(document.title).toBe('Base Test');
+  });
+
   it('no renderiza banners .notification locales (migrado al toast global)', async () => {
     const ctx = setup();
     await seedAmenities(ctx);

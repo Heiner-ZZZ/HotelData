@@ -129,7 +129,7 @@
 .sc-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -142,7 +142,7 @@
   border-radius: 12px;
   max-width: 540px;
   width: 100%;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-modal);
   overflow: hidden;
 }
 
@@ -266,6 +266,39 @@
 
   &:hover { background: var(--danger)-bg; color: var(--danger); }
   .material-symbols-outlined { font-size: 1rem; }
+}
+
+/* Emergency close (manager-only, expired shifts) */
+.sc-emergency-close {
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  background: var(--warning-light);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sc-emergency-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+
+  .material-symbols-outlined { color: var(--warning); font-size: 1.25rem; margin-top: 0.1rem; }
+
+  strong { font-size: 0.9rem; color: var(--warning-strong); }
+  p { margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--app-text); line-height: 1.45; }
+}
+
+.sc-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+
+  input[type='checkbox'] { accent-color: var(--warning); width: 1rem; height: 1rem; }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -401,6 +434,114 @@
 
   > .material-symbols-outlined { color: var(--accent); }
   strong { color: var(--app-text); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Shift-window config modal (per hotel, manager)
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-modal-config { max-width: 520px; }
+
+.sc-config-intro {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted-text);
+  line-height: 1.5;
+}
+
+.sc-config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+}
+
+.sc-config-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 140px;
+}
+
+.sc-config-times {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.sc-config-sep {
+  color: var(--muted-text);
+  padding-bottom: 0.5rem;
+}
+
+.sc-config-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--danger-light);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  color: var(--danger-strong);
+  border-radius: 8px;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+
+  .material-symbols-outlined { color: var(--danger); font-size: 1.2rem; }
+}
+
+.sc-config-hint {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--muted-text);
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+
+  .material-symbols-outlined {
+    font-size: 1.05rem;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  strong {
+    font-weight: 600;
+    color: var(--app-text);
+  }
+
+  &.muted {
+    background: var(--surface-soft);
+    border-color: var(--app-border);
+
+    .material-symbols-outlined { color: var(--muted-text); }
+  }
+}
+
+.sc-config-max {
+  align-items: flex-start;
+}
+
+.sc-config-max-input {
+  flex: 1;
+  max-width: 300px;
+}
+
+.sc-config-max-input .sc-form-group input {
+  width: 100%;
+}
+
+.sc-config-max-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  line-height: 1.4;
 }
 
 /* ═══════════════════════════════════════════════════════════

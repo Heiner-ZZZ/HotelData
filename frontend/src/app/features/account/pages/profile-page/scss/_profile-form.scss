@@ -115,6 +115,14 @@
   gap: 0.75rem;
 }
 
+// El footer de "Guardar cambios" de la página respira frente a la caja
+// "Cambiar contraseña". Scoped a `.profile-form` porque esta hoja es global
+// (ViewEncapsulation.None) y el `.form-footer` interno del formulario de
+// contraseña (hijo de `app-profile-password`) no debe recibir este spacing.
+.profile-form > .form-footer {
+  padding-top: 1.25rem;
+}
+
 /* .form-status, .unsaved-dot y .btn-primary viven en los SCSS globales
    (styles/_scss-form-status.scss y styles/_scss-forms.scss). */
 

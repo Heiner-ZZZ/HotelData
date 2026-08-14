@@ -11,11 +11,13 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import type { Observable } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { toast } from '../../../../core/toast/toast.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -53,6 +55,7 @@ interface StatusFilter<T extends string> {
   imports: [
     FormsModule,
     PageHeaderComponent,
+    PropertySelectorComponent,
     LoadingStateComponent,
     ErrorStateComponent,
     EmptyStateComponent,
@@ -69,11 +72,30 @@ export class TeamPermissionsPageComponent {
   private readonly auth = inject(AuthService);
   private readonly api = inject(HotelPermissionsApiService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   /** Hotel activo — drivea los dos httpResource. */
   readonly currentPropId = computed(() => this.propCtx.currentPropId());
   readonly hotelLabel = computed(() => this.propCtx.currentPropLabel());
+
+  /** Propiedad seleccionada para el property selector global del header. */
+  readonly selectedPropId = computed(() => this.currentPropId());
+  readonly selectedLabel = computed(() => this.hotelLabel());
+
+  onPropSelected(event: { propId: number; label: string }): void {
+    if (!event.propId) {
+      this.propCtx.clear();
+      return;
+    }
+    const label = event.label || `Propiedad #${event.propId}`;
+    this.propCtx.setProperty(event.propId, label);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { prop_id: event.propId || null, prop_label: label || null },
+    });
+  }
 
   // ── Declarative fetching (Fase 2 endpoints) ──
   readonly rolesResource = httpResource<HotelRoleListDto>(() => {

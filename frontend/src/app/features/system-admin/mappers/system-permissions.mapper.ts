@@ -26,14 +26,16 @@ function mapAccessButton(b: { label: string; href: string; icon: string }): { la
 
 export function mapNavigationItem(b: NavigationItemDto): NavigationItem {
   return {
+    slug: b.slug,
+    parentSlug: b.parentSlug ?? null,
+    position: b.position ?? 0,
+    nodeType: b.nodeType ?? null,
     label: b.label,
     href: b.href,
     icon: ICON_MAP[b.icon] || b.icon || 'arrow_right',
     visible: b.visible,
-    section: b.section ?? null,
-    isSectionHeader: b.is_section_header ?? false,
-    requiredPermission: b.requiredPermission ?? b.required_permission ?? null,
     permissionId: b.permissionId ?? null,
+    permissionCode: b.permissionCode ?? null,
   };
 }
 

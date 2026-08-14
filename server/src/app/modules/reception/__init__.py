@@ -9,6 +9,9 @@ from .shifts import (
     get_shift,
     list_shifts,
     register_transaction,
+    ShiftExpiredError,
+    ensure_shift_not_expired,
+    get_shift_attribution,
 )
 
 __all__ = [
@@ -21,4 +24,7 @@ __all__ = [
     "get_shift",
     "list_shifts",
     "register_transaction",
+    "ShiftExpiredError",
+    "ensure_shift_not_expired",
+    "get_shift_attribution",
 ]

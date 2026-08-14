@@ -44,6 +44,18 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
             @if (checkOutBy()) {
               <div class="co-stay-row"><span class="co-stay-label"><span class="material-symbols-outlined">badge</span> Atendi&oacute;</span><span class="co-stay-val">{{ checkOutBy() }}</span></div>
             }
+            @if (checkOutShift(); as shift) {
+              <div class="co-stay-row">
+                <span class="co-stay-label"><span class="material-symbols-outlined">point_of_sale</span> Turno</span>
+                <span class="co-stay-val">
+                  <span class="co-shift-chip" title="Abierto por {{ shift.opened_by }} · {{ shift.start_time }}">
+                    <span class="material-symbols-outlined">schedule</span>
+                    {{ shift.employee || shift.opened_by || '&mdash;' }}
+                    @if (shift.shift_label) { <em>{{ shift.shift_label }}</em> }
+                  </span>
+                </span>
+              </div>
+            }
           </div>
         </div>
 
@@ -149,6 +161,14 @@ export class CoCompletedViewComponent {
   readonly totalNights = input(0);
   readonly checkOutTimeActual = input('');
   readonly checkOutBy = input('');
+  /** Responsible shift + cashier of the check-out (from the booking's shift_id). */
+  readonly checkOutShift = input<{
+    shift_type: string;
+    shift_label: string;
+    employee: string;
+    opened_by: string;
+    start_time: string;
+  } | null>(null);
   readonly charges = input<any[]>([]);
   readonly observations = input('');
   readonly roomTotal = input(0);

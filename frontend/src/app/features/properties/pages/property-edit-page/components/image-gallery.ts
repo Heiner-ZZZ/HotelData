@@ -33,6 +33,9 @@ export class ImageGalleryComponent {
   readonly imagePreviewUrl = signal<string | null>(null);
   readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
+  /** URLs de imágenes que fallaron al cargar (404, host caído, placeholder demo). */
+  readonly brokenImages = signal<Set<string>>(new Set());
+
   private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly AUTO_SAVE_DEBOUNCE_MS = 400;
 
@@ -45,6 +48,11 @@ export class ImageGalleryComponent {
   });
 
   readonly showReorderHint = computed(() => this.images().length > 1);
+
+  /** Marca la imagen como rota para mostrar el fallback en vez de un img colgado. */
+  onImgError(imageUrl: string) {
+    this.brokenImages.update((set) => new Set(set).add(imageUrl));
+  }
 
   triggerFileInput() {
     this.fileInput()?.nativeElement.click();

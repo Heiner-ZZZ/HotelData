@@ -1,13 +1,18 @@
 """Disparo y detención del pipeline mongo_to_clickhouse.
 
-El pipeline se ejecuta en un thread daemon (en proceso, no subprocess) porque el
-paquete ``src.etl.mongo_to_clickhouse`` vive en el mismo contenedor. Lock de
-archivo + stop flag para control desde la UI.
+El pipeline se ejecuta en un SUBPROCESO separado (``python -m
+src.etl.mongo_to_clickhouse.runner``) con ``start_new_session=True``: así un
+reinicio del ``--reload`` de uvicorn (p.ej. al editar cualquier archivo) NO
+mata la corrida en curso — el subproceso sobrevive, sigue escribiendo el
+progreso JSON y reporta al finalizar. El subproceso es dueño del lock
+``pipeline_m2c.lock`` y lo limpia en su ``finally``. El stop flag sigue
+funcionando: el pipeline lo revisa entre etapas.
 """
 
 from __future__ import annotations
 
-import threading
+import subprocess
+import sys
 from datetime import datetime, timezone
 
 from config.settings import get_settings
@@ -18,9 +23,6 @@ from src.etl.mongo_to_clickhouse.config import (
     PIPELINE_PROGRESS_ORDER,
     paths,
 )
-
-_lock = threading.Lock()
-_worker: threading.Thread | None = None
 
 
 def _write_progress_started() -> None:
@@ -64,41 +66,33 @@ def start_pipeline() -> dict:
             }
     _write_progress_started()
     lock_path.touch()
-    global _worker
-
-    def _run() -> None:
-        from src.etl.mongo_to_clickhouse._common import write_json_file
-
+    # Subproceso aislado: sobrevive al --reload de uvicorn y es dueño del lock
+    # (lo limpia en su finally). stderr se anexa a un log para diagnóstico.
+    log_path = settings.reports_dir / "pipeline_m2c_subprocess.log"
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "src.etl.mongo_to_clickhouse.runner"],
+            stdout=open(log_path, "ab"),
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+            cwd=settings.project_root,
+        )
+    except OSError as exc:
         try:
-            from src.etl.mongo_to_clickhouse import run_pipeline
-
-            result = run_pipeline()
-            if not result.get("ok"):
-                # El pipeline ya escribió progress con status=failed en estos casos.
-                pass
-        except Exception as exc:  # pragma: no cover - estado de error
-            write_json_file(
-                paths()["progress"],
-                {
-                    "status": "failed",
-                    "message": f"Pipeline fallido: {exc}",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                },
-            )
-        finally:
-            try:
-                lock_path.unlink()
-            except OSError:
-                pass
-
-    with _lock:
-        _worker = threading.Thread(target=_run, name="m2c-pipeline", daemon=True)
-        _worker.start()
+            lock_path.unlink()
+        except OSError:
+            pass
+        return {
+            "ok": False,
+            "pid": None,
+            "display_message": "No se pudo lanzar el subproceso del pipeline mongo→clickhouse.",
+            "summary_output": str(exc),
+        }
     return {
         "ok": True,
-        "pid": _worker.native_id,
-        "display_message": "Pipeline mongo→clickhouse iniciado en segundo plano.",
-        "summary_output": "Progreso disponible en /etl-status/m2c/progress.",
+        "pid": proc.pid,
+        "display_message": "Pipeline mongo→clickhouse iniciado en segundo plano (subproceso).",
+        "summary_output": f"Progreso: /etl-status/m2c/progress · Log: {log_path}",
     }
 
 

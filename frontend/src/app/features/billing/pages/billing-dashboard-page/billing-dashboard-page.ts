@@ -10,6 +10,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
+import { HorizontalSubNavComponent } from '../../../../shared/ui/horizontal-sub-nav/horizontal-sub-nav';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { BillingApiService } from '../../services/billing-api.service';
 import type { InvoiceDashboard } from '../../models/billing.model';
@@ -33,6 +34,7 @@ const STATUS_OPTIONS = [
     ErrorStateComponent,
     LoadingStateComponent,
     KpiChartComponent,
+    HorizontalSubNavComponent,
   ],
   templateUrl: './billing-dashboard-page.html',
   styleUrl: './billing-dashboard-page.scss',

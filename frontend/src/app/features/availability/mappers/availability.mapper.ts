@@ -54,7 +54,10 @@ function mapInventoryItem(item: AvailabilityDto['inventory_items'][number]): Ava
     availableRooms: item.available_rooms,
     blockedRooms: item.blocked_rooms,
     occupancyLabel: item.occupancy_label,
-    occupancyPct: item.occupancy_pct ?? 0
+    occupancyPct: item.occupancy_pct ?? 0,
+    // Por defecto asumimos que hay tarifa (sin marcador) si el backend no
+    // manda el flag — nunca marcar de más por compatibilidad.
+    hasRate: item.has_rate ?? true
   };
 }
 

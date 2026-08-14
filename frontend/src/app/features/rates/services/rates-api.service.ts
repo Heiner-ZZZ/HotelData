@@ -240,8 +240,10 @@ export class RatesApiService {
     minStayNights?: number;
     isClosed?: boolean;
     onlyWeekends?: boolean;
+    /** true = solo cuenta los días afectados (modal de confirmación), sin escribir. */
+    dryRun?: boolean;
   }) {
-    return this.http.post(
+    return this.http.post<{ affected_days: number; start_date: string; end_date: string; rate_plan_id: string }>(
       `${this.apiConfig.baseUrl}/management/rates/calendar/batch`,
       {
         prop_id: payload.propId,
@@ -251,7 +253,8 @@ export class RatesApiService {
         rate_amount: payload.rateAmount,
         min_stay_nights: payload.minStayNights,
         is_closed: payload.isClosed,
-        only_weekends: payload.onlyWeekends || false
+        only_weekends: payload.onlyWeekends || false,
+        dry_run: payload.dryRun ?? false
       },
       { withCredentials: true }
     );
@@ -262,6 +265,8 @@ export class RatesApiService {
     ratePlanId?: string;
     startDate?: string;
     endDate?: string;
+    /** true = solo cuenta las entradas que se crearían (modal de confirmación), sin escribir. */
+    dryRun?: boolean;
   }) {
     return this.http.post<{ plans_processed: number; entries_generated: number; start_date: string; end_date: string }>(
       `${this.apiConfig.baseUrl}/management/rates/calendar/generate`,
@@ -270,6 +275,7 @@ export class RatesApiService {
         rate_plan_id: payload.ratePlanId || '',
         start_date: payload.startDate || '',
         end_date: payload.endDate || '',
+        dry_run: payload.dryRun ?? false,
       },
       { withCredentials: true }
     );

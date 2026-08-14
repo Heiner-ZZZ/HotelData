@@ -15,11 +15,6 @@
 @use './availability-responsive';
 
 .availability-page {
-  /* Availability uses the dark-teal accent (matches the previous hex).
-   * Reuses the global `--teal` token so dark-theme pairing is automatic
-   * without duplicating a literal in this rule's scope. */
-  --accent: var(--teal);
-
   max-width: 1060px;
   margin: 0 auto;
   display: grid;

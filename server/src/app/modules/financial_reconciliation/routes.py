@@ -13,6 +13,7 @@ from src.app.modules.financial_reconciliation.domain_events import (
     rebuild_hotel_financial_aggregate,
 )
 from src.app.modules.financial_reconciliation.overview import build_operations_overview
+from src.app.modules.financial_reconciliation.repairs import repair_phantom_occupied_rooms
 from src.app.modules.financial_reconciliation.service import build_reconciliation_report
 from src.app.core.types import to_json_safe
 from src.app.security.dependencies import require_prop_permission
@@ -91,6 +92,17 @@ def reconciliation_summary(
     if not get_database().dim_hotels.find_one({"prop_id": prop_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Hotel no encontrado")
     return ReconciliationReportResponse.model_validate(build_reconciliation_report(prop_id))
+
+
+@api_router.post("/repair/room-status")
+def repair_phantom_room_status(
+    prop_id: int = Path(..., ge=1),
+    current_user: dict = Depends(_require_reconciliation_permission),  # noqa: B008
+) -> dict[str, Any]:
+    """Revert phantom occupied_clean room_status_log rows to vacant_clean."""
+    if not get_database().dim_hotels.find_one({"prop_id": prop_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Hotel no encontrado")
+    return to_json_safe(repair_phantom_occupied_rooms(prop_id))
 
 
 @api_router.get("/aggregate")

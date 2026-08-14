@@ -50,7 +50,7 @@
   border-color: var(--app-border);
 
   &:hover:not(:disabled) {
-    background: rgba(186, 26, 26, 0.04);
+    background: color-mix(in srgb, var(--danger) 4%, transparent);
     border-color: var(--danger);
   }
 }
@@ -61,7 +61,7 @@
   border-color: var(--danger);
 
   &:hover:not(:disabled) {
-    background: rgba(186, 26, 26, 0.04);
+    background: color-mix(in srgb, var(--danger) 4%, transparent);
   }
 }
 

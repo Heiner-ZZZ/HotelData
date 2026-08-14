@@ -30,6 +30,16 @@ class InvoiceResponse(BaseModel):
     issued_at: str
     paid_at: str | None = None
     notes: str | None = None
+    # Cashier attribution: the shift that issued the fiscal document and the
+    # one that cancelled it (null for legacy docs).
+    shift_id: str | None = None
+    shift_employee: str | None = None
+    shift_opened_by: str | None = None
+    shift_type: str | None = None
+    cancelled_shift_id: str | None = None
+    cancelled_shift_employee: str | None = None
+    cancelled_shift_opened_by: str | None = None
+    cancelled_shift_type: str | None = None
 
 
 class PaymentCreate(BaseModel):
@@ -52,6 +62,15 @@ class PaymentResponse(BaseModel):
     status: str
     reference: str | None = None
     paid_at: str
+    # Cashier attribution: the shift that handled this payment and the
+    # employee/opener stamped on it at write time (null for legacy docs).
+    shift_id: str | None = None
+    shift_employee: str | None = None
+    shift_opened_by: str | None = None
+    shift_type: str | None = None
+    # Refund-side attribution (who authorized the money back).
+    refund_shift_id: str | None = None
+    refund_shift_employee: str | None = None
 
 
 def now_iso() -> str:

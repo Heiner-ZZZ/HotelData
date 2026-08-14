@@ -1,24 +1,21 @@
+// ═══════════════════════════════════════════════
+// Properties List Page — Layout (normalizado)
+// Patrón compartido con rates-page/rooms-page:
+// grid + gap + max-width 1400px + fade-in escalonado.
+// ═══════════════════════════════════════════════
+
 .props-dashboard {
   display: grid;
   gap: 1.5rem;
-  max-width: 1180px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 
-  /* ── Staggered fade-in from the top ── */
   > * {
     animation: props-fade-in 400ms cubic-bezier(0.21, 0.69, 0.43, 1) backwards;
   }
   > *:nth-child(1) { animation-delay: 0.00s; }
   > *:nth-child(2) { animation-delay: 0.06s; }
-  > *:nth-child(3) { animation-delay: 0.12s; }
-  > *:nth-child(4) { animation-delay: 0.18s; }
-  > *:nth-child(5) { animation-delay: 0.24s; }
-  > *:nth-child(6) { animation-delay: 0.30s; }
-  > *:nth-child(7) { animation-delay: 0.36s; }
-  > *:nth-child(8) { animation-delay: 0.42s; }
-  > *:nth-child(9) { animation-delay: 0.48s; }
-  > *:nth-child(10) { animation-delay: 0.54s; }
 }
 
 @keyframes props-fade-in {
@@ -32,265 +29,22 @@
   }
 }
 
-/* ── KPI Grid ── */
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1.25rem;
-}
+/* Formulario de búsqueda dentro del panel-head (derecha) */
+.props-search {
+  margin-left: auto;
+  margin-bottom: 0;
 
-.kpi-card {
-  background: var(--surface);
-  border: 1px solid var(--app-border);
-  border-radius: 12px;
-  padding: 1.25rem;
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s, transform 0.2s;
-
-  &:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
-  }
-}
-
-.kpi-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-}
-
-.kpi-icon {
-  font-size: 1.35rem;
-  padding: 0.45rem;
-  border-radius: 10px;
-  background: var(--accent-light);
-  color: var(--accent);
-}
-
-.kpi-trend {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-
-  &.up {
-    color: var(--success);
-    background: var(--success-light);
+  .search-field {
+    min-width: 240px;
   }
 
-  &.stable {
-    color: var(--muted-text);
-    background: color-mix(in srgb, var(--muted-text) 10%, transparent);
-  }
-
-  .material-symbols-outlined { font-size: 0.9rem; }
-}
-
-.kpi-badge {
-  font-size: 0.65rem;
-  font-weight: 600;
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-
-  &.priority {
-    color: var(--warning);
-    background: var(--warning-light);
-  }
-}
-
-.kpi-label {
-  font-size: 0.75rem;
-  color: var(--muted-text);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0 0 0.25rem;
-  font-weight: 600;
-}
-
-.kpi-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0;
-  color: var(--app-text);
-
-  small {
-    font-size: 0.85rem;
-    font-weight: 400;
-    color: var(--muted-text);
-  }
-}
-
-.kpi-footnote {
-  font-size: 0.72rem;
-  color: var(--muted-text);
-  font-style: italic;
-  margin: 0.35rem 0 0;
-}
-
-.kpi-spark {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 5rem;
-  height: 2.5rem;
-  opacity: 0.18;
-
-  svg {
+  @media (max-width: 720px) {
+    margin-left: 0;
     width: 100%;
-    height: 100%;
-    stroke: var(--accent);
-    fill: none;
-    stroke-width: 2;
+
+    .search-field {
+      min-width: 0;
+      width: 100%;
+    }
   }
 }
-
-.health-bar {
-  margin-top: 0.6rem;
-  height: 6px;
-  background: var(--surface-soft);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.health-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 999px;
-  transition: width 0.6s ease;
-}
-
-/* ── Bento Grid ── */
-.bento-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1.25rem;
-
-  @media (max-width: 860px) {
-    grid-template-columns: 1fr;
-  }
-}
-
-.bento-card {
-  background: var(--surface);
-  border: 1px solid var(--app-border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  transition: box-shadow 0.2s, transform 0.2s;
-
-  &:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
-  }
-}
-
-.bento-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--app-border);
-
-  h4 {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: var(--app-text);
-  }
-
-  p {
-    margin: 0.2rem 0 0;
-    font-size: 0.8rem;
-    color: var(--muted-text);
-  }
-}
-
-.bento-header-left {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.section-icon {
-  font-size: 1.35rem;
-  --icon-wght: 300;
-  flex-shrink: 0;
-}
-
-.icon-occupancy { color: var(--accent); }
-.icon-revenue { color: var(--success); }
-.icon-checkins { color: var(--warning); }
-.icon-health { color: var(--purple); }
-.icon-hotel-warm { color: var(--warning); }
-
-/* ── Chart ── */
-.chart-toggles {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.toggle-btn {
-  padding: 0.35rem 0.75rem;
-  border: 1px solid var(--app-border);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--surface) 90%, var(--app-bg) 10%);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--muted-text);
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &.active {
-    background: var(--accent);
-    color: var(--on-accent);
-    border-color: var(--accent);
-  }
-
-  &:hover:not(.active) {
-    background: var(--surface-soft);
-  }
-}
-
-.chart-area {
-  padding: 1rem 1.5rem 0.5rem;
-  height: 220px;
-  position: relative;
-}
-
-.chart-grid {
-  position: absolute;
-  inset: 1rem 1.5rem 2.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 0;
-}
-
-.chart-bar-group {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  flex: 1;
-}
-
-.chart-bar {
-  flex: 1;
-  min-width: 4px;
-  border-radius: 3px 3px 0 0;
-  background: var(--accent);
-  transition: opacity 150ms;
-
-  &:hover {
-    opacity: 0.8;
-  }
-}
-

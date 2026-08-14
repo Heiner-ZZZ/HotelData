@@ -69,3 +69,15 @@
     transform: scale(1);
   }
 }
+
+/* Sacudida de campana de notificaciones (top-nav de huésped y
+   management-top-nav de gestión comparten esta única definición). */
+@keyframes bell-ring {
+  0% { transform: rotate(0deg) scale(1); }
+  15% { transform: rotate(15deg) scale(1.12); }
+  30% { transform: rotate(-10deg) scale(1.08); }
+  45% { transform: rotate(8deg) scale(1.04); }
+  60% { transform: rotate(-5deg) scale(1); }
+  80% { transform: rotate(3deg); }
+  100% { transform: rotate(0deg); }
+}

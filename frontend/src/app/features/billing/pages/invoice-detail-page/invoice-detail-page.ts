@@ -11,13 +11,16 @@ import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confi
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { BillableServices, InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
+import type { ApiError } from '../../../../core/api/api-error.model';
+import type { BillableServices, InvoiceDetailViewModel, LineItem, PaymentItem } from '../../models/billing.model';
 import type { BillableServicesDto, InvoiceDetailDto } from '../../models/billing.dto';
 import { mapBillableServices, mapInvoiceDetail } from '../../mappers/billing.mapper';
 import { BillingApiService } from '../../services/billing-api.service';
 import { FolioApiService } from '../../services/folio-api.service';
 // Import amenityIcon from the amenities feature — resolves Material Symbols icons from amenity labels
 import { amenityIcon } from '../../../amenities/utils/amenity-icons';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 
 @Component({
   selector: 'app-invoice-detail-page',
@@ -33,6 +36,10 @@ export class InvoiceDetailPageComponent {
   private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly auth = inject(AuthService);
+
+  /** Descarga del PDF de la factura gateada por ``reports.download``. */
+  readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
 
   private readonly routePropId = toSignal(
     this.activatedRoute.queryParamMap.pipe(map(params => Number(params.get('prop_id') ?? '0'))),
@@ -318,7 +325,14 @@ export class InvoiceDetailPageComponent {
     });
   }
 
-  payInvoice(): void {
+  async payInvoice(): Promise<void> {
+    const ok = await this.confirmDialog.open({
+      title: 'Registrar pago',
+      message: `¿Registrar el pago de esta factura? Se procesará un cobro de $${this.total().toFixed(2)}.`,
+      confirmLabel: 'Registrar pago',
+      variant: 'warning',
+    });
+    if (!ok) return;
     this.actionError.set(null);
     this.actionMessage.set(null);
     this.billingApi.payInvoice(this.invoice()!.id, this.invoice()!.propId as number).subscribe({
@@ -331,7 +345,7 @@ export class InvoiceDetailPageComponent {
   }
 
   async cancelInvoice(): Promise<void> {
-    const ok = await this.confirmDialog.open({
+    const reason = await this.confirmDialog.openPrompt({
       title: 'Anular factura',
       message: '¿Anular esta factura? Esta acción no se puede deshacer.',
       confirmLabel: 'Anular factura',
@@ -339,16 +353,21 @@ export class InvoiceDetailPageComponent {
       // Anulación = estado permanente → mostrar modo delete mientras se confirma.
       mode: 'delete',
       modeDetail: `Factura ${this.invoice()?.id ?? ''}`,
+      input: {
+        label: 'Motivo de la anulación (opcional)',
+        placeholder: 'Ej. Factura duplicada, error en el cobro…',
+        maxLength: 500,
+      },
     });
-    if (!ok) return;
+    if (reason === null) return;
     this.actionError.set(null);
     this.actionMessage.set(null);
-    this.billingApi.cancelInvoice(this.invoice()!.id, this.invoice()!.propId as number).subscribe({
+    this.billingApi.cancelInvoice(this.invoice()!.id, this.invoice()!.propId as number, reason).subscribe({
       next: () => {
         this.actionMessage.set('Factura anulada correctamente.');
         this.invoiceResource.reload();
       },
-      error: () => this.actionError.set('No se pudo anular la factura.'),
+      error: (err: ApiError) => this.actionError.set(err.message || 'No se pudo anular la factura.'),
     });
   }
 
@@ -391,6 +410,27 @@ export class InvoiceDetailPageComponent {
       mix: 'account_balance',
     };
     return map[method] ?? 'payments';
+  }
+
+  /** Responsible cashier label for a payment, or null when unattributed. */
+  shiftLabel(p: PaymentItem): string | null {
+    return p.shiftEmployee || p.shiftOpenedBy || null;
+  }
+
+  /** Human label of the shift type ("Matutino" / "Vespertino" / "Nocturno"). */
+  shiftTypeLabel(type: string | null): string {
+    const map: Record<string, string> = {
+      morning: 'Matutino',
+      afternoon: 'Vespertino',
+      evening: 'Nocturno',
+    };
+    return (type && map[type]) || '';
+  }
+
+  /** Tooltip with the shift FK + type for full attribution. */
+  shiftTitle(p: PaymentItem): string {
+    const type = p.shiftType ? ` · ${p.shiftType}` : '';
+    return p.shiftId ? `Turno ${p.shiftId}${type}` : 'Sin turno asociado';
   }
 
   readonly Math = Math;

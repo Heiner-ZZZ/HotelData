@@ -5,6 +5,12 @@
     description="Roles por hotel y asignación del equipo: clona plantillas, ajusta permisos y gestiona el acceso del personal."
     icon="admin_panel_settings"
   >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
     <button type="button" class="btn-primary" (click)="openCreateRole()" [disabled]="noHotel()">
       <span class="material-symbols-outlined">add</span>
       <span>Nuevo rol</span>

@@ -6,7 +6,9 @@
   padding: 0 1rem;
   background: color-mix(in srgb, var(--surface) 85%, transparent);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 30%, transparent);
+  /* Sombra inferior con tinte accent en vez de línea fina — color-mix respeta dark mode */
+  box-shadow: 0 3px 12px -2px color-mix(in srgb, var(--accent) 35%, transparent),
+              0 1px 4px color-mix(in srgb, var(--accent) 18%, transparent);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -49,8 +51,7 @@
 
 .crumb-sep {
   font-size: 1rem;
-  color: var(--muted-text);
-  opacity: 0.5;
+  color: var(--accent);
 }
 
 /* ── Hotel badge (single mode) ── */
@@ -90,13 +91,12 @@
   position: relative;
 }
 
-/* Divider sutil entre secciones del nav (breadcrumb|modo, notif|perfil).
-   --gray-400 es más oscuro que --app-border en modo claro (visible sin
-   ser pesado) y queda bien en modo oscuro. */
+/* Divider entre secciones del nav (breadcrumb|modo, notif|perfil).
+   Verde accent para mantener la coherencia de marca con el resto del nav. */
 .topbar-divider {
   width: 1px;
   height: 1.5rem;
-  background: color-mix(in srgb, var(--gray-400) 80%, transparent);
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
   flex-shrink: 0;
 }
 
@@ -110,7 +110,7 @@
   border: none;
   border-radius: 999px;
   background: transparent;
-  color: var(--muted-text);
+  color: var(--accent);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 
@@ -120,22 +120,39 @@
   }
 
   &.has-unread .notif-icon {
+    /* bell-ring vive en styles/_scss-keyframes.scss (fuente única compartida
+       con el top-nav del huésped). */
     animation: bell-ring 0.6s ease-in-out infinite alternate;
   }
 }
 
-@keyframes bell-ring {
-  0% { transform: rotate(0deg) scale(1); }
-  15% { transform: rotate(15deg) scale(1.12); }
-  30% { transform: rotate(-10deg) scale(1.08); }
-  45% { transform: rotate(8deg) scale(1.04); }
-  60% { transform: rotate(-5deg) scale(1); }
-  80% { transform: rotate(3deg); }
-  100% { transform: rotate(0deg); }
-}
-
 .notif-icon {
   font-size: 1.25rem;
+}
+
+/* Icon button (theme toggle) — mismo look que notif-btn */
+.topbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+
+  &:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.25rem;
+  }
 }
 
 .notif-badge {
@@ -290,20 +307,83 @@
   z-index: 150;
 }
 
-/* ── User Profile ── */
+/* ── User Profile (dropdown) ── */
+.profile-wrapper {
+  position: relative;
+}
+
 .user-profile {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0;
+  border: none;
   border-radius: 999px;
+  background: transparent;
   cursor: pointer;
   text-decoration: none;
   color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
   transition: background 0.15s;
 
   &:hover {
     background: color-mix(in srgb, var(--accent) 5%, transparent);
+  }
+
+  &.is-open {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+}
+
+.profile-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  padding: 0.4rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-modal, 0 8px 32px rgba(0, 0, 0, 0.18));
+  z-index: 200;
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
+  color: var(--app-text);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: background 0.12s, color 0.12s;
+
+  &:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+}
+
+.profile-menu-icon {
+  font-size: 1.15rem;
+  --icon-wght: 350;
+  --icon-opsz: 20;
+  flex-shrink: 0;
+}
+
+.profile-menu-logout {
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--app-border);
+  border-radius: 0;
+  color: var(--danger);
+
+  &:hover {
+    background: var(--danger-light);
+    color: var(--danger);
   }
 }
 

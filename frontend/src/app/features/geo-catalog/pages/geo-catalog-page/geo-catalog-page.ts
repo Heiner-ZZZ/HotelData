@@ -109,12 +109,12 @@ export class GeoCatalogPageComponent {
       return this.urlForVisitorType(type, q, page);
     }
 
-    // Generic catalog (geo-catalog collection) — server-side filter/pag.
+    // Generic catalog (geo_catalog collection) — server-side filter/pag.
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (page > 1) params.set('page', String(page));
     const qs = params.toString();
-    return qs ? `/api/management/geo-catalog?type=${type}&${qs}` : `/api/management/geo-catalog?type=${type}`;
+    return qs ? `/api/geo/entries?type=${type}&${qs}` : `/api/geo/entries?type=${type}`;
   }, {
     parse: (raw: unknown) => {
       const page = Number(this.qp().get('page') ?? '1');
@@ -132,11 +132,11 @@ export class GeoCatalogPageComponent {
    */
   private urlForVisitorType(type: string, q: string, page: number): string {
     switch (type) {
-      case 'visitor-country': return '/api/visitor/countries';
-      case 'visitor-destination': return '/api/visitor/destinations';
-      case 'visitor-site': return '/api/visitor/sites';
-      case 'visitor-hotel': return '/api/visitor/hotels';
-      default: return '/api/visitor/countries';
+      case 'visitor-country': return '/api/geo/visitor-countries';
+      case 'visitor-destination': return '/api/geo/visitor-destinations';
+      case 'visitor-site': return '/api/geo/visitor-sites';
+      case 'visitor-hotel': return '/api/geo/visitor-hotels';
+      default: return '/api/geo/visitor-countries';
     }
   }
 
@@ -144,35 +144,55 @@ export class GeoCatalogPageComponent {
     const visitList = (raw as { items?: unknown[] })?.items ?? [];
     return visitList.map((itemUnknown) => {
       const item = itemUnknown as Record<string, unknown>;
-      let id = '';
-      let name = '';
-      if (type === 'visitor-country') {
-        id = String(item['visitor_location_country_id']);
-        name = String(item['country_display_name'] ?? '');
-      } else if (type === 'visitor-destination') {
-        id = String(item['srch_destination_id']);
-        name = String(item['destination_display_name'] ?? '');
-      } else if (type === 'visitor-site') {
-        id = String(item['site_id']);
-        name = String(item['site_display_name'] ?? '');
-      } else if (type === 'visitor-hotel') {
-        id = String(item['prop_id']);
-        name = String(item['hotel_name'] ?? '');
+      // Visitor dimension endpoints return bare `{ id_field, display_name }`
+      // items; the generic `/api/geo/entries` endpoint returns already-enriched
+      // GeoEntry-shaped docs ({id, code, name, ...}).
+      if (type === 'visitor-country' || type === 'visitor-destination' || type === 'visitor-site' || type === 'visitor-hotel') {
+        let id = '';
+        let name = '';
+        if (type === 'visitor-country') {
+          id = String(item['visitor_location_country_id']);
+          name = String(item['country_display_name'] ?? '');
+        } else if (type === 'visitor-destination') {
+          id = String(item['srch_destination_id']);
+          name = String(item['destination_display_name'] ?? '');
+        } else if (type === 'visitor-site') {
+          id = String(item['site_id']);
+          name = String(item['site_display_name'] ?? '');
+        } else if (type === 'visitor-hotel') {
+          id = String(item['prop_id']);
+          name = String(item['hotel_name'] ?? '');
+        }
+        return {
+          id,
+          type,
+          code: id,
+          name,
+          countryCode: '',
+          stateCode: '',
+          category: '',
+          isoCode: '',
+          latitude: null,
+          longitude: null,
+          isActive: true,
+          createdAt: '',
+          updatedAt: null,
+        };
       }
       return {
-        id,
+        id: String(item['id'] ?? ''),
         type,
-        code: id,
-        name,
-        countryCode: '',
-        stateCode: '',
-        category: '',
-        isoCode: '',
-        latitude: null,
-        longitude: null,
-        isActive: true,
-        createdAt: '',
-        updatedAt: null,
+        code: String(item['code'] ?? item['id'] ?? ''),
+        name: String(item['name'] ?? ''),
+        countryCode: String(item['countryCode'] ?? ''),
+        stateCode: String(item['stateCode'] ?? ''),
+        category: String(item['category'] ?? ''),
+        isoCode: String(item['isoCode'] ?? ''),
+        latitude: (item['latitude'] as number | null) ?? null,
+        longitude: (item['longitude'] as number | null) ?? null,
+        isActive: item['isActive'] !== false,
+        createdAt: String(item['createdAt'] ?? ''),
+        updatedAt: item['updatedAt'] ? String(item['updatedAt']) : null,
       };
     });
   }
@@ -184,7 +204,7 @@ export class GeoCatalogPageComponent {
     effect(() => {
       const type = this.qp().get('type') || 'visitor-country';
       if (this.activeType() !== type) this.activeType.set(type);
-    }, { allowSignalWrites: true });
+    });
   }
 
   private applyLocalFilters(items: GeoEntry[], q: string, page: number): GeoListResponse {

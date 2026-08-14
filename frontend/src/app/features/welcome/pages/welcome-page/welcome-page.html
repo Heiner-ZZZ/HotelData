@@ -10,6 +10,8 @@
       <label class="chip chip--lang" aria-label="Cambiar moneda">
         <span class="chip-flag" aria-hidden="true" [innerHTML]="currencyFlag(selectedCurrency())"></span>
         <select
+          id="welcome-currency"
+          name="currency"
           class="chip__select"
           [value]="selectedCurrency()"
           (change)="onCurrencyChange($any($event.target).value)"
@@ -79,55 +81,20 @@
 <main id="main-content">
 <section class="welcome-search" aria-label="Buscador de hoteles">
   <div class="welcome-search__inner">
-    <form class="booking-bar" [formGroup]="searchForm" (ngSubmit)="navigateToSearch()" role="search" aria-label="Buscar hoteles">
-      <div class="booking-bar__field">
-        <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">location_on</span>
-        <div class="booking-bar__body">
-          <label class="booking-bar__label" for="welcome-dest">Destino</label>
-          <!-- Búsqueda dinámica: las opciones se filtran con cada carácter
-               (debounce 250ms) vía GET /api/hotels/destinations/suggest. -->
-          <app-destination-autocomplete
-            [value]="searchForm.controls.destination.value"
-            (valueChange)="onDestinationChange($event)"
-          />
-        </div>
-      </div>
-      <div class="booking-bar__field booking-bar__field--dates">
-        <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">calendar_month</span>
-        <div class="booking-bar__body">
-          <span class="booking-bar__label">Entrada — Salida</span>
-          <!-- Un solo calendario para ambas fechas (mismo widget que
-               /account/bookings/new): clic en dos fechas o arrastre. -->
-          <app-date-range-picker
-            [minDate]="today"
-            [startDate]="searchForm.controls.checkIn.value"
-            [endDate]="searchForm.controls.checkOut.value"
-            (startChange)="onStartDateChange($event)"
-            (endChange)="onEndDateChange($event)"
-          />
-        </div>
-      </div>
-      <div class="booking-bar__field booking-bar__field--guests">
-        <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">group</span>
-        <div class="booking-bar__body">
-          <span class="booking-bar__label">Huéspedes</span>
-          <!-- Selector de huéspedes tipo popover (steppers) — misma UX que
-               el date-range-picker: un trigger + calendario/popover. -->
-          <app-guests-picker
-            [adults]="guestCounts().adults"
-            [children]="guestCounts().children"
-            [rooms]="guestCounts().rooms"
-            (adultsChange)="onAdultsChange($event)"
-            (childrenChange)="onChildrenChange($event)"
-            (roomsChange)="onRoomsChange($event)"
-          />
-        </div>
-      </div>
-      <button type="submit" class="booking-bar__cta">
-        <span class="material-symbols-outlined" aria-hidden="true">search</span>
-        Buscar
-      </button>
-    </form>
+    <!-- Booking-bar compartido (misma caja que /search): destino + fechas +
+         huéspedes con los widgets comunes. valueChange = persistencia en
+         vivo; search = navegación a /search. -->
+    <app-booking-search-bar
+      [destination]="initialSearch.destination"
+      [checkIn]="initialSearch.checkIn"
+      [checkOut]="initialSearch.checkOut"
+      [adults]="initialSearch.adults"
+      [children]="initialSearch.children"
+      [rooms]="initialSearch.rooms"
+      [minDate]="today"
+      (valueChange)="onValueChange($event)"
+      (search)="onSearch($event)"
+    />
 
   </div>
 </section>

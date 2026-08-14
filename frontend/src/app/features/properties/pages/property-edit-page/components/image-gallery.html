@@ -16,7 +16,14 @@
       <div cdkDropList class="gallery-grid" (cdkDropListDropped)="onDrop($event)">
         @for (img of images(); track img.imageUrl; let i = $index) {
           <div cdkDrag class="gallery-item" [class.gallery-item--hero]="i === 0">
-            <img [src]="img.imageUrl" [alt]="img.title || 'Imagen de propiedad'" class="gallery-img" loading="lazy" />
+            @if (brokenImages().has(img.imageUrl)) {
+              <div class="gallery-img-fallback" role="img" [attr.aria-label]="'Imagen no disponible: ' + (img.title || '')">
+                <span class="material-symbols-outlined">broken_image</span>
+                <span class="gallery-img-fallback-text">Imagen no disponible</span>
+              </div>
+            } @else {
+              <img [src]="img.imageUrl" [alt]="img.title || 'Imagen de propiedad'" class="gallery-img" loading="lazy" (error)="onImgError(img.imageUrl)" />
+            }
             @if (i === 0) {
               <span class="gallery-hero-badge">Principal</span>
             }

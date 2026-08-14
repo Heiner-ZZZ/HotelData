@@ -55,7 +55,7 @@
 
     &:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(0, 96, 118, 0.1);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
     }
   }
 
@@ -104,7 +104,7 @@
 .filter-badge {
   display: inline-block;
   padding: 1px 6px;
-  background: rgba(0, 96, 118, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   color: var(--accent);
   border-radius: 4px;
   font-weight: 600;
@@ -236,7 +236,7 @@
   .prio-dot { background: var(--gray-500); }
 }
 .prio-normal {
-  background: rgba(0, 96, 118, 0.08); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent);
   .prio-dot { background: var(--accent); }
 }
 .prio-high {
@@ -287,7 +287,7 @@
   background: var(--warning-light); color: var(--warning);
 }
 .badge-progress {
-  background: rgba(0, 96, 118, 0.08); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent);
 }
 .badge-inspection {
   background: color-mix(in srgb, var(--purple) 8%, transparent); color: var(--purple);
@@ -372,7 +372,7 @@
   }
   &.start {
     color: var(--accent);
-    &:hover { background: rgba(0, 96, 118, 0.08); border-color: var(--accent); }
+    &:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); border-color: var(--accent); }
   }
   &.inspect {
     color: var(--purple);

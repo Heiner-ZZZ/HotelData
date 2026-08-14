@@ -32,6 +32,8 @@ def get_hotel_rates_detail(prop_id: int) -> dict:
         "promotions": detail.get("promotions", []),
         "coupon_codes": detail.get("coupon_codes", []),
         "room_types": detail.get("room_types", []),
+        "rate_coverage": detail.get("rate_coverage"),
+        "min_base_rate": detail.get("min_base_rate", 10.0),
     }
 
 

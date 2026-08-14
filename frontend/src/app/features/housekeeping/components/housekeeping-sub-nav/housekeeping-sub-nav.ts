@@ -15,11 +15,11 @@ interface NavItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HousekeepingSubNavComponent {
+  // Sprint 2: esta barra queda SOLO con la parte OPERATIVA. Los informes
+  // (Dashboard, Operaciones, Matriz) viven ahora en el item "Informes" del
+  // árbol de navegación y se navegan con ``app-horizontal-sub-nav``.
   readonly navItems: NavItem[] = [
-    { label: 'Dashboard', href: '/management/housekeeping/dashboard', icon: 'dashboard' },
-    { label: 'Operaciones', href: '/management/housekeeping/operations', icon: 'analytics' },
     { label: 'Calendario', href: '/management/housekeeping/calendar', icon: 'calendar_month' },
-    { label: 'Matriz', href: '/management/housekeeping/matrix', icon: 'grid_view' },
     { label: 'Habitaciones', href: '/management/housekeeping/rooms', icon: 'meeting_room' },
     { label: 'Tareas', href: '/management/housekeeping/tasks', icon: 'checklist' },
     { label: 'Mantenimiento', href: '/management/housekeeping/maintenance', icon: 'build' },

@@ -3,17 +3,19 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, injec
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { getErrorStatus } from '../../../../shared/utils/http-error.util';
+import { getErrorStatus, getErrorMessage } from '../../../../shared/utils/http-error.util';
 import { catchAndToastWarning } from '../../../../shared/utils/catch-and-toast';
 
+import { AuthService } from '../../../../core/auth/auth.service';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
+import { NoShowService } from '../../../../shared/services/no-show.service';
 import { CheckInsApiService, type CheckInDetailDto } from '../../services/check-ins-api.service';
-import { STAY_CHECKED_IN } from '../../../reservations/utils/reservation-status.util';
+import { STAY_CHECKED_IN, STAY_NO_SHOW } from '../../../reservations/utils/reservation-status.util';
 
 interface StepConfig {
   num: number;
@@ -41,6 +43,8 @@ export class CheckInDetailPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(CheckInsApiService);
   private readonly opMode = inject(OperationModeService);
+  private readonly auth = inject(AuthService);
+  private readonly noShowService = inject(NoShowService);
 
   readonly viewState = signal<ViewState>('loading');
   /**
@@ -124,10 +128,70 @@ export class CheckInDetailPageComponent {
     return checkIn < today;
   });
 
+  // ── No-show: guest never arrived and stay already ended ──
+  // Una reserva marcada como no_show (estado terminal) o cuya fecha de
+  // check-out ya pasó sin que el huésped llegara no admite check-in.
+  readonly noShow = computed(() => {
+    const d = this.data();
+    if (!d || this.checkinDone()) return false;
+    if (d.stay_status === STAY_NO_SHOW) return true;
+    if (!d.check_out_date) return false;
+    const checkOut = new Date(d.check_out_date + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return checkOut < today;
+  });
+
   // ── Completion ──
   readonly completing = signal(false);
   readonly completeError = signal('');
   readonly checkinDone = computed(() => this.data()?.stay_status === STAY_CHECKED_IN);
+
+  // ── No-show manual (cierre desde recepción) ──
+  readonly noShowPending = signal(false);
+  /**
+   * Folio de la penalización generado al marcar no-show (respuesta del API).
+   * Se muestra en el panel para enlazar a Facturación; se limpia al cambiar
+   * de reserva (no al recargar el detalle, para que persista tras el reload).
+   */
+  readonly noShowResult = signal<{ folio_number: string | null; penalty_amount: number } | null>(null);
+
+  /**
+   * El botón solo aplica a reservas que VENCIERON como no-show pero aún no
+   * fueron marcadas (stay_status ausente/pending). Las ya `no_show` y las
+   * con estancia activa/terminal quedan excluidas. Gate por permiso
+   * `reservations.update` — el mismo que exige el backend en el endpoint.
+   */
+  readonly canMarkNoShow = computed(() => {
+    const d = this.data();
+    if (!d || this.checkinDone() || !this.noShow()) return false;
+    if (d.stay_status === STAY_NO_SHOW) return false;
+    return this.auth.hasPermission('reservations.update');
+  });
+
+  async markNoShow() {
+    const d = this.data();
+    if (!d || !this.canMarkNoShow() || this.noShowPending()) return;
+
+    this.noShowPending.set(true);
+    this.successMessage.set('');
+    this.errorMessage.set('');
+    try {
+      // Flujo compartido: diálogo de confirmación → POST no-show → folio.
+      const result = await this.noShowService.markNoShowWithConfirm(d.booking_id, d.guest_name);
+      if (!result) return; // cancelado — el finally libera el pending
+      this.successMessage.set(this.noShowService.successMessage(result));
+      this.noShowResult.set({
+        folio_number: result.folio_number ?? null,
+        penalty_amount: result.penalty_amount,
+      });
+      this.detailResource.reload();
+    } catch (err) {
+      this.errorMessage.set(getErrorMessage(err) || 'No fue posible marcar el no-show.');
+    } finally {
+      this.noShowPending.set(false);
+    }
+  }
 
   // ── Completion guard (button disabled while processing) ──
   // `completing()` is used directly in the template
@@ -210,6 +274,8 @@ export class CheckInDetailPageComponent {
       this.depositReceived.set(detail.check_in_deposit_received || false);
       this.privacySigned.set(detail.check_in_privacy_signed || false);
       this.observations.set(detail.check_in_observations || '');
+      // Nueva reserva → limpiar el folio de un no-show anterior
+      this.noShowResult.set(null);
       // Then overlay localStorage draft (if newer)
       this._restoreDraft();
       if (detail.stay_status === STAY_CHECKED_IN) this.currentStep.set(5);

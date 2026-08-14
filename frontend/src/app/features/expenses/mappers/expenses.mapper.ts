@@ -193,6 +193,10 @@ export function mapFolioPostings(dto: FolioPostingsDto): FolioPostingsResponse {
       referenceId: p.reference_id,
       referenceType: p.reference_type,
       postedAt: p.posted_at,
+      shiftId: p.shift_id ?? null,
+      shiftEmployee: p.shift_employee ?? null,
+      shiftOpenedBy: p.shift_opened_by ?? null,
+      shiftType: p.shift_type ?? null,
     })),
   };
 }

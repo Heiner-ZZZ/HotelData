@@ -1,5 +1,5 @@
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, signal, untracked, ViewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -9,6 +9,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
+import { BookingSearchBarComponent, type BookingSearchValues } from '../../../../shared/ui/booking-search-bar/booking-search-bar';
 import { FilterSidebarComponent } from '../../components/filter-sidebar/filter-sidebar';
 import { HotelCardComponent } from '../../components/hotel-card/hotel-card';
 import { SortControlComponent } from '../../components/sort-control/sort-control';
@@ -19,6 +20,7 @@ import type { AlternativeDestination, HotelSearchFilters, HotelSearchResult } fr
 @Component({
   selector: 'app-hotel-search-page',
   imports: [
+    BookingSearchBarComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     FilterSidebarComponent,
@@ -32,9 +34,16 @@ import type { AlternativeDestination, HotelSearchFilters, HotelSearchResult } fr
   styleUrl: './hotel-search-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class HotelSearchPageComponent {
+export class HotelSearchPageComponent implements OnDestroy {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly router = inject(Router);
+
+  @ViewChild(BookingSearchBarComponent) private readonly bookingBar?: BookingSearchBarComponent;
+
+  /** Fecha local de hoy (YYYY-MM-DD) reactiva para el min del calendario.
+   *  Refresca al cruzar medianoche o al volver a la pestaña, sin recargar. */
+  readonly today = signal(this.localToday());
+  private midnightTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Reactive query-params bridge — toSignal keeps URL the source of truth. */
   private readonly qp = toSignal(this.activatedRoute.queryParamMap, {
@@ -63,7 +72,7 @@ export class HotelSearchPageComponent {
       destination: this.qp().get('destination') ?? '',
       checkIn: this.qp().get('check_in') ?? '',
       checkOut: this.qp().get('check_out') ?? '',
-      adults: this.qp().get('adults') ?? '1',
+      adults: this.qp().get('adults') ?? '2',
       children: this.qp().get('children') ?? '0',
       rooms: this.qp().get('rooms') ?? '1',
       minPrice: this.qp().get('price_min') ?? '',
@@ -105,6 +114,10 @@ export class HotelSearchPageComponent {
   });
 
   constructor() {
+    this.scheduleMidnightRefresh();
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+    window.addEventListener('focus', this.onFocus);
+
     // Side-effect: derive from httpResource.value into the discrete signals that
     // the template reads. The id-gate prevents paged fetches from overwriting any
     // user's optimistic compare selections.
@@ -148,10 +161,58 @@ export class HotelSearchPageComponent {
     }, { allowSignalWrites: true });
   }
 
+  /** Recalcula "hoy" (p. ej. al cruzar medianoche o al volver a la pestaña). */
+  private refreshToday(): void {
+    this.today.set(this.localToday());
+  }
+
+  private localToday(): string {
+    return new Date().toLocaleDateString('sv-SE');
+  }
+
+  private scheduleMidnightRefresh(): void {
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    this.midnightTimer = setTimeout(() => {
+      this.refreshToday();
+      this.scheduleMidnightRefresh();
+    }, nextMidnight.getTime() - now.getTime());
+  }
+
+  private readonly onVisibilityChange = (): void => {
+    if (!document.hidden) this.refreshToday();
+  };
+
+  private readonly onFocus = (): void => this.refreshToday();
+
+  ngOnDestroy(): void {
+    if (this.midnightTimer !== null) clearTimeout(this.midnightTimer);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    window.removeEventListener('focus', this.onFocus);
+  }
+
   updateFilters(filters: HotelSearchFilters) {
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
       queryParams: this.toQueryParams(filters),
+    });
+  }
+
+  /** El booking-bar superior (destino/fechas/huéspedes) re-emite la búsqueda
+   *  completa: actualiza los query params (URL = fuente de verdad) y el resto
+   *  del pipeline (resource, sidebar, cards) se recomputa solo. */
+  onBookingSearch(values: BookingSearchValues) {
+    const current = this.currentFilters();
+    this.updateFilters({
+      ...current,
+      destination: values.destination,
+      checkIn: values.checkIn,
+      checkOut: values.checkOut,
+      adults: String(values.adults),
+      children: String(values.children),
+      rooms: String(values.rooms),
+      page: 1,
     });
   }
 
@@ -161,19 +222,12 @@ export class HotelSearchPageComponent {
   }
 
   /** Botón "Elegir fechas" de una card: lleva el foco al calendario del
-   *  filtro (check-in) y abre el picker nativo — el total de la card se
+   *  booking-bar superior y abre su popover — el total de la card se
    *  recalcula al aplicar el rango (patrón Expedia: fechas primero). */
   onChooseDates() {
-    const input = document.querySelector<HTMLInputElement>(
-      '.filter-sidebar input[formControlName="checkIn"]',
-    );
-    if (!input) return;
-    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    if (typeof input.showPicker === 'function') {
-      input.showPicker();
-    } else {
-      input.focus({ preventScroll: true });
-    }
+    const bar = document.querySelector<HTMLElement>('app-booking-search-bar');
+    bar?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    this.bookingBar?.openDateRange();
   }
 
   onCompareSelected(hotelId: number) {
@@ -227,7 +281,7 @@ export class HotelSearchPageComponent {
     if (filters.destination) sp.set('destination', filters.destination);
     if (filters.checkIn) sp.set('check_in', filters.checkIn);
     if (filters.checkOut) sp.set('check_out', filters.checkOut);
-    if (filters.adults !== '1') sp.set('adults', filters.adults);
+    if (filters.adults !== '2') sp.set('adults', filters.adults);
     if (filters.children !== '0') sp.set('children', filters.children);
     if (filters.rooms !== '1') sp.set('rooms', filters.rooms);
     if (filters.minPrice) sp.set('price_min', filters.minPrice);
@@ -250,7 +304,7 @@ export class HotelSearchPageComponent {
       destination: filters.destination || null,
       check_in: filters.checkIn || null,
       check_out: filters.checkOut || null,
-      adults: filters.adults !== '1' ? filters.adults : null,
+      adults: filters.adults !== '2' ? filters.adults : null,
       children: filters.children !== '0' ? filters.children : null,
       rooms: filters.rooms !== '1' ? filters.rooms : null,
       price_min: filters.minPrice || null,

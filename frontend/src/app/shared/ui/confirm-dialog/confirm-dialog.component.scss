@@ -76,10 +76,51 @@
   }
 }
 
+.cd-input-group {
+  margin: 4px 0 20px;
+  display: grid;
+  gap: 6px;
+}
+
+.cd-input-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.cd-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 64px;
+  transition: border-color 120ms, box-shadow 120ms;
+
+  &::placeholder { color: var(--gray-300); }
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+}
+
 .cd-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.cd-btn-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .cd-btn {

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
+
+from src.app.security.dependencies import require_permission
 
 from .excel_service import render_sheets_to_xlsx
 from .pdf_service import render_html_to_pdf
@@ -15,7 +17,10 @@ router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 
 @router.post("/pdf", response_class=Response)
-async def generate_pdf(payload: PdfReportRequest) -> Response:
+async def generate_pdf(
+    payload: PdfReportRequest,
+    current_user: dict = Depends(require_permission("reports.download")),
+) -> Response:
     """Convert an HTML document to a PDF via WeasyPrint and return the bytes.
 
     Body:
@@ -43,7 +48,10 @@ async def generate_pdf(payload: PdfReportRequest) -> Response:
 
 
 @router.post("/xlsx", response_class=Response)
-async def generate_xlsx(payload: ExcelReportRequest) -> Response:
+async def generate_xlsx(
+    payload: ExcelReportRequest,
+    current_user: dict = Depends(require_permission("reports.download")),
+) -> Response:
     """Build a styled XLSX workbook from structured rows and return the bytes.
 
     Body:

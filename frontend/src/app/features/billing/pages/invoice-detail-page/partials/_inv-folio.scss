@@ -9,7 +9,7 @@
 .inv-folio-icon {
   font-size: 1.35rem;
   color: var(--accent);
-  background: rgba(0, 96, 118, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   padding: 0.35rem;
   border-radius: 0.5rem;
 }

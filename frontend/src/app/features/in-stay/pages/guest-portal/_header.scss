@@ -4,7 +4,7 @@
 
 .gp-header {
   position: relative;
-  background: linear-gradient(135deg, t.$gp-accent 0%, color-mix(in srgb, var(--teal) 40%, black) 100%);
+  background: linear-gradient(135deg, t.$gp-accent 0%, color-mix(in srgb, var(--accent) 40%, black) 100%);
   color: white;
 
   .gp-header-inner {

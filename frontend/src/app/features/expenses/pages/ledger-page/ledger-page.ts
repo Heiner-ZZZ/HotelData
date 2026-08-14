@@ -19,6 +19,8 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ReportsExportService } from '../../../../shared/services/reports-export.service';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 import {
   buildReportShell,
   buildSummaryGrid,
@@ -105,6 +107,10 @@ export class LedgerPageComponent {
   private readonly route = inject(ActivatedRoute);
   readonly ctx = inject(PropertyContextService);
   private readonly reports = inject(ReportsExportService);
+  private readonly auth = inject(AuthService);
+
+  /** Exportación del libro mayor (CSV/PDF/XLSX) gateada por ``reports.download``. */
+  readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
 
   /** URL query param snapshot for initial load. */
   private readonly qp = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });

@@ -3,7 +3,7 @@ import type { PromoEditState } from '../../components/promotion-form/promotion-f
 import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map } from 'rxjs';
+import { distinctUntilChanged, firstValueFrom, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
@@ -16,7 +16,7 @@ import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
-import type { RatePlanItem, RatePlanOption, RatesViewModel } from '../../models/rates.model';
+import type { RateCoverage, RatePlanItem, RatePlanOption, RatesViewModel } from '../../models/rates.model';
 import type { RatesDto } from '../../models/rates.dto';
 import { RatesApiService, type PromotionsListResponse } from '../../services/rates-api.service';
 import { mapRatesResponse } from '../../mappers/rates.mapper';
@@ -32,6 +32,8 @@ import { SeasonalRulesTableComponent, type SeasonalRuleRow } from '../../compone
 
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 import { ModeHighlightDirective } from '../../../../core/directives/mode-highlight.directive';
+import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 
 /** Return the Monday of the week containing the given date. */
 function _mondayOfWeek(date: Date): Date {
@@ -86,6 +88,7 @@ export function splitCouponsByCampaign(
     RateCalendarTableComponent,
     AiSuggestDirective,
     ModeHighlightDirective,
+    ConfirmDialogComponent,
   ],
   templateUrl: './rates-page.html',
   styleUrl: './rates-page.scss',
@@ -100,6 +103,7 @@ export class RatesPageComponent {
   readonly propertyCtx = inject(PropertyContextService);
   private readonly toast = inject(ToastService);
   private readonly opMode = inject(OperationModeService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   /**
    * Señales del modo CRUD (leídas del servicio global del nav) para el template:
@@ -159,6 +163,11 @@ export class RatesPageComponent {
   /** Toggle to show/hide past dates in the overview calendar */
   readonly showPastDates = signal(false);
 
+  /** Hueco tarifas-vs-inventario (banner del overview) — null sin hueco. */
+  readonly rateGap = computed<RateCoverage | null>(
+    () => this.ratesResource.value()?.rateCoverage ?? null,
+  );
+
 
   /** Current property ID — derived from URL (source of truth). */
   readonly selectedPropId = computed(() => this.routePropId());
@@ -190,6 +199,12 @@ export class RatesPageComponent {
     });
   }
   readonly planBaseRate = signal(0);
+  /**
+   * Tarifa base mínima del form de plan (system_config.min_base_rate,
+   * default $10). El backend valida con el mismo valor — esta validación
+   * evita el round-trip y muestra el mensaje antes de enviar.
+   */
+  readonly planMinBaseRate = computed(() => this.ratesResource.value()?.minBaseRate ?? 10);
   /**
    * Default currency for a NEW rate plan. Initialized from the active
    * property's currency (e.g. USD for a USD-denominated property) so the
@@ -405,6 +420,7 @@ readonly sidebarSections: SidebarSection[] = [
             isClosed: c.isClosed,
             minStay: c.minStayNights,
             tier,
+            source: c.source,
           };
         }),
     }));
@@ -638,6 +654,28 @@ readonly sidebarSections: SidebarSection[] = [
     });
   }
 
+  /** Botón del banner: lleva a "Generar calendario" con el rango faltante pre-cargado. */
+  goToGenerateCalendar(): void {
+    const gap = this.rateGap();
+    if (!gap) return;
+    this.generateStartDate.set(gap.gapStart);
+    this.generateEndDate.set(gap.gapEnd);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      queryParams: { section: 'plans' },
+    });
+    setTimeout(() => document.querySelector('.generate-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  }
+
+  /** Fecha corta legible (p. ej. '26 jul') para el banner. */
+  formatShortDate(value: string): string {
+    if (!value) return '—';
+    const d = new Date(`${value}T00:00:00`);
+    if (isNaN(d.getTime())) return value;
+    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+  }
+
   onMonthChange(month: number, year: number): void {
     if (this.calendarDisplayMode() === 'week') {
       // In week mode: navigate by 7 days based on direction
@@ -678,7 +716,12 @@ readonly sidebarSections: SidebarSection[] = [
 
   createRatePlan(): void {
     const current = this.ratesResource.value();
-    if (!current || !this.planName() || this.planBaseRate() <= 0) { return; }
+    if (!current || !this.planName()) { return; }
+    const minRate = this.planMinBaseRate();
+    if (this.planBaseRate() < minRate) {
+      this.toast.error(`La tarifa base mínima es $${minRate}.`);
+      return;
+    }
     const obs = this.editingPlan()
       ? this.api.updateRatePlan(this.editingPlan()!.id, {
           name: this.planName(), description: this.planDescription(), baseRate: this.planBaseRate(),
@@ -762,45 +805,134 @@ readonly sidebarSections: SidebarSection[] = [
   }
 
   /* ── Batch Update ── */
-  batchUpdateCalendar(): void {
+  async batchUpdateCalendar(): Promise<void> {
     const current = this.ratesResource.value();
-    if (!current || !this.batchRatePlanId() || !this.batchStartDate() || !this.batchEndDate() || this.batchRateAmount() <= 0) { return; }
-    if (this.batchStartDate() > this.batchEndDate()) {
+    if (!current) return;
+
+    const planId = this.batchRatePlanId();
+    const startDate = this.batchStartDate();
+    const endDate = this.batchEndDate();
+    const rateAmount = this.batchRateAmount();
+    if (!planId) {
+      this.toast.error('Selecciona un plan tarifario.');
+      return;
+    }
+    if (!startDate || !endDate) {
+      this.toast.error('Indica las fechas de inicio y fin.');
+      return;
+    }
+    if (rateAmount <= 0) {
+      this.toast.error('Indica una tarifa mayor a 0.');
+      return;
+    }
+    if (startDate > endDate) {
       this.toast.error('La fecha de inicio no puede ser mayor a la fecha de fin.');
       return;
     }
-    this.api.batchUpdateCalendar({
-      propId: current.propId, ratePlanId: this.batchRatePlanId(), startDate: this.batchStartDate(),
-      endDate: this.batchEndDate(), rateAmount: this.batchRateAmount(), minStayNights: this.batchMinStayNights() || undefined, onlyWeekends: this.batchOnlyWeekends(),
-    }).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: () => { this.ratesResource.reload(); this.toast.success('Calendario actualizado por lote'); this.batchRatePlanId.set(''); this.batchStartDate.set(''); this.batchEndDate.set(''); this.batchRateAmount.set(0); this.batchMinStayNights.set(1); this.batchOnlyWeekends.set(false); },
-      error: (error: ApiError) => { this.toast.error(error.message || 'Error al actualizar calendario por lote.'); },
-    });
+
+    const payload = {
+      propId: current.propId, ratePlanId: planId, startDate, endDate, rateAmount,
+      minStayNights: this.batchMinStayNights() || undefined, onlyWeekends: this.batchOnlyWeekends(),
+    };
+
+    try {
+      // 1) Dry-run: el backend cuenta los días afectados sin escribir nada.
+      const preview = await firstValueFrom(this.api.batchUpdateCalendar({ ...payload, dryRun: true }));
+      const planLabel = this.ratePlanOptions().find((p) => p.id === planId)?.label ?? planId;
+
+      // 2) Confirmación con el conteo exacto antes de aplicar. Mientras está
+      // abierta, el nav muestra el modo EXECUTE (igual que monitoring ETL).
+      const details = [`Plan: ${planLabel}`, `${startDate} → ${endDate}`, `Tarifa: ${rateAmount}`];
+      if (this.batchOnlyWeekends()) details.push('Solo fines de semana');
+      const ok = await this.confirmDialog.open({
+        title: 'Actualizar lote',
+        message: `Se actualizarán ${preview.affected_days} entradas del calendario.`,
+        details,
+        confirmLabel: 'Actualizar',
+        cancelLabel: 'Cancelar',
+        variant: 'default',
+        mode: 'execute',
+        modeDetail: 'Actualizar lote',
+      });
+      // El modal libera su transient (execute) al cerrar; la página vuelve a
+      // escribir su modo de sección en el nav.
+      this.applyMode();
+      if (!ok) return;
+
+      // 3) Aplicación real.
+      this.api.batchUpdateCalendar({ ...payload, dryRun: false }).pipe(
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe({
+        next: () => {
+          this.ratesResource.reload();
+          this.toast.success('Calendario actualizado por lote');
+          this.batchRatePlanId.set(''); this.batchStartDate.set(''); this.batchEndDate.set('');
+          this.batchRateAmount.set(0); this.batchMinStayNights.set(1); this.batchOnlyWeekends.set(false);
+        },
+        error: (error: ApiError) => { this.toast.error(error.message || 'Error al actualizar calendario por lote.'); },
+      });
+    } catch (error) {
+      this.toast.error((error as ApiError).message || 'Error al actualizar calendario por lote.');
+    }
   }
 
   /* ── Generate Calendar ── */
-  generateCalendar(): void {
+  async generateCalendar(): Promise<void> {
     const current = this.ratesResource.value();
     if (!current) return;
-    if (this.generateStartDate() && this.generateEndDate() && this.generateStartDate() > this.generateEndDate()) {
+    // Fechas obligatorias (el backend ya no asume el default de hoy → +90 días).
+    const startDate = this.generateStartDate();
+    const endDate = this.generateEndDate();
+    if (!startDate || !endDate) {
+      this.toast.error('Indica las fechas de inicio y fin para generar el calendario.');
+      return;
+    }
+    if (startDate > endDate) {
       this.toast.error('La fecha de inicio no puede ser mayor a la fecha de fin.');
       return;
     }
-    this.api.generateCalendar({
-      propId: current.propId, ratePlanId: this.generateRatePlanId() || undefined,
-      startDate: this.generateStartDate() || undefined, endDate: this.generateEndDate() || undefined,
-    }).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (result) => {
-        this.ratesResource.reload();
-        this.toast.success(`Calendario generado: ${result.entries_generated} entradas`);
-        this.generateRatePlanId.set(''); this.generateStartDate.set(''); this.generateEndDate.set('');
-      },
-      error: (error: ApiError) => { this.toast.error(error.message || 'Error al generar calendario.'); },
-    });
+
+    const planId = this.generateRatePlanId() || undefined;
+    const payload = { propId: current.propId, ratePlanId: planId, startDate, endDate };
+
+    try {
+      // 1) Dry-run: el backend cuenta las entradas que se crearían sin escribir nada.
+      const preview = await firstValueFrom(this.api.generateCalendar({ ...payload, dryRun: true }));
+      const planLabel = planId
+        ? (this.ratePlanOptions().find((p) => p.id === planId)?.label ?? planId)
+        : 'Todos los planes';
+
+      // 2) Confirmación con el conteo exacto antes de generar. Mientras está
+      // abierta, el nav muestra el modo EXECUTE (igual que monitoring ETL).
+      const ok = await this.confirmDialog.open({
+        title: 'Generar calendario',
+        message: `Se generarán ${preview.entries_generated} entradas en el calendario.`,
+        details: [`Plan: ${planLabel}`, `${startDate} → ${endDate}`],
+        confirmLabel: 'Generar',
+        cancelLabel: 'Cancelar',
+        variant: 'default',
+        mode: 'execute',
+        modeDetail: 'Generar calendario',
+      });
+      // El modal libera su transient (execute) al cerrar; la página vuelve a
+      // escribir su modo de sección (insert · Plan tarifario) en el nav.
+      this.applyMode();
+      if (!ok) return;
+
+      // 3) Generación real.
+      this.api.generateCalendar({ ...payload, dryRun: false }).pipe(
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe({
+        next: (result) => {
+          this.ratesResource.reload();
+          this.toast.success(`Calendario generado: ${result.entries_generated} entradas`);
+          this.generateRatePlanId.set(''); this.generateStartDate.set(''); this.generateEndDate.set('');
+        },
+        error: (error: ApiError) => { this.toast.error(error.message || 'Error al generar calendario.'); },
+      });
+    } catch (error) {
+      this.toast.error((error as ApiError).message || 'Error al generar calendario.');
+    }
   }
 
   /* ── Seasonal Rules ── */

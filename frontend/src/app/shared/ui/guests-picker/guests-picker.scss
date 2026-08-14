@@ -214,9 +214,16 @@
 
     &:hover { border-color: transparent; }
 
+    /* Sin anillo de caja: el focus se indica con el tint del campo del bar. */
     &:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
+      outline: none;
+    }
+  }
+
+  /* Variante compacta (booking-bar del /search en laptop) */
+  :host-context(.booking-bar--compact) & {
+    .gp-trigger {
+      font-size: 0.88rem;
     }
   }
 

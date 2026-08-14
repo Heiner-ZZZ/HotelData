@@ -1,6 +1,6 @@
 
 .highlights-area {
-  min-height: 50px !important;
+  min-height: 110px !important;
 }
 
 .card-body {
@@ -261,6 +261,30 @@ select option {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.gallery-img-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  background: var(--surface-soft);
+  color: var(--muted-text);
+  text-align: center;
+  padding: 0.5rem;
+
+  .material-symbols-outlined {
+    font-size: 1.6rem;
+    opacity: 0.6;
+  }
+}
+
+.gallery-img-fallback-text {
+  font-size: 0.68rem;
+  font-weight: 500;
 }
 
 .gallery-hero-badge {

@@ -41,15 +41,15 @@ def _bookings_nav_item() -> dict:
 
 def test_bookings_nav_item_requires_account_bookings_read() -> None:
     item = _bookings_nav_item()
-    assert item["required_permission"] == BOOKINGS_CODE, (
-        f"El ítem Mis Reservas exige {item['required_permission']!r}; debe ser "
+    assert item["permission_code"] == BOOKINGS_CODE, (
+        f"El ítem Mis Reservas exige {item['permission_code']!r}; debe ser "
         f"{BOOKINGS_CODE!r} para que la vista quede ligada a su propio recurso de huésped."
     )
 
 
 def test_bookings_nav_item_does_not_require_reservations_read() -> None:
     item = _bookings_nav_item()
-    assert item["required_permission"] != "reservations.read"
+    assert item["permission_code"] != "reservations.read"
 
 
 def test_account_bookings_read_is_in_canonical_catalog() -> None:

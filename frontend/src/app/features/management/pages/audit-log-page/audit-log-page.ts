@@ -134,6 +134,7 @@ export class AuditLogPageComponent {
     content: 'Contenido',
     reservation: 'Reservas / Recepción',
     housekeeping_task: 'Limpieza',
+    shift_attribution_access: 'Acceso a turno (datos sensibles)',
   };
 
   readonly actionLabel: Record<string, string> = {
@@ -150,6 +151,7 @@ export class AuditLogPageComponent {
     check_out: 'Check-out',
     reassign_room: 'Reasignar hab.',
     document_change: 'Cambio auto.',
+    read: 'Consulta',
   };
 
   readonly actionIcon: Record<string, string> = {

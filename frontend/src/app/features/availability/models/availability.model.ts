@@ -28,6 +28,9 @@ export interface AvailabilityInventoryItem {
   blockedRooms: number;
   occupancyLabel: string;
   occupancyPct: number;
+  /** La fecha tiene al menos una tarifa abierta — si es false, la
+   *  disponibilidad de esa noche no se puede vender en el search. */
+  hasRate: boolean;
 }
 
 /** A single cell in the visual calendar grid. */
@@ -52,6 +55,8 @@ export interface CalendarRoomTypeCell {
   blockedRooms: number;
   occupancyPct: number;
   /** 0-100 how full the room type is */
+  /** La fecha tiene tarifa abierta — false = disponible pero no vendible. */
+  hasRate: boolean;
 }
 
 export interface CalendarMonth {

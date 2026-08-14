@@ -23,13 +23,15 @@
   --app-text: #162033;             /* Texto principal: títulos, párrafos, labels */
   --muted-text: #5f6f87;           /* Texto secundario: descripciones, placeholders, metadatos */
 
-  /* ═══ ACCENT (blue) — Color principal de la marca, botones primarios, links ═══ */
-  --accent-light: #d6e4ff;         /* Fondos de badges, chips, tabs seleccionados */
-  --accent: #1463ff;               /* Botones primarios, links, iconos activos, bordes focus */
-  --accent-hover: #1d6eff;         /* Hover de botones primarios y links */
-  --accent-active: #60a5fa;        /* Estado activo/presionado de botones, texto de tabs activos */
-  --accent-strong: #0f45c9;        /* Texto sobre fondos accent-light, badges acentuados */
+  /* ═══ ACCENT (green-teal) — PROTOTIPO REBRAND VERDE 2026-08-12 — Color principal de la marca ═══ */
+  --accent-light: #d6f1ea;         /* Fondos de badges, chips, tabs seleccionados */
+  --accent: #0f766e;               /* Botones primarios, links, iconos activos, bordes focus (AA 4.5:1) */
+  --accent-hover: #115e59;         /* Hover de botones primarios y links */
+  --accent-active: #2dd4bf;        /* Estado activo/presionado de botones, texto de tabs activos */
+  --accent-strong: #134e4a;        /* Texto sobre fondos accent-light, badges acentuados */
   --on-accent: #ffffff;            /* Texto/iconos SOBRE fondos accent (botones primarios) */
+  /* --nav-active: item seleccionado del menú vertical — en dark #14B8A6 (detalle del prototipo); en light teal-700 para AA 4.5:1 */
+  --nav-active: #0f766e;
 
   /* ═══ SUCCESS (green) — Confirmaciones, estados positivos, badges de éxito ═══ */
   --success-light: #d1fae5;        /* Fondos de badges success, alerts positivos, chips */
@@ -61,8 +63,21 @@
 
   /* ═══ EXTENDED PALETTE — Colores específicos sin escala completa ═══ */
   --yellow: #eab308;               /* Estrellas, ratings, iconos gold, destacados */
-  --teal: #107a95;                 /* Acento alternativo (disponibilidad, cuenta), gradientes */
   --cyan: #0891b2;                 /* Badges info, estados de entidad, tabs KPIs, gráficos */
+
+  /* --teal: SEMÁNTICO (como --cyan), NO es el accent.
+     Históricamente fue el acento alternativo de la app (disponibilidad,
+     cuenta, housekeeping, guest-portal…). El barrido 2026-08-13 migró
+     TODOS esos usos a --accent (27 SCSS + 5 TS). Regla de oro:
+     cualquier componente que necesite el color de marca/primario usa
+     --accent (o sus variantes accent-light/-hover/-strong). --teal queda
+     reservado SOLO para usos semánticos puntuales que requieran un tono
+     teal-cian distinto del verde de marca, igual que --cyan. */
+  --teal: #0e7490;                 /* Tono teal-cian (cyan-700): separado del accent #0f766e */
+
+  /* ═══ BRAND — Navy corporativo (hero de la landing welcome) ═══ */
+  --brand-navy: #134e4a;           /* Hero en light: verde profundo (teal-900) */
+  --on-brand-navy: #ffffff;        /* Texto/iconos SOBRE fondos brand-navy */
 
   /* ═══ BORDER — Bordes de cards, inputs, tablas, separadores ═══ */
   --app-border: #d8e0eb;           /* Bordes estándar: cards, inputs, tabs, filas de tabla */
@@ -82,6 +97,36 @@
   /* ═══ SHADOWS ═══ */
   --shadow-sm: 0 8px 24px rgba(15, 23, 42, 0.06);  /* Cards, dropdowns */
   --shadow-md: 0 18px 42px rgba(15, 23, 42, 0.08); /* Modales, dialogs */
+
+  /* ═══ OVERLAY & MODAL SHADOW — scrims de modales y superposiciones ═══ */
+  --overlay: rgba(0, 0, 0, 0.4);                     /* Scrim estándar de modales y botones sobre imágenes */
+  --overlay-strong: rgba(0, 0, 0, 0.6);              /* Scrim intenso: lightbox, chips, confirmaciones */
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.18);    /* Sombra de modales */
+
+  /* ═══ SEMANTIC ALIASES — nombres legacy que usan las features (products, account,
+     billing, expenses…) → canónicos. NUNCA valores literales: solo var(--canónico),
+     así ambos temas se ajustan solos. Mantener sincronizados :root y dark. ═══ */
+  --surface-card: var(--surface);
+  --surface-muted: var(--gray-50);
+  --surface-default: var(--surface);
+  --text-primary: var(--app-text);
+  --text-secondary: var(--muted-text);
+  --text-muted: var(--gray-500);
+  --text-tertiary: var(--gray-400);
+  --accent-primary: var(--accent);
+  --text-on-accent: var(--on-accent);
+  --border-subtle: var(--gray-200);
+  --border-default: var(--app-border);
+  --color-primary: var(--accent);
+  --color-on-primary: var(--on-accent);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-light);
+  --color-success-text: var(--success-strong);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-light);
+  --color-warning-text: var(--warning-strong);
+  --color-warning-border: var(--warning-light);
+  --color-danger: var(--danger);
 }
 
 /* ═══════════════════════════════════════════════
@@ -102,13 +147,14 @@
   --app-text: #e6edf3;             /* Texto principal (casi blanco) */
   --muted-text: #8b949e;           /* Texto secundario */
 
-  /* ── Accent (blue) ── */
-  --accent-light: #1a3a5c;         /* Fondos de badges (oscuro con tinte azul) */
-  --accent: #58a6ff;               /* Botones primarios, links (más claro para contraste) */
-  --accent-hover: #79b8ff;         /* Hover de botones */
-  --accent-active: #93c5fd;        /* Estado activo */
-  --accent-strong: #58a6ff;        /* Texto sobre fondos accent-light */
+  /* ── Accent (green-teal) — PROTOTIPO REBRAND VERDE 2026-08-12 ── */
+  --accent-light: #123f3a;         /* Fondos de badges (oscuro con tinte verde) */
+  --accent: #2dd4bf;               /* Botones primarios, links (más claro para contraste) */
+  --accent-hover: #5eead4;         /* Hover de botones */
+  --accent-active: #99f6e4;        /* Estado activo */
+  --accent-strong: #2dd4bf;        /* Texto sobre fondos accent-light */
   --on-accent: #0d1117;            /* Texto SOBRE fondos accent (oscuro) */
+  --nav-active: #14b8a6;           /* Item seleccionado del menú vertical (teal-500) */
 
   /* ── Success (green) ── */
   --success-light: #1a3a2a;        /* Fondos de badges success */
@@ -140,8 +186,13 @@
 
   /* ── Extended palette ── */
   --yellow: #facc15;               /* Estrellas, ratings (más brillante en dark) */
-  --teal: #22d3ee;                 /* Acento alternativo (más brillante en dark) */
   --cyan: #06b6d4;                 /* Badges info (más brillante en dark) */
+  /* --teal: semántico (como --cyan), NO es el accent — usos de marca van a --accent (ver nota en :root) */
+  --teal: #22d3ee;                 /* Tono teal-cian (cyan-400): separado del accent #2dd4bf */
+
+  /* ── Brand ── */
+  --brand-navy: #0d2f2a;           /* Hero en dark: verde-navy profundo */
+  --on-brand-navy: #ffffff;        /* Blanco sobre navy en ambos temas */
 
   /* ── Border ── */
   --app-border: #30363d;           /* Bordes (más visibles sobre fondo oscuro) */
@@ -161,4 +212,32 @@
   /* ── Shadows ── */
   --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.24);   /* Sombras más intensas en dark */
   --shadow-md: 0 18px 42px rgba(0, 0, 0, 0.32);
+
+  /* ── Overlay & modal shadow (acromáticos: mismo valor en ambos temas) ── */
+  --overlay: rgba(0, 0, 0, 0.4);
+  --overlay-strong: rgba(0, 0, 0, 0.6);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.18);
+
+  /* ── Semantic aliases — must mirror the :root alias block above ── */
+  --surface-card: var(--surface);
+  --surface-muted: var(--gray-100);
+  --surface-default: var(--surface);
+  --text-primary: var(--app-text);
+  --text-secondary: var(--muted-text);
+  --text-muted: var(--gray-500);
+  --text-tertiary: var(--gray-400);
+  --accent-primary: var(--accent);
+  --text-on-accent: var(--on-accent);
+  --border-subtle: var(--gray-200);
+  --border-default: var(--app-border);
+  --color-primary: var(--accent);
+  --color-on-primary: var(--on-accent);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-light);
+  --color-success-text: var(--success-strong);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-light);
+  --color-warning-text: var(--warning-strong);
+  --color-warning-border: var(--warning-light);
+  --color-danger: var(--danger);
 }

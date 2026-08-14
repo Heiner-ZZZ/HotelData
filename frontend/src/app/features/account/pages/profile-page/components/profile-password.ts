@@ -9,6 +9,8 @@ import { ProfileApiService } from '../../../services/profile-api.service';
   standalone: true,
   imports: [ReactiveFormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Mismo ritmo vertical que la caja "Seguridad" (32px de separación entre cards).
+  styles: [':host .form-section { margin-top: 2rem; }'],
   template: `
     <section class="form-section">
       <div class="section-header">

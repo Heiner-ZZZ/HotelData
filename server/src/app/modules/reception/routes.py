@@ -17,9 +17,12 @@ from .shifts import (
     close_shift,
     get_active_shift,
     get_shift,
+    get_shift_config,
+    get_shift_labels,
+    list_open_shifts_overview,
     list_shifts,
     list_shifts_for_cash_control,
-    SHIFT_TYPE_LABELS,
+    upsert_shift_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,11 +35,16 @@ def shift_active_api(
     prop_id: int = Query(..., ge=1),
     current_user: dict = Depends(require_permission("shifts.read")),
 ):
-    """Return the currently active shift for a property, or null."""
+    """Return the currently active shift for a property, or null.
+
+    ``shift_type_labels`` reflects the property's configured windows so
+    the frontend renders the correct labels for the open-shift form.
+    """
     shift = get_active_shift(prop_id)
+    labels = get_shift_labels(prop_id)
     if shift is None:
-        return {"shift": None, "shift_type_labels": SHIFT_TYPE_LABELS}
-    return {"shift": shift, "shift_type_labels": SHIFT_TYPE_LABELS}
+        return {"shift": None, "shift_type_labels": labels}
+    return {"shift": shift, "shift_type_labels": labels}
 
 
 @api_router.post("/shifts/open")
@@ -120,7 +128,7 @@ def shift_open_api(
         # about to succeed, so the audit row is purely advisory.
         try:
             audit_at = _now_dt()
-            audit_expected, audit_source = resolve_expected_shift_type(opened_by, audit_at)
+            audit_expected, audit_source = resolve_expected_shift_type(opened_by, audit_at, prop_id=prop_id)
             audit_real_mismatch = (audit_expected != shift_type)
             if audit_real_mismatch:
                 register_action(
@@ -207,7 +215,10 @@ def shift_open_api(
             )
         except Exception:
             logger.exception("Audit write failed for shift open; shift itself is persisted")
-        return {"shift": result, "message": f"Turno {SHIFT_TYPE_LABELS.get(shift_type, shift_type)} abierto"}
+        return {
+            "shift": result,
+            "message": f"Turno {get_shift_labels(prop_id).get(shift_type, shift_type)} abierto",
+        }
     except ScheduleMismatchError as exc:
         # 422 Unprocessable Entity — the request was syntactically valid
         # but the schedule validation failed. The frontend reads
@@ -261,6 +272,71 @@ def shift_open_api(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@api_router.get("/shifts/config")
+def shift_config_get_api(
+    prop_id: int = Query(..., ge=1),
+    current_user: dict = Depends(require_permission("shifts.read")),
+):
+    """Return the effective shift-window config for a property.
+
+    Falls back to the canonical defaults when no custom config exists.
+    """
+    return {"config": get_shift_config(prop_id)}
+
+
+@api_router.put("/shifts/config")
+def shift_config_put_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_permission("shifts.manage")),
+):
+    """Persist custom cash-shift windows (start/end HH:MM) for a property.
+
+    Body: ``{"prop_id": 1, "windows": {"morning": {"start": "08:00", "end": "16:00"}, ...}}``.
+    Validation rejects overlapping / malformed / zero-length windows.
+    """
+    prop_id = payload.get("prop_id")
+    windows = payload.get("windows")
+    raw_max_open_hours = payload.get("max_open_hours")
+    raw_notify_manager_hours = payload.get("notify_manager_hours")
+    if not prop_id:
+        raise HTTPException(status_code=400, detail="prop_id es requerido")
+    if not isinstance(windows, dict):
+        raise HTTPException(status_code=400, detail="windows debe ser un objeto con las 3 ventanas")
+    max_open_hours = float(raw_max_open_hours) if raw_max_open_hours is not None else None
+    notify_manager_hours = float(raw_notify_manager_hours) if raw_notify_manager_hours is not None else None
+    username = current_user.get("username") or "system"
+    try:
+        config = upsert_shift_config(
+            prop_id,
+            windows,
+            max_open_hours=max_open_hours,
+            notify_manager_hours=notify_manager_hours,
+            updated_by=username,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    try:
+        register_action(
+            prop_id=prop_id,
+            entity_type="reception_shift_config",
+            entity_id=f"config:{prop_id}",
+            action="update",
+            summary=(
+                f"Ventanas de turno actualizadas para prop_id={prop_id}: "
+                f"{config['windows']} (max_open_hours={config['max_open_hours']})"
+            ),
+            changed_by=username,
+            diff={
+                "windows": config["windows"],
+                "max_open_hours": config["max_open_hours"],
+                "is_custom": config["is_custom"],
+            },
+        )
+    except Exception:
+        logger.exception("Audit write failed for shift config update; config itself is persisted")
+    return {"config": config, "message": "Ventanas de turno actualizadas"}
+
+
 @api_router.post("/shifts/{shift_id}/close")
 def shift_close_api(
     shift_id: str,
@@ -274,6 +350,10 @@ def shift_close_api(
         - cash_left: cash left in drawer for next shift (optional)
         - deposits: list of deposit/drop records
         - closing_notes: free-text observations
+        - emergency: true to perform a manager-only emergency close of an
+          expired shift (simplified arqueo). Requires ``shifts.manage``.
+        - emergency_reason: why the shift needed an emergency close
+          (defaults to ``vencimiento``).
     """
     cash_counted = float(payload.get("cash_counted", 0) or 0)
     cash_left = payload.get("cash_left")
@@ -284,6 +364,18 @@ def shift_close_api(
     closed_by = current_user.get("username") or "system"
     deposits = payload.get("deposits") or None
     closing_notes = payload.get("closing_notes", "")
+    emergency = bool(payload.get("emergency", False))
+    emergency_reason = str(payload.get("emergency_reason", "") or "")
+
+    # Emergency close is a manager power: it bypasses the full-arqueo
+    # expectation and unblocks an expired shift. Only ``shifts.manage``
+    # (gerente_hotel / super_admin) may use it.
+    db_perm = get_database()
+    if emergency and not user_has_permission(db_perm, current_user, "shifts.manage"):
+        raise HTTPException(
+            status_code=403,
+            detail="Permiso requerido: shifts.manage — el cierre de emergencia es solo para gerencia",
+        )
 
     try:
         result = close_shift(
@@ -293,7 +385,38 @@ def shift_close_api(
             deposits=deposits,
             closing_notes=closing_notes,
             closed_by=closed_by,
+            emergency=emergency,
+            emergency_reason=emergency_reason,
         )
+        # Audit every close (normal and emergency). The emergency reason
+        # travels in the diff so the audit panel / SIEM can show WHY a
+        # simplified arqueo was performed (e.g. ``vencimiento``).
+        try:
+            register_action(
+                prop_id=result.get("prop_id") or 0,
+                entity_type="reception_shifts",  # plural to match codebase convention
+                entity_id=f"close:{shift_id}",
+                action="close",
+                summary=(
+                    f"Shift closed: id={shift_id} by={closed_by} "
+                    f"mode={'emergency' if emergency else 'regular'} "
+                    f"cash_counted={cash_counted} over_short={result.get('cash_over_short', 0)}"
+                    + (f" reason={emergency_reason or 'vencimiento'}" if emergency else "")
+                ),
+                changed_by=closed_by,
+                diff={
+                    "shift_id": shift_id,
+                    "prop_id": result.get("prop_id") or 0,
+                    "close_mode": "emergency" if emergency else "regular",
+                    "emergency_reason": (emergency_reason or "vencimiento") if emergency else None,
+                    "closed_by": closed_by,
+                    "cash_counted": cash_counted,
+                    "cash_over_short": result.get("cash_over_short", 0),
+                    "total_collected": result.get("total_collected", 0),
+                },
+            )
+        except Exception:  # advisory — the close already succeeded
+            logger.exception("close audit row failed for shift_id=%s", shift_id)
         pbreak = result.get("payment_breakdown", {})
         return {
             "shift": result,
@@ -342,6 +465,20 @@ def shift_manager_control_api(
         limit=limit,
     )
     return {"items": shifts, "total": len(shifts)}
+
+
+@api_router.get("/shifts/open-overview")
+def shift_open_overview_api(
+    current_user: dict = Depends(require_permission("shifts.manage")),
+):
+    """Management view: EVERY open cash shift across all hotels.
+
+    Each row carries the hotel label, age in hours, the per-hotel
+    max-open-hours limit and expiry status — gerencia uses it to spot
+    forgotten shifts that are silently blocking front-desk cash ops.
+    """
+    items = list_open_shifts_overview()
+    return {"items": items, "total": len(items)}
 
 
 @api_router.get("/shifts/{shift_id}")

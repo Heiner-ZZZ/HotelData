@@ -1,10 +1,10 @@
-import { DecimalPipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
@@ -13,12 +13,13 @@ import type { PropertiesDashboardViewModel } from '../../models/properties.model
 import type { PropertiesDashboardResponseDto } from '../../models/properties.dto';
 import { mapPropertiesDashboardResponse } from '../../mappers/properties.mapper';
 import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { PropertiesApiService } from '../../services/properties-api.service';
 
 @Component({
   selector: 'app-properties-list-page',
   imports: [
-    DecimalPipe,
+    EmptyStateComponent,
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
@@ -35,6 +36,7 @@ export class PropertiesListPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   /** Reactive queryParams bridge — toSignal keeps URL the source of truth. */
   private readonly qp = toSignal(this.route.queryParamMap, {
@@ -57,8 +59,6 @@ export class PropertiesListPageComponent {
   });
 
   readonly vm = computed(() => this.dashboardResource.value() ?? null);
-  readonly chartView = signal<'daily' | 'weekly'>('weekly');
-  readonly todayStr = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 
   readonly form = this.formBuilder.nonNullable.group({
     q: ['']
@@ -75,6 +75,17 @@ export class PropertiesListPageComponent {
         this.form.controls.q.setValue(q, { emitEvent: false });
       }
     });
+
+    // Gerente con UN solo hotel asignado: la lista no aporta — ir directo a la
+    // propiedad. La lista solo tiene sentido con 2+ hoteles (o roles sin filtro).
+    effect(() => {
+      if (!this.propertyCtx.ready()) return;
+      if (!this.propertyCtx.singleHotelMode()) return;
+      const propId = this.propertyCtx.defaultPropId();
+      if (propId > 0) {
+        void this.router.navigate(['/management/properties', propId], { replaceUrl: true });
+      }
+    });
   }
 
   /** httpResource — auto-fetches when q or page changes. Pure request builder. */
@@ -84,37 +95,6 @@ export class PropertiesListPageComponent {
   }, {
     parse: (dto) => mapPropertiesDashboardResponse(dto as PropertiesDashboardResponseDto),
   });
-
-  chartMaxRevenue(): number {
-    const chart = this.vm()?.revenueChart;
-    if (!chart || chart.length === 0) { return 1; }
-    return Math.max(...chart.map(p => p.revenue), 1);
-  }
-
-  chartPath(): string {
-    const chart = this.vm()?.revenueChart;
-    if (!chart || chart.length === 0) { return ''; }
-    const maxRev = this.chartMaxRevenue();
-    const w = 800 / Math.max(chart.length - 1, 1);
-    const points = chart.map((p, i) => ({
-      x: i * w,
-      y: 200 - (p.revenue / maxRev) * 180
-    }));
-    return 'M' + points.map(p => `${p.x},${p.y}`).join(' L');
-  }
-
-  chartAreaPath(): string {
-    const chart = this.vm()?.revenueChart;
-    if (!chart || chart.length === 0) { return ''; }
-    const maxRev = this.chartMaxRevenue();
-    const w = 800 / Math.max(chart.length - 1, 1);
-    const points = chart.map((p, i) => ({
-      x: i * w,
-      y: 200 - (p.revenue / maxRev) * 180
-    }));
-    const lastX = (chart.length - 1) * w;
-    return 'M' + points.map(p => `${p.x},${p.y}`).join(' L') + ` L${lastX},200 L0,200 Z`;
-  }
 
   submit() {
     void this.router.navigate([], {

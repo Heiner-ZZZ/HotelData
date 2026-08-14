@@ -1,4 +1,5 @@
 <div class="srd-page">
+  <app-horizontal-sub-nav [activeSlug]="'gestion.reservas.informes.solicitudes'" />
   <app-page-header
     title="Dashboard Solicitudes"
     description="Solicitudes de servicio por estado y tipo (in-stay / housekeeping)."
@@ -144,10 +145,12 @@
                 </div>
               </div>
               <div class="srd-actions">
-                <button type="button" class="srd-export-btn" (click)="exportGridCsv()" [disabled]="!rows().length" title="Descargar CSV de la grilla">
-                  <span class="material-symbols-outlined">download</span>
-                  <span class="btn-label">CSV</span>
-                </button>
+                @if (canExport()) {
+                  <button type="button" class="srd-export-btn" (click)="exportGridCsv()" [disabled]="!rows().length" title="Descargar CSV de la grilla">
+                    <span class="material-symbols-outlined">download</span>
+                    <span class="btn-label">CSV</span>
+                  </button>
+                }
                 <div class="srd-pagination">
                   <button type="button" class="srd-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
                     <span class="material-symbols-outlined">chevron_left</span>

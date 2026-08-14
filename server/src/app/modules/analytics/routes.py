@@ -10,11 +10,20 @@ string instead, so monitoring can distinguish "unreachable" from
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Callable
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
 
 from config.settings import get_settings
+from src.app.modules.analytics.kpi_reports import (
+    get_booking_dashboard,
+    get_booking_nights_dashboard,
+    get_funnel_dashboard,
+    get_funnel_property_channel_dashboard,
+    get_inventory_dashboard,
+    get_rate_dashboard,
+)
+from src.app.security.dependencies import require_any_permission
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +35,159 @@ except Exception:  # pragma: no cover - optional dependency fallback
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
+# Informes compuestos TA12: accesibles para quien tenga reports.read (admin) o
+# revenue.read (gerente de hotel / tarifas).
+_KPI_REPORT_PERMISSION = require_any_permission("reports.read", "revenue.read")
+
+
+def _dashboard_or_400(
+    fn: Callable[..., dict[str, Any]],
+    **params: Any,
+) -> dict[str, Any]:
+    """Ejecuta el dashboard y traduce un rango inválido a HTTP 400."""
+    try:
+        return fn(**params)
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
 # Short timeouts so a down ClickHouse fails fast instead of hanging the
 # request (urllib3 retries back off otherwise).
 _CONNECT_TIMEOUT_SECONDS = 3
 _SEND_RECEIVE_TIMEOUT_SECONDS = 3
+
+
+# ─── Informes compuestos KPI (ClickHouse) ────────────────────────────────
+
+
+@router.get("/booking")
+def booking_dashboard_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(_KPI_REPORT_PERMISSION),
+):
+    """Informe compuesto de reservas sobre ``kpi_booking_daily`` (ClickHouse)."""
+    return _dashboard_or_400(
+        get_booking_dashboard,
+        prop_id=prop_id,
+        date_from=date_from,
+        date_to=date_to,
+        days=days,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/booking-nights")
+def booking_nights_dashboard_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(_KPI_REPORT_PERMISSION),
+):
+    """Informe de ocupación por noche sobre ``kpi_booking_nights_daily``."""
+    return _dashboard_or_400(
+        get_booking_nights_dashboard,
+        prop_id=prop_id,
+        date_from=date_from,
+        date_to=date_to,
+        days=days,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/rate")
+def rate_dashboard_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(_KPI_REPORT_PERMISSION),
+):
+    """Informe de tarifa publicada sobre ``kpi_rate_daily`` (ClickHouse)."""
+    return _dashboard_or_400(
+        get_rate_dashboard,
+        prop_id=prop_id,
+        date_from=date_from,
+        date_to=date_to,
+        days=days,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/inventory")
+def inventory_dashboard_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(_KPI_REPORT_PERMISSION),
+):
+    """Informe de disponibilidad sobre ``kpi_inventory_daily`` (ClickHouse)."""
+    return _dashboard_or_400(
+        get_inventory_dashboard,
+        prop_id=prop_id,
+        date_from=date_from,
+        date_to=date_to,
+        days=days,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/funnel")
+def funnel_dashboard_api(
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(_KPI_REPORT_PERMISSION),
+):
+    """Informe global de embudo sobre ``kpi_funnel_daily`` (sin prop_id)."""
+    return _dashboard_or_400(
+        get_funnel_dashboard,
+        prop_id=None,
+        date_from=date_from,
+        date_to=date_to,
+        days=days,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/funnel-property-channel")
+def funnel_property_channel_dashboard_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(_KPI_REPORT_PERMISSION),
+):
+    """Informe de embudo por hotel/canal sobre ``kpi_funnel_property_channel_daily``."""
+    return _dashboard_or_400(
+        get_funnel_property_channel_dashboard,
+        prop_id=prop_id,
+        date_from=date_from,
+        date_to=date_to,
+        days=days,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/health")

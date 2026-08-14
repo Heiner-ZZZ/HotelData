@@ -12,6 +12,7 @@ from src.app.modules.partner.services import (
     list_hotel_changes,
     get_change_detail,
     list_partner_hotels,
+    list_property_options,
     partner_hotel_detail,
     partner_hotel_edit_profile,
     partner_hotel_performance,
@@ -147,7 +148,7 @@ def properties_context_api(
     - "multi": user has 2+ assigned hotels → show limited selector
     """
     from src.app.security.hotel_filter import assigned_hotels_for_user
-    from src.app.modules.partner.services.properties.listing import list_partner_hotels
+    from src.app.modules.partner.services.properties.listing import list_property_options
 
     role = get_role_name(current_user or {})
 
@@ -167,8 +168,10 @@ def properties_context_api(
         # Tiene rol restringido pero sin assigned_hotels → no puede ver nada
         return {"mode": "none", "assigned_properties": [], "default_prop_id": 0}
 
-    # Obtener nombres de los hoteles asignados
-    results = list_partner_hotels("", page=1, page_size=200, user=current_user)
+    # Obtener nombres de los hoteles asignados — path ligero: solo id+label,
+    # sin los aggregates de performance/operational por hotel (page_size=200
+    # enriquecido costaba ~9s en el montaje de cada página).
+    results = list_property_options("", page=1, page_size=200, user=current_user)
     properties = []
     for item in results.get("items", []):
         prop_id = item.get("prop_id")
@@ -202,7 +205,10 @@ def properties_options_api(
     page_size: int = Query(default=10, ge=1, le=100),
     current_user: dict = Depends(require_permission("properties.read")),
 ):
-    results = list_partner_hotels(q, page=page, page_size=page_size, user=current_user)
+    # Lightweight path: the selector only needs id+name; the enriched
+    # listing runs per-hotel aggregates (performance/operational) that
+    # cost seconds at page_size>=10.
+    results = list_property_options(q, page=page, page_size=page_size, user=current_user)
     return {
         "properties": [
             {

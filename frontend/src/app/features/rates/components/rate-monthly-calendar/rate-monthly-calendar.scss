@@ -195,6 +195,7 @@
 
 /* Cells in week view — LARGE */
 .week-cell {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -371,6 +372,7 @@
 
 /* Cells — month view */
 .cal-cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -429,6 +431,28 @@
   padding: 0.2rem 0.35rem;
   border-radius: 4px;
   white-space: nowrap;
+}
+
+/* ── Badge de entrada generada (bulk) ── */
+.gen-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--cyan) 18%, transparent);
+  color: var(--cyan);
+  pointer-events: none;
+
+  .material-symbols-outlined {
+    font-size: 11px;
+    --icon-wght: 400;
+    --icon-opsz: 16;
+  }
 }
 
 /* ── Rate Tiers (shared) ── */
@@ -494,6 +518,10 @@
   &.tier-medium { background: var(--warning); }
   &.tier-high { background: var(--danger); }
   &.tier-premium { background: var(--danger); }
+
+  &.legend-swatch-gen {
+    background: var(--cyan);
+  }
 }
 
 /* ── Event indicators (month view) ── */

@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from config.settings import get_settings
-from src.etl.mongo_to_clickhouse.config import INSERT_BATCH_SIZE
+from src.etl.mongo_to_clickhouse.config import DEFAULT_REFRESH_MODE, INSERT_BATCH_SIZE, REFRESH_MODES
 from src.etl.mongo_to_clickhouse.transform import TABLE_COLUMNS
 
 # Esquemas DDL: (columnas tipadas, ORDER BY). Contrato con transform.TABLE_COLUMNS.
@@ -101,6 +101,16 @@ TABLES_DDL: dict[str, tuple[str, str]] = {
 }
 
 
+# Tablas KPI sin TTL de retención. Los dos funnel son snapshots históricos
+# estáticos (2012-2013 del dataset GA03): no acumulan datos entre corridas,
+# así que la retención no aplica — y un TTL de meses purgaría todo su historial
+# en cada merge, dejando los informes de funnel sin datos. Las 9 tablas
+# operacionales (2026+) sí quedan bajo retención.
+TTL_EXEMPT_TABLES: frozenset[str] = frozenset(
+    {"kpi_funnel_daily", "kpi_funnel_property_channel_daily"}
+)
+
+
 # Columnas del contrato desnormalizado. Se aplican también a tablas KPI
 # creadas por la versión anterior sin eliminar sus datos.
 LABEL_COLUMNS: dict[str, tuple[tuple[str, str], ...]] = {
@@ -132,16 +142,22 @@ def clickhouse_client(settings=None):
     )
 
 
-def _ddl_for(table_name: str) -> str:
+def _ddl_for(table_name: str, ttl_months: int = 0) -> str:
     columns_sql, order_by = TABLES_DDL[table_name]
     partition_sql = ""
     if table_name in LABEL_COLUMNS:
         partition_sql = " PARTITION BY toYYYYMM(date)"
+    # Retención histórica: TTL sobre ``date`` (la primera columna). Con 0 no
+    # se emite la cláusula, y las tablas de funnel están exentas (snapshot
+    # estático). La purga ocurre en el merge, así que el rebuild
+    # (TRUNCATE + INSERT del modo full) no se ve afectado.
+    has_ttl = bool(ttl_months and ttl_months > 0) and table_name not in TTL_EXEMPT_TABLES
+    ttl_sql = f" TTL date + INTERVAL {ttl_months} MONTH" if has_ttl else ""
     return (
         f"CREATE TABLE IF NOT EXISTS {table_name} "
         f"({columns_sql}, _etl_run_at DateTime DEFAULT now()) "
         f"ENGINE = ReplacingMergeTree(_etl_run_at){partition_sql} "
-        f"ORDER BY {order_by}"
+        f"ORDER BY {order_by}{ttl_sql}"
     )
 
 
@@ -165,7 +181,12 @@ def _table_create_sql(client, database: str, table_name: str) -> str | None:
     return rows[0][0] if rows else None
 
 
-def create_tables(client, database: str, tables: tuple[str, ...]) -> dict[str, str]:
+def create_tables(
+    client,
+    database: str,
+    tables: tuple[str, ...],
+    ttl_months: int = 0,
+) -> dict[str, str]:
     """Crea/actualiza el esquema KPI sin copiar tablas de dimensiones.
 
     Las columnas de labels son una ampliación compatible: si una tabla ya
@@ -175,6 +196,13 @@ def create_tables(client, database: str, tables: tuple[str, ...]) -> dict[str, s
     ADD COLUMN no basta porque ReplacingMergeTree deduplicaría por la clave
     vieja; en ese caso se recrea la tabla (DROP + CREATE) — seguro porque cada
     corrida recompone el 100% de los agregados.
+
+    ``ttl_months`` (>0) agrega retención histórica por ``date`` de forma
+    idempotente: el DDL nuevo lo incluye y las tablas existentes sin TTL se
+    actualizan con ``ALTER TABLE ... MODIFY TTL`` (sin drop, sin tocar el
+    historial). Con 0 no se emite ninguna cláusula/ALTER de TTL. Las tablas en
+    ``TTL_EXEMPT_TABLES`` (funnel) quedan fuera de la retención para no purgar
+    su snapshot histórico.
     """
     result: dict[str, str] = {}
     for table_name in tables:
@@ -186,11 +214,16 @@ def create_tables(client, database: str, tables: tuple[str, ...]) -> dict[str, s
         existing_sql = _table_create_sql(client, database, table_name)
         if existing_sql and expected_order not in existing_sql:
             client.command(f"DROP TABLE IF EXISTS {database}.{table_name}")
-        client.command(_ddl_for(table_name))
+        client.command(_ddl_for(table_name, ttl_months))
         for column_name, column_type in LABEL_COLUMNS.get(table_name, ()):
             client.command(
                 f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS "
                 f"{column_name} {column_type} DEFAULT ''"
+            )
+        if ttl_months and ttl_months > 0 and table_name not in TTL_EXEMPT_TABLES:
+            client.command(
+                f"ALTER TABLE {database}.{table_name} "
+                f"MODIFY TTL date + INTERVAL {ttl_months} MONTH"
             )
         result[table_name] = "created"
     return result
@@ -213,20 +246,41 @@ def load_table(client, database: str, table_name: str, columns: list[str], rows:
     return inserted
 
 
-def load_all(client, database: str, payload: dict[str, list[list[Any]]]) -> dict[str, int]:
+def load_all(
+    client,
+    database: str,
+    payload: dict[str, list[list[Any]]],
+    refresh_mode: str = DEFAULT_REFRESH_MODE,
+) -> dict[str, int]:
     """Carga todas las tablas del payload ``{tabla: filas}`` y reporta conteos.
 
-    Rebuild por tabla: se hace ``TRUNCATE`` antes del INSERT porque los KPI son
-    agregados 100% recalculados. Esto elimina filas huérfanas de claves que ya
-    no existen en el origen (cambios de estado, anulaciones, bajas) que un
-    upsert puro de ``ReplacingMergeTree`` jamás reemplaza.
+    ``refresh_mode`` (configurable en la UI, leído por el DAG en cada corrida):
+
+    - ``"full"`` (default): rebuild por tabla — ``TRUNCATE`` antes del INSERT
+      porque los KPI son agregados 100% recalculados. Elimina filas huérfanas
+      de claves que ya no existen en el origen (cambios de estado, anulaciones,
+      bajas) que un upsert puro de ``ReplacingMergeTree`` jamás reemplaza.
+    - ``"incremental"``: sin borrado — INSERT y ``OPTIMIZE TABLE ... FINAL``
+      para colapsar de inmediato las versiones de cada clave natural (la más
+      nueva gana vía ``_etl_run_at``). Conserva el historial intacto y nunca
+      deja una tabla vacía ante un fallo a mitad de corrida; las claves
+      eliminadas en Mongo pueden permanecer hasta una corrida ``full``.
+
+    Un modo desconocido lanza ``ValueError`` en vez de truncar en silencio.
     """
+    if refresh_mode not in REFRESH_MODES:
+        raise ValueError(
+            f"refresh_mode desconocido: {refresh_mode!r} (válidos: {', '.join(REFRESH_MODES)})"
+        )
     counts: dict[str, int] = {}
     for table_name, rows in payload.items():
         columns = TABLE_COLUMNS.get(table_name)
         if columns is None:
             counts[table_name] = -1
             continue
-        client.command(f"TRUNCATE TABLE {database}.{table_name}")
+        if refresh_mode == "full":
+            client.command(f"TRUNCATE TABLE {database}.{table_name}")
         counts[table_name] = load_table(client, database, table_name, columns, rows)
+        if refresh_mode == "incremental":
+            client.command(f"OPTIMIZE TABLE {database}.{table_name} FINAL")
     return counts

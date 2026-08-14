@@ -5,6 +5,10 @@
       <p class="mcc-subtitle">Vista gerencial de cierres de turno, sobrantes y faltantes.</p>
     </div>
     <div class="mcc-header-actions">
+      <button class="mcc-btn-primary" type="button" (click)="openOpenShiftsOverview()">
+        <span class="material-symbols-outlined">hourglass_empty</span>
+        Turnos abiertos
+      </button>
       <app-property-selector
         [selectedPropId]="selectedPropId()"
         [selectedLabel]="selectedLabel()"
@@ -100,6 +104,11 @@
           <h2>Detalle del Cierre</h2>
         </div>
         <div class="mcc-modal-body">
+          <div class="mcc-print-header">
+            <h1>Arqueo de caja — Detalle del Cierre</h1>
+            <p>{{ selectedLabel() || 'Turno de caja' }} · {{ s.employee }} · {{ s.closed_at | date:'dd/MM/yyyy HH:mm' }}</p>
+            <hr />
+          </div>
           <div class="mcc-detail-grid">
             <div class="mcc-detail-row">
               <span>Empleado</span>
@@ -152,6 +161,82 @@
                 <span>Otros <strong>{{ (s.payment_breakdown?.other ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong></span>
               </div>
             </div>
+            @if (employeeSummary().length) {
+              <div class="mcc-detail-breakdown mcc-employee-summary">
+                <h3>
+                  Resumen por empleado
+                  <span class="mcc-emp-total">{{ employeeSummaryTotal() | currency:'USD':'symbol':'1.2-2' }} estampados</span>
+                </h3>
+                <p class="mcc-emp-hint">Compara lo estampado por cada cajero contra lo depositado para detectar discrepancias.</p>
+                <table class="mcc-emp-table">
+                  <thead>
+                    <tr>
+                      <th>Empleado</th>
+                      <th class="text-center">Cobros</th>
+                      <th class="text-right">Total</th>
+                      <th class="text-right">Efectivo</th>
+                      <th class="text-right">Tarjeta</th>
+                      <th class="text-right">Transferencias</th>
+                      <th class="text-right">Otros</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (g of employeeSummary(); track g.employee) {
+                      <tr class="mcc-emp-row" [class.unattributed]="g.employee === 'Sin atribución'">
+                        <td>
+                          <span class="mcc-responsible-chip">
+                            <span class="material-symbols-outlined">point_of_sale</span>
+                            {{ g.employee }}
+                          </span>
+                        </td>
+                        <td class="text-center mono">{{ g.count }}</td>
+                        <td class="text-right mono">{{ g.total | currency:'USD':'symbol':'1.2-2' }}</td>
+                        <td class="text-right mono">{{ g.cash | currency:'USD':'symbol':'1.2-2' }}</td>
+                        <td class="text-right mono">{{ g.card | currency:'USD':'symbol':'1.2-2' }}</td>
+                        <td class="text-right mono">{{ g.transfer | currency:'USD':'symbol':'1.2-2' }}</td>
+                        <td class="text-right mono">{{ g.other | currency:'USD':'symbol':'1.2-2' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+            @if (s.payments?.length) {
+              <div class="mcc-detail-breakdown mcc-payments">
+                <h3>Pagos del turno ({{ s.payments.length }})</h3>
+                <table class="mcc-payments-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Referencia</th>
+                      <th>Método</th>
+                      <th class="text-right">Monto</th>
+                      <th>Responsable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (p of s.payments; track p.payment_id) {
+                      <tr>
+                        <td>{{ p.paid_at | date:'dd/MM/yyyy HH:mm' }}</td>
+                        <td><code class="mcc-pay-ref">{{ p.reference || '—' }}</code></td>
+                        <td>{{ paymentMethodLabel(p.method) }}</td>
+                        <td class="text-right mono">{{ p.amount | currency:'USD':'symbol':'1.2-2' }}</td>
+                        <td>
+                          @if (responsibleLabel(p); as responsible) {
+                            <span class="mcc-responsible-chip" [title]="responsibleTitle(p)">
+                              <span class="material-symbols-outlined">point_of_sale</span>
+                              {{ responsible }}
+                            </span>
+                          } @else {
+                            <span class="mcc-pay-muted">—</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
             @if (s.deposits?.length) {
               <div class="mcc-detail-breakdown">
                 <h3>Depósitos registrados</h3>
@@ -177,21 +262,58 @@
               <span>Vínculos del Turno</span>
               <strong>{{ (s.payment_ids?.length ?? 0) }} pagos · {{ (s.folio_ids?.length ?? 0) }} folios · {{ (s.booking_ids?.length ?? 0) }} reservas</strong>
             </div>
+            <!-- Firmas del arqueo: solo visibles en la impresión/PDF (líneas en
+                 blanco para la firma manuscrita del responsable que abrió y del
+                 que cerró la caja). -->
+            <div class="mcc-signatures">
+              <div class="mcc-signature-line">
+                <span class="mcc-signature-label">Abierto por</span>
+                <span class="mcc-signature-name">{{ s.opened_by || 'No registrado' }}</span>
+                <span class="mcc-signature-blank">Firma</span>
+              </div>
+              <div class="mcc-signature-line">
+                <span class="mcc-signature-label">Cerrado por</span>
+                <span class="mcc-signature-name">{{ s.closed_by || 'No registrado' }}</span>
+                <span class="mcc-signature-blank">Firma</span>
+              </div>
+            </div>
             @if (s.transactions.length) {
               <div class="mcc-detail-breakdown mcc-transactions">
-                <h3>Transacciones del turno ({{ s.transactions.length }})</h3>
-                @for (transaction of s.transactions; track transaction.transaction_id) {
-                  <div class="mcc-transaction-row">
-                    <span>{{ transaction.timestamp | date:'dd/MM/yyyy HH:mm' }} · {{ transaction.description }}</span>
-                    <strong>{{ transaction.amount | currency:'USD':'symbol':'1.2-2' }}</strong>
-                  </div>
-                }
+                <h3>Transacciones del turno ({{ s.transactions.length }}) — incluye check-ins y check-outs</h3>
+                <table class="mcc-txn-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Tipo</th>
+                      <th>Detalle</th>
+                      <th class="text-right">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (transaction of s.transactions; track transaction.transaction_id) {
+                      <tr class="mcc-txn-row">
+                        <td class="mcc-txn-date">{{ transaction.timestamp | date:'dd/MM/yyyy HH:mm' }}</td>
+                        <td>
+                          <span class="mcc-txn-type" [class]="'type-' + transaction.type">
+                            {{ transactionTypeLabel(transaction.type) }}
+                          </span>
+                        </td>
+                        <td>{{ transaction.description }}</td>
+                        <td class="text-right mono">{{ transaction.amount | currency:'USD':'symbol':'1.2-2' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
               </div>
             }
           </div>
         </div>
         <div class="mcc-modal-footer">
-          <button class="mcc-btn-primary" (click)="closeDetail()">Cerrar</button>
+          <button class="mcc-btn-primary" type="button" (click)="printDetail()">
+            <span class="material-symbols-outlined">print</span>
+            Imprimir / PDF
+          </button>
+          <button class="mcc-btn-secondary" type="button" (click)="closeDetail()">Cerrar</button>
         </div>
       </div>
     </div>

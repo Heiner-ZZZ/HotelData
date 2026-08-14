@@ -57,6 +57,18 @@ ALL_TABLES: tuple[str, ...] = FACT_TABLES
 ETL_PIPELINE_CONFIG_COLLECTION = "etl_pipeline_config"
 DEFAULT_SCHEDULE_CRON = "0 * * * *"  # cada hora en punto
 
+# Modo de refresco de las tablas KPI, elegible desde la UI y leído por el DAG
+# en cada corrida horaria (misma colección ``etl_pipeline_config``).
+#   - "full": barrido completo — recalculada la agregación, la tabla se TRUNCA
+#     antes del INSERT. ClickHouse refleja siempre el estado exacto de Mongo
+#     (sin filas huérfanas), a costa de reescribir todo.
+#   - "incremental": no borra el historial — INSERT con deduplicación por clave
+#     natural de ReplacingMergeTree + ``OPTIMIZE FINAL``. Más liviano y nunca
+#     deja una tabla vacía ante un fallo, pero las claves eliminadas en Mongo
+#     pueden permanecer hasta una corrida ``full``.
+REFRESH_MODES: tuple[str, ...] = ("full", "incremental")
+DEFAULT_REFRESH_MODE = "full"
+
 INSERT_BATCH_SIZE = 5000
 PIPELINE_PROGRESS_STEPS = {
     "validate_config": 5,
@@ -119,6 +131,10 @@ def paths() -> dict[str, Path]:
         "extract_json": settings.staging_dir / "m2c_extract.json",
         "transformed_json": settings.staging_dir / "m2c_transformed.json",
         "load_counts_json": settings.staging_dir / "m2c_load_counts.json",
+        # Registro de parquet del directorio Dato (conteos por sección y run).
+        "dato_export_json": settings.staging_dir / "m2c_dato_export.json",
+        # Filas descartadas por fecha inválida en el transform (por tabla).
+        "discarded_json": settings.staging_dir / "m2c_discarded.json",
     }
 
 

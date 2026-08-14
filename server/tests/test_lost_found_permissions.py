@@ -32,7 +32,7 @@ def test_lost_found_codes_are_in_canonical_catalog() -> None:
 def test_lost_found_nav_item_uses_catalog_code() -> None:
     item = next((i for i in NAVIGATION_CATALOG if i.get("href") == "/management/lost-and-found"), None)
     assert item is not None, "Falta el ítem de navegación Lost & Found en NAVIGATION_CATALOG"
-    assert item["required_permission"] in LOST_FOUND_CODES
+    assert item["permission_code"] in LOST_FOUND_CODES
 
 
 def test_roles_with_lost_and_found_access_have_the_codes() -> None:

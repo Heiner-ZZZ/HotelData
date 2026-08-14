@@ -307,6 +307,15 @@
                           {{ p.paidAt | date:'dd/MM/yyyy HH:mm' }}
                           @if (p.reference) { · Ref: {{ p.reference }} }
                         </div>
+                        @if (shiftLabel(p); as responsible) {
+                          <span class="inv-shift-chip" [title]="shiftTitle(p)">
+                            <span class="material-symbols-outlined">point_of_sale</span>
+                            {{ responsible }}
+                            @if (shiftTypeLabel(p.shiftType); as type) {
+                              <em>{{ type }}</em>
+                            }
+                          </span>
+                        }
                       </div>
                       <span class="inv-pay-amount mono">${{ p.amount.toFixed(2) }}</span>
                     </li>
@@ -446,10 +455,12 @@
                   Agregar Cargo
                 </button>
               }
-              <button type="button" class="inv-btn inv-btn-outline inv-btn-full" (click)="printPage()">
-                <span class="material-symbols-outlined">download</span>
-                Descargar PDF
-              </button>
+              @if (canExport()) {
+                <button type="button" class="inv-btn inv-btn-outline inv-btn-full" (click)="printPage()">
+                  <span class="material-symbols-outlined">download</span>
+                  Descargar PDF
+                </button>
+              }
             </section>
 
             <!-- Folio asociado -->

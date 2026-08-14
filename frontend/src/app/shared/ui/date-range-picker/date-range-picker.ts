@@ -158,6 +158,11 @@ export class DateRangePickerComponent {
     this.isOpen.update(v => !v);
   }
 
+  /** Abre el calendario programáticamente (p. ej. "Elegir fechas" de una card). */
+  open(): void {
+    this.isOpen.set(true);
+  }
+
   close(): void {
     this.isOpen.set(false);
   }

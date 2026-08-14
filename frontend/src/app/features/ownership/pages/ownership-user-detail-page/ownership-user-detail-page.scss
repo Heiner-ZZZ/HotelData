@@ -231,7 +231,7 @@
 }
 
 .chip-remove:hover {
-  background: rgba(201, 61, 50, 0.12);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
   color: var(--danger);
 }
 
@@ -336,6 +336,6 @@
 
 .message.error {
   padding: 1.125rem;
-  border: 1px solid rgba(201, 61, 50, 0.2);
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
 }
 

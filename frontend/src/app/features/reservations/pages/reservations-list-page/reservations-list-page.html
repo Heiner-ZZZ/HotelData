@@ -72,10 +72,12 @@
               <span class="material-symbols-outlined">history</span>
               <span>Ver historial de fechas</span>
             </button>
-            <button type="button" class="more-option" (mousedown)="exportCsv()" [class.loading]="exporting()">
-              <span class="material-symbols-outlined">file_download</span>
-              <span>{{ exporting() ? 'Exportando...' : 'Exportar a CSV' }}</span>
-            </button>
+            @if (canExport()) {
+              <button type="button" class="more-option" (mousedown)="exportCsv()" [class.loading]="exporting()">
+                <span class="material-symbols-outlined">file_download</span>
+                <span>{{ exporting() ? 'Exportando...' : 'Exportar a CSV' }}</span>
+              </button>
+            }
           </div>
         }
       </div>

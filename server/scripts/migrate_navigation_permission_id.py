@@ -1,7 +1,7 @@
 """
-Migrate navigation: backfill permission_id from required_permission string.
+Migrate navigation: backfill permission_id from permission_code string.
 
-For every navigation item that has `required_permission` set, resolves it to
+For every navigation node that has `permission_code` set, resolves it to
 the corresponding `_id` in the `permissions` collection and stores it as
 `permission_id` (ObjectId).
 
@@ -34,9 +34,9 @@ for perm_doc in db.permissions.find({}, {"permission_code": 1}):
 
 print(f"  → {len(code_to_id)} permissions loaded.")
 
-# Find navigation items with required_permission but without permission_id
+# Find navigation nodes with permission_code but without permission_id
 query = {
-    "required_permission": {"$exists": True, "$ne": ""},
+    "permission_code": {"$exists": True, "$ne": ""},
     "$or": [
         {"permission_id": {"$exists": False}},
         {"permission_id": None},
@@ -52,8 +52,8 @@ else:
     updated = 0
     skipped = 0
 
-    for doc in db.navigation.find(query, {"required_permission": 1}):
-        code = (doc.get("required_permission") or "").strip()
+    for doc in db.navigation.find(query, {"permission_code": 1}):
+        code = (doc.get("permission_code") or "").strip()
         perm_id = code_to_id.get(code)
 
         if perm_id:

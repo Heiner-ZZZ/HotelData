@@ -19,7 +19,7 @@ import { OperationModeService, type OperationMode } from '../../../../core/servi
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { M2cConsolidatedDto, M2cActionResponseDto } from '../../models/monitoring-m2c.dto';
+import type { M2cConsolidatedDto, M2cActionResponseDto, M2cRefreshMode } from '../../models/monitoring-m2c.dto';
 import { MonitoringM2cApiService } from '../../services/monitoring-m2c-api.service';
 
 @Component({
@@ -49,6 +49,28 @@ export class MonitoringM2cPageComponent {
 
   readonly isRunning = computed(() => this.viewModel()?.progress.is_running ?? false);
 
+  readonly dato = computed(() => this.viewModel()?.dato);
+
+  /** Secciones del directorio Dato con conteos legibles para la UI. */
+  readonly datoSections = computed(() => {
+    const dato = this.dato();
+    if (!dato) return [];
+    return (['Crudo', 'Procesado', 'Terminado'] as const)
+      .filter(section => dato.sections[section])
+      .map(section => {
+        const tables = Object.entries(dato.sections[section]).map(([name, rows]) => ({
+          name,
+          rows: Number(rows) || 0,
+        }));
+        return {
+          key: section,
+          files: tables.length,
+          rows: tables.reduce((total, table) => total + table.rows, 0),
+          tables,
+        };
+      });
+  });
+
   readonly viewState = computed<ViewState>(() => {
     if (this.monitoringResource.isLoading()) return 'loading';
     if (this.monitoringResource.error()) return 'error';
@@ -69,6 +91,8 @@ export class MonitoringM2cPageComponent {
   readonly scheduleFrequency = signal<'hourly' | 'daily'>('hourly');
   readonly scheduleMinute = signal('0');
   readonly scheduleTime = signal('00:00');
+  /** Modo de refresco de los KPIs: 'full' (barrido) o 'incremental' (solo cambios). */
+  readonly refreshMode = signal<M2cRefreshMode>('full');
   readonly stepOrder = [
     'validate_config',
     'extract_mongo',
@@ -101,6 +125,7 @@ export class MonitoringM2cPageComponent {
       if (!vm) return;
       this.scheduleCron.set(vm.schedule.schedule_cron);
       this.scheduleEnabled.set(vm.schedule.enabled);
+      this.refreshMode.set(vm.schedule.refresh_mode ?? 'full');
       this.syncScheduleControls(vm.schedule.schedule_cron);
     });
 
@@ -181,6 +206,16 @@ export class MonitoringM2cPageComponent {
     this.scheduleFrequency.set(frequency);
   }
 
+  setRefreshMode(mode: M2cRefreshMode) {
+    this.refreshMode.set(mode);
+  }
+
+  refreshModeLabel(): string {
+    return this.refreshMode() === 'incremental'
+      ? 'Incremental — solo data nueva/actualizada'
+      : 'Sobrescribir todo — barrido completo';
+  }
+
   private syncScheduleControls(cron: string) {
     const hourly = cron.match(/^(\d{1,2}) \* \* \* \*$/);
     if (hourly) {
@@ -220,10 +255,14 @@ export class MonitoringM2cPageComponent {
     this.scheduleCron.set(cron);
     this.openConfirm(
       'Actualizar horario del DAG',
-      `El DAG se ejecutará ${this.scheduleSummary().toLowerCase()} (${this.scheduleEnabled() ? 'habilitado' : 'pausado'}). Se aplica en el próximo parseo de Airflow. ¿Desea continuar?`,
+      `El DAG se ejecutará ${this.scheduleSummary().toLowerCase()} (${this.scheduleEnabled() ? 'habilitado' : 'pausado'}) en modo ${this.refreshModeLabel().toLowerCase()}. Se aplica en el próximo parseo de Airflow. ¿Desea continuar?`,
       () => {
         this.actionBusy.set(true);
-        this.api.updateSchedule({ schedule_cron: cron, enabled: this.scheduleEnabled() }).subscribe({
+        this.api.updateSchedule({
+          schedule_cron: cron,
+          enabled: this.scheduleEnabled(),
+          refresh_mode: this.refreshMode(),
+        }).subscribe({
           next: (result) => {
             this.actionBusy.set(false);
             if (result.ok) {
@@ -301,8 +340,11 @@ export class MonitoringM2cPageComponent {
   }
 
   executionRefreshMode(payload: Record<string, unknown>): string {
-    const mode = String(this.executionMetrics(payload)['refresh_mode'] ?? 'aggregate_refresh');
-    return mode === 'aggregate_refresh' ? 'Recomposición de agregados' : mode;
+    const mode = String(this.executionMetrics(payload)['refresh_mode'] ?? 'full');
+    if (mode === 'full') return 'Sobrescribir todo (barrido)';
+    if (mode === 'incremental') return 'Incremental (solo cambios)';
+    if (mode === 'aggregate_refresh') return 'Recomposición de agregados';
+    return mode;
   }
 
   private asRecord(value: unknown): Record<string, unknown> {

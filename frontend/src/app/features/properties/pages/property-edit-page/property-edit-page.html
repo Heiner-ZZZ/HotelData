@@ -4,6 +4,11 @@
     description="Actualiza el perfil, políticas, amenidades e imágenes del hotel."
   />
 
+  <a [routerLink]="['/management/properties', propId()]" class="back-link">
+    <span class="material-symbols-outlined">arrow_back</span>
+    <span>Volver</span>
+  </a>
+
   @if (saveError()) {
     <div class="toast toast-error">
       <span class="material-symbols-outlined">error</span>
@@ -31,14 +36,6 @@
           </div>
           <div class="info-divider"></div>
           <div class="info-item">
-            <span class="material-symbols-outlined info-icon icon-tag-blue">tag</span>
-            <div>
-              <span class="info-value">ID {{ vm.propId }}</span>
-              <span class="info-label">Propiedad</span>
-            </div>
-          </div>
-          <div class="info-divider"></div>
-          <div class="info-item">
             <span class="material-symbols-outlined info-icon icon-badge-purple">badge</span>
             <div>
               <span class="info-value">{{ vm.nameSource }}</span>
@@ -55,7 +52,7 @@
           </div>
         </div>
 
-        <form [formGroup]="form" (ngSubmit)="saveAll()">
+        <form class="edit-form" [formGroup]="form" (ngSubmit)="saveAll()">
         <!-- ═══ Profile section ═══ -->
         <section class="surface-card edit-card">
           <div class="card-head">
@@ -100,7 +97,7 @@
               <label for="highlights">Highlights (destacados)</label>
               <div class="input-wrap input-wrap--area">
                 <span class="material-symbols-outlined input-icon">star</span>
-                <textarea id="highlights" formControlName="highlights" rows="2" placeholder="Vista al mar, Desayuno incluido, Piscina climatizada..." class="highlights-area"></textarea>
+                <textarea id="highlights" formControlName="highlights" rows="4" placeholder="Vista al mar, Desayuno incluido, Piscina climatizada..." class="highlights-area"></textarea>
               </div>
               <div class="field-hint">
                 <span class="material-symbols-outlined">info</span>

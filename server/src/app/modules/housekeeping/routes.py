@@ -171,7 +171,7 @@ def room_status_analytics_api(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    current_user: dict = Depends(require_permission("reports.housekeeping.matrix.read")),
 ):
     """Dashboard simple O1.2: matriz de estado de habitaciones (Mongo).
 
@@ -989,7 +989,7 @@ def housekeeping_operations_analytics_api(
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
     days: int = Query(default=30, ge=1, le=365),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    current_user: dict = Depends(require_permission("reports.housekeeping.operations.read")),
 ):
     """Read the compact ClickHouse operations KPI for the tactical dashboard."""
     try:
@@ -1014,7 +1014,7 @@ def housekeeping_operations_analytics_api(
 def housekeeping_dashboard_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    current_user: dict = Depends(require_permission("reports.housekeeping.dashboard.read")),
 ):
     """Return aggregated KPIs for housekeeping efficiency monitoring (CU-E09)."""
     result = get_housekeeping_dashboard(prop_id=prop_id)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import secrets
 from datetime import datetime, timezone
 from typing import Any
@@ -108,7 +109,12 @@ def generate_invoice_for_booking(
     return create_invoice(payload)
 
 
-def create_invoice(payload: InvoiceCreate) -> dict | None:
+def create_invoice(
+    payload: InvoiceCreate,
+    *,
+    shift_id: str | None = None,
+    shift_attribution: dict | None = None,
+) -> dict | None:
     booking = _find_booking(payload.booking_id)
     if not booking:
         return None
@@ -148,6 +154,20 @@ def create_invoice(payload: InvoiceCreate) -> dict | None:
         "issued_at": _now(),
         "paid_at": None,
     }
+    # Cashier attribution: the shift that issued the fiscal document and the
+    # employee/opener, denormalized so reports don't need the join (parity
+    # with payments and folio postings). Null for legacy/service writes.
+    if shift_id:
+        try:
+            doc["shift_id"] = ObjectId(shift_id)
+        except Exception:
+            doc["shift_id"] = shift_id
+        if shift_attribution:
+            for key in ("shift_employee", "shift_opened_by", "shift_opened_by_id", "shift_type"):
+                if shift_attribution.get(key):
+                    doc[key] = shift_attribution[key]
+    else:
+        doc["shift_id"] = None
     _write_both(INVOICES, FACT_INVOICES, doc)
 
     # Reconcile the invoice's complete accounting projection before exposing it.
@@ -576,6 +596,8 @@ def list_invoices(
     date_to: str | None = None,
     page: int = 1,
     page_size: int = 20,
+    shift_id: str | None = None,
+    employee: str | None = None,
 ) -> dict:
     db = get_database()
     query: dict = {}
@@ -595,6 +617,17 @@ def list_invoices(
         if date_to:
             issued_q["$lte"] = date_to + "T23:59:59"
         query["issued_at"] = issued_q
+    if shift_id:
+        # Audit filter: exact shift that issued the fiscal document.
+        try:
+            query["shift_id"] = ObjectId(shift_id)
+        except Exception:
+            query["shift_id"] = shift_id
+    if employee and employee.strip():
+        # Audit filter: cashier who issued — matches the emission stamp's
+        # employee label OR the IAM opener (case-insensitive contains).
+        rx = {"$regex": re.escape(employee.strip()), "$options": "i"}
+        query["$or"] = [{"shift_employee": rx}, {"shift_opened_by": rx}]
 
     total = db[INVOICES].count_documents(query)
     cursor = (
@@ -927,7 +960,21 @@ def remove_line_item(invoice_id: str, item_id: str) -> dict | None:
     return _enrich_invoice(result) if result else None
 
 
-def cancel_invoice(invoice_id: str) -> dict | None:
+def cancel_invoice(
+    invoice_id: str,
+    *,
+    cancel_reason: str | None = None,
+    cancelled_by: str | None = None,
+    shift_id: str | None = None,
+    shift_attribution: dict | None = None,
+) -> dict | None:
+    """Cancel an issued invoice, persisting the cancellation history on the doc.
+
+    ``cancel_reason`` (motivo/nota de la anulación) y ``cancelled_by`` (quién
+    la ejecutó) quedan guardados en Mongo sobre la factura y su espejo de
+    hechos, para que la anulación sea auditable. Ambos son opcionales: una
+    llamada sin ellos conserva el comportamiento legacy (sin campos extra).
+    """
     db = get_database()
     try:
         from bson.errors import InvalidId
@@ -945,13 +992,35 @@ def cancel_invoice(invoice_id: str) -> dict | None:
     except ValueError:
         return None
 
+    now = _now()
+    cancel_set: dict = {"status": "cancelled", "cancelled_at": now, "updated_at": now}
+    # Historial auditable de la anulación: motivo/nota y quién la ejecutó. Solo
+    # se escriben cuando se proveen, para no contaminar el doc legacy.
+    normalized_reason = str(cancel_reason or "").strip() or None
+    if normalized_reason:
+        cancel_set["cancel_reason"] = normalized_reason
+    if cancelled_by:
+        cancel_set["cancelled_by"] = cancelled_by
+    # Cashier attribution of the cancellation: the shift + employee that voided
+    # the document, kept separate from the issuing shift so both attributions
+    # survive on the doc (parity with refund_shift_* on payments).
+    if shift_id:
+        try:
+            cancel_set["cancelled_shift_id"] = ObjectId(shift_id)
+        except Exception:
+            cancel_set["cancelled_shift_id"] = shift_id
+        if shift_attribution:
+            for key in ("shift_employee", "shift_opened_by", "shift_opened_by_id", "shift_type"):
+                if shift_attribution.get(key):
+                    cancel_set[f"cancelled_{key}"] = shift_attribution[key]
+
     doc = db[INVOICES].find_one_and_update(
         {"_id": doc_id, "status": inv["status"]},
-        {"$set": {"status": "cancelled", "updated_at": _now()}},
+        {"$set": cancel_set},
         return_document=ReturnDocument.AFTER,
     )
     if doc:
-        _update_both(INVOICES, FACT_INVOICES, doc_id, {"$set": {"status": "cancelled", "updated_at": _now()}})
+        _update_both(INVOICES, FACT_INVOICES, doc_id, {"$set": cancel_set})
 
         # Generate reversal double-entry ledger entries
         try:

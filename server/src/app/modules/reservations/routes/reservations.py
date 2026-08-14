@@ -9,7 +9,11 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
 from src.app.core.types import to_json_safe
-from src.app.modules.reception import get_active_shift_id
+from src.app.modules.reception import (
+    ShiftExpiredError,
+    ensure_shift_not_expired,
+    get_active_shift_id,
+)
 from src.app.modules.reservations.routes.reservations_impl import (
     check_hotel_availability,
     export_reservations_csv,
@@ -160,6 +164,10 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
                     "una reserva en recepción."
                 ),
             )
+        try:
+            ensure_shift_not_expired(prop_id)
+        except ShiftExpiredError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
         return ReservationCreatedResponse.model_validate(to_json_safe(create_booking(reservation_input, shift_id=shift_id)))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

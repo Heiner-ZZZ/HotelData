@@ -68,21 +68,11 @@ def _auto_assign_rooms(
     assigned_ids = [r["hotel_room_id"] for r in to_assign]
     now_iso = utc_now()
 
-    for room in to_assign:
-        room_label = room.get("room_label", "")
-        if room_label:
-            try:
-                from src.app.modules.housekeeping.service.lifecycle.status import upsert_room_status
-                from src.app.modules.housekeeping.schemas import RoomStatusLogCreate
-                upsert_room_status(RoomStatusLogCreate(
-                    prop_id=prop_id,
-                    room_type_id=room_type_id,
-                    room_label=room_label,
-                    status="occupied_clean",
-                    note=f"Auto-asignada desde reserva {booking_id}",
-                ))
-            except Exception:
-                logger.exception("Failed to update room_status_log for %s", room_label)
+    # NOTE: assignment must NOT touch room_status_log. That collection reflects
+    # the PHYSICAL state of the room (vacant_clean → occupied_clean happens on
+    # real check-in). Writing occupied_clean here made the room appear occupied
+    # and self-blocked this same booking's check-in. The booking's assigned_rooms
+    # is the only record needed until the guest actually checks in.
 
     db.booking_orders.update_one({"booking_id": booking_id}, {"$set": {"assigned_rooms": assigned_ids, "updated_at": now_iso}})
     db.booking_status_history.insert_one({

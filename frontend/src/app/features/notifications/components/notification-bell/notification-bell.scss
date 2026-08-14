@@ -16,7 +16,7 @@
   transition: background 160ms ease;
 
   &:hover {
-    background: rgba(20, 99, 255, 0.08);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
   }
 }
 
@@ -89,7 +89,7 @@
   margin-left: auto;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  background: rgba(20, 99, 255, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   color: var(--accent);
   font-size: 0.7rem;
   font-weight: 600;
@@ -135,12 +135,12 @@
   }
 
   &:hover {
-    background: rgba(20, 99, 255, 0.04);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
   }
 }
 
 .nb-item-unread {
-  background: rgba(20, 99, 255, 0.04);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 
 .nb-item-icon-wrap {
@@ -198,7 +198,7 @@
   transition: background 120ms ease;
 
   &:hover {
-    background: rgba(20, 99, 255, 0.04);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
   }
 }
 

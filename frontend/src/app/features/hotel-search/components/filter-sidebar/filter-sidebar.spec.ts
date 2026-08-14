@@ -27,7 +27,7 @@ function makeFilters(overrides: Partial<HotelSearchFilters> = {}): HotelSearchFi
   };
 }
 
-describe('FilterSidebarComponent — destino con autocomplete compartido', () => {
+describe('FilterSidebarComponent — refinamientos (destino/fechas/huéspedes viven en el booking-bar superior)', () => {
   function setup(filters = makeFilters()) {
     TestBed.configureTestingModule({
       imports: [FilterSidebarComponent],
@@ -40,106 +40,98 @@ describe('FilterSidebarComponent — destino con autocomplete compartido', () =>
     return { fixture, comp };
   }
 
-  function autocomplete(fixture: ReturnType<typeof setup>['fixture']) {
-    return fixture.debugElement
-      .query(By.directive(DestinationAutocompleteComponent))
-      .componentInstance as DestinationAutocompleteComponent;
-  }
-
-  function daInput(fixture: ReturnType<typeof setup>['fixture']) {
-    return fixture.nativeElement.querySelector('.da-input') as HTMLInputElement;
-  }
-
-  it('renders el autocomplete compartido en el campo Destino (sin input nativo)', () => {
+  it('NO renderiza los campos que ahora viven en el booking-bar (destino, fechas, huéspedes, título)', () => {
     const { fixture } = setup();
-    expect(fixture.debugElement.query(By.css('app-destination-autocomplete'))).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('input[formControlName="destination"]')).toBeNull();
-    expect(daInput(fixture)).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('h2')).toBeNull();
+    expect(fixture.debugElement.query(By.directive(DestinationAutocompleteComponent))).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[formControlName="checkIn"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[formControlName="checkOut"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[formControlName="adults"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[formControlName="children"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[formControlName="rooms"]')).toBeNull();
   });
 
-  it('muestra el destino externo en el input del autocomplete al montar', () => {
-    const { fixture } = setup(makeFilters({ destination: 'Quito' }));
-    expect(daInput(fixture).value).toBe('Quito');
+  it('renderiza los refinamientos: precio, estrellas, amenities y orden', () => {
+    const { fixture } = setup();
+    expect(fixture.nativeElement.querySelector('input[formControlName="minPrice"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('input[formControlName="maxPrice"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('input[formControlName="minStars"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('input[formControlName="amenities"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('select[formControlName="sortBy"]')).toBeTruthy();
   });
 
-  it('sincroniza el input cuando los filtros cambian después del montaje', () => {
-    const { fixture } = setup(makeFilters({ destination: 'Lima' }));
-    fixture.componentRef.setInput('filters', makeFilters({ destination: 'Hotel Lima Centro' }));
-    fixture.detectChanges();
-    expect(daInput(fixture).value).toBe('Hotel Lima Centro');
-  });
-
-  it('escribir en el autocomplete actualiza el form y los filtros emitidos', () => {
-    const { fixture, comp } = setup();
+  it('applyFilters conserva destino/fechas/huéspedes del estado externo y emite los refinamientos', () => {
+    const { fixture, comp } = setup(
+      makeFilters({ destination: 'Quito', checkIn: '2026-09-01', checkOut: '2026-09-03', adults: '2', children: '1', rooms: '2' }),
+    );
     let submitted: HotelSearchFilters | null = null;
     comp.submitted.subscribe((f) => (submitted = f));
 
-    const input = daInput(fixture);
-    input.value = 'Madrid';
-    input.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-
-    expect(comp.form.controls.destination.value).toBe('Madrid');
-
+    comp.form.controls.minPrice.setValue('50');
+    comp.form.controls.maxPrice.setValue('200');
+    comp.form.controls.minStars.setValue('4');
+    comp.form.controls.amenities.setValue('wifi, piscina');
+    comp.form.controls.amenitiesMode.setValue('and');
+    comp.form.controls.sortBy.setValue('rating');
     comp.applyFilters();
-    expect(submitted?.destination).toBe('Madrid');
+
+    expect(submitted).toMatchObject({
+      destination: 'Quito',
+      checkIn: '2026-09-01',
+      checkOut: '2026-09-03',
+      adults: '2',
+      children: '1',
+      rooms: '2',
+      minPrice: '50',
+      maxPrice: '200',
+      minStars: '4',
+      amenities: ['wifi', 'piscina'],
+      amenitiesMode: 'and',
+      sortBy: 'rating',
+      page: 1,
+    });
   });
 
-  it('elegir una sugerencia llena el input y se propaga al form', () => {
-    const { fixture, comp } = setup();
+  it('reset limpia solo los refinamientos y conserva destino/fechas/huéspedes', () => {
+    const { fixture, comp } = setup(
+      makeFilters({ destination: 'Quito', checkIn: '2026-09-01', checkOut: '2026-09-03', adults: '2' }),
+    );
     let submitted: HotelSearchFilters | null = null;
     comp.submitted.subscribe((f) => (submitted = f));
 
-    const ac = autocomplete(fixture);
-    ac.suggestions.set([{ id: 7, name: 'Hotel Lima Centro', type: 'hotel' }]);
-    ac.dropdownOpen.set(true);
-    ac.choose({ id: 7, name: 'Hotel Lima Centro', type: 'hotel' });
-    fixture.detectChanges();
-
-    expect(daInput(fixture).value).toBe('Hotel Lima Centro');
-    expect(comp.form.controls.destination.value).toBe('Hotel Lima Centro');
-
-    comp.applyFilters();
-    expect(submitted?.destination).toBe('Hotel Lima Centro');
-  });
-
-  it('reset limpia el destino y lo refleja en el autocomplete', () => {
-    const { fixture, comp } = setup(makeFilters({ destination: 'Quito' }));
-    fixture.detectChanges();
+    comp.form.controls.minPrice.setValue('50');
+    comp.form.controls.minStars.setValue('4');
     comp.resetFilters();
-    fixture.detectChanges();
-    expect(comp.form.controls.destination.value).toBe('');
-    expect(daInput(fixture).value).toBe('');
-  });
-});
 
-describe('FilterSidebarComponent — calendario solo fechas futuras/presentes', () => {
-  function setup(filters = makeFilters()) {
-    TestBed.configureTestingModule({
-      imports: [FilterSidebarComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+    expect(submitted).toMatchObject({
+      destination: 'Quito',
+      checkIn: '2026-09-01',
+      checkOut: '2026-09-03',
+      adults: '2',
+      minPrice: '',
+      maxPrice: '',
+      minStars: '',
+      amenities: [],
+      amenitiesMode: 'or',
+      sortBy: 'price',
     });
-    const fixture = TestBed.createComponent(FilterSidebarComponent);
-    const comp = fixture.componentInstance;
-    fixture.componentRef.setInput('filters', filters);
-    fixture.detectChanges();
-    return { fixture, comp };
-  }
-
-  it('check-in y check-out no permiten fechas pasadas (min = hoy)', () => {
-    const { fixture } = setup();
-    const checkIn = fixture.nativeElement.querySelector('input[formControlName="checkIn"]') as HTMLInputElement;
-    const checkOut = fixture.nativeElement.querySelector('input[formControlName="checkOut"]') as HTMLInputElement;
-    const today = new Date().toLocaleDateString('sv-SE');
-    expect(checkIn.min).toBe(today);
-    expect(checkOut.min).toBe(today);
   });
 
-  it('check-out no puede ser anterior al check-in elegido', () => {
-    const { fixture, comp } = setup();
-    comp.form.controls.checkIn.setValue('2026-09-01');
-    fixture.detectChanges();
-    const checkOut = fixture.nativeElement.querySelector('input[formControlName="checkOut"]') as HTMLInputElement;
-    expect(checkOut.min).toBe('2026-09-01');
+  it('sincroniza los refinamientos desde los filtros externos al montar', () => {
+    const { fixture } = setup(
+      makeFilters({ minPrice: '30', maxPrice: '300', minStars: '3', amenities: ['wifi'], amenitiesMode: 'and', sortBy: 'name' }),
+    );
+    expect(compFormValue(fixture, 'minPrice')).toBe('30');
+    expect(compFormValue(fixture, 'maxPrice')).toBe('300');
+    expect(compFormValue(fixture, 'minStars')).toBe('3');
+    expect(compFormValue(fixture, 'amenities')).toBe('wifi');
+    expect(compFormValue(fixture, 'amenitiesMode')).toBe('and');
+    expect(compFormValue(fixture, 'sortBy')).toBe('name');
   });
 });
+
+function compFormValue(fixture: any, control: string): string {
+  return (fixture.componentInstance as FilterSidebarComponent).form.controls[
+    control as 'minPrice' | 'maxPrice' | 'minStars' | 'amenities' | 'amenitiesMode' | 'sortBy'
+  ].value;
+}

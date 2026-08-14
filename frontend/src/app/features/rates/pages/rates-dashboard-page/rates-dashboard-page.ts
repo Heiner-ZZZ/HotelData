@@ -10,6 +10,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
+import { HorizontalSubNavComponent } from '../../../../shared/ui/horizontal-sub-nav/horizontal-sub-nav';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { RatesApiService } from '../../services/rates-api.service';
 import type { RoomPerformanceDashboard } from '../../models/room-performance.model';
@@ -25,6 +26,7 @@ import type { RoomPerformanceDashboard } from '../../models/room-performance.mod
     ErrorStateComponent,
     LoadingStateComponent,
     KpiChartComponent,
+    HorizontalSubNavComponent,
   ],
   templateUrl: './rates-dashboard-page.html',
   styleUrl: './rates-dashboard-page.scss',

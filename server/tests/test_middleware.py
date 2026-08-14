@@ -26,6 +26,19 @@ async def test_static_files_are_public(client):
     assert response.status_code != 303  # would mean redirect to /login
 
 
+async def test_uploaded_images_are_public(client):
+    # /uploads/* (partner subió fotos de hoteles, room types) se sirven en
+    # páginas públicas (welcome featured hotels, cards) vía endpoints public
+    # que devuelven URLs /uploads/... El middleware NO debe redirigir a login
+    # (303) a un visitante anónimo: el archivo lo sirve StaticFiles (404 si
+    # no existe, pero nunca 303). Regression: la galería de Editar Propiedad
+    # mostraba "Imagen no disponible" porque nginx servía index.html y el
+    # server redirigía /uploads sin sesión.
+    response = await client.get("/uploads/does-not-exist.jpg")
+    assert response.status_code in (200, 404)
+    assert response.status_code != 303  # would mean redirect to /login
+
+
 # --- Unauthenticated requests --------------------------------------------
 
 

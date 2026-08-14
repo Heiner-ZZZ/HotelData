@@ -151,6 +151,19 @@ describe('SystemUsersPageComponent', () => {
     expect(component.roleOptions().map((r) => r.roleName)).toEqual(['admin_sistema', 'super_admin']);
   });
 
+  it('wraps the reset-password field inside a <form> element', async () => {
+    const { component, http, fixture } = setup();
+    await seedUsers({ http, fixture });
+
+    const editable = component.filteredItems().find((u) => u.userId === 'a1')!;
+    component.openEdit(editable);
+    fixture.detectChanges();
+
+    const input = (fixture.nativeElement as HTMLElement).querySelector('#su-password');
+    expect(input).not.toBeNull();
+    expect(input?.closest('form')).not.toBeNull();
+  });
+
   it('marks current/protected users as not editable', async () => {
     const { component, http, fixture } = setup();
     await seedUsers({ http, fixture });

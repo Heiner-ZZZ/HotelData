@@ -1,5 +1,5 @@
 <div class="rsd-page">
-  <app-housekeeping-sub-nav />
+  <app-horizontal-sub-nav [activeSlug]="'gestion.housekeeping.informes.matriz'" />
 
   <app-page-header
     title="Matriz de Estado de Habitaciones"
@@ -180,10 +180,12 @@
                 </div>
               </div>
               <div class="rsd-actions">
-                <button type="button" class="rsd-export-btn" (click)="exportGridCsv()" [disabled]="!rows().length" title="Descargar CSV de la grilla">
-                  <span class="material-symbols-outlined">download</span>
-                  <span class="btn-label">CSV</span>
-                </button>
+                @if (canExport()) {
+                  <button type="button" class="rsd-export-btn" (click)="exportGridCsv()" [disabled]="!rows().length" title="Descargar CSV de la grilla">
+                    <span class="material-symbols-outlined">download</span>
+                    <span class="btn-label">CSV</span>
+                  </button>
+                }
                 <div class="rsd-pagination">
                   <button type="button" class="rsd-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
                     <span class="material-symbols-outlined">chevron_left</span>

@@ -11,11 +11,11 @@ from src.app.modules.partner.services import (
     create_room_type,
     create_roh_room_type,
     delete_room_type,
-    list_partner_hotels,
     partner_hotel_detail,
     partner_hotel_rooms,
     update_room_type,
 )
+from src.app.modules.partner.services.properties.listing import list_property_options
 from src.app.security.dependencies import require_permission
 
 
@@ -79,7 +79,9 @@ def rooms_api(prop_id: int = Query(..., ge=1)):
 
 @api_router.get("/rooms/options")
 def rooms_options_api(current_user: dict = Depends(require_permission("rooms.read"))):
-    properties = list_partner_hotels("", page=1, page_size=200, user=current_user)
+    # Lightweight path: only id+name needed; enriched listing cost ~9s at
+    # page_size=200 (per-hotel performance/operational aggregates).
+    properties = list_property_options("", page=1, page_size=200, user=current_user)
     return {
         "properties": [
             {

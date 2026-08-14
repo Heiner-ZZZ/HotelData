@@ -18,7 +18,7 @@
   animation: slide-in 260ms ease;
 }
 
-.toast-success { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.18); }
+.toast-success { background: color-mix(in srgb, var(--success) 10%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 18%, transparent); }
 .toast-error { background: var(--danger-light); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent); }
 
 
@@ -226,7 +226,7 @@ tbody td {
 }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover { background: color-mix(in srgb, var(--accent) 3%, transparent); }
-code { font-size: 0.9em; font-family: monospace; background: rgba(20, 99, 255, 0.08); padding: 0.1em 0.4em; border-radius: 4px; }
+code { font-size: 0.9em; font-family: monospace; background: color-mix(in srgb, var(--accent) 8%, transparent); padding: 0.1em 0.4em; border-radius: 4px; }
 
 .cell-action {
   text-align: right;
@@ -248,7 +248,7 @@ code { font-size: 0.9em; font-family: monospace; background: rgba(20, 99, 255, 0
   transition: background 120ms, border-color 120ms;
   margin: 0 2px;
   &:hover { background: var(--accent-light); border-color: var(--accent); }
-  &.danger { color: var(--danger); &:hover { background: rgba(220, 38, 38, 0.06); border-color: var(--danger); } }
+  &.danger { color: var(--danger); &:hover { background: color-mix(in srgb, var(--danger) 6%, transparent); border-color: var(--danger); } }
   .material-symbols-outlined { font-size: 1.1rem; }
 }
 

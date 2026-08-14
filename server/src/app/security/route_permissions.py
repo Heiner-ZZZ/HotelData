@@ -1,7 +1,15 @@
 from __future__ import annotations
 
 
-PUBLIC_PREFIXES = ("/static", "/api/hotels", "/api/stay/guest", "/api/public", "/api/amenities/photos", "/api/tracking")
+PUBLIC_PREFIXES = (
+    "/static",
+    "/uploads",
+    "/api/hotels",
+    "/api/stay/guest",
+    "/api/public",
+    "/api/amenities/photos",
+    "/api/tracking",
+)
 PUBLIC_PATHS = (
     "/login", "/auth/login", "/api/auth/login",
     "/api/auth/register", "/api/auth/send-code", "/api/auth/confirm-code",

@@ -3,66 +3,163 @@
   gap: 1.5rem;
 }
 
-/* ── Sub-nav ── */
+/* ── Audit filters (turno + cajero) ─────────────────────────────────────────
+   Barra de auditoría: quién emitió/cobró cada documento. */
+.pay-audit-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.pay-audit-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  margin-right: 0.25rem;
+}
+
+.pay-audit-select-wrap,
+.pay-audit-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0.3rem 0.6rem;
+  min-width: 240px;
+}
+
+.pay-audit-icon {
+  font-size: 1.05rem;
+  color: var(--muted-text);
+  flex-shrink: 0;
+}
+
+.pay-audit-select {
+  appearance: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--app-text);
+  font-size: 0.85rem;
+  width: 100%;
+  cursor: pointer;
+}
+
+.pay-audit-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--app-text);
+  font-size: 0.85rem;
+  width: 100%;
+
+  &::placeholder {
+    color: var(--muted-text);
+  }
+}
+
+.pay-audit-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--surface-hover);
+    color: var(--app-text);
+  }
+}
+
+/* ── Sub-nav (Dashboard | Pagos Dashboard | Facturas | Pagos) ────────────────
+   Mismo diseño de píldoras que los dashboards de facturación. */
 .pay-sub-nav {
   display: flex;
-  gap: 0.25rem;
   align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--app-border);
-  padding: 0.25rem;
-  width: fit-content;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--app-border);
+  padding-bottom: 0.5rem;
 }
 
 .pay-sub-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: 6px;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
   text-decoration: none;
   color: var(--muted-text);
-  font-size: 0.9rem;
+  font-size: 0.83rem;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--surface-hover);
+    color: var(--app-text);
+  }
 
   &.active {
-    background: var(--accent);
-    color: var(--on-accent);
+    background: var(--accent-light);
+    color: var(--accent-strong);
   }
+}
+
+.pay-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 .pay-print-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  margin-left: auto;
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 0.9rem;
   border: 1px solid var(--app-border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--app-text);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-text);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   font-weight: 500;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 
   &:hover {
-    background: var(--surface-soft);
+    background: var(--surface-hover);
+    color: var(--app-text);
   }
 
-  .material-symbols-outlined { font-size: 1.2rem; }
+  .material-symbols-outlined { font-size: 1.1rem; }
 }
 
 .pay-register-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 0.9rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--accent);
   color: var(--on-accent);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
@@ -71,7 +168,7 @@
     background: var(--accent-strong);
   }
 
-  .material-symbols-outlined { font-size: 1.2rem; }
+  .material-symbols-outlined { font-size: 1.1rem; }
 }
 
 /* ── Property Selector Bar ── */
@@ -172,4 +269,114 @@ button {
   align-items: center;
   text-decoration: none;
   color: var(--accent);
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sin-turno-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 100px;
+  border: 1px solid var(--app-border);
+  background: transparent;
+  color: var(--muted-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  .material-symbols-outlined {
+    font-size: 15px;
+  }
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  &.active {
+    background: color-mix(in srgb, var(--warning) 16%, transparent);
+    border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+    color: var(--warning);
+  }
+}
+
+/* Badge contador: cuántos pagos legacy del hotel faltan por vincular. */
+.sin-turno-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 100px;
+  background: var(--danger);
+  color: var(--on-accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+
+  .sin-turno-chip.active & {
+    background: var(--warning);
+  }
+}
+
+.link-shift-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 100px;
+  border: 1px dashed color-mix(in srgb, var(--warning) 50%, transparent);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--warning);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+
+  .material-symbols-outlined {
+    font-size: 14px;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--warning) 18%, transparent);
+    border-style: solid;
+  }
+}
+
+.shift-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  font-size: 0.8rem;
+  color: var(--app-text);
+  white-space: nowrap;
+  cursor: help;
+
+  .material-symbols-outlined {
+    font-size: 14px;
+    color: var(--accent);
+  }
+
+  &.refund {
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+
+    .material-symbols-outlined {
+      color: var(--warning);
+    }
+  }
 }

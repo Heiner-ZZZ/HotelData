@@ -1,0 +1,13 @@
+<div class="hrz-sub-nav">
+  @for (item of items(); track item.href) {
+    <a
+      [routerLink]="item.href"
+      class="hrz-sub-nav-link"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: false }"
+    >
+      <span class="material-symbols-outlined hrz-nav-icon">{{ item.icon }}</span>
+      <span class="hrz-nav-label">{{ item.label }}</span>
+    </a>
+  }
+</div>

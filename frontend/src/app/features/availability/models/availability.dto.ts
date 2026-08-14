@@ -25,6 +25,9 @@ export interface AvailabilityDto {
     blocked_rooms: number;
     occupancy_label: string;
     occupancy_pct?: number;
+    /** La fecha tiene al menos una tarifa ABIERTA (is_closed != True).
+     *  Sin ella la disponibilidad no es vendible en el search público. */
+    has_rate?: boolean;
   }[];
   blackout_items: {
     blackout_id?: string;

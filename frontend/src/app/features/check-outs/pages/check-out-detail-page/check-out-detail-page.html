@@ -26,6 +26,63 @@
           [checkOutDate]="vm.check_out_date"
         />
 
+        @if (neverCheckedIn()) {
+          <div class="co-blocked">
+            <span class="material-symbols-outlined">event_busy</span>
+            <div>
+              <strong>Reserva sin check-in — no se puede liquidar</strong>
+              <span>
+                Esta reserva nunca registró un check-in, por lo que no tiene una estancia activa que cerrar.
+                @if (noShowStay()) {
+                  Fue marcada como <strong>no-show</strong>: el huésped nunca llegó a la propiedad.
+                } @else {
+                  Si el huésped no llegó, márcala como <strong>no-show</strong> para cerrar la estancia sin liquidación.
+                }
+              </span>
+            </div>
+            @if (canMarkNoShow()) {
+              <button type="button" class="co-noshow-action" (click)="markNoShow()" [disabled]="noShowPending()">
+                @if (noShowPending()) {
+                  <span class="material-symbols-outlined spinning">sync</span>
+                  Procesando...
+                } @else {
+                  <span class="material-symbols-outlined">person_off</span>
+                  Marcar no-show
+                }
+              </button>
+            }
+          </div>
+
+          @if (noShowResult(); as ns) {
+            <div class="co-noshow-folio">
+              <span class="material-symbols-outlined">receipt_long</span>
+              <div>
+                <span class="co-label">Folio de penalización</span>
+                <strong>{{ ns.folio_number || 'N/D' }}</strong>
+                <span class="co-noshow-folio-amount">${{ ns.penalty_amount.toFixed(2) }}</span>
+                <a class="co-noshow-folio-link"
+                  [routerLink]="['/management/billing/folios', vm.booking_id]"
+                  [queryParams]="{prop_id: vm.prop_id}">
+                  Ver folio en Facturación
+                </a>
+              </div>
+            </div>
+          }
+
+          @if (successMessage()) {
+            <div class="toast toast-success" (click)="successMessage.set('')">
+              <span class="material-symbols-outlined">check_circle</span>
+              {{ successMessage() }}
+            </div>
+          }
+          @if (errorMessage()) {
+            <div class="toast toast-error" (click)="errorMessage.set('')">
+              <span class="material-symbols-outlined">error</span>
+              {{ errorMessage() }}
+            </div>
+          }
+        } @else {
+
         @if (!checkoutDone()) {
           <app-co-step-breadcrumb
             [steps]="steps"
@@ -152,6 +209,7 @@
             [totalNights]="vm.total_nights"
             [checkOutTimeActual]="vm.check_out_time_actual || ''"
             [checkOutBy]="vm.check_out_by || ''"
+            [checkOutShift]="checkOutShift()"
             [charges]="chargeDetailEntries()"
             [observations]="vm.check_out_observations"
             [roomTotal]="roomTotal()"
@@ -172,6 +230,7 @@
           />
         }
 
+        }
       }
     }
   }

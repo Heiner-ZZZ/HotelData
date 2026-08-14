@@ -10,7 +10,10 @@
   backdrop-filter: blur(16px) saturate(180%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent),
-    0 20px 44px color-mix(in srgb, var(--muted-text) 14%, transparent);
+    /* Elevación neutra + tinte accent para unificar con el shell (management-top-nav) */
+    0 20px 44px color-mix(in srgb, var(--muted-text) 14%, transparent),
+    0 6px 20px -4px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 3px 10px -2px color-mix(in srgb, var(--accent) 28%, transparent);
   position: sticky;
   top: 0.25rem;
   z-index: 40;
@@ -215,7 +218,7 @@
   flex-shrink: 0;
 }
 
-/* Icon button (theme toggle) */
+/* Icon button (notifications bell + theme toggle) */
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -225,7 +228,7 @@
   border: 1px solid color-mix(in srgb, var(--app-border) 40%, transparent);
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface) 80%, transparent);
-  color: var(--muted-text);
+  color: var(--accent);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
@@ -246,13 +249,12 @@
   position: relative;
 }
 
-/* Divider sutil entre notificaciones y el resto de acciones (perfil/tema).
-   --gray-400 es más oscuro que --app-border en modo claro (visible sin
-   ser pesado) y queda bien en modo oscuro. */
+/* Divider entre notificaciones y el resto de acciones (perfil/tema).
+   Verde accent para mantener la coherencia de marca con el nav de gestión. */
 .nav-divider {
   width: 1px;
   height: 1.5rem;
-  background: color-mix(in srgb, var(--gray-400) 80%, transparent);
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
   flex-shrink: 0;
 }
 
@@ -260,26 +262,16 @@
   position: relative;
 }
 
-/* Fast vibration with more travel distance */
-.notif-bell.has-unread {
-  animation: notif-vibrate 0.8s ease-in-out infinite;
+/* Misma animación que la campana del nav de gestión: bell-ring global
+   (definido en styles/_scss-keyframes.scss), aplicado al icono para que
+   el badge no rote con él. */
+.notif-bell.has-unread .notif-icon {
+  animation: bell-ring 0.6s ease-in-out infinite alternate;
 }
 
 /* When user opens the dropdown, animation stops (mark as reviewed) */
-.notif-bell.is-reviewed {
+.notif-bell.is-reviewed .notif-icon {
   animation: none;
-}
-
-@keyframes notif-vibrate {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  5% { transform: rotate(18deg) scale(1.12); }
-  10% { transform: rotate(-15deg) scale(1.1); }
-  15% { transform: rotate(12deg) scale(1.06); }
-  20% { transform: rotate(-8deg) scale(1.03); }
-  30% { transform: rotate(5deg); }
-  40% { transform: rotate(-3deg); }
-  50% { transform: rotate(0deg); }
-  100% { transform: rotate(0deg); }
 }
 
 .notif-badge-sm {

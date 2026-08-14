@@ -159,6 +159,46 @@ class PermissionsOverviewResponse(BaseModel):
     permissions: list[PermissionEntry] = Field(default_factory=list)
 
 
+class NavigationNodeResponse(BaseModel):
+    """One flat node of the sidebar navigation tree (parent refs, no nesting).
+
+    ``get_all_navigation_items()`` returns nodes with camelCase keys; the model
+    pins that wire shape and keeps the ObjectId FK as a plain string (already
+    stringified by the navigation service)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    slug: str = ""
+    parent_slug: str | None = Field(
+        default=None, validation_alias="parentSlug", serialization_alias="parentSlug"
+    )
+    position: int | float = 0
+    node_type: str | None = Field(
+        default=None, validation_alias="nodeType", serialization_alias="nodeType"
+    )
+    label: str = ""
+    href: str | None = None
+    icon: str = ""
+    visible: bool = True
+    permission_id: str | None = Field(
+        default=None, validation_alias="permissionId", serialization_alias="permissionId"
+    )
+    permission_code: str | None = Field(
+        default=None, validation_alias="permissionCode", serialization_alias="permissionCode"
+    )
+    horizontal_menu: bool = Field(
+        default=False, validation_alias="horizontalMenu", serialization_alias="horizontalMenu"
+    )
+
+
+class NavigationResponse(BaseModel):
+    """Response for ``GET /api/admin/navigation`` (sidebar tree as flat nodes)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    items: list[NavigationNodeResponse] = Field(default_factory=list)
+
+
 # ── Explicit rebuilds — ``from __future__ import annotations`` requires
 #    eager resolution before the first TypeAdapter binds. Force it.
 
@@ -171,3 +211,5 @@ RolePermissionCodes.model_rebuild()
 PermissionEntry.model_rebuild()
 PermissionsOverviewCounters.model_rebuild()
 PermissionsOverviewResponse.model_rebuild()
+NavigationNodeResponse.model_rebuild()
+NavigationResponse.model_rebuild()

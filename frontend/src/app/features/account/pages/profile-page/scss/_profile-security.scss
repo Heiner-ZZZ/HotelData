@@ -4,7 +4,7 @@
 
 .session-info {
   padding: 0.85rem;
-  background: rgba(20, 99, 255, 0.04);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
   border-radius: $radius-md;
 }
@@ -21,8 +21,8 @@
 
 .session-confirm {
   padding: 1rem;
-  background: rgba(201, 61, 50, 0.06);
-  border: 1px solid rgba(201, 61, 50, 0.15);
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 15%, transparent);
   border-radius: $radius-md;
 }
 
@@ -73,13 +73,13 @@
   padding: 0.55rem 1rem;
   border: 1px solid var(--danger);
   border-radius: $radius-sm;
-  background: rgba(201, 61, 50, 0.04);
+  background: color-mix(in srgb, var(--danger) 4%, transparent);
   color: var(--danger);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
-  &:hover:not(:disabled) { background: rgba(201, 61, 50, 0.1); }
+  &:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 10%, transparent); }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
   .material-symbols-outlined { font-size: 1.1rem; }
 }

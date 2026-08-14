@@ -48,6 +48,10 @@ export interface EmployeeItemDto {
   is_active: boolean;
   hire_date: string;
   created_at: string;
+  /** true si el empleado tiene user_id que resuelve a un users._id vivo. */
+  has_user_account?: boolean;
+  /** true si su cuenta tiene un hotel_role asignado en el prop_id del empleado. */
+  role_assigned?: boolean;
 }
 
 export interface EmployeeCreateDto {

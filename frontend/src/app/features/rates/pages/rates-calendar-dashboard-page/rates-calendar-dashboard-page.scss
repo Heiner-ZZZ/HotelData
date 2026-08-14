@@ -487,12 +487,12 @@
 
           .rcd-rate-min {
             font-size: 0.72rem;
-            color: #22c55e;
+            color: var(--success);
           }
 
           .rcd-rate-max {
             font-size: 0.72rem;
-            color: #f59e0b;
+            color: var(--warning);
           }
         }
       }

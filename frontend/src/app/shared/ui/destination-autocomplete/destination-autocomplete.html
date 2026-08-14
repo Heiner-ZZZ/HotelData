@@ -3,6 +3,8 @@
     <input
       type="text"
       class="da-input"
+      [id]="inputId()"
+      [name]="inputId()"
       [value]="filterText()"
       (input)="onInput(($any($event.target)).value)"
       (focus)="onFocus()"

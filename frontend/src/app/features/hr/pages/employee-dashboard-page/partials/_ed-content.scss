@@ -50,11 +50,11 @@
   background: var(--portal-accent);
   color: var(--on-accent);
   padding: 12px 20px;
-  box-shadow: 0 2px 8px rgba(0,96,118,0.2);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 20%, transparent);
 
   &:hover:not(:disabled) {
     background: var(--portal-accent-hover);
-    box-shadow: 0 4px 12px rgba(0,96,118,0.3);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
   }
 }
 

@@ -3,6 +3,9 @@ export interface RatesDto {
   hotel_label: string;
   manual_override?: boolean;
   profile_badge?: string;
+  /** Tarifa base mínima configurable (system_config.min_base_rate) — la usa
+   *  el form de Tarifas para validar antes de enviar. Default $10. */
+  min_base_rate?: number;
   room_types: {
     room_type_id: string;
     name: string;
@@ -30,6 +33,8 @@ export interface RatesDto {
     rate_amount_label: string;
     min_stay_nights: number;
     is_closed: boolean;
+    /** 'generated' = creada por Generar calendario (bulk); ausente = editada a mano. */
+    source?: string;
   }[];
   rate_rules?: {
     rule_id?: string;
@@ -56,6 +61,15 @@ export interface RatesDto {
     campaign_id: string;
     is_active: boolean;
   }[];
+  /** Hueco tarifas-vs-inventario: noches disponibles sin tarifa abierta
+   *  (no vendibles en el search). null cuando no hay hueco accionable. */
+  rate_coverage?: {
+    rate_last_date: string | null;
+    inventory_last_date: string;
+    gap_nights: number;
+    gap_start: string;
+    gap_end: string;
+  } | null;
 }
 
 export interface RatesOptionsDto {

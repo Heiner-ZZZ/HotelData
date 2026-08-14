@@ -16,6 +16,16 @@
           <span class="material-symbols-outlined">history</span>
           Ver historial de turnos
         </button>
+        <button class="sc-btn-secondary" type="button" (click)="openOpenShiftsOverview()">
+          <span class="material-symbols-outlined">hourglass_empty</span>
+          Turnos abiertos
+        </button>
+      }
+      @if (canManageShifts()) {
+        <button class="sc-btn-outline" type="button" (click)="openConfigModal()">
+          <span class="material-symbols-outlined">tune</span>
+          Configurar ventanas
+        </button>
       }
       @if (shift() && !showCloseModal() && canMutateShift()) {
         <button class="sc-btn-outline" (click)="openDepositModal()">
@@ -49,9 +59,9 @@
           <div class="sc-form-group">
             <label for="sc-shift-type">Tipo de Turno</label>
             <select id="sc-shift-type" name="shift_type" [ngModel]="openShiftType()" (ngModelChange)="openShiftType.set($event)">
-              <option value="morning">Matutino (08:00-16:00)</option>
-              <option value="afternoon">Vespertino (16:00-00:00)</option>
-              <option value="evening">Nocturno (00:00-08:00)</option>
+              @for (opt of shiftTypeOptions(); track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
             </select>
           </div>
           <div class="sc-form-group">
@@ -68,6 +78,16 @@
               </span>
             }
           </div>
+          @if (lastClosedShift(); as last) {
+            <p class="sc-config-hint">
+              <span class="material-symbols-outlined">receipt_long</span>
+              <span>
+                <strong>Último cierre</strong>
+                — {{ last.closed_by || '—' }}
+                @if (last.closed_at) { · {{ last.closed_at | date:'dd/MM/yyyy HH:mm' }} }
+              </span>
+            </p>
+          }
           <div class="sc-form-actions">
             <button class="sc-btn-outline" (click)="cancelOpenForm()">Cancelar</button>
             <button class="sc-btn-primary" (click)="confirmOpenShift()" [disabled]="!openEmployee().trim()">
@@ -83,6 +103,28 @@
   } @else {
     <!-- ═══ BENTO GRID ═══ -->
     <div class="sc-bento">
+
+      <!-- ── EXPIRED-SHIFT ALERT (max-open-hours control) ── -->
+      @if (shiftExpired()) {
+        <div class="sc-expired-alert" role="alert">
+          <span class="material-symbols-outlined">timer_off</span>
+          <div class="sc-expired-alert-body">
+            <strong>El turno activo superó el límite de horas sin cerrarse</strong>
+            <p>
+              Lleva más de {{ shift()?.max_open_hours ?? 12 }} horas abierto
+              (inicio {{ shift()?.start_time | date:'dd/MM HH:mm' }}). Las operaciones de caja
+              — pagos en efectivo, check-in/check-out y reservas de recepción — están
+              <strong>bloqueadas</strong> hasta que cierres el turno en esta pantalla.
+            </p>
+          </div>
+          @if (canMutateShift()) {
+            <button class="sc-btn-primary sc-expired-close-btn" type="button" (click)="openCloseModal()">
+              <span class="material-symbols-outlined">receipt_long</span>
+              Cerrar turno ahora
+            </button>
+          }
+        </div>
+      }
 
       <!-- ── LEFT COLUMN (4 cols): Shift Info + Arqueo ── -->
       <div class="sc-left-col">
@@ -274,6 +316,16 @@
                 <span>Total Cobrado:</span>
                 <strong>{{ paymentBreakdown().total | currency:'USD':'symbol':'1.2-2' }}</strong>
               </div>
+              @if (shift(); as s) {
+                <p class="sc-config-hint">
+                  <span class="material-symbols-outlined">history</span>
+                  <span>
+                    <strong>Apertura</strong>
+                    — {{ s.opened_by || '—' }}
+                    @if (s.start_time) { · {{ s.start_time | date:'dd/MM/yyyy HH:mm' }} }
+                  </span>
+                </p>
+              }
             </div>
 
             <div class="sc-form-group">
@@ -294,6 +346,34 @@
               <label for="sc-close-notes">Notas de Cierre</label>
               <textarea id="sc-close-notes" name="closing_notes" rows="3" placeholder="Observaciones del cierre..." [ngModel]="closeClosingNotes()" (ngModelChange)="closeClosingNotes.set($event)"></textarea>
             </div>
+
+            <!-- Emergency close (manager-only, expired shifts) -->
+            @if (canEmergencyClose()) {
+              <div class="sc-emergency-close">
+                <div class="sc-emergency-header">
+                  <span class="material-symbols-outlined">warning</span>
+                  <div>
+                    <strong>Cierre de emergencia</strong>
+                    <p>
+                      El turno superó el límite de horas y bloquea la caja. Como
+                      gerencia puedes cerrarlo con arqueo simplificado; el motivo
+                      queda registrado en el audit log.
+                    </p>
+                  </div>
+                </div>
+                <label class="sc-checkbox-row" for="sc-emergency-toggle">
+                  <input id="sc-emergency-toggle" type="checkbox" [ngModel]="emergencyClose()" (ngModelChange)="emergencyClose.set($event)" />
+                  <span>Realizar cierre de emergencia</span>
+                </label>
+                @if (emergencyClose()) {
+                  <div class="sc-form-group">
+                    <label for="sc-emergency-reason">Motivo del cierre de emergencia</label>
+                    <input id="sc-emergency-reason" type="text" placeholder="vencimiento" [ngModel]="emergencyReason()" (ngModelChange)="emergencyReason.set($event)" />
+                    <span class="sc-carry-over-hint">Se registra en el audit log como motivo del cierre.</span>
+                  </div>
+                }
+              </div>
+            }
 
             <!-- Deposits -->
             <div class="sc-deposits-section">
@@ -712,6 +792,114 @@
           <button class="sc-btn-primary" (click)="addDeposit()" [disabled]="depositAmount() <= 0">
             <span class="material-symbols-outlined">add</span>
             Agregar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════
+       SHIFT-WINDOW CONFIG MODAL (manager, per hotel)
+       ══════════════════════════════════════════════ -->
+  @if (showConfigModal()) {
+    <div class="sc-modal-overlay" role="button" tabindex="0" aria-label="Cerrar configuración" (keydown.escape)="cancelConfigModal()" (click)="$event.target === $event.currentTarget ? cancelConfigModal() : null">
+      <div class="sc-modal sc-modal-config">
+        <div class="sc-modal-header">
+          <span class="material-symbols-outlined sc-modal-icon">tune</span>
+          <h2>Ventanas de Turno</h2>
+        </div>
+        <div class="sc-modal-body">
+          <p class="sc-config-intro">
+            Define las horas de cada bloque de turno para este hotel. Cada hora del día debe pertenecer a un solo turno (las ventanas no pueden superponerse).
+          </p>
+          @for (type of shiftTypeOptions(); track type.value) {
+            <div class="sc-config-row">
+              <span class="sc-config-name">{{ type.label }}</span>
+              <div class="sc-config-times">
+                <div class="sc-form-group">
+                  <label [for]="'sc-cfg-' + type.value + '-start'">Inicio</label>
+                  <input [id]="'sc-cfg-' + type.value + '-start'" type="time" [value]="configDraft()[type.value]?.start || ''" (input)="setConfigWindow(type.value, 'start', $any($event.target).value)" />
+                </div>
+                <span class="sc-config-sep" aria-hidden="true">→</span>
+                <div class="sc-form-group">
+                  <label [for]="'sc-cfg-' + type.value + '-end'">Fin</label>
+                  <input [id]="'sc-cfg-' + type.value + '-end'" type="time" [value]="configDraft()[type.value]?.end || ''" (input)="setConfigWindow(type.value, 'end', $any($event.target).value)" />
+                </div>
+              </div>
+            </div>
+          }
+          <div class="sc-config-row sc-config-max">
+            <span class="sc-config-name">Límite de horas abierto</span>
+            <div class="sc-config-max-input">
+              <div class="sc-form-group">
+                <label for="sc-cfg-max-open">Máximo de horas sin cerrar</label>
+                <input
+                  id="sc-cfg-max-open"
+                  type="number"
+                  min="1"
+                  max="720"
+                  step="0.5"
+                  [ngModel]="configMaxOpenHours()"
+                  (ngModelChange)="configMaxOpenHours.set($event)"
+                />
+              </div>
+              <p class="sc-config-max-hint">
+                Al superar este límite, las operaciones de caja (pagos en efectivo, check-in/out,
+                reservas de recepción) se bloquean hasta cerrar el turno. 1–720 horas.
+              </p>
+            </div>
+          </div>
+          <div class="sc-config-row sc-config-max">
+            <span class="sc-config-name">Aviso al gerente</span>
+            <div class="sc-config-max-input">
+              <div class="sc-form-group">
+                <label for="sc-cfg-notify">Horas abierto antes de notificar</label>
+                <input
+                  id="sc-cfg-notify"
+                  type="number"
+                  min="1"
+                  max="720"
+                  step="0.5"
+                  [ngModel]="configNotifyHours()"
+                  (ngModelChange)="configNotifyHours.set($event)"
+                />
+              </div>
+              <p class="sc-config-max-hint">
+                Al llegar a este tiempo sin cerrar, se envía una notificación interna al gerente
+                del hotel (campana) como aviso antes de que se bloqueen las operaciones. 1–720 horas.
+              </p>
+            </div>
+          </div>
+          @if (configError()) {
+            <div class="sc-config-error">
+              <span class="material-symbols-outlined">error</span>
+              {{ configError() }}
+            </div>
+          }
+          @if (shiftConfig(); as cfg) {
+            <p class="sc-config-hint" [class.muted]="!cfg.is_custom">
+              @if (cfg.is_custom) {
+                <span class="material-symbols-outlined">receipt_long</span>
+                <span>
+                  <strong>Último cambio</strong>
+                  — {{ cfg.updated_by || '—' }}
+                  @if (cfg.updated_at) { · {{ cfg.updated_at | date:'dd/MM/yyyy HH:mm' }} }
+                </span>
+              } @else {
+                <span class="material-symbols-outlined">info</span>
+                <span>
+                  <strong>Ventanas por defecto</strong>
+                  (08:00-16:00 · 16:00-00:00 · 00:00-08:00) — sin cambios personalizados aún.
+                </span>
+              }
+            </p>
+          }
+        </div>
+        <div class="sc-modal-footer">
+          <button class="sc-btn-outline" (click)="cancelConfigModal()">Cancelar</button>
+          <button class="sc-btn-primary" (click)="saveShiftConfig()" [disabled]="configSaving()">
+            <span class="material-symbols-outlined">save</span>
+            Guardar ventanas
           </button>
         </div>
       </div>

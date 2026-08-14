@@ -39,15 +39,15 @@ def _reviews_nav_item() -> dict:
 
 def test_reviews_nav_item_requires_reviews_read() -> None:
     item = _reviews_nav_item()
-    assert item["required_permission"] == "reviews.read", (
-        f"El ítem Reseñas exige {item['required_permission']!r}; debe ser 'reviews.read' "
+    assert item["permission_code"] == "reviews.read", (
+        f"El ítem Reseñas exige {item['permission_code']!r}; debe ser 'reviews.read' "
         f"para que la vista quede ligada a su propio recurso."
     )
 
 
 def test_reviews_nav_item_does_not_require_properties_read() -> None:
     item = _reviews_nav_item()
-    assert item["required_permission"] != "properties.read"
+    assert item["permission_code"] != "properties.read"
 
 
 def test_reviews_read_is_in_canonical_catalog() -> None:

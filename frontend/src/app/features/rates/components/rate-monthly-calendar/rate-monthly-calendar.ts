@@ -10,6 +10,8 @@ export interface CalendarDayRate {
   minStay: number;
   /** Color category for visual grouping */
   tier: 'low' | 'medium' | 'high' | 'premium';
+  /** Origen de la entrada: 'generated' (bulk) o '' (editada a mano). */
+  source: string;
 }
 
 export interface RoomTypeCalendarRow {

@@ -50,6 +50,7 @@ def batch_update_calendar(payload: dict, current_user: dict) -> dict:
             tax_included=payload.get("tax_included"),
             tax_rate=payload.get("tax_rate"),
             changed_by=current_user.get("username", "system"),
+            dry_run=bool(payload.get("dry_run")),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -65,6 +66,7 @@ def generate_calendar(payload: dict) -> dict:
             rate_plan_id=str(payload.get("rate_plan_id") or "") or None,
             start_date=str(payload.get("start_date") or "") or None,
             end_date=str(payload.get("end_date") or "") or None,
+            dry_run=bool(payload.get("dry_run")),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

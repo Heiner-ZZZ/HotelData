@@ -14,10 +14,10 @@ import type { RoleDetailResponseDto } from '../../models/system-permissions.dto'
 import type { NavigationItem, RoleDetailModel } from '../../models/system-permissions.model';
 import { mapRoleDetailResponse } from '../../mappers/system-permissions.mapper';
 import {
+  computeNavVisibility,
   countSectionCodesWithHidden,
   filterResourcesByQuery,
   isMatrixVisibleCode,
-  isNavItemVisible,
   MATRIX_BASE_ACTIONS,
   MATRIX_CONDITIONAL_ACTIONS,
   matrixActionColumns,
@@ -226,12 +226,12 @@ interface PermissionSectionModel {
                         </button>
                         @if (openPreviews().has(section.key)) {
                           <div class="nav-preview-list">
-                            @for (item of section.navItems; track item.href) {
-                              <div class="nav-item" [class.is-header]="item.isSectionHeader" [class.visible]="isItemVisible(item)" [class.hidden]="!isItemVisible(item)">
+                            @for (item of section.navItems; track item.slug) {
+                              <div class="nav-item" [class.is-header]="item.nodeType === 'container'" [class.visible]="isItemVisible(item)" [class.hidden]="!isItemVisible(item)">
                                 <span class="nav-icon material-symbols-outlined">{{ item.icon }}</span>
                                 <span class="nav-label">{{ item.label }}</span>
-                                @if (item.requiredPermission) {
-                                  <span class="nav-perm" [title]="'Requiere el permiso «' + item.requiredPermission + '»'">{{ item.requiredPermission }}</span>
+                                @if (item.permissionCode) {
+                                  <span class="nav-perm" [title]="'Requiere el permiso «' + item.permissionCode + '»'">{{ item.permissionCode }}</span>
                                 }
                                 <span class="nav-badge" [class.visible-badge]="isItemVisible(item)" [class.hidden-badge]="!isItemVisible(item)">{{ isItemVisible(item) ? 'Visible' : 'Oculto' }}</span>
                               </div>
@@ -339,16 +339,12 @@ export class RolePermissionsPageComponent {
     return { visible, hidden };
   });
 
-  /** Visibilidad en vivo por ítem (una sola pasada por cambio de selección). */
-  readonly visibleNavByHref = computed(() => {
+  /** Visibilidad en vivo por nodo (top-down, una sola pasada por cambio de
+   *  selección). Replica el pruning del server sin round-trip HTTP. */
+  readonly visibleNavBySlug = computed(() => {
     const selected = this.selectedCodes();
-    const map = new Map<string, boolean>();
-    for (const section of this.sections()) {
-      for (const item of section.navItems) {
-        map.set(item.href, isNavItemVisible(item, selected));
-      }
-    }
-    return map;
+    const navItems = this.detailResource.value()?.role.navigationCatalog ?? [];
+    return computeNavVisibility(navItems, selected);
   });
 
   /** Secciones visibles tras aplicar el buscador: recursos y códigos ocultos
@@ -384,12 +380,13 @@ export class RolePermissionsPageComponent {
   readonly sections = computed<PermissionSectionModel[]>(() => {
     const rows = this.resourceRows();
     const hiddenBySection = this.hiddenCodesBySection();
-    const navItems = this.detailResource.value()?.role.navigationCatalog ?? [];
+    const navItems = (this.detailResource.value()?.role.navigationCatalog ?? [])
+      // Las raíces (gestion/sistema/propietario/huesped) son estructurales
+      // (sin href ni permiso): la agrupación por sección ya las representa.
+      .filter((item) => item.parentSlug !== null);
 
     const navBySection = new Map<SectionKey, NavigationItem[]>();
     for (const item of navItems) {
-      // Los headers de sección (Dashboard/Reservas/Housekeeping/…) se incluyen:
-      // son entradas reales del menú con su propio permiso requerido.
       const key = sectionForNavItem(item);
       if (!navBySection.has(key)) navBySection.set(key, []);
       navBySection.get(key)!.push(item);
@@ -578,7 +575,7 @@ export class RolePermissionsPageComponent {
   }
 
   isItemVisible(item: NavigationItem): boolean {
-    return this.visibleNavByHref().get(item.href) ?? false;
+    return this.visibleNavBySlug().get(item.slug) ?? false;
   }
 
   sectionVisibleCount(key: SectionKey): number {

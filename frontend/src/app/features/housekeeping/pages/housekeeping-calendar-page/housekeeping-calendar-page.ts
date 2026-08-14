@@ -74,7 +74,7 @@ const TASK_TYPE_ICONS: Record<string, string> = {
  */
 const TASK_STATUS_COLORS: Record<string, string> = {
   pending: 'var(--warning)',
-  in_progress: 'var(--teal)',
+  in_progress: 'var(--accent)',
   inspection: 'var(--purple-strong)',
   completed: 'var(--success)',
   scheduled: 'var(--warning)',

@@ -42,7 +42,12 @@ export class FolioTransactionsModalComponent {
   readonly error = signal('');
   readonly data = signal<FolioPostingsResponse | null>(null);
 
-  constructor() {
+  /**
+   * Load the posting history once the folio input is bound. This lives in
+   * ngOnInit (not the constructor) because signal inputs are not yet applied
+   * when the constructor runs — reading them there always yielded null.
+   */
+  ngOnInit(): void {
     const f = this.folio();
     if (!f?.folioId) {
       this.error.set('Folio no encontrado');
@@ -91,5 +96,16 @@ export class FolioTransactionsModalComponent {
     return postings
       .filter(p => p.type === type)
       .reduce((sum, p) => sum + p.amount, 0);
+  }
+
+  /** Responsible cashier label for a shift-stamped posting, or null. */
+  shiftLabel(p: FolioPosting): string | null {
+    return p.shiftEmployee || p.shiftOpenedBy || null;
+  }
+
+  /** Tooltip with the shift FK + type for full attribution. */
+  shiftTitle(p: FolioPosting): string {
+    const type = p.shiftType ? ` · ${p.shiftType}` : '';
+    return p.shiftId ? `Turno ${p.shiftId}${type}` : 'Sin turno asociado';
   }
 }

@@ -1,0 +1,219 @@
+/* ═══════════════════════════════════════════════════
+   Booking-search-bar compartido — la misma caja de
+   búsqueda del welcome (destino, fechas, huéspedes).
+   Extraído de welcome-page/_booking-bar.scss para que
+   /welcome y /search usen EXACTAMENTE el mismo widget.
+   ═══════════════════════════════════════════════════ */
+
+.booking-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  background: var(--surface);
+  border: 2px solid var(--success);
+  border-radius: 12px;
+  /* visible (no hidden): el popover del date-range-picker compartido abre
+     hacia abajo y debe poder salir del bar sin ser recortado. Las esquinas
+     se recortan en los hijos extremos (field:first-child / cta) en vez de
+     en el contenedor. */
+  overflow: visible;
+  box-shadow: var(--shadow-md);
+
+  /* Esquinas redondeadas para los hijos que tocan el borde (el border de
+     2px del padre se compensa con 10px). */
+  > .booking-bar__field:first-child {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+  }
+
+  > .booking-bar__cta {
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+  }
+
+  &__field {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 14px 18px;
+    align-items: center;
+    min-width: 0;
+    border-right: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+    transition: background 160ms ease;
+
+    /* El campo Huéspedes ya no es el último: el separador pasa al botón
+       limpiar (border-left) para no duplicar la línea. */
+    &:nth-child(3) { border-right: 0; }
+    &:hover { background: color-mix(in srgb, var(--success) 8%, transparent); }
+
+    &:focus-within {
+      background: color-mix(in srgb, var(--success) 10%, transparent);
+      border-radius: 4px;
+    }
+  }
+
+  &__icon {
+    color: var(--success);
+    font-size: 1.35rem;
+    --icon-wght: 400;
+  }
+
+  &__body {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-text);
+  }
+
+  /* ── Clear button (limpia los tres filtros) ── */
+  &__clear {
+    display: grid;
+    place-items: center;
+    align-self: stretch;
+    width: 2.75rem;
+    border: 0;
+    border-left: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+    background: transparent;
+    color: var(--muted-text);
+    cursor: pointer;
+    transition: color 140ms ease, background 140ms ease;
+
+    .material-symbols-outlined {
+      font-size: 1.2rem;
+      --icon-wght: 500;
+    }
+
+    &:hover:not(:disabled) {
+      color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 8%, transparent);
+    }
+
+    &:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
+  }
+
+  /* ── CTA button (blue, contrasts with green border) ── */
+  &__cta {
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 0;
+    padding: 0 26px;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 160ms ease, transform 140ms ease;
+
+    .material-symbols-outlined {
+      font-size: 1.05rem;
+      --icon-wght: 500;
+    }
+
+    &:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -4px;
+    }
+  }
+
+  /* ── Variante compacta (el /search en laptop) ── */
+  &--compact {
+    .booking-bar__field {
+      padding: 8px 14px;
+      gap: 10px;
+    }
+
+    .booking-bar__icon {
+      font-size: 1.15rem;
+    }
+
+    .booking-bar__label {
+      font-size: 0.66rem;
+    }
+
+    .booking-bar__clear {
+      width: 2.25rem;
+    }
+
+    .booking-bar__cta {
+      padding: 0 20px;
+      font-size: 0.95rem;
+    }
+  }
+}
+
+/* ── Responsive (antes vivía en welcome-page.scss; ahora el bar es propio) ── */
+
+@media (max-width: 720px) {
+  .booking-bar { grid-template-columns: 1fr 1fr; }
+  .booking-bar__cta { grid-column: 1 / -1; padding: 14px 26px; }
+  .booking-bar__field {
+    border-right: 0;
+    border-top: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+  }
+  .booking-bar__field:nth-child(1),
+  .booking-bar__field:nth-child(2) { border-top: 0; }
+  /* Fila 2: Huéspedes (col 1) + Limpiar (col 2). El separador entre ambos
+     lo pone el botón limpiar (border-left) — el field no lo duplica. */
+  .booking-bar__field:nth-child(3) { border-right: 0; }
+  .booking-bar__clear {
+    border-left: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+    width: 2.75rem;
+  }
+
+  /* Esquinas: fila 1 = field1 (izq) + field2 fechas (der); fila 2 = CTA full */
+  .booking-bar > .booking-bar__field:nth-child(1) {
+    border-radius: 10px 0 0 0;
+  }
+  .booking-bar > .booking-bar__field:nth-child(2) {
+    border-radius: 0 10px 0 0;
+  }
+  .booking-bar > .booking-bar__cta {
+    border-radius: 0 0 10px 10px;
+  }
+}
+
+@media (max-width: 540px) {
+  .booking-bar { grid-template-columns: 1fr; }
+  .booking-bar__cta { grid-column: auto; }
+  .booking-bar__field {
+    border-right: 0;
+    border-top: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+  }
+  .booking-bar__field:nth-child(1) { border-top: 0; }
+  .booking-bar__clear {
+    border-left: 0;
+    border-top: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+    width: 100%;
+    height: 2.5rem;
+  }
+
+  /* Esquinas: columna única — field1 arriba, CTA abajo */
+  .booking-bar > .booking-bar__field:nth-child(1) {
+    border-radius: 10px 10px 0 0;
+  }
+  .booking-bar > .booking-bar__cta {
+    border-radius: 0 0 10px 10px;
+  }
+}

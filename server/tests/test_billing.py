@@ -55,6 +55,26 @@ def seeded_booking(db):
     return _create_test_booking(db)
 
 
+def _seed_shift(db, *, employee: str = "Teller Uno", opened_by: str = "cajero1") -> str:
+    """Insert a reception shift and return its string id (for stamping)."""
+    from datetime import datetime, timezone
+
+    res = db.reception_shifts.insert_one(
+        {
+            "prop_id": 999,
+            "status": "closed",
+            "shift_type": "morning",
+            "employee": employee,
+            "opened_by": opened_by,
+            "start_time": datetime.now(timezone.utc).isoformat(),
+            "cash_initial": 100.0,
+            "total_collected": 0.0,
+            "transactions": [],
+        }
+    )
+    return str(res.inserted_id)
+
+
 # ---------------------------------------------------------------------------
 # GAP-042: Invoice creation uses string booking_id
 # ---------------------------------------------------------------------------
@@ -175,6 +195,37 @@ class TestCancelInvoice:
         result = cancel_invoice(inv["id"])
         assert result is None
 
+    def test_cancel_invoice_stores_reason_and_actor(self, db, seeded_booking):
+        """Cancel reason/note + actor must persist on the invoice doc (Mongo,
+        both mirrors) so the cancellation has an observable history."""
+        inv = create_invoice(InvoiceCreate(booking_id=seeded_booking, subtotal=100.0, taxes=10.0))
+        result = cancel_invoice(
+            inv["id"],
+            cancel_reason="Cliente canceló por cambio de planes",
+            cancelled_by="teller-01",
+        )
+        assert result is not None
+        assert result["status"] == "cancelled"
+        assert result["cancel_reason"] == "Cliente canceló por cambio de planes"
+        assert result["cancelled_by"] == "teller-01"
+        # Persistido en Mongo (colección principal y espejo de hechos).
+        raw = db.reservation_invoices.find_one({"_id": ObjectId(inv["id"])})
+        assert raw["cancel_reason"] == "Cliente canceló por cambio de planes"
+        assert raw["cancelled_by"] == "teller-01"
+        raw_fact = db.fact_reservation_invoices.find_one({"_id": ObjectId(inv["id"])})
+        assert raw_fact["cancel_reason"] == "Cliente canceló por cambio de planes"
+        assert raw_fact["cancelled_by"] == "teller-01"
+
+    def test_cancel_invoice_reason_optional(self, db, seeded_booking):
+        """Without a reason, the cancellation still works and leaves no
+        ``cancel_reason``/``cancelled_by`` on the doc (backwards compatible)."""
+        inv = create_invoice(InvoiceCreate(booking_id=seeded_booking, subtotal=100.0, taxes=10.0))
+        result = cancel_invoice(inv["id"])
+        assert result is not None
+        assert result["status"] == "cancelled"
+        assert "cancel_reason" not in result
+        assert "cancelled_by" not in result
+
 
 class TestCreatePayment:
     def test_create_payment_success(self, db, seeded_booking):
@@ -265,6 +316,91 @@ class TestListGetPayment:
         result = list_payments(booking_id=seeded_booking)
         assert result["total"] == 1
 
+    def test_list_payments_exposes_legacy_pending_count_per_prop(self, db, seeded_booking):
+        """The list exposes how many unattributed (legacy) payments the hotel
+        still has pending linking, scoped to that hotel only."""
+        prop_a = db.booking_orders.find_one({"booking_id": seeded_booking})["prop_id"]
+        other_bid = _create_test_booking(db, prop_id=888)
+        # prop_a: 2 legacy sin turno + 1 con turno estampado; otro hotel: 1 legacy.
+        create_payment(PaymentCreate(booking_id=seeded_booking, amount=100.0))
+        create_payment(PaymentCreate(booking_id=seeded_booking, amount=50.0))
+        create_payment(PaymentCreate(booking_id=seeded_booking, amount=30.0), shift_id="6a78d993c9e391c6684414f3")
+        create_payment(PaymentCreate(booking_id=other_bid, amount=20.0))
+
+        result = list_payments(prop_id=prop_a)
+
+        assert result["legacy_pending_count"] == 2
+
+    def test_list_payments_legacy_pending_count_matches_sin_turno_filter(self, db, seeded_booking):
+        """The badge count equals what the "Sin turno" filter would show for
+        the hotel, so the chip is honest about what it filters."""
+        prop_a = db.booking_orders.find_one({"booking_id": seeded_booking})["prop_id"]
+        create_payment(PaymentCreate(booking_id=seeded_booking, amount=100.0))
+        create_payment(PaymentCreate(booking_id=seeded_booking, amount=50.0))
+        create_payment(PaymentCreate(booking_id=seeded_booking, amount=30.0), shift_id="6a78d993c9e391c6684414f3")
+
+        result = list_payments(prop_id=prop_a, sin_turno=True)
+
+        assert result["total"] == 2
+        assert result["legacy_pending_count"] == 2
+
+    def test_list_payments_filters_by_shift_and_employee(self, db, seeded_booking):
+        """Filtros de auditoría: por turno exacto (shift_id) y por cajero
+        (coincide con shift_employee o shift_opened_by, sin distinguir mayúsculas)."""
+        shift_a = _seed_shift(db, employee="Teller Uno", opened_by="cajero1")
+        shift_b = _seed_shift(db, employee="Teller Dos", opened_by="cajero2")
+        create_payment(PaymentCreate(booking_id=seeded_booking, amount=100.0), shift_id=shift_a)
+        create_payment(PaymentCreate(booking_id=seeded_booking, amount=50.0), shift_id=shift_b)
+        create_payment(PaymentCreate(booking_id=seeded_booking, amount=25.0))  # legacy sin turno
+
+        by_shift = list_payments(shift_id=shift_a)
+        assert by_shift["total"] == 1
+        assert by_shift["items"][0]["amount"] == 100.0
+
+        by_employee = list_payments(employee="teller UNO")
+        assert by_employee["total"] == 1
+        assert by_employee["items"][0]["amount"] == 100.0
+
+        by_opener = list_payments(employee="cajero2")
+        assert by_opener["total"] == 1
+        assert by_opener["items"][0]["amount"] == 50.0
+
+    def test_list_invoices_filters_by_shift_and_employee(self, db, seeded_booking):
+        """El listado de facturas filtra por turno que emitió y por cajero
+        (shift_employee / shift_opened_by de la estampa de emisión)."""
+        shift_a = _seed_shift(db, employee="Teller Uno", opened_by="cajero1")
+        shift_b = _seed_shift(db, employee="Teller Dos", opened_by="cajero2")
+        create_invoice(
+            InvoiceCreate(booking_id=seeded_booking, subtotal=100.0, taxes=10.0),
+            shift_id=shift_a,
+            shift_attribution={
+                "shift_employee": "Teller Uno",
+                "shift_opened_by": "cajero1",
+                "shift_type": "morning",
+            },
+        )
+        create_invoice(
+            InvoiceCreate(booking_id=seeded_booking, subtotal=50.0, taxes=0.0),
+            shift_id=shift_b,
+            shift_attribution={
+                "shift_employee": "Teller Dos",
+                "shift_opened_by": "cajero2",
+                "shift_type": "morning",
+            },
+        )
+        create_invoice(InvoiceCreate(booking_id=seeded_booking, subtotal=30.0, taxes=0.0))  # sin turno
+
+        by_shift = list_invoices(shift_id=shift_a)
+        assert by_shift["total"] == 1
+        assert by_shift["items"][0]["total"] == 110.0
+
+        by_employee = list_invoices(employee="teller UNO")
+        assert by_employee["total"] == 1
+        assert by_employee["items"][0]["total"] == 110.0
+
+        by_opener = list_invoices(employee="cajero2")
+        assert by_opener["total"] == 1
+
     def test_get_payment(self, db, seeded_booking):
         pay = create_payment(PaymentCreate(booking_id=seeded_booking, amount=100.0))
         fetched = get_payment(pay["id"])
@@ -301,6 +437,40 @@ class TestRefundPayment:
         refund_payment(pay["id"])
         result = refund_payment(pay["id"])
         assert result is None
+
+    def test_refund_payment_stores_reason_and_actor(self, db, seeded_booking):
+        """Refund reason/note + actor must persist on the payment doc (Mongo,
+        both mirrors) so the refund has an observable history."""
+        pay = create_payment(PaymentCreate(booking_id=seeded_booking, amount=100.0))
+        result = refund_payment(
+            pay["id"],
+            refund_reason="Cliente insatisfecho con el servicio",
+            changed_by="teller-01",
+        )
+        assert result is not None
+        assert result["status"] == "refunded"
+        assert result["refund_reason"] == "Cliente insatisfecho con el servicio"
+        assert result["refunded_by"] == "teller-01"
+        assert result["refunded_at"] is not None
+        # Persistido en Mongo (colección principal y espejo de hechos).
+        raw = db.reservation_payments.find_one({"_id": ObjectId(pay["id"])})
+        assert raw["refund_reason"] == "Cliente insatisfecho con el servicio"
+        assert raw["refunded_by"] == "teller-01"
+        raw_fact = db.fact_reservation_payments.find_one({"_id": ObjectId(pay["id"])})
+        assert raw_fact["refund_reason"] == "Cliente insatisfecho con el servicio"
+        assert raw_fact["refunded_by"] == "teller-01"
+
+    def test_refund_payment_reason_optional(self, db, seeded_booking):
+        """Without a reason, the refund still works and leaves no
+        ``refund_reason``/``refunded_by`` on the doc (backwards compatible)."""
+        pay = create_payment(PaymentCreate(booking_id=seeded_booking, amount=50.0))
+        result = refund_payment(pay["id"])
+        assert result is not None
+        assert result["status"] == "refunded"
+        assert "refund_reason" not in result
+        assert "refunded_by" not in result
+
+
 
 
 # ---------------------------------------------------------------------------

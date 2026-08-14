@@ -26,6 +26,8 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 
 import type {
   ReservationListItem,
@@ -82,6 +84,10 @@ export class ReservationsListPageComponent {
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly actionService = inject(ReservationActionService);
   private readonly apiService = inject(ReservationsApiService);
+  private readonly auth = inject(AuthService);
+
+  /** Exportación CSV del listado gateada por ``reports.download``. */
+  readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
 
   // ─── Reactive query params ───
   // Migrated from `pipe(map, distinctUntilChanged)` to Angular's signal graph.

@@ -181,6 +181,56 @@ def _has_folio_posting_for_charge(folio: dict[str, Any], charge_id: Any) -> bool
     return False
 
 
+def _active_stay_room_ids(db: Any, prop_id: int) -> set[str]:
+    """hotel_room_ids physically occupied today by a checked-in stay.
+
+    A room is genuinely occupied only while a booking with an active stay
+    (``stay_status == "checked_in"``, or the legacy ``status == "checked_in"``)
+    references it and today falls inside the stay window. Upcoming
+    (confirmed/pending) reservations do not make a room physically occupied.
+    """
+    occupied: set[str] = set()
+    today = datetime.now(timezone.utc).date()
+    for booking in db.booking_orders.find(
+        {
+            "prop_id": prop_id,
+            "$or": [{"stay_status": "checked_in"}, {"status": "checked_in"}],
+        },
+        {"assigned_rooms": 1, "check_in_date": 1, "check_out_date": 1},
+    ):
+        try:
+            check_in = date.fromisoformat(str(booking.get("check_in_date", ""))[:10])
+            check_out = date.fromisoformat(str(booking.get("check_out_date", ""))[:10])
+        except (TypeError, ValueError):
+            continue
+        if not (check_in <= today < check_out):
+            continue
+        for room in booking.get("assigned_rooms", []) or []:
+            room_id = room.get("hotel_room_id") or room.get("room_id") if isinstance(room, dict) else room
+            if room_id:
+                occupied.add(str(room_id))
+    return occupied
+
+
+def find_phantom_occupied_rooms(db: Any, prop_id: int) -> list[dict[str, Any]]:
+    """room_status_log rows marked occupied_clean with no active stay.
+
+    Rows without a ``hotel_room_id`` cannot be matched to any stay, so they
+    are never guessed at — skipping them keeps the rule conservative.
+    """
+    occupied_ids = _active_stay_room_ids(db, prop_id)
+    phantom: list[dict[str, Any]] = []
+    for doc in db.room_status_log.find(
+        {"prop_id": prop_id, "status": "occupied_clean"},
+        {"room_label": 1, "hotel_room_id": 1, "note": 1, "status": 1},
+    ):
+        room_id = doc.get("hotel_room_id")
+        if not room_id or str(room_id) in occupied_ids:
+            continue
+        phantom.append(doc)
+    return phantom
+
+
 def build_reconciliation_report(prop_id: int) -> dict[str, Any]:
     """Build a read-only reconciliation snapshot for exactly one property.
 
@@ -602,6 +652,25 @@ def build_reconciliation_report(prop_id: int) -> dict[str, Any]:
                     repair_policy="manual",
                     message="La disponibilidad nocturna no concilia con las habitaciones reservadas; requiere revisión.",
                 ))
+
+    # Physical room status must match reality. A room marked occupied_clean
+    # with no checked-in stay referencing it is a phantom occupancy (the
+    # auto-assignment flow wrote occupied_clean without a real check-in), and
+    # it corrupts housekeeping metrics and blocks future check-ins.
+    for status_doc in find_phantom_occupied_rooms(db, prop_id):
+        findings.append(_finding(
+            domain="room_status",
+            severity="warning",
+            source_ids=[status_doc.get("room_label"), status_doc.get("hotel_room_id")],
+            expected={"status": "vacant_clean", "active_stay": True},
+            actual={
+                "status": status_doc.get("status"),
+                "active_stay": False,
+                "note": status_doc.get("note"),
+            },
+            repair_policy="idempotent_migration",
+            message="Habitación marcada como ocupada sin estancia activa; requiere reversión a vacante.",
+        ))
 
     # Current maintenance documents are operationally valid but financially
     # incomplete when they lack cost/invoice/ledger evidence.

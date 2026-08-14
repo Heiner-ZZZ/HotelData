@@ -169,6 +169,17 @@
   color: var(--accent);
 }
 
+/* Contador de noches disponibles sin tarifa — destaca en ámbar para
+   dimensionar el impacto de un vistazo (no vendibles en la web). */
+.cal-summary-warn {
+  color: var(--warning);
+  font-weight: 600;
+
+  .cal-summary-icon {
+    color: var(--warning);
+  }
+}
+
 .cal-summary-divider {
   width: 1px;
   height: 1rem;

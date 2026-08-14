@@ -15,9 +15,13 @@ from src.app.security.dependencies import require_permission
 ENTITY_TYPES = [
     "room_type", "inventory_entry", "rate_plan", "rate_calendar",
     "policy", "amenity", "content", "reservation", "housekeeping_task",
+    # Traza de acceso a datos sensibles: consulta de la atribución de turno
+    # (turno + cajero responsable) de un check-out o folio.
+    "shift_attribution_access",
 ]
 ACTIONS = ["create", "update", "delete", "soft_delete", "restore", "batch_update",
-           "confirm", "reject", "cancel", "check_in", "check_out", "reassign_room", "document_change"]
+           "confirm", "reject", "cancel", "check_in", "check_out", "reassign_room",
+           "document_change", "read"]
 
 
 @api_router.get("/audit-log")

@@ -1,5 +1,5 @@
-import type { BillableServicesDto, InvoiceDashboardDto, InvoiceDetailDto, InvoiceItemDto, InvoicesListDto, LineItemDto, PaymentDashboardDto, PaymentDto, PaymentItemDto, PaymentsListDto } from '../models/billing.dto';
-import type { BillableServices, InvoiceDashboard, InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, LineItem, PaymentDashboard, PaymentItem, PaymentListItem, PaymentsListViewModel } from '../models/billing.model';
+import type { BillableServicesDto, InvoiceDashboardDto, InvoiceDetailDto, InvoiceItemDto, InvoicesListDto, LineItemDto, PaymentDashboardDto, PaymentDto, PaymentItemDto, PaymentsListDto, PaymentLinkCandidatesDto, ShiftCandidateDto } from '../models/billing.dto';
+import type { BillableServices, InvoiceDashboard, InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, LineItem, PaymentDashboard, PaymentItem, PaymentListItem, PaymentsListViewModel, PaymentLinkCandidates, ShiftCandidate } from '../models/billing.model';
 
 function mapLineItem(dto: LineItemDto): LineItem {
   return {
@@ -103,6 +103,12 @@ function mapPaymentDto(item: PaymentDto & { id?: string }): PaymentItem {
     status: item.status,
     reference: item.reference,
     paidAt: item.paid_at,
+    shiftId: item.shift_id ?? null,
+    shiftEmployee: item.shift_employee ?? null,
+    shiftOpenedBy: item.shift_opened_by ?? null,
+    shiftType: item.shift_type ?? null,
+    refundShiftId: item.refund_shift_id ?? null,
+    refundShiftEmployee: item.refund_shift_employee ?? null,
   };
 }
 
@@ -121,6 +127,12 @@ function mapPaymentItem(item: PaymentItemDto & { id?: string }): PaymentListItem
     status: item.status,
     reference: item.reference,
     paidAt: item.paid_at,
+    shiftId: item.shift_id ?? null,
+    shiftEmployee: item.shift_employee ?? null,
+    shiftOpenedBy: item.shift_opened_by ?? null,
+    shiftType: item.shift_type ?? null,
+    refundShiftId: item.refund_shift_id ?? null,
+    refundShiftEmployee: item.refund_shift_employee ?? null,
   };
 }
 
@@ -133,6 +145,7 @@ export function mapPaymentsList(dto: PaymentsListDto): PaymentsListViewModel {
     totalPages: dto.total_pages,
     hasPrev: dto.has_prev,
     hasNext: dto.has_next,
+    legacyPendingCount: dto.legacy_pending_count ?? 0,
   };
 }
 
@@ -234,6 +247,26 @@ export function mapPaymentDashboard(dto: PaymentDashboardDto): PaymentDashboard 
     hasNext: dto.has_next ?? false,
     hasPrev: dto.has_prev ?? false,
     message: dto.message,
+  };
+}
+
+export function mapShiftCandidate(dto: ShiftCandidateDto): ShiftCandidate {
+  return {
+    id: dto.id,
+    propId: dto.prop_id ?? 0,
+    status: dto.status,
+    shiftType: dto.shift_type ?? null,
+    employee: dto.employee ?? null,
+    openedBy: dto.opened_by ?? null,
+    startTime: dto.start_time ?? null,
+    closedAt: dto.closed_at ?? null,
+  };
+}
+
+export function mapPaymentLinkCandidates(dto: PaymentLinkCandidatesDto): PaymentLinkCandidates {
+  return {
+    payment: mapPaymentItem(dto.payment),
+    shifts: (dto.shifts || []).map(mapShiftCandidate),
   };
 }
 

@@ -55,6 +55,14 @@ export interface PaymentItem {
   status: string;
   reference: string | null;
   paidAt: string;
+  /** Cashier attribution: shift + employee that handled the payment. */
+  shiftId: string | null;
+  shiftEmployee: string | null;
+  shiftOpenedBy: string | null;
+  shiftType: string | null;
+  /** Refund-side attribution. */
+  refundShiftId: string | null;
+  refundShiftEmployee: string | null;
 }
 
 export interface InvoiceDetailViewModel {
@@ -109,6 +117,8 @@ export interface PaymentsListViewModel {
   totalPages: number;
   hasPrev: boolean;
   hasNext: boolean;
+  /** Pagos legacy (sin turno) del hotel pendientes de vincular. */
+  legacyPendingCount: number;
 }
 
 export interface PaymentListItem {
@@ -125,6 +135,31 @@ export interface PaymentListItem {
   status: string;
   reference: string | null;
   paidAt: string;
+  /** Cashier attribution: shift + employee that handled the payment. */
+  shiftId: string | null;
+  shiftEmployee: string | null;
+  shiftOpenedBy: string | null;
+  shiftType: string | null;
+  /** Refund-side attribution. */
+  refundShiftId: string | null;
+  refundShiftEmployee: string | null;
+}
+
+/** Shift candidate for linking a legacy payment to its responsible shift. */
+export interface ShiftCandidate {
+  id: string;
+  propId: number;
+  status: string;
+  shiftType: string | null;
+  employee: string | null;
+  openedBy: string | null;
+  startTime: string | null;
+  closedAt: string | null;
+}
+
+export interface PaymentLinkCandidates {
+  payment: PaymentListItem;
+  shifts: ShiftCandidate[];
 }
 
 /** Row of the tactical F1.4 invoice dashboard (day × hotel × status). */

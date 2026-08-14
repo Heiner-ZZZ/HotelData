@@ -67,24 +67,61 @@
       }
     </div>
 
+    <!-- Theme toggle (movido del sidebar) -->
+    <button
+      type="button"
+      class="topbar-icon-btn"
+      (click)="theme.toggle()"
+      [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'"
+    >
+      <span class="material-symbols-outlined">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</span>
+    </button>
+
     <span class="topbar-divider" aria-hidden="true"></span>
 
-    <!-- User Profile -->
-    <a class="user-profile" routerLink="/management/profile" aria-label="Ir a mi perfil">
-      <div class="user-avatar">
-        @if (currentUser()?.avatarUrl; as url) {
-          <img [src]="url" alt="Avatar" class="avatar-photo" />
-        } @else {
-          {{ initials() }}
-        }
-      </div>
-      <div class="user-info">
-        <span class="user-name">{{ firstName() }}</span>
-        @if (surname()) {
-          <span class="user-surname">{{ surname() }}</span>
-        }
-        <span class="user-role">{{ roleLabel() }}</span>
-      </div>
-    </a>
+    <!-- User Profile (dropdown: perfil + cerrar sesión) -->
+    <div class="profile-wrapper">
+      <button
+        type="button"
+        class="user-profile"
+        [class.is-open]="showProfileMenu()"
+        (click)="toggleProfileMenu()"
+        aria-haspopup="true"
+        [attr.aria-expanded]="showProfileMenu()"
+        aria-label="Menú de perfil"
+      >
+        <div class="user-avatar">
+          @if (currentUser()?.avatarUrl; as url) {
+            <img [src]="url" alt="Avatar" class="avatar-photo" />
+          } @else {
+            {{ initials() }}
+          }
+        </div>
+        <div class="user-info">
+          <span class="user-name">{{ firstName() }}</span>
+          @if (surname()) {
+            <span class="user-surname">{{ surname() }}</span>
+          }
+          <span class="user-role">{{ roleLabel() }}</span>
+        </div>
+      </button>
+
+      @if (showProfileMenu()) {
+        <div class="profile-menu" (click)="$event.stopPropagation()">
+          <a class="profile-menu-item" routerLink="/management/profile" (click)="closeProfileMenu()">
+            <span class="material-symbols-outlined profile-menu-icon">account_circle</span>
+            <span>Mi perfil</span>
+          </a>
+          <a class="profile-menu-item" routerLink="/management/settings" (click)="closeProfileMenu()">
+            <span class="material-symbols-outlined profile-menu-icon">tune</span>
+            <span>Configuración</span>
+          </a>
+          <a class="profile-menu-item profile-menu-logout" href="/auth/logout">
+            <span class="material-symbols-outlined profile-menu-icon">logout</span>
+            <span>Cerrar sesión</span>
+          </a>
+        </div>
+      }
+    </div>
   </div>
 </header>

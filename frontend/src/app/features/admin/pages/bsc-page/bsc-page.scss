@@ -106,7 +106,7 @@
   }
   &.red {
     background: var(--danger);
-    box-shadow: 0 0 8px rgba(201, 61, 50, 0.4);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 40%, transparent);
   }
 }
 
@@ -224,7 +224,7 @@
   }
   &.semaforo-red {
     background: var(--danger);
-    box-shadow: 0 0 6px rgba(201, 61, 50, 0.5);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--danger) 50%, transparent);
   }
 }
 

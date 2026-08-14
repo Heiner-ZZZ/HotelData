@@ -67,6 +67,7 @@
   cursor: pointer;
   min-height: 1.5rem;
   transition: background 100ms ease;
+  position: relative;
 
   &:hover {
     filter: brightness(0.95);
@@ -159,6 +160,10 @@
 .cal-week-room-cell.cell-na {
   background: var(--app-border);
   color: var(--muted-text);
+}
+
+.cal-week-room-cell.cell-no-rate {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--warning) 65%, transparent);
 }
 
 .cal-week-room-cell.cell-selected {

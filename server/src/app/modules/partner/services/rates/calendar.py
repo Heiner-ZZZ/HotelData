@@ -89,6 +89,7 @@ def batch_update_rate_calendar(
     tax_included: Any | None = None,
     tax_rate: Any | None = None,
     changed_by: str = "system",
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -145,23 +146,27 @@ def batch_update_rate_calendar(
         if tax_rate is not None:
             payload["tax_rate"] = round(max(0.0, min(100.0, float(tax_rate or 0))), 2)
 
-        db.hotel_rate_calendar.update_one(
-            {"prop_id": prop_id, "rate_plan_id": clean_plan_id, "date": date_str},
-            {"$set": payload, "$setOnInsert": {"created_at": now}},
-            upsert=True,
-        )
+        # dry_run: solo cuenta los días afectados (modal de confirmación del
+        # frontend) sin escribir ni registrar acción.
+        if not dry_run:
+            db.hotel_rate_calendar.update_one(
+                {"prop_id": prop_id, "rate_plan_id": clean_plan_id, "date": date_str},
+                {"$set": payload, "$setOnInsert": {"created_at": now}},
+                upsert=True,
+            )
         affected += 1
         cur += timedelta(days=1)
 
     plan_doc = db.rate_plans.find_one({"prop_id": prop_id, "rate_plan_id": clean_plan_id}, {"_id": 0, "name": 1})
     plan_name = plan_doc.get("name", clean_plan_id) if plan_doc else clean_plan_id
-    register_action(
-        prop_id=prop_id,
-        entity_type="rate_calendar",
-        entity_id=f"{clean_plan_id}_batch_{clean_start}_{clean_end}",
-        action="batch_update",
-        summary=f"Actualización masiva de tarifas '{plan_name}': {affected} días ({clean_start} → {clean_end})",
-        changed_by=changed_by,
-        metadata={"rate_plan_id": clean_plan_id, "start_date": clean_start, "end_date": clean_end, "affected_days": affected, "rate_amount": round(rate_value, 2)},
-    )
+    if not dry_run:
+        register_action(
+            prop_id=prop_id,
+            entity_type="rate_calendar",
+            entity_id=f"{clean_plan_id}_batch_{clean_start}_{clean_end}",
+            action="batch_update",
+            summary=f"Actualización masiva de tarifas '{plan_name}': {affected} días ({clean_start} → {clean_end})",
+            changed_by=changed_by,
+            metadata={"rate_plan_id": clean_plan_id, "start_date": clean_start, "end_date": clean_end, "affected_days": affected, "rate_amount": round(rate_value, 2)},
+        )
     return {"affected_days": affected, "start_date": clean_start, "end_date": clean_end, "rate_plan_id": clean_plan_id}

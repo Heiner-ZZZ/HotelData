@@ -8,6 +8,8 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ReportsExportService } from '../../../../shared/services/reports-export.service';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import {
@@ -42,6 +44,7 @@ import { ReviewsApiService } from '../../services/reviews-api.service';
           <option [value]="90">Últimos 90 días</option>
           <option [value]="365">Último año</option>
         </select>
+        @if (canExport()) {
         <button (click)="exportPDF()" [disabled]="exporting()"
           style="display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--app-border); border-radius: 8px; padding: 8px 16px; font-size: 13px; color: var(--app-text); cursor: pointer;">
           <span class="material-symbols-outlined" style="font-size: 16px;">picture_as_pdf</span>
@@ -52,6 +55,7 @@ import { ReviewsApiService } from '../../services/reviews-api.service';
           <span class="material-symbols-outlined" style="font-size: 16px;">table_chart</span>
           {{ exporting() ? 'Exportando...' : 'Exportar Excel' }}
         </button>
+        }
       </div>
 
       @if (analytics(); as a) {
@@ -215,7 +219,11 @@ export class ReputationDashboardPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly reviewsApi = inject(ReviewsApiService);
   private readonly reports = inject(ReportsExportService);
+  private readonly auth = inject(AuthService);
   readonly propertyCtx = inject(PropertyContextService);
+
+  /** Descarga del informe de reputación gateada por ``reports.download``. */
+  readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<ReputationDashboard | null>(null);

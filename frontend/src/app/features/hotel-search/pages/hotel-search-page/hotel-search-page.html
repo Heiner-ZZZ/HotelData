@@ -7,6 +7,21 @@
     </a>
   </div>
 
+  <!-- Misma caja de búsqueda que /welcome: destino + fechas + huéspedes.
+       Los refinamientos (precio/estrellas/amenities/orden) viven abajo en
+       el filter-sidebar. -->
+  <app-booking-search-bar
+    [compact]="true"
+    [destination]="currentFilters().destination"
+    [checkIn]="currentFilters().checkIn"
+    [checkOut]="currentFilters().checkOut"
+    [adults]="currentFilters().adults !== '' ? +currentFilters().adults : 2"
+    [children]="currentFilters().children !== '' ? +currentFilters().children : 0"
+    [rooms]="currentFilters().rooms !== '' ? +currentFilters().rooms : 1"
+    [minDate]="today()"
+    (search)="onBookingSearch($event)"
+  />
+
   <div class="page-grid">
     <app-filter-sidebar [filters]="currentFilters()" (submitted)="updateFilters($event)" />
     <section class="results-column">
@@ -82,7 +97,7 @@
                       prop_id: selectedCompareIds(),
                       check_in: currentFilters().checkIn || null,
                       check_out: currentFilters().checkOut || null,
-                      adults: currentFilters().adults !== '1' ? currentFilters().adults : null,
+                      adults: currentFilters().adults !== '2' ? currentFilters().adults : null,
                       children: currentFilters().children !== '0' ? currentFilters().children : null
                     }">
                     Comparar {{ selectedCompareIds().length }} hoteles

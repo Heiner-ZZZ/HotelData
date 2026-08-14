@@ -42,8 +42,19 @@ def process_no_show(
     """
     db = get_database()
 
+    # stay_status puede estar ausente/vacío en reservas confirmadas legacy que
+    # nunca llegaron a check-in — son tan no-show como las ``pending`` explícitas.
     booking = db.booking_orders.find_one(
-        {"booking_id": booking_id, "status": "confirmed", "stay_status": "pending"},
+        {
+            "booking_id": booking_id,
+            "status": "confirmed",
+            "$or": [
+                {"stay_status": "pending"},
+                {"stay_status": {"$exists": False}},
+                {"stay_status": ""},
+                {"stay_status": None},
+            ],
+        },
     )
     if not booking:
         raise ValueError("Reserva no encontrada o no está en estado válido para no-show.")
@@ -106,6 +117,7 @@ def process_no_show(
         logger.exception("Failed to restore inventory for no-show %s", booking_id)
 
     # Create minimal folio with penalty only (no room charge — guest never checked in)
+    folio_number: str | None = None
     try:
         from src.app.modules.billing.service.folio import FOLIO_COLLECTION
 
@@ -145,6 +157,7 @@ def process_no_show(
                 "invoice_id": None,
             })
         else:
+            folio_number = existing_folio.get("folio_number")
             from src.app.modules.billing.service.folio import post_to_folio
             post_to_folio(
                 booking_id,
@@ -158,6 +171,7 @@ def process_no_show(
             )
     except Exception:
         logger.exception("Failed to post no-show penalty to folio for %s", booking_id)
+        folio_number = None
 
     # Log in history
     reason_detail = (
@@ -232,6 +246,7 @@ def process_no_show(
         "booking_id": booking_id,
         "penalty_amount": penalty_amount,
         "check_in_date": check_in_str,
+        "folio_number": folio_number,
     }
 
 
@@ -250,7 +265,12 @@ def auto_process_no_shows() -> dict[str, Any]:
         db.booking_orders.find(
             {
                 "status": "confirmed",
-                "stay_status": "pending",
+                "$or": [
+                    {"stay_status": "pending"},
+                    {"stay_status": {"$exists": False}},
+                    {"stay_status": ""},
+                    {"stay_status": None},
+                ],
                 "check_in_date": {"$lt": today},
             },
             {

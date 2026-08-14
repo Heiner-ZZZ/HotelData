@@ -60,6 +60,7 @@ export class NotificationBellComponent {
     if (type.includes('invoice')) return 'receipt_long';
     if (type.includes('amenity')) return 'spa';
     if (type.includes('review')) return 'star';
+    if (type.includes('shift')) return 'point_of_sale';
     return 'notifications';
   }
 

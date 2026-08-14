@@ -6,8 +6,14 @@ import { PropertyContextService } from '../../../../shared/services/property-con
 import { ToastService } from '../../../../shared/services/toast.service';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { ShiftsApiService, ShiftInfo, ShiftCloseSummary, ActiveShiftConflict, ScheduleMismatchDetail, ScheduleBypassForbiddenDetail, DepositRecord, PaymentBreakdown, CASH_DEPOSIT_METHODS } from '../../services/shifts-api.service';
+import { ShiftsApiService, ShiftInfo, ShiftCloseSummary, ActiveShiftConflict, ScheduleMismatchDetail, ScheduleBypassForbiddenDetail, DepositRecord, PaymentBreakdown, CASH_DEPOSIT_METHODS, SHIFT_TYPES, ShiftConfig, ShiftWindow } from '../../services/shifts-api.service';
 import { SHIFTS_CREATE, SHIFTS_MANAGE, SHIFTS_UPDATE } from '../../../../core/auth/permission.constants';
+import { getErrorMessage } from '../../../../shared/utils/http-error.util';
+
+/** UI fallback for the per-hotel max-open-hours limit (12h = server default). */
+const DEFAULT_MAX_OPEN_HOURS_UI = 12;
+/** Default manager heads-up threshold (hours) shown in the config modal. */
+const DEFAULT_NOTIFY_MANAGER_HOURS_UI = 8;
 
 @Component({
   selector: 'app-control-turnos-caja',
@@ -54,6 +60,35 @@ export class ControlTurnosCajaPageComponent {
 
   /** The history endpoint is a manager-control view protected by shifts.manage. */
   readonly canViewShiftHistory = computed(() => this.auth.hasPermission(SHIFTS_MANAGE));
+
+  /** Manager-only: editing the per-hotel shift windows requires shifts.manage. */
+  readonly canManageShifts = computed(() => this.auth.hasPermission(SHIFTS_MANAGE));
+
+  // ── Shift-window config (per hotel) ──
+  readonly shiftConfig = signal<ShiftConfig | null>(null);
+  readonly showConfigModal = signal(false);
+  readonly configSaving = signal(false);
+  readonly configDraft = signal<Record<string, ShiftWindow>>({});
+  /** Draft of the per-hotel max-open-hours limit (hours) in the config modal. */
+  readonly configMaxOpenHours = signal(DEFAULT_MAX_OPEN_HOURS_UI);
+  /** Draft of the per-hotel manager heads-up threshold (hours) in the modal. */
+  readonly configNotifyHours = signal(DEFAULT_NOTIFY_MANAGER_HOURS_UI);
+  readonly configError = signal('');
+
+  /** True when the active shift has been open past the hotel's limit. */
+  readonly shiftExpired = computed(() => !!this.shift()?.is_expired);
+
+  /** Manager-only simplified arqueo for an expired shift. */
+  readonly canEmergencyClose = computed(
+    () => this.shiftExpired() && this.canManageShifts(),
+  );
+  readonly emergencyClose = signal(false);
+  readonly emergencyReason = signal('');
+
+  /** Select options for the open-shift form, labeled from the configured windows. */
+  readonly shiftTypeOptions = computed(() =>
+    SHIFT_TYPES.map(t => ({ value: t, label: this.shiftTypeLabels()[t] || t })),
+  );
 
   // Shift open form
   readonly showOpenForm = signal(false);
@@ -186,6 +221,7 @@ export class ControlTurnosCajaPageComponent {
     }
 
     this.loading.set(true);
+    this.loadShiftConfig();
     this.api.getActiveShift(propId).subscribe({
       next: (res: { shift: ShiftInfo | null; shift_type_labels: Record<string, string> }) => {
         this.shift.set(res.shift);
@@ -202,11 +238,34 @@ export class ControlTurnosCajaPageComponent {
     });
   }
 
+  /** Load the per-hotel shift-window config (for the edit modal + labels). */
+  private loadShiftConfig(): void {
+    const propId = this.selectedPropId();
+    if (!propId) return;
+    this.api.getShiftConfig(propId).subscribe({
+      next: (res: { config: ShiftConfig }) => {
+        this.shiftConfig.set(res.config);
+        // Prefer the config labels (same source the active endpoint uses),
+        // so the open-shift form reflects custom windows even before the
+        // active-shift response lands.
+        this.shiftTypeLabels.set(res.config.labels);
+      },
+      error: () => {
+        /* read-only best-effort — labels fall back to the active endpoint */
+      },
+    });
+  }
+
   openShiftHistory(): void {
     const propId = this.selectedPropId();
     void this.router.navigate(['/management/shifts/manager-control'], {
       queryParams: propId ? { prop_id: propId } : {},
     });
+  }
+
+  /** Gerencia: all open shifts across the chain (forgotten-shift detection). */
+  openOpenShiftsOverview(): void {
+    void this.router.navigate(['/management/shifts/open-shifts']);
   }
 
   onPropSelected(event: { propId: number; label: string }): void {
@@ -217,6 +276,64 @@ export class ControlTurnosCajaPageComponent {
       this.propCtx.clear();
     }
     this.loadShift();
+  }
+
+  // ── Shift-window config handlers ──
+
+  openConfigModal(): void {
+    const config = this.shiftConfig();
+    if (!config) return;
+    this.configDraft.set(JSON.parse(JSON.stringify(config.windows)));
+    this.configMaxOpenHours.set(
+      typeof config.max_open_hours === 'number' && config.max_open_hours > 0
+        ? config.max_open_hours
+        : DEFAULT_MAX_OPEN_HOURS_UI,
+    );
+    this.configNotifyHours.set(
+      typeof config.notify_manager_hours === 'number' && config.notify_manager_hours > 0
+        ? config.notify_manager_hours
+        : DEFAULT_NOTIFY_MANAGER_HOURS_UI,
+    );
+    this.configError.set('');
+    this.showConfigModal.set(true);
+  }
+
+  cancelConfigModal(): void {
+    if (this.configSaving()) return;
+    this.showConfigModal.set(false);
+    this.configError.set('');
+  }
+
+  setConfigWindow(type: string, field: 'start' | 'end', value: string): void {
+    const draft = { ...this.configDraft() };
+    draft[type] = { ...(draft[type] || { start: '', end: '' }), [field]: value };
+    this.configDraft.set(draft);
+  }
+
+  saveShiftConfig(): void {
+    const propId = this.selectedPropId();
+    const draft = this.configDraft();
+    if (!propId || !draft || this.configSaving()) return;
+    this.configSaving.set(true);
+    this.configError.set('');
+    this.api.updateShiftConfig(propId, draft, this.configMaxOpenHours(), this.configNotifyHours()).subscribe({
+      next: (res: { config: ShiftConfig; message: string }) => {
+        this.configSaving.set(false);
+        this.shiftConfig.set(res.config);
+        this.shiftTypeLabels.set(res.config.labels);
+        this.showConfigModal.set(false);
+        this.toast.success(res.message);
+      },
+      error: (err: unknown) => {
+        this.configSaving.set(false);
+        // The global interceptor rewraps errors as ApiError ({status, message,
+        // details}); getErrorMessage covers both that and raw HttpErrorResponse
+        // (test / HttpTestingController paths).
+        this.configError.set(
+          getErrorMessage(err) ?? 'Error al guardar la configuración de turnos',
+        );
+      },
+    });
   }
 
   // ── Open shift ──
@@ -447,6 +564,8 @@ export class ControlTurnosCajaPageComponent {
     this.closeDeposits.set([]);
     this.closeClosingNotes.set('');
     this.closingShift.set(false);
+    this.emergencyClose.set(false);
+    this.emergencyReason.set('');
     // Default cash_left to the computed suggestion (will be updated after
     // deposits change via the computedCashLeft signal).
     this.closeCashLeft.set(this.computedCashLeft());
@@ -468,6 +587,9 @@ export class ControlTurnosCajaPageComponent {
       this.closeCashLeft() || this.computedCashLeft(),
       this.closeDeposits().length > 0 ? this.closeDeposits() : undefined,
       this.closeClosingNotes(),
+      undefined,
+      this.emergencyClose(),
+      this.emergencyReason(),
     ).subscribe({
       next: (res: { message: string; summary: ShiftCloseSummary }) => {
         this.closingShift.set(false);

@@ -9,7 +9,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { HousekeepingApiService } from '../../services/housekeeping-api.service';
-import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
+import { HorizontalSubNavComponent } from '../../../../shared/ui/horizontal-sub-nav/horizontal-sub-nav';
 import { statusColor } from '../../../../shared/utils/semantic-color.helper';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -35,7 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   vacant_dirty: 'var(--warning-strong)',
   vacant_clean: 'var(--success)',
-  occupied_clean: 'var(--teal)',
+  occupied_clean: 'var(--accent)',
   occupied_dirty: 'var(--warning)',
   cleaning_in_progress: 'var(--cyan)',
   cleaning_completed: 'var(--success-strong)',
@@ -49,7 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
  *  `color` field is a `var(--token)` consumer; the cascade handles
  *  light/dark theme switching. */
 const KPI_CARDS = [
-  { id: 'occupied', label: 'Ocupadas', icon: 'bed', key: 'occupied' as const, color: 'var(--teal)' },
+  { id: 'occupied', label: 'Ocupadas', icon: 'bed', key: 'occupied' as const, color: 'var(--accent)' },
   { id: 'vacant_clean', label: 'Vacantes Limpias', icon: 'check_circle', key: 'clean_rooms' as const, color: 'var(--success)' },
   { id: 'pending', label: 'Pendientes', icon: 'report', key: 'pending_rooms' as const, color: 'var(--warning-strong)' },
   { id: 'cleaning', label: 'En Limpieza', icon: 'cleaning_services', key: 'in_cleaning' as const, color: 'var(--cyan)' },
@@ -61,7 +61,7 @@ const KPI_CARDS = [
 
 @Component({
   selector: 'app-housekeeping-dashboard-page',
-  imports: [FormsModule, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, HousekeepingSubNavComponent],
+  imports: [FormsModule, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, HorizontalSubNavComponent],
   templateUrl: './housekeeping-dashboard-page.html',
   styleUrl: './housekeeping-dashboard-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

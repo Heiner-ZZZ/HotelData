@@ -55,6 +55,14 @@ export interface PaymentDto {
   status: string;
   reference: string | null;
   paid_at: string;
+  /** Cashier attribution: shift + employee that handled the payment. */
+  shift_id?: string | null;
+  shift_employee?: string | null;
+  shift_opened_by?: string | null;
+  shift_type?: string | null;
+  /** Refund-side attribution. */
+  refund_shift_id?: string | null;
+  refund_shift_employee?: string | null;
 }
 
 export interface InvoiceDetailDto {
@@ -109,6 +117,8 @@ export interface PaymentsListDto {
   total_pages: number;
   has_prev: boolean;
   has_next: boolean;
+  /** Cuántos pagos legacy (sin turno) del hotel están pendientes de vincular. */
+  legacy_pending_count?: number;
 }
 
 export interface PaymentItemDto {
@@ -125,6 +135,31 @@ export interface PaymentItemDto {
   status: string;
   reference: string | null;
   paid_at: string;
+  /** Cashier attribution: shift + employee that handled the payment. */
+  shift_id?: string | null;
+  shift_employee?: string | null;
+  shift_opened_by?: string | null;
+  shift_type?: string | null;
+  /** Refund-side attribution. */
+  refund_shift_id?: string | null;
+  refund_shift_employee?: string | null;
+}
+
+/** Shift candidate for linking a legacy payment (GET /payments/{id}/link-candidates). */
+export interface ShiftCandidateDto {
+  id: string;
+  prop_id: number;
+  status: string;
+  shift_type: string | null;
+  employee: string | null;
+  opened_by: string | null;
+  start_time: string | null;
+  closed_at: string | null;
+}
+
+export interface PaymentLinkCandidatesDto {
+  payment: PaymentItemDto;
+  shifts: ShiftCandidateDto[];
 }
 
 /** Row of the tactical F1.4 invoice dashboard (day × hotel × status). */

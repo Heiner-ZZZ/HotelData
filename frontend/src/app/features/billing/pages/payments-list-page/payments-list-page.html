@@ -16,19 +16,49 @@
     <a routerLink="/management/billing/payments-dashboard" class="pay-sub-link">Pagos Dashboard</a>
     <a routerLink="/management/billing/invoices" class="pay-sub-link">Facturas</a>
     <a routerLink="/management/billing/payments" class="pay-sub-link active">Pagos</a>
-    @if (canManagePayments()) {
-      <button type="button" class="pay-register-btn" (click)="openRegister()">
-        <span class="material-symbols-outlined btn-icon">add_card</span>
-        Registrar pago
+    <div class="pay-nav-actions">
+      @if (canManagePayments()) {
+        <button type="button" class="pay-register-btn" (click)="openRegister()">
+          <span class="material-symbols-outlined btn-icon">add_card</span>
+          Registrar pago
+        </button>
+      }
+      <button type="button" class="pay-print-btn" (click)="printPage()">
+        <span class="material-symbols-outlined btn-icon">print</span>
+        Imprimir reporte
       </button>
-    }
-    <button type="button" class="pay-print-btn" (click)="printPage()">
-      <span class="material-symbols-outlined btn-icon">print</span>
-      Imprimir reporte
-    </button>
+    </div>
   </div>
 
   @if (selectedPropId()) {
+    <section class="surface-card pay-audit-filters">
+      <span class="pay-audit-label">Auditar por cajero / turno</span>
+      <div class="pay-audit-select-wrap">
+        <span class="material-symbols-outlined pay-audit-icon">schedule</span>
+        <select class="pay-audit-select" [value]="turnoFilter()" (change)="setTurnoFilter(($any($event.target)?.value ?? ''))">
+          <option value="">Todos los turnos</option>
+          @for (opt of shiftOptions(); track opt.id) {
+            <option [value]="opt.id">{{ opt.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="pay-audit-input-wrap">
+        <span class="material-symbols-outlined pay-audit-icon">badge</span>
+        <input
+          type="text"
+          class="pay-audit-input"
+          placeholder="Cajero (empleado u opener)…"
+          [value]="cajeroFilter()"
+          (input)="setCajeroFilter(($any($event.target)?.value ?? ''))"
+        />
+      </div>
+      @if (activeFilterCount() > 0) {
+        <button type="button" class="pay-audit-clear" (click)="clearAllFilters()">
+          <span class="material-symbols-outlined">filter_alt_off</span>
+          Limpiar
+        </button>
+      }
+    </section>
     @switch (viewState()) {
       @case ('loading') {
         <app-loading-state label="Cargando pagos..." />
@@ -53,7 +83,23 @@
                 <h2>Pagos registrados</h2>
                 <p>{{ vm.total }} registros · página {{ vm.page }} de {{ vm.totalPages || 1 }}</p>
               </div>
-              <div class="pagination-bar">
+              <div class="panel-actions">
+                <button
+                  type="button"
+                  class="sin-turno-chip"
+                  [class.active]="sinTurno()"
+                  [title]="sinTurno() ? 'Mostrando solo pagos sin turno' : 'Filtrar pagos sin turno asociado'"
+                  (click)="toggleSinTurno()"
+                >
+                  <span class="material-symbols-outlined">unlink</span>
+                  Sin turno
+                  @if (sinTurnoCount() > 0) {
+                    <span class="sin-turno-badge" [title]="sinTurnoCount() + ' pagos legacy pendientes de vincular'">
+                      {{ sinTurnoCount() }}
+                    </span>
+                  }
+                </button>
+                <div class="pagination-bar">
                 <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
                   <span class="material-symbols-outlined btn-icon">chevron_left</span>
                   Anterior
@@ -62,6 +108,7 @@
                   Siguiente
                   <span class="material-symbols-outlined btn-icon">chevron_right</span>
                 </button>
+                </div>
               </div>
             </div>
 
@@ -75,6 +122,7 @@
                     <th>Estado</th>
                     <th>Referencia</th>
                     <th>Fecha</th>
+                    <th>Turno / Responsable</th>
                     <th>Factura</th>
                     <th></th>
                   </tr>
@@ -98,6 +146,32 @@
                       </td>
                       <td><code>{{ item.reference || '—' }}</code></td>
                       <td>{{ item.paidAt }}</td>
+                      <td>
+                        @if (shiftLabel(item); as responsible) {
+                          <span
+                            class="shift-chip"
+                            [class.refund]="item.status === 'refunded'"
+                            [title]="shiftTitle(item)"
+                          >
+                            <span class="material-symbols-outlined">
+                              {{ item.status === 'refunded' ? 'undo' : 'point_of_sale' }}
+                            </span>
+                            {{ responsible }}
+                          </span>
+                        } @else if (canLink(item)) {
+                          <button
+                            type="button"
+                            class="link-shift-btn"
+                            title="Vincular este pago a un turno"
+                            (click)="openLinkShift(item)"
+                          >
+                            <span class="material-symbols-outlined">link</span>
+                            Sin turno · Vincular
+                          </button>
+                        } @else {
+                          <span class="text-muted">—</span>
+                        }
+                      </td>
                       <td>
                         @if (item.invoiceId) {
                           <a [routerLink]="['/management/billing/invoices', item.invoiceId]" class="inline-link">
@@ -126,7 +200,7 @@
                           <button
                             type="button"
                             class="refund-btn"
-                            (click)="refund(item.id)"
+                            (click)="refund(item)"
                             [disabled]="refundingId() === item.id"
                             title="Reembolsar pago"
                           >
@@ -157,6 +231,16 @@
       [submitting]="registerSubmitting()"
       (close)="closeRegister()"
       (confirmed)="registerPayment($event)"
+    />
+  }
+
+  @if (linkingPayment(); as linking) {
+    <app-link-shift-modal
+      [paymentId]="linking.id"
+      [propId]="selectedPropId()"
+      [paymentReference]="linking.reference"
+      (close)="closeLinkShift()"
+      (linked)="onPaymentLinked()"
     />
   }
 </div>

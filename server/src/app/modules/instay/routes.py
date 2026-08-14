@@ -355,7 +355,7 @@ def service_requests_analytics(
     date_to: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_permission("reports.requests.read")),
 ):
     """Dashboard simple I1.1: solicitudes de servicio por estado y tipo (Mongo).
 

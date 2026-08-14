@@ -91,6 +91,6 @@
   text-decoration: none;
   transition: all 0.15s;
 
-  &:hover { background: var(--primary-container, var(--teal)); }
+  &:hover { background: var(--primary-container, var(--accent)); }
   &:active { transform: scale(0.97); }
 }

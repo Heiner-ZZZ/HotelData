@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -10,8 +10,14 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { InvoiceStatsDto } from '../../models/billing.dto';
+import type { InvoiceListItem } from '../../models/billing.model';
+import type { ApiError } from '../../../../core/api/api-error.model';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { type PermissionCode } from '../../../../core/auth/permission.constants';
 import { BillingApiService } from '../../services/billing-api.service';
 
 @Component({
@@ -21,11 +27,17 @@ import { BillingApiService } from '../../services/billing-api.service';
   styleUrl: './invoices-list-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class InvoicesListPageComponent {
+export class InvoicesListPageComponent implements OnInit {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly billingApi = inject(BillingApiService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly auth = inject(AuthService);
+
+  readonly cancellingId = signal<string | null>(null);
+  readonly canManageInvoices = computed(() => this.auth.hasPermission('billing.manage' as PermissionCode));
 
   // ── URL-driven state ──
   private readonly qp = toSignal(this.activatedRoute.queryParamMap, { initialValue: this.activatedRoute.snapshot.queryParamMap });
@@ -37,6 +49,11 @@ export class InvoicesListPageComponent {
   readonly searchQuery = computed(() => this.qp()?.get('q') ?? '');
   readonly dateFrom = computed(() => this.qp()?.get('date_from') ?? '');
   readonly dateTo = computed(() => this.qp()?.get('date_to') ?? '');
+  readonly turnoFilter = computed(() => this.qp()?.get('turno') ?? '');
+  readonly cajeroFilter = computed(() => this.qp()?.get('cajero') ?? '');
+
+  /** Turnos del hotel para el filtro (degrada a vacío sin shifts.read). */
+  readonly shiftOptions = signal<{ id: string; label: string }[]>([]);
 
   // ── Stats resource ──
   readonly statsResource = rxResource<InvoiceStatsDto | undefined, number | undefined>({
@@ -57,6 +74,8 @@ export class InvoicesListPageComponent {
         q: this.searchQuery() || undefined,
         dateFrom: this.dateFrom() || undefined,
         dateTo: this.dateTo() || undefined,
+        turno: this.turnoFilter() || undefined,
+        cajero: this.cajeroFilter() || undefined,
       };
     },
     stream: ({ params }) => this.billingApi.getInvoices((params as any).page, {
@@ -65,6 +84,8 @@ export class InvoicesListPageComponent {
       q: (params as any).q,
       date_from: (params as any).dateFrom,
       date_to: (params as any).dateTo,
+      turno: (params as any).turno,
+      cajero: (params as any).cajero,
     }),
   });
 
@@ -85,8 +106,26 @@ export class InvoicesListPageComponent {
     if (this.statusFilter()) c++;
     if (this.searchQuery()) c++;
     if (this.dateFrom() || this.dateTo()) c++;
+    if (this.turnoFilter()) c++;
+    if (this.cajeroFilter()) c++;
     return c;
   });
+
+  /** Carga las opciones de turno del hotel seleccionado para el filtro. */
+  private loadShiftOptions(propId: number): void {
+    if (!propId) {
+      this.shiftOptions.set([]);
+      return;
+    }
+    this.billingApi.getShiftOptions(propId).subscribe({
+      next: (options) => this.shiftOptions.set(options),
+      error: () => this.shiftOptions.set([]),
+    });
+  }
+
+  ngOnInit(): void {
+    this.loadShiftOptions(this.selectedPropId());
+  }
 
   // ── Property selection ──
   onPropSelected(event: { propId: number; label: string }): void {
@@ -97,6 +136,7 @@ export class InvoicesListPageComponent {
     } else {
       this.propertyCtx.clear();
     }
+    this.loadShiftOptions(event.propId);
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
       queryParams: { prop_id: event.propId || null, prop_label: label || null, page: null },
@@ -131,10 +171,19 @@ export class InvoicesListPageComponent {
     this.navigate({ date_to: value || null });
   }
 
+  setTurnoFilter(id: string): void {
+    const next = id === this.turnoFilter() ? '' : id;
+    this.navigate({ turno: next || null });
+  }
+
+  setCajeroFilter(value: string): void {
+    this.navigate({ cajero: value || null });
+  }
+
   clearAllFilters(): void {
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
-      queryParams: { status: null, q: null, date_from: null, date_to: null, page: null },
+      queryParams: { status: null, q: null, date_from: null, date_to: null, turno: null, cajero: null, page: null },
       queryParamsHandling: 'merge',
     });
   }
@@ -145,6 +194,44 @@ export class InvoicesListPageComponent {
       queryParams: { page: page > 1 ? page : null },
       queryParamsHandling: 'merge',
     });
+  }
+
+  // ── Actions ──
+
+  /** Solo las facturas emitidas pueden anularse (state machine: issued → cancelled). */
+  canCancel(item: InvoiceListItem): boolean {
+    return item?.status === 'issued' && this.canManageInvoices();
+  }
+
+  async cancelInvoice(item: InvoiceListItem): Promise<void> {
+    const reason = await this.confirmDialog.openPrompt({
+      title: 'Anular factura',
+      message: '¿Anular esta factura? Esta acción no se puede deshacer.',
+      confirmLabel: 'Anular factura',
+      variant: 'danger',
+      mode: 'delete',
+      modeDetail: item.invoiceNumber || item.id,
+      input: {
+        label: 'Motivo de la anulación (opcional)',
+        placeholder: 'Ej. Factura duplicada, error en el cobro…',
+        maxLength: 500,
+      },
+    });
+    if (reason === null) return;
+    this.cancellingId.set(item.id);
+    this.billingApi.cancelInvoice(item.id, this.selectedPropId(), reason)
+      .subscribe({
+        next: () => {
+          this.toast.show('Factura anulada correctamente.', 'info', 4000);
+          this.cancellingId.set(null);
+          this.invoicesResource.reload();
+          this.statsResource.reload();
+        },
+        error: (err: ApiError) => {
+          this.toast.show(err.message || 'Error al anular la factura.', 'error', 5000);
+          this.cancellingId.set(null);
+        },
+      });
   }
 
   // ── Helpers ──

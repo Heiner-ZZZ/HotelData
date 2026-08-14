@@ -2,7 +2,7 @@
 
 // Colors
 $si-accent: var(--accent);
-$si-accent-light: color-mix(in srgb, var(--teal) 8%, transparent);
+$si-accent-light: color-mix(in srgb, var(--accent) 8%, transparent);
 $si-surface: var(--surface);
 $si-surface-bg: var(--gray-50);
 $si-surface-soft: var(--surface-hover);
@@ -28,7 +28,12 @@ $balance-zero: var(--success);
 // Spacing
 $si-radius: 12px;
 $si-radius-sm: 8px;
-$si-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+// Shadows & overlay (scrim negro acromático: correcto en ambos temas)
+$si-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);        // cards (base)
+$si-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.1);   // cards hover
+$si-shadow-lg: var(--shadow-modal);               // sombra de modales (token compartido)
+$si-overlay: var(--overlay);                      // scrim de modales (token compartido)
 
 // Container CSS variables (injected by the main stylesheet)
 @mixin css-vars {

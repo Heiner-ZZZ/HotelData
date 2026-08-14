@@ -108,6 +108,31 @@ def test_navigation_shows_guest_items_for_concrete_guest_codes(db) -> None:
         assert by_href[href]["visible"] is True, f"{href} oculto para cliente"
 
 
+def test_navigation_prunes_empty_guest_container_for_superadmin(db) -> None:
+    """El container ``huesped`` (sin permiso propio y con TODOS sus hijos de
+    auto-servicio) no debe aparecer en el sidebar de super_admin: una sección
+    sin hojas visibles se poda. Para cliente sí se muestra, y los containers
+    operativos con hojas visibles siguen visibles."""
+    from src.app.security.navigation import get_all_navigation_items
+
+    seed_navigation(db["navigation"])
+
+    super_items = get_all_navigation_items({"*.*"})
+    by_slug = {item["slug"]: item for item in super_items}
+    assert by_slug["huesped"]["visible"] is False, (
+        "sección HUÉSPED vacía (sin hojas visibles) aparece para super_admin"
+    )
+    # Los containers operativos con hojas visibles siguen visibles
+    assert by_slug["gestion"]["visible"] is True
+    assert by_slug["sistema"]["visible"] is True
+    assert by_slug["propietario"]["visible"] is True
+
+    # cliente sí ve la sección (sus hojas son visibles para él)
+    client_items = get_all_navigation_items({"search.read", "account.read", "account.bookings.read"})
+    client_by_slug = {item["slug"]: item for item in client_items}
+    assert client_by_slug["huesped"]["visible"] is True
+
+
 def test_editor_payload_excludes_guest_codes_for_super_admin(db) -> None:
     """El editor de roles muestra a super_admin sin la caja Cliente y con sus
     ítems de navegación de huésped en Oculto."""

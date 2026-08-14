@@ -125,6 +125,7 @@ Este archivo define **TODOS** los colores de la app mediante CSS custom properti
 
 **ARCHIVO CANÓNICO:** `.credentials/credenciales.md` (oculto, en `.gitignore`)
 
+- ⚠️ **Dotfiles:** `.credentials/` es un directorio **oculto** — `glob`/`code_search` lo omiten por diseño (ignoran archivos ocultos). Leer el archivo SIEMPRE con `find`/`cat` o `read_files` con la ruta exacta; **nunca** depender de búsqueda por patrón (`*credencial*` no lo encuentra).
 - **SIEMPRE** leer `.credentials/credenciales.md` antes de hacer `POST /api/auth/login`.
 - **NUNCA** adivinar contraseñas (`admin123`, `password`, `test`, etc.).
 - **NUNCA** probar más de 2 intentos sin verificar credenciales en el archivo.

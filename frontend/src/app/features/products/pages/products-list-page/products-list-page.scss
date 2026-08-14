@@ -231,9 +231,9 @@
   font-size: 11px;
   font-weight: 600;
 
-  &.type-retail  { background: color-mix(in srgb, #10b981 14%, transparent); color: #047857; }
-  &.type-supply  { background: color-mix(in srgb, #f59e0b 14%, transparent); color: #b45309; }
-  &.type-asset   { background: color-mix(in srgb, #6366f1 14%, transparent); color: #4338ca; }
+  &.type-retail  { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success-strong); }
+  &.type-supply  { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning-strong); }
+  &.type-asset   { background: color-mix(in srgb, var(--indigo) 14%, transparent); color: var(--indigo-strong); }
 }
 
 .margin-cell {
@@ -269,9 +269,9 @@
   text-transform: uppercase;
   letter-spacing: 0.4px;
 
-  &.status-active    { background: color-mix(in srgb, #10b981 14%, transparent); color: #047857; }
-  &.status-inactive  { background: color-mix(in srgb, #6b7280 14%, transparent); color: #374151; }
-  &.status-archived  { background: color-mix(in srgb, #dc2626 14%, transparent); color: #991b1b; }
+  &.status-active    { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success-strong); }
+  &.status-inactive  { background: color-mix(in srgb, var(--gray-500) 14%, transparent); color: var(--gray-600); }
+  &.status-archived  { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-strong); }
 }
 
 .action-buttons {

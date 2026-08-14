@@ -159,8 +159,8 @@ def test_hr_navigation_items_use_granular_codes() -> None:
     for href, perm in expected_nav.items():
         item = by_href.get(href)
         assert item is not None, f"ítem RRHH {href} no está en NAVIGATION_CATALOG"
-        assert item["required_permission"] == perm, (
-            f"{href}: required_permission {item['required_permission']!r} != {perm!r}"
+        assert item["permission_code"] == perm, (
+            f"{href}: permission_code {item['permission_code']!r} != {perm!r}"
         )
 
 

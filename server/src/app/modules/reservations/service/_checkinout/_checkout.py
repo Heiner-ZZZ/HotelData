@@ -66,8 +66,22 @@ def complete_check_out(
         {"_id": 0, "guest_name": 1, "guest_email": 1, "prop_id": 1, "is_test": 1,
          "check_in_date": 1, "check_out_date": 1, "total_price": 1, "currency": 1,
          "total_nights": 1, "rooms": 1, "room_type_id": 1, "assigned_rooms": 1,
-         "check_out_room_inspected": 1, "check_out_keys_returned": 1},
+         "check_out_room_inspected": 1, "check_out_keys_returned": 1, "stay_status": 1},
     )
+    if booking is None:
+        raise ValueError("booking not found")
+
+    # ── Validate the stay is active: check-out only applies to checked-in stays ──
+    # Una reserva que nunca registró check-in no tiene estancia que cerrar
+    # (no-show, pendiente o sin estado). ``checked_out`` se permite aquí para
+    # conservar el mensaje idempotente "already checked out" del update de abajo.
+    stay_status_co = str(booking.get("stay_status") or "").strip().lower()
+    if stay_status_co not in ("checked_in", "checked_out"):
+        raise ValueError(
+            f"No se puede completar el check-out: la reserva {booking_id} no tiene una estancia activa "
+            f"(nunca registró check-in; estado actual: {stay_status_co or 'sin check-in'}). "
+            "Un check-out solo aplica a huéspedes con check-in completado."
+        )
 
     changed_at = utc_now()
 

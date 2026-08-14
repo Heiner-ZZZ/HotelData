@@ -223,13 +223,27 @@ export function sectionForResource(resource: string): SectionKey {
   return RESOURCE_SECTIONS[resource] ?? 'Sistema';
 }
 
-const KNOWN_NAV_SECTIONS: readonly SectionKey[] = ['PMS', 'CRS', 'Housekeeping', 'RRHH', 'Revenue', 'Billing'];
+/** ¿El ``slug`` pertenece a la rama ``prefix`` (el propio contenedor o sus
+ *  descendientes)? Los contenedores de dominio (``gestion.reservas``) NO llevan
+ *  punto final, así que hay que casar también el prefijo EXACTO. */
+function slugInSection(slug: string, prefix: string): boolean {
+  return slug === prefix || slug.startsWith(prefix + '.');
+}
 
-/** Sección de un ítem del catálogo de navegación (para la vista previa). */
-export function sectionForNavItem(item: { href?: string | null; section?: string | null }): SectionKey {
-  if (item.section && (KNOWN_NAV_SECTIONS as readonly string[]).includes(item.section)) {
-    return item.section as SectionKey;
-  }
+/** Sección de un nodo del árbol de navegación (por ``slug``, con fallback por
+ *  ``href`` para nodos legacy/raíz sin slug semántico). */
+export function sectionForNavItem(item: { slug?: string | null; href?: string | null }): SectionKey {
+  const slug = item.slug ?? '';
+  if (slugInSection(slug, 'sistema')) return 'Sistema';
+  if (slugInSection(slug, 'propietario')) return 'Sistema';
+  if (slugInSection(slug, 'gestion.pms')) return 'PMS';
+  if (slugInSection(slug, 'gestion.reservas')) return 'CRS';
+  if (slugInSection(slug, 'gestion.housekeeping')) return 'Housekeeping';
+  if (slugInSection(slug, 'gestion.rrhh')) return 'RRHH';
+  if (slugInSection(slug, 'gestion.revenue')) return 'Revenue';
+  if (slugInSection(slug, 'gestion.billing')) return 'Billing';
+  if (slugInSection(slug, 'huesped')) return 'Cliente';
+
   const href = item.href ?? '';
   if (href.startsWith('/system') || href.startsWith('/admin') || href.startsWith('/ownership')) {
     return 'Sistema';
@@ -240,17 +254,42 @@ export function sectionForNavItem(item: { href?: string | null; section?: string
   return 'PMS';
 }
 
+/** Nodo mínimo para el cálculo de visibilidad (estructural, sin acoplar al model). */
+export interface NavNodeLike {
+  slug: string;
+  parentSlug: string | null;
+  permissionCode?: string | null;
+}
+
 /**
- * Visibilidad en vivo de un ítem de navegación: visible si su permiso
- * requerido está seleccionado (o lo cubre un ``manage``/wildcard). Replica la
- * regla del server ``get_all_navigation_items`` sin round-trip HTTP.
+ * Visibilidad top-down del árbol de navegación para una selección de códigos.
+ * Replica la regla del server ``get_all_navigation_items`` sin round-trip HTTP:
+ * un nodo es visible si su ``permissionCode`` está satisfecho (o lo cubre un
+ * ``manage``/wildcard) Y todos sus ancestros son visibles. Devuelve slug → bool.
  */
-export function isNavItemVisible(
-  item: { requiredPermission?: string | null },
-  selectedCodes: string[],
-): boolean {
-  if (!item.requiredPermission) return true;
-  const expanded = expandManageCodes(selectedCodes);
-  if (expanded.has('*.*')) return true;
-  return expanded.has(item.requiredPermission);
+export function computeNavVisibility(
+  items: readonly NavNodeLike[],
+  selectedCodes: readonly string[],
+): Map<string, boolean> {
+  const bySlug = new Map(items.map((i) => [i.slug, i]));
+  const memo = new Map<string, boolean>();
+  const expanded = expandManageCodes(selectedCodes as string[]);
+  const isSuper = expanded.has('*.*');
+
+  const visible = (slug: string | null | undefined): boolean => {
+    if (!slug || !bySlug.has(slug)) return true;
+    const cached = memo.get(slug);
+    if (cached !== undefined) return cached;
+    memo.set(slug, false); // guard contra ciclos mientras se resuelve
+    const node = bySlug.get(slug)!;
+    const selfOk = !node.permissionCode || isSuper || expanded.has(node.permissionCode);
+    const parentOk = node.parentSlug ? visible(node.parentSlug) : true;
+    const result = parentOk && selfOk;
+    memo.set(slug, result);
+    return result;
+  };
+
+  const map = new Map<string, boolean>();
+  for (const item of items) map.set(item.slug, visible(item.slug));
+  return map;
 }

@@ -81,10 +81,36 @@ def complete_check_in(
         {"booking_id": booking_id},
         {"_id": 0, "guest_name": 1, "guest_email": 1, "prop_id": 1, "is_test": 1,
          "check_in_date": 1, "check_out_date": 1, "total_price": 1, "currency": 1, "total_nights": 1,
-         "assigned_rooms": 1},
+         "assigned_rooms": 1, "stay_status": 1, "no_show_processed_at": 1},
     )
     if not booking:
         raise ValueError("booking not found")
+
+    # ── Validate no-show: guest never arrived ──
+    # Práctica hotelera: una reserva marcada como no-show (estado terminal) o
+    # cuya estadía ya terminó sin que el huésped llegara no admite check-in.
+    stay_status = str(booking.get("stay_status") or "").strip().lower()
+    if stay_status == "no_show":
+        raise ValueError(
+            f"No se puede realizar el check-in: la reserva {booking_id} fue marcada como no-show. "
+            "El huésped nunca llegó y la estancia quedó cerrada."
+        )
+
+    check_out_date_str = booking.get("check_out_date", "")
+    if check_out_date_str:
+        try:
+            co_date = date.fromisoformat(check_out_date_str)
+            today = date.fromisoformat(local_today())
+            if co_date < today:
+                raise ValueError(
+                    f"No se puede realizar el check-in: la reserva venció como no-show. "
+                    f"La fecha de check-out ({check_out_date_str}) ya pasó (hoy {today.isoformat()}) "
+                    "y el huésped nunca llegó a la propiedad."
+                )
+        except ValueError as exc:
+            if str(exc).startswith("No se puede"):
+                raise
+            logger.warning("Could not parse check_out_date '%s' for booking %s", check_out_date_str, booking_id)
 
     # ── Validate check-in date is not in the past ──
     check_in_date_str = booking.get("check_in_date", "")

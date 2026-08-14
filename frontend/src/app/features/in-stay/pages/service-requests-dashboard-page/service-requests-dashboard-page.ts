@@ -6,11 +6,14 @@ import { DecimalPipe, DatePipe } from '@angular/common';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { exportCsv } from '../../../../shared/utils/csv-export.util';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
+import { HorizontalSubNavComponent } from '../../../../shared/ui/horizontal-sub-nav/horizontal-sub-nav';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { InStayApiService } from '../../services/in-stay-api.service';
 import type { ServiceRequestsAnalytics } from '../../models/service-requests-analytics.model';
@@ -45,6 +48,7 @@ const REQUEST_TYPE_LABELS: Record<string, string> = {
     ErrorStateComponent,
     LoadingStateComponent,
     KpiChartComponent,
+    HorizontalSubNavComponent,
   ],
   templateUrl: './service-requests-dashboard-page.html',
   styleUrl: './service-requests-dashboard-page.scss',
@@ -55,6 +59,10 @@ export class ServiceRequestsDashboardPageComponent {
   private readonly router = inject(Router);
   private readonly instayApi = inject(InStayApiService);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly auth = inject(AuthService);
+
+  /** Descarga del informe gateada por ``reports.download``. */
+  readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
 
   // ── URL-driven state ──
   private readonly qp = toSignal(this.activatedRoute.queryParamMap, { initialValue: this.activatedRoute.snapshot.queryParamMap });

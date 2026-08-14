@@ -138,28 +138,29 @@ def generate_calendar_from_rules(
     rate_plan_id: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
         raise ValueError("Propiedad no encontrada.")
     db = get_database()
 
-    today = date_type.today()
-    if start_date:
-        try:
-            range_start = date_type.fromisoformat(clean_text(start_date))
-        except (ValueError, TypeError):
-            raise ValueError(f"Fecha inicio inválida: {start_date}") from None
-    else:
-        range_start = today
+    # Fechas obligatorias: ya no existe el default implícito de "hoy → +90 días".
+    # El frontend pide confirmación con el conteo exacto, así que el rango
+    # debe estar definido de antemano.
+    if not start_date:
+        raise ValueError("Debe indicar la fecha de inicio.")
+    try:
+        range_start = date_type.fromisoformat(clean_text(start_date))
+    except (ValueError, TypeError):
+        raise ValueError(f"Fecha inicio inválida: {start_date}") from None
 
-    if end_date:
-        try:
-            range_end = date_type.fromisoformat(clean_text(end_date))
-        except (ValueError, TypeError):
-            raise ValueError(f"Fecha fin inválida: {end_date}") from None
-    else:
-        range_end = today + timedelta(days=90)
+    if not end_date:
+        raise ValueError("Debe indicar la fecha de fin.")
+    try:
+        range_end = date_type.fromisoformat(clean_text(end_date))
+    except (ValueError, TypeError):
+        raise ValueError(f"Fecha fin inválida: {end_date}") from None
 
     if range_start > range_end:
         raise ValueError("La fecha inicio debe ser anterior a la fecha fin.")
@@ -216,18 +217,21 @@ def generate_calendar_from_rules(
                 except (ValueError, TypeError):
                     continue
 
-            db.hotel_rate_calendar.find_one_and_update(
-                {"prop_id": prop_id, "rate_plan_id": plan_id, "date": date_str},
-                {
-                    "$set": {
-                        "prop_id": prop_id, "rate_plan_id": plan_id,
-                        "date": date_str, "rate_amount": round(price, 2),
-                        "source": "generated", "updated_at": now,
+            # dry_run: solo cuenta lo que se crearía (el modal de confirmación
+            # muestra el conteo exacto antes de escribir nada).
+            if not dry_run:
+                db.hotel_rate_calendar.find_one_and_update(
+                    {"prop_id": prop_id, "rate_plan_id": plan_id, "date": date_str},
+                    {
+                        "$set": {
+                            "prop_id": prop_id, "rate_plan_id": plan_id,
+                            "date": date_str, "rate_amount": round(price, 2),
+                            "source": "generated", "updated_at": now,
+                        },
+                        "$setOnInsert": {"created_at": now},
                     },
-                    "$setOnInsert": {"created_at": now},
-                },
-                upsert=True,
-            )
+                    upsert=True,
+                )
             total_generated += 1
             cur += timedelta(days=1)
 

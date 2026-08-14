@@ -144,7 +144,7 @@ import { mapEmployeeDetail } from '../../mappers/hr.mapper';
               @if (e.notes) {
                 <section class="info-card notes-card">
                   <div class="card-heading">
-                    <span class="icon-box icon-box--teal"><span class="material-symbols-outlined" aria-hidden="true">notes</span></span>
+                    <span class="icon-box icon-box--blue"><span class="material-symbols-outlined" aria-hidden="true">notes</span></span>
                     <div><h3>Notas</h3><p>Observaciones internas</p></div>
                   </div>
                   <p class="notes-copy">{{ e.notes }}</p>
@@ -245,7 +245,6 @@ import { mapEmployeeDetail } from '../../mappers/hr.mapper';
     .icon-box--purple { background: var(--purple-light); color: var(--purple-strong); }
     .icon-box--amber { background: var(--warning-light); color: var(--warning-strong); }
     .icon-box--green { background: var(--success-light); color: var(--success-strong); }
-    .icon-box--teal { background: color-mix(in srgb, var(--teal) 18%, transparent); color: var(--teal); }
 
     .info-list { display: flex; flex-direction: column; gap: 13px; margin: 17px 0 0; }
     .info-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }

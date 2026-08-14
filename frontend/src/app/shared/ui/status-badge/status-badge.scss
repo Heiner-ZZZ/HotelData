@@ -24,6 +24,6 @@
 }
 
 .tone-danger {
-  background: rgba(201, 61, 50, 0.14);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
   color: var(--danger);
 }

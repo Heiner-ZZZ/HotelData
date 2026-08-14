@@ -13,6 +13,11 @@ export interface FolioPosting {
   referenceId: string;
   referenceType: string;
   postedAt: string;
+  /** Cash shift that handled this money movement (front-desk stamped). */
+  shiftId: string | null;
+  shiftEmployee: string | null;
+  shiftOpenedBy: string | null;
+  shiftType: string | null;
 }
 
 export interface FolioDto {
@@ -63,6 +68,15 @@ export interface FolioDto {
   settlement_evidence_type?: string | null;
   settlement_evidence_reference?: string | null;
   invoice_id: string | null;
+  /** Shift that opened the folio (check-in cash shift), resolved server-side. */
+  created_shift?: {
+    shift_id: string;
+    shift_type: string;
+    shift_label: string;
+    employee: string;
+    opened_by: string;
+    start_time: string;
+  } | null;
 }
 
 export interface FolioPostingRaw {
@@ -76,6 +90,10 @@ export interface FolioPostingRaw {
   reference_id: string;
   reference_type: string;
   posted_at: string;
+  shift_id?: string | null;
+  shift_employee?: string | null;
+  shift_opened_by?: string | null;
+  shift_type?: string | null;
 }
 
 export interface FolioViewModel {
@@ -126,6 +144,14 @@ export interface FolioViewModel {
   settlementEvidenceType: string | null;
   settlementEvidenceReference: string | null;
   invoiceId: string | null;
+  createdShift: {
+    shiftId: string;
+    shiftType: string;
+    shiftLabel: string;
+    employee: string;
+    openedBy: string;
+    startTime: string;
+  } | null;
 }
 
 export interface FolioPostPayload {
@@ -204,6 +230,10 @@ export function mapFolio(dto: FolioDto): FolioViewModel {
       referenceId: p.reference_id,
       referenceType: p.reference_type,
       postedAt: p.posted_at,
+      shiftId: p.shift_id ?? null,
+      shiftEmployee: p.shift_employee ?? null,
+      shiftOpenedBy: p.shift_opened_by ?? null,
+      shiftType: p.shift_type ?? null,
     })),
     postingCount: dto.posting_count,
     createdAt: dto.created_at,
@@ -230,6 +260,16 @@ export function mapFolio(dto: FolioDto): FolioViewModel {
     settlementEvidenceType: dto.settlement_evidence_type ?? null,
     settlementEvidenceReference: dto.settlement_evidence_reference ?? null,
     invoiceId: dto.invoice_id,
+    createdShift: dto.created_shift
+      ? {
+          shiftId: dto.created_shift.shift_id,
+          shiftType: dto.created_shift.shift_type,
+          shiftLabel: dto.created_shift.shift_label,
+          employee: dto.created_shift.employee,
+          openedBy: dto.created_shift.opened_by,
+          startTime: dto.created_shift.start_time,
+        }
+      : null,
   };
 }
 

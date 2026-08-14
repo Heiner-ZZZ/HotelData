@@ -1,12 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
-import { DestinationAutocompleteComponent } from '../../../../shared/ui/destination-autocomplete/destination-autocomplete';
 import type { HotelSearchFilters } from '../../models/hotel-search.model';
 
+/**
+ * Refinamientos de la búsqueda (precio, estrellas, amenities, orden).
+ * Destino / fechas / huéspedes viven en el booking-bar superior compartido
+ * (app-booking-search-bar) — este panel solo emite los refinamientos y
+ * conserva el resto del estado de los filtros externos.
+ */
 @Component({
   selector: 'app-filter-sidebar',
-  imports: [ReactiveFormsModule, DestinationAutocompleteComponent],
+  imports: [ReactiveFormsModule],
   templateUrl: './filter-sidebar.html',
   styleUrl: './filter-sidebar.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -15,23 +20,9 @@ export class FilterSidebarComponent {
   readonly filters = input.required<HotelSearchFilters>();
   readonly submitted = output<HotelSearchFilters>();
 
-  /** Fecha local de hoy (YYYY-MM-DD) — el calendario solo admite hoy o futuro. */
-  readonly today = new Date().toLocaleDateString('sv-SE');
-
-  /** Check-in elegido como signal (el valor del form no es reactivo para
-   *  OnPush) — el mínimo del check-out nunca es anterior al check-in. */
-  private readonly checkInValue = signal('');
-  readonly checkOutMin = computed(() => this.checkInValue() || this.today);
-
   private readonly formBuilder = new FormBuilder();
 
   readonly form = this.formBuilder.nonNullable.group({
-    destination: [''],
-    checkIn: [''],
-    checkOut: [''],
-    adults: ['1'],
-    children: ['0'],
-    rooms: ['1'],
     minPrice: [''],
     maxPrice: [''],
     minStars: [''],
@@ -41,19 +32,10 @@ export class FilterSidebarComponent {
   });
 
   constructor() {
-    this.form.controls.checkIn.valueChanges.subscribe((value) => this.checkInValue.set(value ?? ''));
-
     effect(() => {
       const filters = this.filters();
-      this.checkInValue.set(filters.checkIn);
       this.form.patchValue(
         {
-          destination: filters.destination,
-          checkIn: filters.checkIn,
-          checkOut: filters.checkOut,
-          adults: filters.adults,
-          children: filters.children,
-          rooms: filters.rooms,
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
           minStars: filters.minStars,
@@ -71,12 +53,6 @@ export class FilterSidebarComponent {
     const amenitiesStr = (raw.amenities || '').trim();
     this.submitted.emit({
       ...this.filters(),
-      destination: raw.destination,
-      checkIn: raw.checkIn,
-      checkOut: raw.checkOut,
-      adults: raw.adults,
-      children: raw.children,
-      rooms: raw.rooms,
       minPrice: raw.minPrice,
       maxPrice: raw.maxPrice,
       minStars: raw.minStars,
@@ -84,18 +60,11 @@ export class FilterSidebarComponent {
       amenitiesMode: raw.amenitiesMode,
       sortBy: raw.sortBy,
       page: 1,
-      compareIds: this.filters().compareIds,
     });
   }
 
   resetFilters() {
     this.form.reset({
-      destination: '',
-      checkIn: '',
-      checkOut: '',
-      adults: '1',
-      children: '0',
-      rooms: '1',
       minPrice: '',
       maxPrice: '',
       minStars: '',

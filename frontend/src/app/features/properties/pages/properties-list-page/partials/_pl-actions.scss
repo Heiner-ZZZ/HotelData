@@ -1,22 +1,4 @@
-.col-right {
-  text-align: right;
-}
-
-tbody td {
-  padding: 0.85rem 1rem;
-  font-size: 0.85rem;
-  color: var(--app-text);
-  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 40%, transparent);
-}
-
-tbody tr:last-child td {
-  border-bottom: none;
-}
-
-tbody tr:hover {
-  background: color-mix(in srgb, var(--accent) 3%, transparent);
-}
-
+/* ── Fila / enlace a la propiedad ── */
 .prop-link {
   display: flex;
   align-items: center;
@@ -51,17 +33,61 @@ tbody tr:hover {
   }
 }
 
-.prop-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
 .prop-sub {
   font-size: 0.72rem;
   color: var(--muted-text);
 }
 
+/* Checks operativos + score */
+.prop-checks {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+}
+
+.check-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+
+  &.ok {
+    background: var(--success);
+  }
+  &.no {
+    background: var(--danger);
+    opacity: 0.45;
+  }
+}
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-left: 0.15rem;
+
+  &.success {
+    color: var(--success);
+    background: var(--success-light);
+  }
+  &.warning {
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+  }
+  &.danger {
+    color: var(--danger);
+    background: var(--danger-light);
+  }
+}
+
+/* ── Estado ── */
 .status-badge-pill {
   display: inline-block;
   font-size: 0.68rem;
@@ -91,46 +117,58 @@ tbody tr:hover {
   }
 }
 
-.pipeline-cell {
-  display: flex;
+/* ── Rating ── */
+.rating-cell {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-}
+  gap: 0.4rem;
 
-.pulse-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  flex-shrink: 0;
-
-  &.green {
-    background: var(--success);
-    box-shadow: 0 0 6px color-mix(in srgb, var(--success) 50%, transparent);
+  .stars {
+    font-size: 0.75rem;
+    color: var(--warning);
+    white-space: nowrap;
   }
 
-  &.yellow {
-    background: var(--warning);
-    box-shadow: 0 0 6px color-mix(in srgb, var(--warning) 50%, transparent);
+  .review-score {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted-text);
   }
 }
 
-.pipeline-text {
+/* ── Rendimiento ── */
+.revenue-cell {
+  display: grid;
+  gap: 0.1rem;
+  justify-items: end;
+
+  .revenue-amount {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--app-text);
+  }
+
+  .reservations-count {
+    font-size: 0.72rem;
+    color: var(--muted-text);
+  }
+}
+
+.unit-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  border-radius: 8px;
   font-size: 0.78rem;
-  color: var(--muted-text);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-.yield-score {
   font-weight: 700;
-  font-size: 0.95rem;
-
-  &.high { color: var(--success); }
-  &.med { color: var(--warning); }
-  &:not(.high):not(.med) { color: var(--danger); }
+  background: var(--surface-soft);
+  color: var(--app-text);
 }
 
-/* ── Reservations breakdown ── */
+/* ── Desglose de reservas (históricas + operacionales) ── */
 .res-breakdown {
   display: inline-flex;
   align-items: center;
@@ -147,19 +185,6 @@ tbody tr:hover {
   strong { font-size: 0.95rem; }
 }
 
-.res-info-icon {
-  font-size: 0.75rem;
-  color: var(--muted-text);
-  opacity: 0.5;
-  cursor: help;
-  transition: opacity 0.15s, color 0.15s;
-
-  &:hover {
-    opacity: 1;
-    color: var(--accent);
-  }
-}
-
 .res-current strong {
   color: var(--accent);
 }
@@ -174,27 +199,7 @@ tbody tr:hover {
   font-size: 0.95rem;
 }
 
-/* ── Info tooltip ── */
-.info-tip {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  cursor: help;
-}
-
-.info-icon {
-  font-size: 1rem;
-  color: var(--muted-text);
-  opacity: 0.65;
-  margin-left: 0.2rem;
-  transition: opacity 0.15s;
-
-  .info-tip:hover & {
-    opacity: 1;
-    color: var(--accent);
-  }
-}
-
+/* ── Acciones de fila ── */
 .row-actions {
   display: flex;
   gap: 0.25rem;
@@ -218,6 +223,7 @@ tbody tr:hover {
   }
 }
 
+/* ── Vacío / paginación ── */
 .empty-row {
   text-align: center;
   color: var(--muted-text);
@@ -229,8 +235,9 @@ tbody tr:hover {
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding: 0.85rem 1.25rem;
+  padding: 0.85rem 0.25rem 0;
   border-top: 1px solid var(--app-border);
+  margin-top: 1.25rem;
 
   button {
     display: inline-flex;
@@ -258,18 +265,5 @@ tbody tr:hover {
 }
 
 @media (max-width: 640px) {
-  .kpi-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .bento-grid {
-    grid-template-columns: 1fr;
-  }
-
   table { font-size: 0.8rem; }
-
-  .table-actions {
-    flex-wrap: wrap;
-  }
 }
-

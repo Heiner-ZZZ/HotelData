@@ -260,6 +260,27 @@
   &.tx-negative { color: var(--danger); }
 }
 
+.tx-shift-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  font-size: 0.68rem;
+  color: var(--app-text);
+  white-space: nowrap;
+  cursor: help;
+  width: fit-content;
+
+  .material-symbols-outlined {
+    font-size: 13px;
+    color: var(--accent);
+  }
+}
+
 .mono { font-family: 'JetBrains Mono', monospace; }
 .text-danger { color: var(--danger); }
 .text-success { color: var(--success); }

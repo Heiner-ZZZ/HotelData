@@ -6,6 +6,8 @@ import { switchMap, map } from 'rxjs';
 import { HrApiService } from '../../services/hr-api.service';
 import { toast } from '../../../../core/toast/toast.service';
 import { catchAndToastWarning } from '../../../../shared/utils/catch-and-toast';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 
 type TabType = 'all' | 'present' | 'absent' | 'late';
 
@@ -21,6 +23,10 @@ export class AttendanceHistoryPageComponent {
   private readonly api = inject(HrApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+
+  /** Exportación CSV del historial gateada por ``reports.download``. */
+  readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
 
   /**
    * Bump signal that triggers a re-fetch when its value changes. Replaces the

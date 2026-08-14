@@ -16,7 +16,7 @@ function makeM2c(running = false): M2cConsolidatedDto {
     services: { clickhouse: { available: true, database: 'hoteldata_analytics', tables: [], message: 'Disponible' } },
     schedule: {
       pipeline: 'mongo_to_clickhouse', schedule_cron: '0 * * * *', enabled: true, configured: true,
-      updated_at: '', updated_by: '',
+      refresh_mode: 'full', updated_at: '', updated_by: '',
     },
     progress: {
       exists: true, path: '', status: running ? 'running' : 'pending', section: '', percent: 0, elapsed_ms: 0,
@@ -24,6 +24,9 @@ function makeM2c(running = false): M2cConsolidatedDto {
       clickhouse_database: 'hoteldata_analytics', tables: [],
     },
     execution: { exists: false, path: '', payload: {} },
+    dato: {
+      exists: false, root: '', container_path: '', run_date: '', sections: {}, generated_at: '',
+    },
   };
 }
 
@@ -107,5 +110,59 @@ describe('MonitoringM2cPageComponent — modo CRUD del nav (execute ETL)', () =>
 
     expect(ctx.mode.mode()).toBe('execute');
     expect(ctx.mode.detail()).toBe('ETL Mongo → ClickHouse');
+  });
+
+  it('sincroniza refreshMode desde el schedule del consolidated', async () => {
+    const ctx = setup();
+    const dto = makeM2c();
+    dto.schedule.refresh_mode = 'incremental';
+    await seed(ctx, dto);
+
+    expect(ctx.component.refreshMode()).toBe('incremental');
+  });
+
+  it('envía el refresh_mode elegido al guardar el horario', async () => {
+    const { component, confirmDialog, api, fixture } = setup();
+    api.updateSchedule.mockReturnValue(of({ ok: true, display_message: 'ok', summary_output: '' }));
+    component.refreshMode.set('incremental');
+
+    component.saveSchedule();
+    fixture.detectChanges();
+    expect(confirmDialog.isOpen()).toBe(true);
+
+    confirmDialog.confirm();
+    await flush();
+    fixture.detectChanges();
+
+    expect(api.updateSchedule).toHaveBeenCalledWith(
+      expect.objectContaining({ refresh_mode: 'incremental', enabled: true }),
+    );
+  });
+
+  it('expone las secciones del directorio Dato con sus conteos de parquet', async () => {
+    const ctx = setup();
+    const dto = makeM2c();
+    dto.dato = {
+      exists: true,
+      root: 'C:\\HotelData\\Dato',
+      container_path: '/app/dato',
+      run_date: '2026-08-09',
+      sections: {
+        Crudo: { kpi_booking_daily: 3, kpi_rate_daily: 1 },
+        Procesado: { kpi_booking_daily: 2 },
+        Terminado: { kpi_booking_daily: 2 },
+      },
+      generated_at: '2026-08-09T17:00:00Z',
+    };
+    await seed(ctx, dto);
+
+    const sections = ctx.component.datoSections();
+    expect(sections.map(s => s.key)).toEqual(['Crudo', 'Procesado', 'Terminado']);
+    expect(sections[0].files).toBe(2);
+    expect(sections[0].rows).toBe(4);
+    expect(sections[0].tables).toEqual([
+      { name: 'kpi_booking_daily', rows: 3 },
+      { name: 'kpi_rate_daily', rows: 1 },
+    ]);
   });
 });

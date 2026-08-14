@@ -65,6 +65,7 @@ from src.app.modules.partner.services.dashboard import (  # type: ignore[assignm
 from src.app.modules.partner.services.history import list_hotel_changes, get_change_detail
 from src.app.modules.partner.services.properties import (
     list_partner_hotels,
+    list_property_options,
     partner_hotel_detail,
     partner_hotel_performance,
     save_partner_hotel_profile,
@@ -135,6 +136,7 @@ __all__ = [
     "ensure_inventory_collections",
     "ensure_rate_collections",
     "list_partner_hotels",
+    "list_property_options",
     "management_property_options",
     "management_reports_summary",
     "module_status",

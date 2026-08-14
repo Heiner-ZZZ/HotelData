@@ -176,6 +176,16 @@ export interface CheckOutDetailDto {
   check_out_date_actual: string | null;
   check_out_time_actual: string | null;
   check_out_by: string | null;
+  /** Cash shift that handled the check-out (FK to reception_shifts). */
+  check_out_shift_id: string | null;
+  /** Responsible cashier + shift label of the check-out, or null. */
+  check_out_shift: {
+    shift_type: string;
+    shift_label: string;
+    employee: string;
+    opened_by: string;
+    start_time: string;
+  } | null;
 }
 
 export interface CheckOutDetailSavePayload {

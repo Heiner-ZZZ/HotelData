@@ -68,8 +68,8 @@
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  background: rgba(20, 99, 255, 0.08);
-  border: 1px solid rgba(20, 99, 255, 0.15);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
   border-radius: 20px;
   font-size: 0.85rem;
   color: var(--accent);
@@ -172,7 +172,7 @@
   }
 
   &.is-active {
-    background: rgba(20, 99, 255, 0.08);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
     border-color: var(--accent);
     color: var(--accent);
   }

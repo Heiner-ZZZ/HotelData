@@ -61,7 +61,7 @@
 .th-pay { width: 5.5rem; text-align: right !important; }
 .th-status { min-width: 100px; }
 .th-date { min-width: 100px; }
-.th-actions { width: 3rem; text-align: center !important; }
+.th-actions { width: 7.5rem; text-align: center !important; }
 
 // ── Cells ──
 
@@ -163,6 +163,36 @@
   white-space: nowrap;
 
   .date-cell-icon { font-size: 0.78rem; }
+}
+
+// ── Cancel action (issued → cancelled, global confirm) ──
+
+.invl-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--danger-border, color-mix(in srgb, var(--danger) 25%, transparent));
+  border-radius: 100px;
+  background: var(--danger-light);
+  color: var(--danger);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 120ms;
+
+  .material-symbols-outlined { font-size: 0.82rem; }
+
+  &:hover:not(:disabled) {
+    background: var(--danger);
+    color: var(--on-danger);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 }
 
 // ── Detail link ──

@@ -206,12 +206,30 @@ def get_reputation_dashboard(
     }
 
 
-def get_reputation_analytics(prop_id: int | None = None, days: int = 30) -> dict:
-    """Read the hourly ClickHouse review KPI without replacing live review data."""
+def get_reputation_analytics(
+    prop_id: int | None = None,
+    days: int = 30,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    """Read the hourly ClickHouse review KPI without replacing live review data.
+
+    Acepta un rango de fechas explícito (``date_from``/``date_to``) y filtra
+    ``kpi_review_daily`` por ambos límites; sin ellos usa los últimos ``days``
+    días (hasta hoy, cota superior incluida). ``date_to`` anterior a
+    ``date_from`` es un error de contrato (la ruta lo traduce a 400).
+    """
+    from datetime import date as _date
     from datetime import timedelta
 
     from src.app.core.timezone import local_today
     from config.settings import get_settings
+
+    today = local_today()
+    start = _date.fromisoformat(date_from) if date_from else today - timedelta(days=days - 1)
+    end = _date.fromisoformat(date_to) if date_to else today
+    if end < start:
+        raise ValueError("date_to debe ser igual o posterior a date_from")
 
     settings = get_settings()
     try:
@@ -225,8 +243,8 @@ def get_reputation_analytics(prop_id: int | None = None, days: int = 30) -> dict
             database=settings.clickhouse_database,
         )
         try:
-            where = ["date >= {since:Date}"]
-            params: dict[str, Any] = {"since": local_today() - timedelta(days=days - 1)}
+            where = ["date >= {since:Date}", "date <= {until:Date}"]
+            params: dict[str, Any] = {"since": start, "until": end}
             if prop_id is not None:
                 where.append("prop_id = {prop_id:UInt32}")
                 params["prop_id"] = prop_id
@@ -249,11 +267,24 @@ def get_reputation_analytics(prop_id: int | None = None, days: int = 30) -> dict
                     "responded_count": int(row[13]),
                     "avg_response_minutes": None if row[14] is None else float(row[14]),
                 })
-            return {"available": True, "days": days, "rows": rows}
+            return {
+                "available": True,
+                "days": days,
+                "date_from": start.isoformat(),
+                "date_to": end.isoformat(),
+                "rows": rows,
+            }
         finally:
             client.close()
     except Exception as exc:  # pragma: no cover - depende de ClickHouse
-        return {"available": False, "days": days, "rows": [], "message": str(exc)}
+        return {
+            "available": False,
+            "days": days,
+            "date_from": start.isoformat(),
+            "date_to": end.isoformat(),
+            "rows": [],
+            "message": str(exc),
+        }
 
 
 def list_review_reports(

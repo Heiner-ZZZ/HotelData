@@ -370,7 +370,7 @@ th {
 }
 
 .row-error {
-  background: rgba(220, 38, 38, 0.04);
+  background: color-mix(in srgb, var(--danger) 4%, transparent);
 }
 
 .row-failed {
@@ -380,7 +380,7 @@ th {
 .code {
   font-size: 0.9em;
   font-family: monospace;
-  background: rgba(20, 99, 255, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   padding: 0.1em 0.4em;
   border-radius: 4px;
 }
@@ -412,7 +412,7 @@ th {
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: rgba(20, 99, 255, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   color: var(--accent);
   white-space: nowrap;
 }

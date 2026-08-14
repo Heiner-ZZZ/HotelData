@@ -1,0 +1,175 @@
+<div class="oso-container">
+  <header class="oso-header">
+    <div>
+      <h1 class="oso-title">Turnos Abiertos</h1>
+      <p class="oso-subtitle">
+        Todos los turnos de caja abiertos de la cadena, con su antigüedad — detecta turnos olvidados.
+      </p>
+    </div>
+    <div class="oso-header-actions">
+      <button
+        class="oso-btn-outline"
+        type="button"
+        (click)="toggleSortOrder()"
+        [attr.aria-label]="sortOrder() === 'asc' ? 'Orden: menos tiempo restante primero. Clic para invertir.' : 'Orden: más tiempo restante primero. Clic para invertir.'"
+        [title]="sortOrder() === 'asc' ? 'Menos tiempo restante primero (más urgente arriba). Clic para invertir.' : 'Más tiempo restante primero. Clic para invertir.'"
+      >
+        <span class="material-symbols-outlined">swap_vert</span>
+        {{ sortOrder() === 'asc' ? 'Más urgentes primero' : 'Menos urgentes primero' }}
+      </button>
+      <button class="oso-btn-primary" type="button" (click)="load()" [disabled]="loading()">
+        <span class="material-symbols-outlined" [class.spin]="loading()">refresh</span>
+        Actualizar
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="oso-loading">Cargando turnos abiertos...</div>
+  } @else if (items().length === 0) {
+    <div class="oso-empty">
+      <span class="material-symbols-outlined oso-empty-icon">task_alt</span>
+      <h2>No hay turnos abiertos</h2>
+      <p>Todas las cajas están cerradas. No hay turnos olvidados que atender.</p>
+    </div>
+  } @else {
+    <section class="oso-kpis">
+      <div class="oso-kpi-card">
+        <span class="oso-kpi-label">Turnos abiertos</span>
+        <span class="oso-kpi-value">{{ totalOpen() }}</span>
+      </div>
+      <div class="oso-kpi-card" [class.danger]="expiredCount() > 0">
+        <span class="oso-kpi-label">Vencidos (bloquean caja)</span>
+        <span class="oso-kpi-value">{{ expiredCount() }}</span>
+      </div>
+      <div class="oso-kpi-card">
+        <span class="oso-kpi-label">Más antiguo</span>
+        <span class="oso-kpi-value">{{ formatAge(oldestAgeHours()) }}</span>
+      </div>
+      <div class="oso-kpi-card">
+        <span class="oso-kpi-label">Cobrado en cajas abiertas</span>
+        <span class="oso-kpi-value">{{ totalCollected() | currency:'USD':'symbol':'1.2-2' }}</span>
+      </div>
+      <div class="oso-kpi-card" [class.danger]="retainedExpired() > 0">
+        <span class="oso-kpi-label">Retenido en vencidos</span>
+        <span class="oso-kpi-value">{{ retainedExpired() | currency:'USD':'symbol':'1.2-2' }}</span>
+      </div>
+    </section>
+
+    <div class="oso-table-card">
+      <table class="oso-table">
+        <thead>
+          <tr>
+            <th>Hotel</th>
+            <th>Turno</th>
+            <th>Empleado</th>
+            <th>Inicio</th>
+            <th>Antigüedad</th>
+            <th
+              class="oso-sort-th"
+              (click)="toggleSortOrder()"
+              role="button"
+              tabindex="0"
+              [attr.aria-label]="sortOrder() === 'asc' ? 'Tiempo restante: orden ascendente (menos tiempo primero). Clic para invertir.' : 'Tiempo restante: orden descendente. Clic para invertir.'"
+              [title]="sortOrder() === 'asc' ? 'Orden ascendente por tiempo restante. Clic para invertir.' : 'Orden descendente por tiempo restante. Clic para invertir.'"
+            >
+              Tiempo restante
+              <span class="material-symbols-outlined oso-sort-icon">
+                {{ sortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+              </span>
+            </th>
+            <th class="text-center">Transacciones</th>
+            <th class="text-right">En caja</th>
+            <th>Estado</th>
+            <th class="text-center">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of sortedItems(); track row.id) {
+            <tr class="oso-row" [class.expired-row]="row.is_expired">
+              <td>
+                <span class="oso-hotel">
+                  <span class="material-symbols-outlined">hotel</span>
+                  {{ row.hotel_name }}
+                </span>
+                <span class="oso-prop-id">#{{ row.prop_id }}</span>
+              </td>
+              <td>{{ row.shift_label }}</td>
+              <td>{{ row.employee }}</td>
+              <td class="mono">{{ row.start_time | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>
+                <span class="oso-age" [class]="ageClass(row)">
+                  <span class="material-symbols-outlined">
+                    {{ ageClass(row) === 'expired' ? 'timer_off' : (ageClass(row) === 'warning' ? 'schedule' : 'timer') }}
+                  </span>
+                  {{ formatAge(row.hours_open) }}
+                </span>
+                <span class="oso-limit">límite {{ row.max_open_hours }}h</span>
+              </td>
+              <td>
+                <span class="oso-countdown" [class]="countdownClass(row)">
+                  <span class="material-symbols-outlined">
+                    {{ row.is_expired ? 'timer_off' : 'hourglass_bottom' }}
+                  </span>
+                  {{ countdownText(row) }}
+                </span>
+              </td>
+              <td class="text-center mono">{{ row.transaction_count }}</td>
+              <td class="text-right mono">
+                <span class="oso-cash">{{ row.total_collected | currency:'USD':'symbol':'1.2-2' }}</span>
+              </td>
+              <td>
+                @if (row.is_expired) {
+                  <span class="oso-state-badge expired">
+                    <span class="material-symbols-outlined">block</span>
+                    VENCIDO
+                  </span>
+                } @else if (ageClass(row) === 'warning') {
+                  <span class="oso-state-badge warning">
+                    <span class="material-symbols-outlined">schedule</span>
+                    PRÓXIMO A VENCER
+                  </span>
+                } @else {
+                  <span class="oso-state-badge ok">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    OPERATIVO
+                  </span>
+                }
+              </td>
+              <td class="text-center">
+                <div class="oso-row-actions">
+                  @if (row.is_expired && canForceClose()) {
+                    <button
+                      class="oso-btn-danger"
+                      type="button"
+                      (click)="forceClose(row)"
+                      [disabled]="closingId() === row.id"
+                      [title]="'Cierre forzado del turno vencido (requiere doble confirmación)'"
+                    >
+                      @if (closingId() === row.id) {
+                        <span class="material-symbols-outlined spin">progress_activity</span>
+                      } @else {
+                        <span class="material-symbols-outlined">lock_clock</span>
+                      }
+                      Cierre forzado
+                    </button>
+                  }
+                  <button class="oso-btn-icon" type="button" (click)="goToShift(row)" [attr.aria-label]="'Ir al turno de ' + row.hotel_name" [title]="'Abrir el dashboard del turno'">
+                    <span class="material-symbols-outlined">open_in_new</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <div class="oso-table-footer">
+        <span>
+          {{ items().length }} turno(s) abierto(s)
+          @if (lastUpdated(); as ts) { · actualizado {{ ts | date:'HH:mm:ss' }} }
+          · se actualiza automáticamente cada 30 min
+        </span>
+      </div>
+    </div>
+  }
+</div>

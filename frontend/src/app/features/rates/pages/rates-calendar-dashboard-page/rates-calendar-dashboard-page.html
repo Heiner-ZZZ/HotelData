@@ -1,4 +1,5 @@
 <div class="rcd-page">
+  <app-horizontal-sub-nav [activeSlug]="'gestion.reservas.informes.calendario'" />
   <app-page-header
     title="Dashboard Tarifas"
     description="Días con tarifa vs huecos por plan tarifario (calendario de tarifas)."
@@ -215,10 +216,12 @@
                 </div>
               </div>
               <div class="rcd-actions">
-                <button type="button" class="rcd-export-btn" (click)="exportGridCsv()" [disabled]="!rows().length" title="Descargar CSV de la grilla">
-                  <span class="material-symbols-outlined">download</span>
-                  <span class="btn-label">CSV</span>
-                </button>
+                @if (canExport()) {
+                  <button type="button" class="rcd-export-btn" (click)="exportGridCsv()" [disabled]="!rows().length" title="Descargar CSV de la grilla">
+                    <span class="material-symbols-outlined">download</span>
+                    <span class="btn-label">CSV</span>
+                  </button>
+                }
                 <div class="rcd-pagination">
                   <button type="button" class="rcd-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
                     <span class="material-symbols-outlined">chevron_left</span>

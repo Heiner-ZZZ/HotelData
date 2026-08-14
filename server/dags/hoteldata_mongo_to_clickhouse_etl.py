@@ -76,14 +76,19 @@ with DAG(
     validate_config_task = PythonOperator(
         task_id="validate_config",
         python_callable=stage_validate_config,
+        op_kwargs={"run_date": "{{ ds }}"},
     )
+    # ``run_date`` ({{ ds }}) fecha la subcarpeta diaria del directorio Dato:
+    # <Dato>/<Seccion>/<YYYY-MM-DD>/<tabla>.parquet.
     extract_mongo_task = PythonOperator(
         task_id="extract_mongo",
         python_callable=stage_extract_mongo,
+        op_kwargs={"run_date": "{{ ds }}"},
     )
     transform_task = PythonOperator(
         task_id="transform",
         python_callable=stage_transform,
+        op_kwargs={"run_date": "{{ ds }}"},
     )
     create_tables_task = PythonOperator(
         task_id="create_tables",
@@ -96,6 +101,7 @@ with DAG(
     load_clickhouse_task = PythonOperator(
         task_id="load_clickhouse",
         python_callable=stage_load_clickhouse,
+        op_kwargs={"run_date": "{{ ds }}"},
         retries=1,
         retry_delay=timedelta(seconds=30),
     )

@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { roleLabel } from '../../../core/auth/role-labels';
+import { ThemeService } from '../../../core/theme/theme.service';
 import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
 import { OperationModeIndicatorComponent } from '../operation-mode-indicator/operation-mode-indicator';
 import { PropertyContextService } from '../../services/property-context.service';
@@ -47,6 +48,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'stay-inbox': 'Estancias Activas',
   'service-requests': 'Solicitudes',
   shifts: 'Cajas y Turnos',
+  'open-shifts': 'Turnos Abiertos',
   'team-permissions': 'Equipo y Permisos',
   profile: 'Perfil',
   // ── Sub-rutas ──
@@ -104,13 +106,16 @@ function segmentLabel(segment: string): string | null {
 export class ManagementTopNavComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly notificationsApi = inject(NotificationsApiService);
+  private readonly themeService = inject(ThemeService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly elementRef = inject(ElementRef);
   private readonly propertyCtx = inject(PropertyContextService);
 
+  readonly theme = this.themeService;
   readonly currentUser = this.authService.currentUser;
   readonly showNotifications = signal(false);
+  readonly showProfileMenu = signal(false);
   readonly currentUrl = signal(this.router.url.split('?')[0]);
   readonly currentQueryParams = signal<Record<string, string>>({});
 
@@ -278,17 +283,31 @@ export class ManagementTopNavComponent implements OnInit {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
     if (this.showNotifications()) {
-      const target = event.target as HTMLElement;
       const wrapper = this.elementRef.nativeElement.querySelector('.notif-wrapper');
       if (wrapper && !wrapper.contains(target)) {
         this.showNotifications.set(false);
+      }
+    }
+    if (this.showProfileMenu()) {
+      const wrapper = this.elementRef.nativeElement.querySelector('.profile-wrapper');
+      if (wrapper && !wrapper.contains(target)) {
+        this.showProfileMenu.set(false);
       }
     }
   }
 
   toggleNotifications() {
     this.showNotifications.update(v => !v);
+  }
+
+  toggleProfileMenu() {
+    this.showProfileMenu.update(v => !v);
+  }
+
+  closeProfileMenu() {
+    this.showProfileMenu.set(false);
   }
 
   markAllRead() {

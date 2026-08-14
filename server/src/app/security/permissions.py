@@ -28,6 +28,15 @@ logger = logging.getLogger(__name__)
 # Actions that ``.manage`` expands into
 _MANAGE_CRUD_ACTIONS = ("create", "read", "update", "delete")
 
+# Actions whose grant implies the resource's ``read`` permission. Any other
+# action (e.g. the compound ``hotel.manage_roles``, ``properties.approve``,
+# ``hr.onboarding.create``) is a standalone code that must pass through
+# unchanged — those resources have no ``<resource>.read`` sibling in the
+# catalog.
+# KEEP IN SYNC: admin/routes.py (_PREVIEW_READ_DEP_ACTIONS) y
+# admin/service/role_update.py (missing_read check).
+READ_DEP_ACTIONS = frozenset({"create", "update", "delete", "manage", "execute"})
+
 # Guest-facing codes (auto-servicio del huésped — sección "Cliente" del editor
 # de roles). super_admin conserva el bypass ``*.*`` para AUTH (``user_has_permission``
 # sigue devolviendo True), pero estos códigos NO se le otorgan en el editor ni se

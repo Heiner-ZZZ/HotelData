@@ -6,6 +6,8 @@ import { DecimalPipe } from '@angular/common';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { exportCsv } from '../../../../shared/utils/csv-export.util';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -14,7 +16,7 @@ import { KpiChartComponent, type KpiChartDataset } from '../../../../shared/ui/k
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { HousekeepingApiService } from '../../services/housekeeping-api.service';
 import type { RoomStatusAnalytics } from '../../models/room-status-analytics.model';
-import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
+import { HorizontalSubNavComponent } from '../../../../shared/ui/horizontal-sub-nav/horizontal-sub-nav';
 
 /** Mismo catálogo de estados que el ciclo housekeeping (schemas.py ROOM_STATUSES). */
 const STATUS_DEFS: { value: string; label: string; icon: string }[] = [
@@ -40,7 +42,7 @@ const STATUS_DEFS: { value: string; label: string; icon: string }[] = [
     ErrorStateComponent,
     LoadingStateComponent,
     KpiChartComponent,
-    HousekeepingSubNavComponent,
+    HorizontalSubNavComponent,
   ],
   templateUrl: './room-status-dashboard-page.html',
   styleUrl: './room-status-dashboard-page.scss',
@@ -51,6 +53,10 @@ export class RoomStatusDashboardPageComponent {
   private readonly router = inject(Router);
   private readonly api = inject(HousekeepingApiService);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly auth = inject(AuthService);
+
+  /** Descarga del informe gateada por ``reports.download``. */
+  readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
 
   // ── URL-driven state ──
   private readonly qp = toSignal(this.activatedRoute.queryParamMap, { initialValue: this.activatedRoute.snapshot.queryParamMap });

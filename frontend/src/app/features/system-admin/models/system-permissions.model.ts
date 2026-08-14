@@ -23,14 +23,16 @@ export interface SystemPermissionsViewModel {
 }
 
 export interface NavigationItem {
+  slug: string;
+  parentSlug: string | null;
+  position: number;
+  nodeType: string | null;
   label: string;
   href: string;
   icon: string;
   visible: boolean;
-  section?: string | null;
-  isSectionHeader?: boolean;
-  requiredPermission?: string | null;
   permissionId?: string | null;
+  permissionCode?: string | null;
 }
 
 export interface RoleDetailModel {

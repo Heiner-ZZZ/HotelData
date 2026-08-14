@@ -3,6 +3,8 @@ import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 
 import { ReportsExportService } from '../../../../shared/services/reports-export.service';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -27,6 +29,10 @@ import { exportToExcel, exportToPdf, exportToDocx } from '../../utils/export-rep
 })
 export class ManagementReportsPageComponent {
   private readonly reports = inject(ReportsExportService);
+  private readonly auth = inject(AuthService);
+
+  /** Descarga de reportes gateada por ``reports.download``. */
+  readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
 
   readonly reportsResource = httpResource<ManagementReportsViewModel>(() => '/api/management/reports', {
     parse: (dto) => mapManagementReports(dto as ManagementReportsDto),

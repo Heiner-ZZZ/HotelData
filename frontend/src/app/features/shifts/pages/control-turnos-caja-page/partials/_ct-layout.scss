@@ -7,8 +7,8 @@
 
 /* ── Tokens ── */
 $sc-accent: var(--accent);
-$sc-accent-light: color-mix(in srgb, var(--teal) 10%, transparent);
-$sc-primary-container: var(--teal);
+$sc-accent-light: color-mix(in srgb, var(--accent) 10%, transparent);
+$sc-primary-container: var(--accent);
 $sc-surface: var(--surface);
 $sc-surface-bg: var(--gray-50);
 $sc-text: var(--app-text);
@@ -160,6 +160,43 @@ $sc-shadow-md: 0 4px 12px rgba(0,0,0,0.06);
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: 1.25rem;
+}
+
+/* ── Expired-shift alert (max-open-hours control) ── */
+.sc-expired-alert {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: var(--danger-light);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-left: 4px solid var(--danger);
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+
+  > .material-symbols-outlined {
+    color: var(--danger);
+    font-size: 1.6rem;
+    flex-shrink: 0;
+  }
+
+  .sc-expired-alert-body {
+    flex: 1;
+    min-width: 0;
+
+    strong { color: var(--danger-strong); font-size: 0.92rem; }
+    p {
+      margin: 0.2rem 0 0;
+      font-size: 0.85rem;
+      color: var(--app-text);
+      line-height: 1.5;
+    }
+  }
+
+  .sc-expired-close-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 }
 
 .sc-left-col {

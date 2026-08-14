@@ -46,7 +46,9 @@ def my_notifications_api(
     for item in items:
         item["type_label"] = _type_label(item.get("notification_type", ""))
         item["status_label"] = _status_label(item.get("status", ""))
-        item["status_tone"] = _status_tone(item.get("status", ""))
+        item["status_tone"] = _status_tone(
+            item.get("status", ""), item.get("notification_type", "")
+        )
         item["is_unread"] = item.get("status") == "sent"
         # Mensaje específico del evento (p.ej. "Tus permisos en X cambiaron…")
         item["message"] = item.get("message", "")
@@ -78,6 +80,8 @@ def _type_label(nt: str) -> str:
         "guest_review_rejected": "Reseña rechazada",
         "guest_other": "Notificación",
         "role_permissions_changed": "Permisos del rol actualizados",
+        "shift_expired": "Turno de caja vencido",
+        "shift_open_long": "Turno de caja abierto por mucho tiempo",
     }
     return labels.get(nt, nt.replace("guest_", "").replace("_", " ").title())
 
@@ -87,6 +91,10 @@ def _status_label(status: str) -> str:
     return labels.get(status, status)
 
 
-def _status_tone(status: str) -> str:
+def _status_tone(status: str, notification_type: str = "") -> str:
+    # Shift alerts are warnings even though they are delivered (sent) —
+    # an expired / long-open cash register deserves amber, not green.
+    if notification_type in ("shift_expired", "shift_open_long"):
+        return "warning"
     tones = {"sent": "success", "failed": "warning", "error": "danger"}
     return tones.get(status, "neutral")

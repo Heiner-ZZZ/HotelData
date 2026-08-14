@@ -65,7 +65,7 @@
 
 .export-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .export-btn .btn-icon {
@@ -84,13 +84,13 @@
 
 .export-btn.pdf:hover {
   border-color: var(--danger);
-  background: rgba(201, 61, 50, 0.06);
-  box-shadow: 0 1px 4px rgba(201, 61, 50, 0.12);
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
 .export-btn.word:hover {
   border-color: var(--accent);
-  background: rgba(20, 99, 255, 0.06);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
   box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 

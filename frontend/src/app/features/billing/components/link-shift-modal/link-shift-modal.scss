@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════════════
+   Link Shift Modal — vincula un pago legacy a su turno
+   (mismos tokens/estructura que payment-register-modal)
+   ═══════════════════════════════════════════════ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: lsm-fade-in 0.15s ease;
+}
+
+@keyframes lsm-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.link-shift-modal {
+  background: var(--surface);
+  border-radius: 14px;
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+  animation: lsm-slide-up 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes lsm-slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Head ── */
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--app-border);
+
+  h2 {
+    margin: 0;
+    flex: 1;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+}
+
+.modal-head-icon {
+  font-size: 1.35rem;
+  color: var(--accent);
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  color: var(--muted-text);
+  transition: background 0.15s;
+
+  &:hover { background: var(--surface-hover); }
+
+  .material-symbols-outlined { font-size: 1.15rem; }
+}
+
+/* ── Body ── */
+
+.modal-body {
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modal-intro {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted-text);
+  line-height: 1.45;
+
+  strong { color: var(--app-text); }
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted-text);
+  }
+}
+
+.text-input {
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid var(--app-border);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  outline: none;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--app-text);
+  transition: border-color 0.15s;
+
+  &:focus { border-color: var(--accent); }
+
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+/* ── States ── */
+
+.lazy-state {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted-text);
+  padding: 0.75rem 0;
+
+  .spinner { animation: lsm-spin 0.9s linear infinite; }
+}
+
+@keyframes lsm-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.error-box {
+  background: color-mix(in srgb, var(--danger, #ef4444) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger, #ef4444) 35%, transparent);
+  color: var(--danger-text, var(--danger, #ef4444));
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* ── Foot ── */
+
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 1rem 1.2rem;
+  border-top: 1px solid var(--app-border);
+
+  .btn-ghost {
+    padding: 0.55rem 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--app-border);
+    background: transparent;
+    color: var(--muted-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) { background: var(--surface-hover); }
+    &:disabled { opacity: 0.6; cursor: not-allowed; }
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1rem;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: var(--accent-contrast, #fff);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    .material-symbols-outlined { font-size: 1.05rem; }
+    .spinner { animation: lsm-spin 0.9s linear infinite; }
+    &:disabled { opacity: 0.6; cursor: not-allowed; }
+  }
+}

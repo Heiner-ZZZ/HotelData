@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, isDevMode, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { filter, firstValueFrom, map, switchMap } from 'rxjs';
 import { OperationModeService } from '../../../../core/services/operation-mode.service';
 
@@ -19,7 +19,7 @@ import { PropertiesApiService } from '../../services/properties-api.service';
 
 @Component({
   selector: 'app-property-edit-page',
-  imports: [ErrorStateComponent, ImageGalleryComponent, AmenitiesPanelComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule],
+  imports: [ErrorStateComponent, ImageGalleryComponent, AmenitiesPanelComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, RouterLink],
   templateUrl: './property-edit-page.html',
   styleUrl: './property-edit-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -59,7 +59,9 @@ export class PropertyEditPageComponent {
   readonly propId = signal(0);
 
   constructor() {
-    this.currenciesApi.list(true).pipe(
+    // Endpoint público: el gerente no tiene settings.read y /management/currencies
+    // devolvería 403. El catálogo activo es suficiente para el select de moneda.
+    this.currenciesApi.listActivePublic().pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (currencies) => this.activeCurrencies.set(currencies),

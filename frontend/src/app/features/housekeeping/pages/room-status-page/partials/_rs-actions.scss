@@ -85,7 +85,7 @@
 /* ── Action Variants ── */
 
 .qa-btn-primary:hover:not(:disabled) {
-  background: rgba(0, 96, 118, 0.06);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -97,7 +97,7 @@
 }
 
 .qa-btn-danger:hover:not(:disabled) {
-  background: rgba(186, 26, 26, 0.06);
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
   border-color: var(--danger);
   color: var(--danger);
 }

@@ -77,6 +77,7 @@ import type { EmployeeListItem } from '../../models/hr.model';
                     <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--muted-text);">Departamento</th>
                     <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--muted-text);">Puesto</th>
                     <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--muted-text);">Email</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--muted-text);">Acceso</th>
                     <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--muted-text);">Estado</th>
                     <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--muted-text);">Acción</th>
                   </tr>
@@ -90,6 +91,30 @@ import type { EmployeeListItem } from '../../models/hr.model';
                       <td style="padding: 12px 16px; color: var(--muted-text);">{{ emp.department || '—' }}</td>
                       <td style="padding: 12px 16px; color: var(--muted-text);">{{ emp.position || '—' }}</td>
                       <td style="padding: 12px 16px; color: var(--muted-text);">{{ emp.email || '—' }}</td>
+                      <td style="padding: 12px 16px;">
+                        @if (emp.hasUserAccount) {
+                          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                            <span style="background:var(--success-light);color:var(--success-strong);padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;">
+                              <span class="material-symbols-outlined" style="font-size:12px;vertical-align:-1px;">person</span> Con cuenta
+                            </span>
+                            @if (emp.roleAssigned) {
+                              <a [routerLink]="['/management/team-permissions']"
+                                [queryParams]="{ prop_id: propertyCtx.currentPropId() || undefined }"
+                                style="display:inline-flex;align-items:center;gap:3px;color:var(--accent);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;">
+                                <span class="material-symbols-outlined" style="font-size:12px;">admin_panel_settings</span> Con rol
+                              </a>
+                            } @else {
+                              <a [routerLink]="['/management/team-permissions']"
+                                [queryParams]="{ prop_id: propertyCtx.currentPropId() || undefined }"
+                                style="display:inline-flex;align-items:center;gap:3px;color:var(--warning-strong);text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;">
+                                <span class="material-symbols-outlined" style="font-size:12px;">admin_panel_settings</span> Sin rol
+                              </a>
+                            }
+                          </div>
+                        } @else {
+                          <span style="background:var(--surface-soft);color:var(--muted-text);padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;">Sin cuenta</span>
+                        }
+                      </td>
                       <td style="padding: 12px 16px;">
                         <span [style]="emp.isActive ? 'background:var(--success-light);color:var(--success-strong);' : 'background:var(--danger-light);color:var(--danger-strong);'"
                           style="padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;">

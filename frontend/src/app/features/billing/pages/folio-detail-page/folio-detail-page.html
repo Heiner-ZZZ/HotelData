@@ -21,6 +21,10 @@
             </h1>
           </div>
           <div class="fl-actions">
+            <button type="button" class="fl-btn fl-btn-outline" (click)="printPage()">
+              <span class="material-symbols-outlined">print</span>
+              Imprimir
+            </button>
             @if (isOpen()) {
               <button type="button" class="fl-btn fl-btn-primary" (click)="startPosting('charge')">
                 <span class="material-symbols-outlined">add_circle</span>
@@ -176,6 +180,15 @@
                           <span class="fl-posting-type">{{ typeLabel(posting.type) }}</span>
                         </div>
                         <div class="fl-posting-meta">{{ posting.postedAt | date:'dd/MM HH:mm' }}</div>
+                        @if (shiftLabel(posting); as responsible) {
+                          <span class="fl-shift-chip" [title]="shiftTitle(posting)">
+                            <span class="material-symbols-outlined">point_of_sale</span>
+                            {{ responsible }}
+                            @if (shiftTypeLabel(posting.shiftType); as type) {
+                              <em>{{ type }}</em>
+                            }
+                          </span>
+                        }
                       </div>
                       <span class="fl-posting-amount"
                         [class.positive]="posting.amount >= 0"
@@ -419,6 +432,18 @@
                   <div>
                     <dt>Hotel</dt>
                     <dd>#{{ f.propId }}</dd>
+                  </div>
+                }
+                @if (f.createdShift; as shift) {
+                  <div>
+                    <dt>Turno de apertura</dt>
+                    <dd>
+                      <span class="fl-shift-chip" [title]="'Abierto por ' + shift.openedBy + ' · ' + shift.startTime">
+                        <span class="material-symbols-outlined">point_of_sale</span>
+                        {{ shift.employee || shift.openedBy || '—' }}
+                        @if (shift.shiftLabel) { <em>{{ shift.shiftLabel }}</em> }
+                      </span>
+                    </dd>
                   </div>
                 }
               </dl>

@@ -25,6 +25,8 @@ function mapEmployeeItem(dto: EmployeeItemDto): EmployeeListItem {
     isActive: dto.is_active,
     hireDate: dto.hire_date,
     createdAt: dto.created_at,
+    hasUserAccount: dto.has_user_account ?? false,
+    roleAssigned: dto.role_assigned ?? false,
   };
 }
 

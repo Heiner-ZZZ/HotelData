@@ -253,6 +253,7 @@
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
+      <form class="modal-form" (ngSubmit)="saveEdit()">
       <div class="modal-body">
         <div class="readonly-user">
           <div class="user-avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
@@ -275,6 +276,7 @@
               id="su-username"
               type="text"
               [ngModel]="editForm().username"
+              [ngModelOptions]="{ standalone: true }"
               (ngModelChange)="editForm.update(f => ({...f, username: $event}))"
               placeholder="usuario_sistema"
               maxlength="50"
@@ -291,6 +293,7 @@
               id="su-display"
               type="text"
               [ngModel]="editForm().displayName"
+              [ngModelOptions]="{ standalone: true }"
               (ngModelChange)="editForm.update(f => ({...f, displayName: $event}))"
               placeholder="Nombre que ven los demás usuarios"
               maxlength="80"
@@ -305,6 +308,7 @@
               id="su-email"
               type="email"
               [ngModel]="editForm().email"
+              [ngModelOptions]="{ standalone: true }"
               (ngModelChange)="editForm.update(f => ({...f, email: $event}))"
               placeholder="usuario@hotel.com"
               maxlength="120"
@@ -318,6 +322,7 @@
             <select
               id="su-role"
               [ngModel]="editForm().primaryRole"
+              [ngModelOptions]="{ standalone: true }"
               (ngModelChange)="editForm.update(f => ({...f, primaryRole: $event}))"
             >
               @for (role of roleOptions(); track role.roleName) {
@@ -345,6 +350,7 @@
                 type="text"
                 class="hotel-search-input"
                 [ngModel]="hotelQuery()"
+                [ngModelOptions]="{ standalone: true }"
                 (ngModelChange)="hotelQuery.set($event)"
                 placeholder="Buscar hotel por nombre…"
               />
@@ -400,6 +406,7 @@
               id="su-password"
               type="password"
               [ngModel]="editForm().password"
+              [ngModelOptions]="{ standalone: true }"
               (ngModelChange)="editForm.update(f => ({...f, password: $event}))"
               placeholder="Dejar en blanco para mantener la actual"
               autocomplete="new-password"
@@ -415,8 +422,8 @@
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn-outline" (click)="closeEdit()">Cancelar</button>
-        <button class="btn-primary" (click)="saveEdit()" [disabled]="savingEdit()">
+        <button type="button" class="btn-outline" (click)="closeEdit()">Cancelar</button>
+        <button type="submit" class="btn-primary" [disabled]="savingEdit()">
           @if (savingEdit()) {
             <span class="material-symbols-outlined spin">sync</span>
             Guardando...
@@ -426,6 +433,7 @@
           }
         </button>
       </div>
+      </form>
     </div>
   </div>
 }

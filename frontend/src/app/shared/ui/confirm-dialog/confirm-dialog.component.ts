@@ -32,6 +32,23 @@ import { ConfirmDialogService } from './confirm-dialog.service';
             </ul>
           }
 
+          @if (service.config().input) {
+            <div class="cd-input-group">
+              @if (service.config().input!.label) {
+                <label class="cd-input-label" for="cd-input">{{ service.config().input!.label }}</label>
+              }
+              <textarea
+                id="cd-input"
+                class="cd-input"
+                rows="3"
+                [value]="service.inputValue()"
+                [placeholder]="service.config().input!.placeholder ?? ''"
+                [attr.maxlength]="service.config().input!.maxLength ?? 500"
+                (input)="service.inputValue.set(($any($event.target).value ?? ''))"
+              ></textarea>
+            </div>
+          }
+
           <div class="cd-actions">
             <button class="cd-btn cd-btn-cancel" (click)="service.cancel()">
               {{ service.config().cancelLabel }}
@@ -39,6 +56,7 @@ import { ConfirmDialogService } from './confirm-dialog.service';
             <button class="cd-btn cd-btn-confirm"
                     [class.cd-btn-danger]="service.config().variant === 'danger'"
                     [class.cd-btn-warning]="service.config().variant === 'warning'"
+                    [disabled]="service.config().input?.required && !service.inputValue().trim()"
                     (click)="service.confirm()">
               {{ service.config().confirmLabel }}
             </button>

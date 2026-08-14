@@ -1,5 +1,5 @@
 <div class="hk-page">
-  <app-housekeeping-sub-nav />
+  <app-horizontal-sub-nav [activeSlug]="'gestion.housekeeping.informes.dashboard'" />
 
   @switch (viewState()) {
     @case ('loading') { <app-loading-state label="Cargando housekeeping..." /> }

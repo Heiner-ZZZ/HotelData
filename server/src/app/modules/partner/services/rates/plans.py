@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date as date_type
+from datetime import timedelta
 from typing import Any
 
 from pymongo import ReturnDocument
@@ -18,6 +20,27 @@ from src.app.modules.partner.services._common import (
 from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
+
+
+# ── Tarifa base mínima (configurable en system_config) ─────────────────────
+DEFAULT_MIN_BASE_RATE = 10.0
+
+
+def get_min_base_rate() -> float:
+    """Umbral mínimo de tarifa base de un plan tarifario.
+
+    Configurable por plataforma en ``system_config._id='global'.min_base_rate``
+    (doc singleton del módulo global_settings). Si el campo no existe o el
+    valor no es numérico, cae al default de $10 — nunca bloquea con un valor
+    inválido.
+    """
+    db = get_database()
+    config = db.system_config.find_one({"_id": "global"}, {"min_base_rate": 1, "_id": 0})
+    try:
+        value = float((config or {}).get("min_base_rate") or DEFAULT_MIN_BASE_RATE)
+    except (TypeError, ValueError):
+        value = DEFAULT_MIN_BASE_RATE
+    return value if value > 0 else DEFAULT_MIN_BASE_RATE
 
 
 def _rate_plans_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
@@ -58,6 +81,9 @@ def _validate_rate_plan(
             return "base_rate debe ser mayor que 0."
         if rate > 99999.99:
             return "base_rate no puede superar 99999.99."
+        min_rate = get_min_base_rate()
+        if rate < min_rate:
+            return f"base_rate debe ser mayor o igual a {min_rate:g}."
     except (TypeError, ValueError):
         return "Debe indicar una tarifa base válida."
     db = get_database()
@@ -291,6 +317,7 @@ def partner_hotel_rates(prop_id: int) -> dict[str, Any] | None:
         return None
     rate_plans = _rate_plans_for_prop(prop_id)
     detail["rate_plans"] = rate_plans
+    detail["min_base_rate"] = get_min_base_rate()
     detail["calendar"] = _rate_calendar_for_prop(prop_id)
     detail["rate_rules"] = _rate_rules_for_prop(prop_id)
     detail["promotions"] = _promotion_campaigns_for_prop(prop_id)
@@ -300,7 +327,64 @@ def partner_hotel_rates(prop_id: int) -> dict[str, Any] | None:
         db.room_types.find({"prop_id": prop_id}, {"_id": 0, "room_type_id": 1, "name": 1})
         .sort([("name", 1)])
     )
+    detail["rate_coverage"] = _rate_coverage_gap(prop_id)
     return detail
+
+
+def _rate_coverage_gap(prop_id: int) -> dict[str, Any] | None:
+    """Hueco tarifas-vs-inventario para el banner del overview.
+
+    Las noches con habitaciones disponibles pero SIN tarifa abierta no se
+    pueden vender en el search público (exige inventario Y tarifa por noche).
+    Devuelve el rango faltante (conteo exacto + fechas para pre-cargar
+    "Generar calendario") o ``None`` si no hay hueco accionable.
+
+    - ``rate_last_date``: última fecha con tarifa ABIERTA (is_closed != True).
+    - ``inventory_last_date``: última fecha con inventario.
+    - ``gap_nights``: noches desde el día siguiente a la última tarifa (o hoy
+      si no hay tarifas) hasta el último inventario, con disponible > 0.
+    """
+    db = get_database()
+    today = local_today()
+    rate_last = db.hotel_rate_calendar.find_one(
+        {"prop_id": prop_id, "is_closed": {"$ne": True}},
+        sort=[("date", -1)],
+    )
+    inv_last = db.room_inventory_calendar.find_one(
+        {"prop_id": prop_id, "is_deleted": {"$ne": True}},
+        sort=[("date", -1)],
+    )
+    if inv_last is None or not inv_last.get("date"):
+        return None
+    inv_last_date = str(inv_last["date"])
+    if rate_last and rate_last.get("date"):
+        rate_last_date = str(rate_last["date"])
+        start = max((date_type.fromisoformat(rate_last_date) + timedelta(days=1)).isoformat(), today)
+    else:
+        rate_last_date = None
+        start = today
+    if start > inv_last_date:
+        return None
+    avail_dates = sorted(
+        db.room_inventory_calendar.distinct(
+            "date",
+            {
+                "prop_id": prop_id,
+                "is_deleted": {"$ne": True},
+                "available_rooms": {"$gt": 0},
+                "date": {"$gte": start, "$lte": inv_last_date},
+            },
+        )
+    )
+    if not avail_dates:
+        return None
+    return {
+        "rate_last_date": rate_last_date,
+        "inventory_last_date": inv_last_date,
+        "gap_nights": len(avail_dates),
+        "gap_start": avail_dates[0],
+        "gap_end": avail_dates[-1],
+    }
 
 
 def _promotion_campaigns_for_prop(prop_id: int, limit: int = 20) -> list[dict[str, Any]]:

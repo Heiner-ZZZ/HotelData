@@ -40,6 +40,10 @@ export class DestinationAutocompleteComponent {
   readonly value = input('');
   /** Mínimo de caracteres para disparar sugerencias. */
   readonly minChars = input(2);
+  /** id/name del input — el padre puede pasarlo para que su <label for="…">
+   *  lo asocie (el booking-bar usa booking-bar-dest). Sin él, el input no
+   *  tiene id/name y Chrome Issues lo reporta. */
+  readonly inputId = input('destination-input');
 
   /** Se emite en cada edición (input del usuario). */
   readonly valueChange = output<string>();

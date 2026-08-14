@@ -15,7 +15,12 @@ from src.database.connection import get_database
 
 
 def management_property_options(limit: int = 100, user: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    results = list_partner_hotels("", page=1, page_size=min(max(limit, 1), 100), user=user)
+    # Lightweight path: amenities/options only needs id+name. The enriched
+    # listing (list_partner_hotels) runs per-hotel performance/operational
+    # aggregates — 100 rows ≈ 5s of wasted work for a name dropdown.
+    from src.app.modules.partner.services.properties.listing import list_property_options
+
+    results = list_property_options("", page=1, page_size=min(max(limit, 1), 100), user=user)
     return [
         {
             "prop_id": item["prop_id"],

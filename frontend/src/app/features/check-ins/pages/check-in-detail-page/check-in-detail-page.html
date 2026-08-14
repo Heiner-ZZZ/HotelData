@@ -31,10 +31,56 @@
           </div>
           @if (vm.stay_status === 'checked_in') {
             <span class="ciw-badge success">✓ Completado</span>
+          } @else if (noShow()) {
+            <span class="ciw-badge noshow">No-show</span>
           } @else {
             <span class="ciw-badge pending">● Pendiente</span>
           }
         </div>
+
+        @if (noShow()) {
+          <div class="ciw-noshow-block">
+            <span class="material-symbols-outlined">event_busy</span>
+            <div>
+              <strong>Reserva no-show — check-in no disponible</strong>
+              <p>
+                El huésped nunca llegó y la estadía ({{ vm.check_in_date }} → {{ vm.check_out_date }}) ya terminó.
+                @if (vm.stay_status === 'no_show') {
+                  Esta reserva fue marcada como <strong>no-show</strong> y no puede registrarse como check-in.
+                } @else {
+                  Esta reserva venció como <strong>no-show</strong> (fecha de check-out pasada) y no puede registrarse como check-in.
+                }
+              </p>
+            </div>
+            @if (canMarkNoShow()) {
+              <button type="button" class="ciw-btn ciw-btn-danger ciw-noshow-action"
+                (click)="markNoShow()" [disabled]="noShowPending()">
+                @if (noShowPending()) {
+                  <span class="material-symbols-outlined spinning">sync</span>
+                  Procesando...
+                } @else {
+                  <span class="material-symbols-outlined">person_off</span>
+                  Marcar no-show
+                }
+              </button>
+            }
+          </div>
+          @if (noShowResult(); as ns) {
+            <div class="ciw-noshow-folio">
+              <span class="material-symbols-outlined">receipt_long</span>
+              <div>
+                <span class="ciw-label">Folio de penalización</span>
+                <strong>{{ ns.folio_number || 'N/D' }}</strong>
+                <span class="ciw-noshow-folio-amount">${{ ns.penalty_amount.toFixed(2) }}</span>
+                <a class="ciw-noshow-folio-link"
+                  [routerLink]="['/management/billing/folios', vm.booking_id]"
+                  [queryParams]="{prop_id: vm.prop_id}">
+                  Ver folio en Facturación
+                </a>
+              </div>
+            </div>
+          }
+        }
 
         @if (vm.late_checkin) {
           <div class="ciw-late-banner">
@@ -57,7 +103,14 @@
           </div>
         }
 
-        @if (!checkinDone()) {
+        @if (errorMessage()) {
+          <div class="ciw-toast error" (click)="errorMessage.set('')">
+            <span class="material-symbols-outlined">error</span>
+            {{ errorMessage() }}
+          </div>
+        }
+
+        @if (!checkinDone() && !noShow()) {
           <!-- ═══ Breadcrumb ═══ -->
           <nav class="ciw-breadcrumb">
             @for (step of steps; track step.num) {
@@ -400,7 +453,7 @@
             </div>
           </div>
 
-        } @else {
+        } @else if (checkinDone()) {
           <!-- ═══ Completed State ═══ -->
           <div class="ciw-completed">
             <div class="ciw-completed-icon">

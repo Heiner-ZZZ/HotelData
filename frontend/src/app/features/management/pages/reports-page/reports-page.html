@@ -21,20 +21,22 @@
               <h1 class="report-title">Reportes operativos</h1>
               <p class="report-desc">Resumen ejecutivo del hecho principal GA03 y de las colecciones operativas demo conectadas al management.</p>
             </div>
-            <div class="report-actions">
-              <button type="button" class="export-btn excel" (click)="exportExcel()" aria-label="Exportar a Excel">
-                <span class="material-symbols-outlined btn-icon" aria-hidden="true">table_chart</span>
-                Excel
-              </button>
-              <button type="button" class="export-btn pdf" (click)="exportPdf()" aria-label="Exportar a PDF">
-                <span class="material-symbols-outlined btn-icon" aria-hidden="true">picture_as_pdf</span>
-                PDF
-              </button>
-              <button type="button" class="export-btn word" (click)="exportDocx()" aria-label="Exportar a Word">
-                <span class="material-symbols-outlined btn-icon" aria-hidden="true">article</span>
-                Word
-              </button>
-            </div>
+            @if (canExport()) {
+              <div class="report-actions">
+                <button type="button" class="export-btn excel" (click)="exportExcel()" aria-label="Exportar a Excel">
+                  <span class="material-symbols-outlined btn-icon" aria-hidden="true">table_chart</span>
+                  Excel
+                </button>
+                <button type="button" class="export-btn pdf" (click)="exportPdf()" aria-label="Exportar a PDF">
+                  <span class="material-symbols-outlined btn-icon" aria-hidden="true">picture_as_pdf</span>
+                  PDF
+                </button>
+                <button type="button" class="export-btn word" (click)="exportDocx()" aria-label="Exportar a Word">
+                  <span class="material-symbols-outlined btn-icon" aria-hidden="true">article</span>
+                  Word
+                </button>
+              </div>
+            }
           </div>
 
           <div class="kpi-row">

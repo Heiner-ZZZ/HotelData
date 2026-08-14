@@ -44,7 +44,7 @@ def room_performance_dashboard_api(
     channel: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("rates.read")),
+    current_user: dict = Depends(require_permission("reports.rates.adr.read")),
 ):
     """Dashboard táctico R1.2: ADR por fecha, tipo de habitación y canal.
 
@@ -76,7 +76,7 @@ def rate_calendar_dashboard_api(
     days: int = Query(default=90, ge=1, le=365),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("rates.read")),
+    current_user: dict = Depends(require_permission("reports.rates.calendar.read")),
 ):
     """Dashboard simple R2.2: días con tarifa vs huecos (Mongo).
 

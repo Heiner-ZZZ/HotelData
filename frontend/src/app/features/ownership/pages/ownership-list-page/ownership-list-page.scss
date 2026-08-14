@@ -128,8 +128,8 @@ th {
 }
 
 .role-badge.role-marketing_hotelero {
-  background: color-mix(in srgb, var(--teal) 10%, transparent);
-  color: var(--teal);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
 }
 
 .hotel-preview {
@@ -169,7 +169,7 @@ th {
 }
 
 .message.error {
-  border: 1px solid rgba(201, 61, 50, 0.2);
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
 }
 
 .roles-section {

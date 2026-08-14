@@ -12,9 +12,16 @@ from src.app.modules.reservations.service import (
     get_check_out_detail, save_check_out_detail,
 )
 from src.app.modules.reservations.service._checkinout import update_check_in_datetime
-from src.app.modules.partner.services.audit import register_action
+from src.app.modules.partner.services.audit import (
+    register_action,
+    register_shift_attribution_access,
+)
 from src.app.security.dependencies import require_permission
-from src.app.modules.reception import get_active_shift_id
+from src.app.modules.reception import (
+    ShiftExpiredError,
+    ensure_shift_not_expired,
+    get_active_shift_id,
+)
 from src.database.connection import get_database
 
 from src.app.modules.reservations.routes.management_impl import (
@@ -49,6 +56,10 @@ def _require_active_shift(prop_id: int) -> str:
                 "operaciones de front desk."
             ),
         )
+    try:
+        ensure_shift_not_expired(prop_id)
+    except ShiftExpiredError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     return shift_id
 
 
@@ -322,6 +333,18 @@ def check_out_detail_api(
         changed_by=current_user.get("username", "system"),
         metadata={"url": str(request.url)},
     )
+    # Traza de acceso a datos sensibles: quién consultó la atribución de
+    # turno (turno + cajero responsable) de este check-out.
+    if result.get("check_out_shift_id") or result.get("check_out_shift"):
+        register_shift_attribution_access(
+            prop_id=result.get("prop_id", 0),
+            entity_id=booking_id,
+            source="check_out",
+            shift_id=result.get("check_out_shift_id"),
+            shift=result.get("check_out_shift"),
+            changed_by=current_user.get("username", "system"),
+            url=str(request.url),
+        )
     return result
 
 

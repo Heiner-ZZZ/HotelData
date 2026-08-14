@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from src.database.connection import get_database
-from src.app.security.permissions import ensure_read_dependencies
+from src.app.security.permissions import READ_DEP_ACTIONS, ensure_read_dependencies
 
 from ._helpers import utc_now
 
@@ -27,11 +27,16 @@ def update_role_definition(
         item["permission_code"] for item in all_permission_docs if item.get("permission_code")
     }
     normalized_codes = ensure_read_dependencies(set(permission_codes), available_codes)
+    # Solo las acciones CRUD (create/update/delete/manage/execute) implican un
+    # ``<resource>.read`` hermano. Los códigos compuestos (``hotel.manage_roles``,
+    # ``properties.approve``, ``hr.onboarding.create``) son permisos completos
+    # por sí mismos y no exigen un read que no existe en el catálogo — mismo
+    # criterio que _filter_preview_codes (ver permissions.READ_DEP_ACTIONS).
     missing_read = sorted(
         f"{code.split('.', 1)[0]}.read"
         for code in normalized_codes
         if '.' in code
-        and code.split('.', 1)[1] != 'read'
+        and code.split('.', 1)[1] in READ_DEP_ACTIONS
         and f"{code.split('.', 1)[0]}.read" not in available_codes
     )
     if missing_read:

@@ -9,6 +9,10 @@ export interface EmployeeListItem {
   isActive: boolean;
   hireDate: string;
   createdAt: string;
+  /** true si el empleado tiene user_id que resuelve a un users._id vivo. */
+  hasUserAccount: boolean;
+  /** true si su cuenta tiene un hotel_role asignado en el prop_id del empleado. */
+  roleAssigned: boolean;
 }
 
 export interface EmployeeDetail {

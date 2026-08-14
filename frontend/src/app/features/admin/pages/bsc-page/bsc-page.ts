@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { httpResource } from '@angular/common/http';
 
 import { ToastService } from '../../../../shared/services/toast.service';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -26,6 +28,10 @@ import { mapBscResponse } from '../../mappers/bsc.mapper';
 })
 export class BscPageComponent {
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
+
+  /** Descarga del BSC gateada por ``reports.download`` (igual que el resto de informes). */
+  readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
 
   readonly bscResource = httpResource<BscViewModel>(() => '/api/kpi/bsc', {
     parse: (dto) => mapBscResponse(dto as BscResponseDto),

@@ -29,6 +29,7 @@ def ensure_global_settings_collections() -> None:
             "_id": "global",
             "default_commission_pct": 5.0,
             "default_iva_pct": 16.0,
+            "min_base_rate": 10.0,
             "updated_at": _now(),
             "updated_by": "system",
         })

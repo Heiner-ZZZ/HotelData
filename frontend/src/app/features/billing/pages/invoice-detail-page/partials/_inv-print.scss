@@ -71,6 +71,21 @@
 
   .inv-pay-icon { display: none !important; }
 
+  /* The shift chip prints as a clean attribution line: cashier + shift type. */
+  .inv-shift-chip {
+    display: inline-flex !important;
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding: 1px 6px !important;
+    margin-top: 0.25rem !important;
+    font-size: 0.62rem !important;
+    color: #000 !important;
+
+    em { color: #000 !important; }
+    em::before { content: '· '; }
+  }
+
   .inv-pay-row.paid {
     color: #000 !important;
     .paid-amount { color: #000 !important; }
