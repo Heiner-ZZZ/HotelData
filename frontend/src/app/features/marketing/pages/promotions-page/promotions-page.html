@@ -1,0 +1,914 @@
+<div class="promo-page">
+  <app-page-header
+    eyebrow="Marketing · Hotel"
+    title="Publicidad y promociones"
+    description="Envía publicidad, promociones, novedades y ofertas a los huéspedes que aceptaron recibirlas. Llegan a la campanita del huésped y a su correo."
+  />
+
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="selectedLabel()"
+    (propIdChange)="onPropSelected($event)"
+  />
+
+  @if (!selectedPropId()) {
+    <app-empty-state
+      icon="campaign"
+      title="Selecciona una propiedad"
+      description="Elige el hotel desde el que quieres enviar la promoción para ver cuántos huéspedes la recibirán."
+    />
+  } @else if (sentResult(); as result) {
+    <section class="surface-card promo-success" role="status">
+      <div class="promo-success-icon">
+        <span class="material-symbols-outlined">{{ result.scheduled ? 'schedule' : 'mark_email_read' }}</span>
+      </div>
+      <div class="promo-success-copy">
+        @if (result.scheduled) {
+          <h3>Promoción programada</h3>
+          <p>
+            Se enviará automáticamente el
+            <strong>{{ result.send_at_iso | date: 'd MMM yyyy, HH:mm' }}</strong>
+            a los huéspedes con consentimiento de este hotel.
+          </p>
+        } @else {
+          <h3>Promoción enviada</h3>
+          <p>
+            <strong>{{ result.sent }}</strong> {{ result.sent === 1 ? 'huésped recibió' : 'huéspedes recibieron' }}
+            la promoción en su campanita y correo.
+          </p>
+        }
+      </div>
+      <button type="button" class="btn-secondary" (click)="resetResult()">
+        <span class="material-symbols-outlined">add_circle</span>
+        Nueva promoción
+      </button>
+    </section>
+  } @else {
+    <div class="promo-composer">
+      <!-- ═══ Componer ═══ -->
+      <section class="surface-card promo-form-card">
+        <div class="panel-header">
+          <span class="material-symbols-outlined panel-header-icon">edit_note</span>
+          <div>
+            <h3>Componer la promoción</h3>
+            <p>Escribe el título y el mensaje tal como los verán los huéspedes.</p>
+          </div>
+        </div>
+
+        <label class="field">
+          <span class="field-label">Título</span>
+          <div class="input-wrap">
+            <span class="material-symbols-outlined input-prefix">title</span>
+            <input
+              [value]="title()"
+              (input)="title.set($any($event.target).value)"
+              placeholder="Ej: Oferta de verano — 20% off"
+              maxlength="120"
+            />
+          </div>
+          @if (title() && !titleValid()) {
+            <span class="field-hint field-hint--error">El título debe tener al menos 3 caracteres.</span>
+          }
+        </label>
+
+        <label class="field">
+          <span class="field-label">Mensaje</span>
+          <div class="input-wrap textarea-wrap">
+            <span class="material-symbols-outlined input-prefix textarea-prefix">notes</span>
+            <textarea
+              [value]="message()"
+              (input)="message.set($any($event.target).value)"
+              placeholder="Ej: Aprovecha un 20% de descuento en tu próxima estadía reservando antes del 30 de septiembre."
+              rows="5"
+              maxlength="2000"
+            ></textarea>
+          </div>
+          <span class="field-hint field-hint--count">
+            {{ message().length }}/2000
+            @if (message() && !messageValid()) {
+              <span class="field-hint--error"> · Mínimo 10 caracteres</span>
+            }
+          </span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Programar envío <span class="field-optional">(opcional)</span></span>
+          <div class="input-wrap">
+            <span class="material-symbols-outlined input-prefix">schedule</span>
+            <input
+              type="datetime-local"
+              [value]="scheduleAt()"
+              (input)="scheduleAt.set($any($event.target).value)"
+              [min]="nowMin()"
+            />
+          </div>
+          @if (scheduleAt()) {
+            <span class="field-hint">
+              Se enviará automáticamente el {{ scheduleAt() | date: 'd MMM yyyy, HH:mm' }} (hora local).
+            </span>
+          } @else {
+            <span class="field-hint">Sin fecha → se envía al instante al confirmar.</span>
+          }
+        </label>
+
+        <!-- ═══ Detalles de la oferta (Fase 2) ═══ -->
+        <div class="promo-offer">
+          <div class="promo-offer-head">
+            <span class="material-symbols-outlined">local_offer</span>
+            <div>
+              <strong>Detalles de la oferta</strong>
+              <p>La promoción también se publicará como oferta en la página del hotel ({{ appliesToLabel() }}).</p>
+            </div>
+          </div>
+
+          <label class="field">
+            <span class="field-label">Descripción pública <span class="field-optional">(opcional)</span></span>
+            <div class="input-wrap textarea-wrap">
+              <span class="material-symbols-outlined input-prefix textarea-prefix">campaign</span>
+              <textarea
+                [value]="publicMessage()"
+                (input)="publicMessage.set($any($event.target).value)"
+                placeholder="Ej: 20% de descuento en tarifas Deluxe reservando directo en nuestro sitio."
+                rows="3"
+                maxlength="2000"
+              ></textarea>
+            </div>
+            <span class="field-hint">Lo verá cualquier visitante de la página del hotel. Nunca incluyas el nombre del huésped.</span>
+          </label>
+
+          <div class="promo-offer-grid">
+            <label class="field">
+              <span class="field-label">Válida desde</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">event</span>
+                <input
+                  type="date"
+                  [value]="validityStart()"
+                  (input)="validityStart.set($any($event.target).value)"
+                />
+              </div>
+            </label>
+            <label class="field">
+              <span class="field-label">Hasta</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">event</span>
+                <input
+                  type="date"
+                  [value]="validityEnd()"
+                  (input)="validityEnd.set($any($event.target).value)"
+                />
+              </div>
+            </label>
+            <label class="field">
+              <span class="field-label">Segmento</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">groups</span>
+                <select [value]="segment()" (change)="segment.set($any($event.target).value)">
+                  <option value="all">Todos los huéspedes</option>
+                  <option value="families">Familias</option>
+                  <option value="couples">Parejas</option>
+                  <option value="business">Negocios</option>
+                </select>
+              </div>
+            </label>
+          </div>
+
+          <fieldset class="promo-offer-scope">
+            <legend>¿A qué aplica?</legend>
+            <div class="promo-offer-scope-opts">
+              <button
+                type="button"
+                class="promo-scope-opt"
+                [class.promo-scope-opt--active]="appliesToScope() === 'property'"
+                (click)="appliesToScope.set('property'); selectedPlans.set([])"
+              >
+                <span class="material-symbols-outlined">apartment</span>
+                Toda la propiedad
+              </button>
+              <button
+                type="button"
+                class="promo-scope-opt"
+                [class.promo-scope-opt--active]="appliesToScope() === 'rate_plans'"
+                (click)="appliesToScope.set('rate_plans')"
+              >
+                <span class="material-symbols-outlined">price_change</span>
+                Planes tarifarios
+              </button>
+            </div>
+            @if (appliesToScope() === 'rate_plans') {
+              <div class="promo-offer-plans">
+                @if (optionsLoading() && !ratePlanOptions().length) {
+                  <p class="field-hint">Cargando planes tarifarios...</p>
+                } @else if (!ratePlanOptions().length) {
+                  <p class="field-hint">Este hotel aún no tiene planes tarifarios. Crea uno en Tarifas para poder seleccionarlo.</p>
+                } @else {
+                  @for (plan of ratePlanOptions(); track plan.rate_plan_id) {
+                    <button
+                      type="button"
+                      class="promo-plan-chip"
+                      [class.promo-plan-chip--active]="selectedPlans().includes(plan.rate_plan_id)"
+                      (click)="togglePlan(plan.rate_plan_id)"
+                      [attr.aria-pressed]="selectedPlans().includes(plan.rate_plan_id)"
+                      [title]="plan.room_type_labels.join(', ')"
+                    >
+                      <span class="material-symbols-outlined">
+                        {{ selectedPlans().includes(plan.rate_plan_id) ? 'check_circle' : 'radio_button_unchecked' }}
+                      </span>
+                      {{ plan.name }}
+                      @if (plan.room_type_labels.length) {
+                        <small>{{ plan.room_type_labels.join(', ') }}</small>
+                      }
+                    </button>
+                  }
+                }
+              </div>
+            }
+          </fieldset>
+
+          <div class="promo-coupon-mode">
+            <span class="field-label">Cupón de descuento <span class="field-optional">(opcional)</span></span>
+            <div class="promo-coupon-mode-opts" role="radiogroup" aria-label="Cupón de descuento">
+              <button
+                type="button"
+                class="promo-coupon-mode-opt"
+                [class.promo-coupon-mode-opt--active]="couponMode() === 'none'"
+                (click)="setCouponMode('none')"
+              >Sin cupón</button>
+              <button
+                type="button"
+                class="promo-coupon-mode-opt"
+                [class.promo-coupon-mode-opt--active]="couponMode() === 'link'"
+                (click)="setCouponMode('link')"
+              >Vincular de Tarifas</button>
+              <button
+                type="button"
+                class="promo-coupon-mode-opt"
+                [class.promo-coupon-mode-opt--active]="couponMode() === 'create'"
+                (click)="setCouponMode('create')"
+              >Crear uno nuevo</button>
+            </div>
+          </div>
+
+          @if (couponMode() === 'link') {
+            <div class="promo-coupon-link">
+              @if (couponCampaignOptions().length === 0) {
+                <p class="field-hint">
+                  Este hotel aún no tiene campañas de cupones en Tarifas. Créala allí o elige «Crear uno nuevo».
+                </p>
+              } @else {
+                <label class="field">
+                  <span class="field-label">Campaña de Tarifas a vincular</span>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-prefix">sell</span>
+                    <select
+                      class="promo-select"
+                      [value]="linkedCampaignId()"
+                      (change)="linkedCampaignId.set($any($event.target).value)"
+                    >
+                      <option value="">Selecciona una campaña…</option>
+                      @for (c of couponCampaignOptions(); track c.campaign_id) {
+                        <option [value]="c.campaign_id">
+                          {{ c.name }} — {{ c.coupon_code }} · {{ c.discount_percent }}%{{ c.is_active === false ? ' (inactiva)' : '' }}
+                        </option>
+                      }
+                    </select>
+                  </div>
+                </label>
+                @if (couponInvalid()) {
+                  <span class="field-hint field-hint--error">Selecciona la campaña a vincular o cambia a «Sin cupón».</span>
+                }
+                @if (linkedCampaign(); as camp) {
+                  <p class="promo-offer-coupon-note">
+                    <span class="material-symbols-outlined">link</span>
+                    Se vinculará la campaña «{{ camp.name }}» ({{ camp.coupon_code }} · {{ camp.discount_percent }}%) — no se crean cupones nuevos.
+                  </p>
+                }
+              }
+            </div>
+          }
+
+          @if (couponMode() === 'create') {
+            @if (activeConflict(); as conflict) {
+              <div class="promo-coupon-conflict" role="alert">
+                <span class="material-symbols-outlined promo-coupon-conflict-icon">link_off</span>
+                <div class="promo-coupon-conflict-copy">
+                  <strong>El código ya está en uso</strong>
+                  <p>{{ conflict.message }}</p>
+                </div>
+                <div class="promo-coupon-conflict-actions">
+                  <button
+                    type="button"
+                    class="btn-primary promo-coupon-conflict-link"
+                    (click)="linkConflictedCampaign()"
+                  >
+                    <span class="material-symbols-outlined">link</span>
+                    Vincular esta campaña
+                  </button>
+                  <button
+                    type="button"
+                    class="promo-coupon-conflict-dismiss"
+                    (click)="dismissCouponConflict()"
+                    aria-label="Descartar aviso"
+                    title="Descartar aviso"
+                  >
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+              </div>
+            }
+            <div class="promo-offer-grid">
+              <label class="field">
+                <span class="field-label">Código promocional</span>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-prefix">confirmation_number</span>
+                  <input
+                    [value]="promoCode()"
+                    (input)="onPromoCodeInput($any($event.target).value)"
+                    placeholder="Ej: VERANO20"
+                    maxlength="40"
+                  />
+                </div>
+                @if (promoCodeInvalid()) {
+                  <span class="field-hint field-hint--error">El código requiere un descuento entre 1% y 100%.</span>
+                }
+              </label>
+              <label class="field">
+                <span class="field-label">Descuento %</span>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-prefix">percent</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    [value]="discountPercent() ?? ''"
+                    (input)="discountPercent.set(parseDiscount($any($event.target).value))"
+                    placeholder="Ej: 20"
+                  />
+                </div>
+              </label>
+            </div>
+            @if (promoCode().trim() && !promoCodeInvalid()) {
+              <p class="promo-offer-coupon-note">
+                <span class="material-symbols-outlined">sell</span>
+                El código crea el cupón en la sección «Promociones» de Tarifas ({{ promoCode().trim().toUpperCase() }} · {{ discountPercent() }}%). Si el código ya existe en otra campaña, el envío se rechazará — vincúlala en su lugar.
+              </p>
+            }
+          }
+        </div>
+
+        <!-- Recipient estimator -->
+        <div class="promo-recipients" [class.promo-recipients--empty]="!estimateLoading() && recipientsCount() === 0">
+          <span class="material-symbols-outlined promo-recipients-icon">group</span>
+          <div class="promo-recipients-copy">
+            @if (estimateLoading()) {
+              <strong>Calculando destinatarios...</strong>
+            } @else if (recipientsCount() === 0) {
+              <strong>Sin destinatarios</strong>
+              <p>Ningún huésped con consentimiento de marketing en este hotel. La promoción no se enviará.</p>
+            } @else {
+              <strong>{{ recipientsCount() }} {{ recipientsCount() === 1 ? 'huésped con consentimiento' : 'huéspedes con consentimiento' }}</strong>
+              <p>Recibirán esta promoción en su campanita y correo. Los que no dieron consentimiento quedan excluidos.</p>
+            }
+          </div>
+          @if (!estimateLoading() && recipientsCount() > 0) {
+            <span class="promo-recipients-badge">{{ recipientsCount() }}</span>
+          }
+        </div>
+
+        <div class="promo-consent-note">
+          <span class="material-symbols-outlined">shield_person</span>
+          <p>
+            Solo enviamos a huéspedes con el consentimiento de «Publicidad y promociones» activado en su perfil
+            (correo + interfaz del huésped). El opt-out es inmediato desde su perfil.
+          </p>
+        </div>
+
+        <div class="promo-actions">
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="title.set(''); message.set(''); scheduleAt.set(''); publicMessage.set(''); validityStart.set(''); validityEnd.set(''); segment.set('all'); appliesToScope.set('property'); selectedPlans.set([]); promoCode.set(''); discountPercent.set(null)"
+          >
+            <span class="material-symbols-outlined">restart_alt</span>
+            Limpiar
+          </button>
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="!canSend() || sending()"
+            (click)="reviewAndSend()"
+          >
+            <span class="material-symbols-outlined">{{ sending() ? 'sync' : isScheduled() ? 'schedule_send' : 'send' }}</span>
+            {{ sending() ? 'Guardando...' : isScheduled() ? 'Programar envío' : 'Revisar y enviar' }}
+          </button>
+        </div>
+      </section>
+
+      <!-- ═══ Vista previa: lo que ve el huésped ═══ -->
+      <aside class="surface-card promo-preview-card">
+        <div class="panel-header">
+          <span class="material-symbols-outlined panel-header-icon">visibility</span>
+          <div>
+            <h3>Así lo verá el huésped</h3>
+            <p>Vista previa en vivo de la campanita de notificaciones.</p>
+          </div>
+        </div>
+
+        <div class="preview-phone">
+          <div class="preview-notif" [class.preview-notif--draft]="!titleValid() || !messageValid()">
+            <div class="preview-notif-icon">
+              <span class="material-symbols-outlined">campaign</span>
+            </div>
+            <div class="preview-notif-body">
+              <div class="preview-notif-head">
+                <span class="preview-notif-type">Promoción</span>
+                <span class="preview-notif-time">ahora</span>
+              </div>
+              <strong class="preview-notif-title">{{ title() || 'Tu título aparecerá aquí' }}</strong>
+              <p class="preview-notif-msg">
+                {{ message() || 'Tu mensaje aparecerá aquí. Los huéspedes con consentimiento lo verán en su campanita.' }}
+              </p>
+            </div>
+            <span class="preview-notif-dot"></span>
+          </div>
+
+          <div class="preview-email">
+            <span class="material-symbols-outlined">mail</span>
+            <div>
+              <strong>Correo</strong>
+              <p>«{{ title() || 'Título' }}» — enviado en segundo plano con la marca del hotel.</p>
+            </div>
+          </div>
+
+          @if (hasOfferDetails()) {
+            <div class="preview-offer">
+              <div class="preview-offer-head">
+                <span class="material-symbols-outlined">local_offer</span>
+                <strong>En la página del hotel</strong>
+              </div>
+              <p class="preview-offer-title">{{ title() || 'Título de la oferta' }}</p>
+              @if (publicMessage().trim()) {
+                <p class="preview-offer-desc">{{ publicMessage().trim() }}</p>
+              }
+              <div class="preview-offer-meta">
+                @if (couponPreview(); as coupon) {
+                  <span class="preview-offer-code">{{ coupon.code }}</span>
+                  <span class="preview-offer-discount">-{{ coupon.discount }}%</span>
+                }
+                @if (validityStart() || validityEnd()) {
+                  <span>
+                    {{ validityStart() || '…' }} → {{ validityEnd() || '…' }}
+                  </span>
+                }
+                <span>{{ appliesToLabel() }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (!titleValid() || !messageValid()) {
+          <p class="preview-hint">
+            <span class="material-symbols-outlined">info</span>
+            Completa el título y el mensaje para ver la vista previa final.
+          </p>
+        }
+      </aside>
+    </div>
+  }
+
+  <!-- ═══ Historial de promociones enviadas ═══ -->
+  <section class="surface-card promo-history">
+    <div class="panel-header">
+      <span class="material-symbols-outlined panel-header-icon">history</span>
+      <div>
+        <h3>Historial de promociones enviadas</h3>
+        <p>Envíos agrupados por campaña: fecha, hotel, título y destinatarios con consentimiento.</p>
+      </div>
+      @if (historyScopeLabel()) {
+        <span
+          class="promo-history-scope"
+          [title]="historyScopeTitle()"
+          [attr.aria-label]="historyScopeTitle()"
+        >
+          <span class="material-symbols-outlined">hotel</span>
+          {{ historyScopeLabel() }}
+          @if (historyReady()) {
+            <span class="promo-history-scope-count">{{ historyTotal() }}</span>
+          }
+        </span>
+      }
+    </div>
+
+    @if (historyLoading() && !historyItems().length) {
+      <p class="promo-history-empty">Cargando historial...</p>
+    } @else if (!historyItems().length) {
+      <p class="promo-history-empty">
+        Aún no has enviado promociones. El primer envío aparecerá aquí con su fecha, hotel y destinatarios.
+      </p>
+    } @else {
+      <div class="promo-history-list">
+        @for (item of historyItems(); track item.campaign_id) {
+          <div
+            class="promo-history-row"
+            [class.promo-history-row--muted]="item.status === 'canceled'"
+            [class.promo-history-row--clickable]="canOpenDetail(item)"
+            [attr.role]="canOpenDetail(item) ? 'button' : null"
+            [attr.tabindex]="canOpenDetail(item) ? 0 : null"
+            [attr.aria-label]="canOpenDetail(item) ? ('Ver detalle de «' + item.title + '»') : null"
+            (click)="canOpenDetail(item) && openDetail(item)"
+            (keydown.enter)="onRowKey(item, $event)"
+            (keydown.space)="onRowKey(item, $event)"
+          >
+            <span class="material-symbols-outlined promo-history-row-icon">campaign</span>
+            <div class="promo-history-row-main">
+              <div class="promo-history-row-titleline">
+                <strong class="promo-history-row-title">{{ item.title }}</strong>
+                <span class="promo-history-badge promo-history-badge--{{ statusTone(item) }}">
+                  <span class="material-symbols-outlined">{{ statusIcon(item) }}</span>
+                  {{ statusLabel(item) }}
+                </span>
+                @if (isOfferPaused(item)) {
+                  <span class="promo-history-badge promo-history-badge--neutral" title="La oferta está pausada: no aparece en la página pública del hotel">
+                    <span class="material-symbols-outlined">pause_circle</span>
+                    Pausada
+                  </span>
+                }
+              </div>
+              <p class="promo-history-row-msg">{{ item.message }}</p>
+              <div class="promo-history-row-meta">
+                <span class="promo-history-hotel">
+                  <span class="material-symbols-outlined">hotel</span>
+                  {{ item.hotel_name || 'Hotel #' + item.prop_id }}
+                </span>
+                <span class="promo-history-date">
+                  @if (item.status === 'pending') {
+                    Programada para el {{ item.send_at_iso | date: 'd MMM yyyy, HH:mm' }}
+                  } @else {
+                    {{ displayDate(item) | date: 'd MMM yyyy, HH:mm' }}
+                  }
+                </span>
+              </div>
+            </div>
+            <div class="promo-history-row-side">
+              <span
+                class="promo-history-count"
+                [title]="item.status === 'pending'
+                  ? 'Destinatarios estimados al programar'
+                  : item.recipient_count + ' huéspedes con consentimiento recibieron esta promoción'"
+              >
+                {{ item.recipient_count }}
+              </span>
+              @if (canEditOffer(item)) {
+                <span class="promo-history-offer-actions" (click)="$event.stopPropagation()">
+                  @if (canPause(item)) {
+                    <button
+                      type="button"
+                      class="promo-history-action promo-history-action--pause"
+                      (click)="togglePublic(item)"
+                      title="Pausar oferta (la quita de la página pública)"
+                      aria-label="Pausar oferta"
+                    >
+                      <span class="material-symbols-outlined">pause_circle</span>
+                    </button>
+                  }
+                  @if (canResume(item)) {
+                    <button
+                      type="button"
+                      class="promo-history-action"
+                      (click)="togglePublic(item)"
+                      title="Reactivar oferta en la página pública"
+                      aria-label="Reactivar oferta"
+                    >
+                      <span class="material-symbols-outlined">play_circle</span>
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    class="promo-history-action"
+                    (click)="openEdit(item)"
+                    title="Editar oferta (mensaje público, validez, aplica-a) sin re-enviar"
+                    aria-label="Editar oferta"
+                  >
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                </span>
+              }
+              @if (canCancel(item)) {
+                <button
+                  type="button"
+                  class="promo-history-cancel"
+                  (click)="cancelPromotion(item.campaign_id); $event.stopPropagation()"
+                  title="Cancelar envío programado"
+                  aria-label="Cancelar envío programado"
+                >
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              }
+              @if (canOpenDetail(item)) {
+                <span class="promo-history-chevron" aria-hidden="true">
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
+</div>
+
+<!-- ═══ Detalle de campaña (mensaje completo + destinatarios) ═══ -->
+@if (detailCampaign(); as campaign) {
+  <div class="promo-detail-backdrop" (click)="closeDetail()">
+    <div
+      class="promo-detail"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="promo-detail-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="promo-detail-head">
+        <div class="promo-detail-titleline">
+          <span class="promo-history-badge promo-history-badge--{{ statusTone(campaign) }}">
+            <span class="material-symbols-outlined">{{ statusIcon(campaign) }}</span>
+            {{ statusLabel(campaign) }}
+          </span>
+          <h3 id="promo-detail-title" class="promo-detail-title">{{ campaign.title }}</h3>
+        </div>
+        <button
+          type="button"
+          class="promo-detail-close"
+          (click)="closeDetail()"
+          aria-label="Cerrar detalle"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="promo-detail-meta">
+        <span>
+          <span class="material-symbols-outlined">hotel</span>
+          {{ detail()?.hotel_name || campaign.hotel_name || 'Hotel #' + campaign.prop_id }}
+        </span>
+        <span>
+          <span class="material-symbols-outlined">schedule</span>
+          @if (detail()?.status === 'pending') {
+            Programada para el {{ detail()?.send_at_iso || campaign.send_at_iso | date: 'd MMM yyyy, HH:mm' }}
+          } @else {
+            {{ (detail()?.sent_at_iso || campaign.sent_at_iso) | date: 'd MMM yyyy, HH:mm' }}
+          }
+        </span>
+        @if (detail()?.status === 'sent' && (detail()?.recipient_count ?? 0) > 0) {
+          <span>
+            <span class="material-symbols-outlined">group</span>
+            {{ detail()?.recipient_count }} {{ (detail()?.recipient_count ?? 0) === 1 ? 'destinatario' : 'destinatarios' }}
+          </span>
+          <span>
+            <span class="material-symbols-outlined">mark_email_read</span>
+            {{ detail()?.email_sent ?? 0 }} {{ (detail()?.email_sent ?? 0) === 1 ? 'correo enviado' : 'correos enviados' }}
+          </span>
+        }
+      </div>
+
+      <div class="promo-detail-message">
+        <span class="material-symbols-outlined">campaign</span>
+        <p>{{ detail()?.message || campaign.message }}</p>
+      </div>
+
+      <div class="promo-detail-recipients">
+        <div class="promo-detail-recipients-head">
+          <strong>Destinatarios</strong>
+          @if (detail()?.status === 'sent' && (detail()?.recipient_count ?? 0) > 0) {
+            <span class="promo-detail-recipients-count">{{ detail()?.recipient_count }}</span>
+          }
+        </div>
+
+        @if (detailLoading()) {
+          <p class="promo-detail-empty">Cargando destinatarios...</p>
+        } @else if (detail()?.status === 'pending') {
+          <p class="promo-detail-empty">
+            <span class="material-symbols-outlined">schedule</span>
+            Aún no se ha enviado — {{ detail()?.recipient_count ?? 0 }}
+            {{ (detail()?.recipient_count ?? 0) === 1 ? 'destinatario estimado' : 'destinatarios estimados' }}.
+          </p>
+        } @else if (detail()?.status === 'canceled') {
+          <p class="promo-detail-empty">
+            <span class="material-symbols-outlined">block</span>
+            Envío cancelado — no llegó a ningún huésped.
+          </p>
+        } @else if ((detail()?.recipients?.length ?? 0) === 0) {
+          <p class="promo-detail-empty">
+            <span class="material-symbols-outlined">group_off</span>
+            Ningún huésped la recibió (no había consentimiento activo en ese momento).
+          </p>
+        } @else {
+          <ul class="promo-detail-list">
+            @for (recipient of detail()?.recipients; track recipient.email) {
+              <li class="promo-detail-recipient">
+                <span class="promo-detail-avatar" aria-hidden="true">
+                  {{ (recipient.name || recipient.email).charAt(0).toUpperCase() }}
+                </span>
+                <div class="promo-detail-recipient-copy">
+                  <strong>{{ recipient.name || recipient.email }}</strong>
+                  <span class="promo-detail-recipient-email">{{ recipient.email }}</span>
+                </div>
+                <span
+                  class="promo-detail-read"
+                  [class.promo-detail-read--unread]="!recipient.is_read"
+                >
+                  <span class="material-symbols-outlined">
+                    {{ recipient.is_read ? 'check_circle' : 'radio_button_unchecked' }}
+                  </span>
+                  {{ recipient.is_read ? 'Leída' : 'Sin leer' }}
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="promo-detail-actions">
+        <button type="button" class="btn-secondary" (click)="closeDetail()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ Edición de la oferta (entidad promotions — sin re-envío) ═══ -->
+@if (editingCampaign(); as campaign) {
+  <div class="promo-detail-backdrop" (click)="closeEdit()">
+    <div
+      class="promo-detail promo-edit"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="promo-edit-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="promo-detail-head">
+        <div class="promo-detail-titleline">
+          <span class="promo-history-badge promo-history-badge--{{ offerStatusBadgeTone(campaign) }}">
+            <span class="material-symbols-outlined">local_offer</span>
+            {{ offerStatusLabel(campaign) || 'Oferta' }}
+          </span>
+          <h3 id="promo-edit-title" class="promo-detail-title">Editar oferta</h3>
+        </div>
+        <button
+          type="button"
+          class="promo-detail-close"
+          (click)="closeEdit()"
+          aria-label="Cerrar edición"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <p class="promo-edit-note">
+        <span class="material-symbols-outlined">info</span>
+        La edición no re-envía la promoción: los huéspedes que ya la recibieron conservan su
+        notificación. Solo cambia lo que se muestra en la página pública del hotel.
+      </p>
+
+      <div class="promo-detail-meta">
+        <span>
+          <span class="material-symbols-outlined">hotel</span>
+          {{ campaign.hotel_name || 'Hotel #' + campaign.prop_id }}
+        </span>
+        @if (campaign.promo_code) {
+          <span>
+            <span class="material-symbols-outlined">confirmation_number</span>
+            Código {{ campaign.promo_code }}
+            @if (campaign.discount_percent !== null && campaign.discount_percent !== undefined) {
+              · {{ campaign.discount_percent }}% (cupón en Tarifas)
+            }
+          </span>
+        }
+        <span>
+          <span class="material-symbols-outlined">price_change</span>
+          {{ editAppliesLabel() }}
+        </span>
+      </div>
+
+      <div class="promo-offer">
+        <label class="field">
+          <span class="field-label">Descripción pública</span>
+          <div class="input-wrap textarea-wrap">
+            <span class="material-symbols-outlined input-prefix textarea-prefix">campaign</span>
+            <textarea
+              [value]="editPublicMessage()"
+              (input)="editPublicMessage.set($any($event.target).value)"
+              placeholder="Lo que verá cualquier visitante de la página del hotel. Nunca incluyas el nombre del huésped."
+              rows="3"
+              maxlength="2000"
+            ></textarea>
+          </div>
+        </label>
+
+        <div class="promo-offer-grid">
+          <label class="field">
+            <span class="field-label">Válida desde</span>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined input-prefix">event</span>
+              <input
+                type="date"
+                [value]="editValidityStart()"
+                (input)="editValidityStart.set($any($event.target).value)"
+              />
+            </div>
+          </label>
+          <label class="field">
+            <span class="field-label">Hasta</span>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined input-prefix">event</span>
+              <input
+                type="date"
+                [value]="editValidityEnd()"
+                (input)="editValidityEnd.set($any($event.target).value)"
+              />
+            </div>
+          </label>
+          <label class="field">
+            <span class="field-label">Segmento</span>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined input-prefix">groups</span>
+              <select [value]="editSegment()" (change)="editSegment.set($any($event.target).value)">
+                <option value="all">Todos los huéspedes</option>
+                <option value="families">Familias</option>
+                <option value="couples">Parejas</option>
+                <option value="business">Negocios</option>
+              </select>
+            </div>
+          </label>
+        </div>
+
+        <fieldset class="promo-offer-scope">
+          <legend>¿A qué aplica?</legend>
+          <div class="promo-offer-scope-opts">
+            <button
+              type="button"
+              class="promo-scope-opt"
+              [class.promo-scope-opt--active]="editAppliesScope() === 'property'"
+              (click)="editAppliesScope.set('property'); editSelectedPlans.set([])"
+            >
+              <span class="material-symbols-outlined">apartment</span>
+              Toda la propiedad
+            </button>
+            <button
+              type="button"
+              class="promo-scope-opt"
+              [class.promo-scope-opt--active]="editAppliesScope() === 'rate_plans'"
+              (click)="editAppliesScope.set('rate_plans')"
+            >
+              <span class="material-symbols-outlined">price_change</span>
+              Planes tarifarios
+            </button>
+          </div>
+          @if (editAppliesScope() === 'rate_plans') {
+            <div class="promo-offer-plans">
+              @if (editOptionsLoading() && !editRatePlans().length) {
+                <p class="field-hint">Cargando planes tarifarios...</p>
+              } @else if (!editRatePlans().length) {
+                <p class="field-hint">Este hotel aún no tiene planes tarifarios.</p>
+              } @else {
+                @for (plan of editRatePlans(); track plan.rate_plan_id) {
+                  <button
+                    type="button"
+                    class="promo-plan-chip"
+                    [class.promo-plan-chip--active]="editSelectedPlans().includes(plan.rate_plan_id)"
+                    (click)="toggleEditPlan(plan.rate_plan_id)"
+                    [attr.aria-pressed]="editSelectedPlans().includes(plan.rate_plan_id)"
+                    [title]="plan.room_type_labels.join(', ')"
+                  >
+                    <span class="material-symbols-outlined">
+                      {{ editSelectedPlans().includes(plan.rate_plan_id) ? 'check_circle' : 'radio_button_unchecked' }}
+                    </span>
+                    {{ plan.name }}
+                    @if (plan.room_type_labels.length) {
+                      <small>{{ plan.room_type_labels.join(', ') }}</small>
+                    }
+                  </button>
+                }
+              }
+            </div>
+          }
+        </fieldset>
+      </div>
+
+      <div class="promo-detail-actions">
+        <button type="button" class="btn-secondary" (click)="closeEdit()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="savingOffer()"
+          (click)="saveEdit()"
+        >
+          <span class="material-symbols-outlined">{{ savingOffer() ? 'sync' : 'save' }}</span>
+          {{ savingOffer() ? 'Guardando...' : 'Guardar cambios' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

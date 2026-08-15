@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 
 from fastapi import HTTPException
 
@@ -23,8 +23,8 @@ def check_hotel_availability(
 
     # 2. Check if there's inventory for the date range
     try:
-        cin = datetime.strptime(check_in, "%Y-%m-%d")
-        cout = datetime.strptime(check_out, "%Y-%m-%d")
+        cin = date.fromisoformat(check_in)
+        cout = date.fromisoformat(check_out)
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid date format; expected YYYY-MM-DD")
 
@@ -34,7 +34,10 @@ def check_hotel_availability(
         return {
             "hasInventory": False, "hasRoomTypes": False,
             "totalRooms": 0, "availableRooms": 0,
-            "message": "El hotel no tiene tipos de habitación configurados.",
+            "message": (
+                "El hotel no tiene tipos de habitación configurados. "
+                "Contactá a recepción para reservar."
+            ),
         }
 
     inventory_records = list(
@@ -48,7 +51,10 @@ def check_hotel_availability(
         return {
             "hasInventory": False, "hasRoomTypes": True,
             "totalRooms": 0, "availableRooms": 0,
-            "message": "No hay datos de inventario para las fechas seleccionadas.",
+            "message": (
+                "No hay datos de inventario para las fechas seleccionadas. "
+                "Probá con otras fechas o contactá a recepción."
+            ),
         }
 
     total_rooms = max(r.get("total_rooms", 0) or 0 for r in inventory_records)
@@ -63,6 +69,9 @@ def check_hotel_availability(
         "message": (
             f"{min_available} habitación(es) disponible(s) en las fechas seleccionadas."
             if has_inventory
-            else "Sin disponibilidad en las fechas seleccionadas."
+            else (
+                "Sin disponibilidad en las fechas seleccionadas. "
+                "Probá con otras fechas o elegí otro hotel."
+            )
         ),
     }

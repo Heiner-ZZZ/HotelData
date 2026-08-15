@@ -31,6 +31,15 @@ export interface PoliciesViewModel {
   sourceCollection: string;
   checkInTime: string;
   checkOutTime: string;
+  earlyCheckInEnabled: boolean;
+  earlyCheckInCourtesyMinutes: number;
+  earlyCheckInDefaultFee: number;
+  lateCheckoutEnabled: boolean;
+  lateCheckoutCourtesyMinutes: number;
+  lateCheckoutDefaultFee: number;
+  guaranteedReservation: boolean;
+  lateArrivalCutoff: string;
+  noShowExecution: 'next_day' | 'same_day_cutoff' | 'manual';
   cancellationPolicy: string;
   petPolicy: string;
   childrenPolicy: string;

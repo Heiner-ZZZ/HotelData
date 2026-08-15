@@ -19,10 +19,11 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { type PermissionCode } from '../../../../core/auth/permission.constants';
 import { BillingApiService } from '../../services/billing-api.service';
+import { BillingSubNavComponent } from '../../components/billing-sub-nav/billing-sub-nav';
 
 @Component({
   selector: 'app-invoices-list-page',
-  imports: [RouterLink, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent],
+  imports: [RouterLink, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent, BillingSubNavComponent],
   templateUrl: './invoices-list-page.html',
   styleUrl: './invoices-list-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -228,7 +229,7 @@ export class InvoicesListPageComponent implements OnInit {
           this.statsResource.reload();
         },
         error: (err: ApiError) => {
-          this.toast.show(err.message || 'Error al anular la factura.', 'error', 5000);
+          this.toast.show(err.message || 'No se pudo anular la factura. Verificá que esté pendiente de pago y sin pagos confirmados, e intentá de nuevo.', 'error', 5000);
           this.cancellingId.set(null);
         },
       });

@@ -13,7 +13,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { NoShowService } from '../../../../shared/services/no-show.service';
-import { CheckOutsApiService, type BookingCharge, type CheckOutDetailDto } from '../../services/check-outs-api.service';
+import { CheckOutsApiService, type BookingCharge, type CheckOutDetailDto, type CheckOutDetailSavePayload } from '../../services/check-outs-api.service';
 import { STAY_CHECKED_IN, STAY_CHECKED_OUT, STAY_NO_SHOW } from '../../../reservations/utils/reservation-status.util';
 import { CoHeaderComponent } from './partials/co-header';
 import { CoStepBreadcrumbComponent } from './partials/co-step-breadcrumb';
@@ -108,6 +108,26 @@ export class CheckOutDetailPageComponent {
   readonly observations = signal('');
   readonly splitInvoice = signal(false);
 
+  // ── Late check-out (ventana gobernada por la política del hotel) ──
+  /** Contexto resuelto por el servidor (is_late, cortesía, fee default). */
+  readonly lateContext = computed(() => this.data()?.late_checkout_context ?? null);
+  /** La salida supera la cortesía → requiere aprobación gerencial. */
+  readonly lateRequiresApproval = computed(
+    () => !!this.lateContext()?.is_late && !!this.lateContext()?.requires_approval,
+  );
+  /** El usuario puede aprobar la extensión (permiso manager-only). */
+  readonly canApproveLate = computed(() => this.auth.hasPermission('check-ins.late_checkout_approve'));
+  /** Sin permiso de aprobación y fuera de cortesía → el cierre queda bloqueado. */
+  readonly lateBlocked = computed(() => this.lateRequiresApproval() && !this.canApproveLate());
+  /** Modo elegido: '' (sin autorizar) | late_courtesy | late_approved. */
+  readonly lateMode = signal<'late_courtesy' | 'late_approved' | ''>('');
+  readonly lateReason = signal('');
+
+  /** Coerción del select del panel: solo acepta los modos gobernados. */
+  setLateMode(mode: string): void {
+    this.lateMode.set(mode === 'late_approved' || mode === 'late_courtesy' ? mode : '');
+  }
+
   /**
    * Modo CRUD reactivo: si algún campo del wizard difiere del estado guardado
    * en backend, el usuario está editando el check-out → UPDATE en el nav.
@@ -161,12 +181,24 @@ export class CheckOutDetailPageComponent {
 
   // ── No-show manual (cierre desde recepción) ──
   readonly noShowPending = signal(false);
-  /**
-   * Folio de la penalización generado al marcar no-show (respuesta del API).
-   * Se muestra en el panel para enlazar a Facturación; persiste tras el reload
-   * y se limpia al cambiar de reserva.
-   */
+  /** Folio recién generado durante la sesión actual. */
   readonly noShowResult = signal<{ folio_number: string | null; penalty_amount: number } | null>(null);
+
+  /**
+   * Rebuild the no-show billing link from persisted checkout data after a
+   * browser reload. The action response is only a fast path; ``folio`` and
+   * ``no_show_penalty_amount`` are the durable source of truth.
+   */
+  readonly persistedNoShowResult = computed(() => {
+    const d = this.data();
+    if (!d || d.stay_status !== STAY_NO_SHOW) return null;
+    if (!d.folio && d.no_show_penalty_amount == null) return null;
+    return {
+      folio_number: d.folio ?? null,
+      penalty_amount: d.no_show_penalty_amount ?? 0,
+    };
+  });
+  readonly displayedNoShowResult = computed(() => this.noShowResult() ?? this.persistedNoShowResult());
 
   /**
    * Botón de cierre: reserva sin check-in cuya estadía YA terminó (check-out
@@ -210,17 +242,34 @@ export class CheckOutDetailPageComponent {
   }
 
   // ── Computed financials ──
+  // Fuente de verdad de la liquidación: el breakdown MOSTRADO en el paso 3
+  // (alojamiento + extras + late − descuento + impuestos). TOTAL y SALDO se
+  // derivan SIEMPRE de aquí — nunca de ``invoice.subtotal``, que puede ser
+  // anterior a los últimos cargos adicionales (stale) y haría que el TOTAL
+  // mostrado no cuadrara con la suma de la tabla.
   readonly roomTotal = computed(() => this.data()?.total_price ?? 0);
   readonly chargesTotal = computed(() => this.data()?.charges_total ?? 0);
   readonly lateFee = computed(() => this.lateCheckoutFee());
   readonly discountVal = computed(() => this.discount());
-  readonly subtotalBeforeDiscount = computed(() =>
-    (this.data()?.invoice?.subtotal ?? (this.roomTotal() + this.chargesTotal())) + this.lateFee()
+  /** Breakdown antes de descuento: alojamiento + extras + late (lo que suma la tabla). */
+  readonly breakdownSubtotal = computed(() =>
+    Math.round((this.roomTotal() + this.chargesTotal() + this.lateFee()) * 100) / 100
   );
-  readonly subtotal = computed(() => Math.max(0, this.subtotalBeforeDiscount() - this.discountVal()));
+  readonly subtotal = computed(() =>
+    Math.max(0, Math.round((this.breakdownSubtotal() - this.discountVal()) * 100) / 100)
+  );
+  /** La factura emitida (no cancelada) cubre el subtotal actual de la liquidación. */
+  readonly invoiceCoversBreakdown = computed(() => {
+    const inv = this.data()?.invoice;
+    if (!inv || inv.status === 'cancelled') return false;
+    return Number(inv.subtotal ?? 0) >= this.subtotal() - 0.005;
+  });
   readonly taxes = computed(() => {
     const hasAdjustments = this.lateFee() > 0 || this.discountVal() > 0;
-    if (!hasAdjustments && this.data()?.invoice?.taxes) return this.data()!.invoice!.taxes;
+    const inv = this.data()?.invoice;
+    // Impuestos fiscales de la factura SOLO si la factura cubre el breakdown
+    // y no hubo ajustes posteriores; si quedó corta, IVA 16% sobre el subtotal vivo.
+    if (!hasAdjustments && this.invoiceCoversBreakdown() && inv?.taxes) return inv.taxes;
     return Math.round(this.subtotal() * 0.16 * 100) / 100;
   });
   readonly grandTotal = computed(() => this.subtotal() + this.taxes());
@@ -229,7 +278,6 @@ export class CheckOutDetailPageComponent {
     if (!d) return 0;
     return d.deposit_received ? Math.round(this.roomTotal() * 0.5 * 100) / 100 : 0;
   });
-  readonly balanceDue = computed(() => this.grandTotal() - this.depositDeducted());
   readonly hasExistingPayments = computed(() => {
     const d = this.data();
     return (d?.invoice?.paid_at && d.invoice.status === 'paid') ? true : false;
@@ -237,6 +285,26 @@ export class CheckOutDetailPageComponent {
   readonly totalPaid = computed(() => {
     if (this.hasExistingPayments()) return this.grandTotal();
     return this.depositDeducted();
+  });
+  /** SALDO = TOTAL − Pagado: siempre reconcilia con la fila Pagado mostrada
+   *  (antes restaba el depósito aunque la factura estuviera pagada por el
+   *  TOTAL completo → SALDO ≠ TOTAL − Pagado). */
+  readonly balanceDue = computed(() =>
+    Math.round((this.grandTotal() - this.totalPaid()) * 100) / 100
+  );
+  /** Nota de reconciliación: la factura emitida no cubre los cargos
+   *  adicionales actuales (se registraron cargos después de facturar). El
+   *  TOTAL incluye los cargos nuevos; la factura queda corta. El gap se mide
+   *  contra ``covered_subtotal`` (suma de subtotales de TODAS las facturas
+   *  no canceladas del booking): una factura complementaria del gap despeja
+   *  la nota al recargar el detalle. */
+  readonly invoiceReconcileNote = computed<{ invoice_number: string; gap: number } | null>(() => {
+    const inv = this.data()?.invoice;
+    if (!inv || inv.status === 'cancelled') return null;
+    const covered = Number(inv.covered_subtotal ?? inv.subtotal ?? 0);
+    const gap = Math.round((this.subtotal() - covered) * 100) / 100;
+    if (gap <= 0) return null;
+    return { invoice_number: inv.invoice_number || inv.id, gap };
   });
 
   readonly currency = computed(() => this.data()?.currency ?? 'USD');
@@ -335,7 +403,8 @@ export class CheckOutDetailPageComponent {
       this.roomInspected.set(detail.check_out_room_inspected || false);
       this.keysReturned.set(detail.check_out_keys_returned || false);
       this.damagesFound.set(detail.check_out_damages_found || false);
-      this.lateCheckoutFee.set(detail.check_out_late_checkout_fee || 0);
+      // Fee late: el persistido del flujo gobernado manda; cae al manual legacy.
+      this.lateCheckoutFee.set((detail.late_checkout_fee ?? detail.check_out_late_checkout_fee) || 0);
       this.discount.set(detail.check_out_discount || 0);
       this.discountReason.set(detail.check_out_discount_reason || '');
       this.paymentMethod.set(detail.check_out_payment_method || 'credit_card');
@@ -344,6 +413,18 @@ export class CheckOutDetailPageComponent {
       this.canComplete.set(detail.assigned_rooms.length > 0 && detail.stay_status === STAY_CHECKED_IN);
       // Nueva reserva → limpiar el folio de un no-show anterior
       this.noShowResult.set(null);
+      // Late check-out: pre-cargar la ventana gobernada (cortesía automática o
+      // cargo default de la política para la aprobación gerencial).
+      const lc = detail.late_checkout_context;
+      if (lc?.is_late && detail.stay_status === STAY_CHECKED_IN) {
+        this.lateMode.set(lc.requires_approval ? '' : 'late_courtesy');
+        this.lateReason.set('');
+        if (!lc.requires_approval) this.lateCheckoutFee.set(0);
+        else if (this.lateCheckoutFee() === 0) this.lateCheckoutFee.set(lc.default_fee);
+      } else {
+        this.lateMode.set('');
+        this.lateReason.set('');
+      }
       if (detail.stay_status === STAY_CHECKED_OUT) this.currentStep.set(5);
       this.viewState.set('success');
     }, { allowSignalWrites: true });
@@ -372,6 +453,14 @@ export class CheckOutDetailPageComponent {
   }
 
   onInvoiceEmitted(): void {
+    if (!this.data()) return;
+    this.detailResource.reload();
+  }
+
+  /** Tras emitir la factura complementaria del gap, recarga el detalle: la
+   *  nota de reconciliación se despeja (covered_subtotal ahora cubre el
+   *  subtotal vivo) y la complementaria queda registrada. */
+  onComplementEmitted(): void {
     if (!this.data()) return;
     this.detailResource.reload();
   }
@@ -450,7 +539,9 @@ export class CheckOutDetailPageComponent {
       },
       error: (err: ApiError) => {
         this.chargeSaving.set(false);
-        this.chargeError.set(err.message || 'Error al crear el cargo.');
+        this.chargeError.set(
+          err.message || 'No se pudo crear el cargo. Revisá el concepto y el monto e intentá de nuevo.',
+        );
       },
     });
   }
@@ -474,24 +565,45 @@ export class CheckOutDetailPageComponent {
     // A repeated click or a stale tab must not submit the terminal transition
     // again. The backend is idempotent too, but this keeps the UI quiet.
     if (!d || this.completing() || this.checkoutDone()) return;
+    // Fuera de la cortesía y sin permiso de aprobación: el backend daría 403;
+    // bloquear antes con un mensaje claro en el paso de liquidación.
+    if (this.lateBlocked()) {
+      this.completeError.set(
+        'Este check-out supera la cortesía de salida y requiere aprobación del gerente. ' +
+        'Derivalo a gerencia: solo un gerente de hotel puede autorizar la salida extendida y completar el check-out.',
+      );
+      return;
+    }
     this.completing.set(true);
     this.completeError.set('');
 
-    this.api.completeCheckOutWithDetail(d.booking_id, {
+    const lc = this.lateContext();
+    const payload: Partial<CheckOutDetailSavePayload> & { split_invoice?: boolean } = {
       check_out_room_inspected: this.roomInspected(),
       check_out_keys_returned: this.keysReturned(),
       check_out_damages_found: this.damagesFound(),
-      check_out_late_checkout_fee: this.lateCheckoutFee(),
       check_out_discount: this.discount(),
       check_out_discount_reason: this.discountReason(),
       check_out_payment_method: this.paymentMethod(),
       check_out_payment_ref: this.paymentRef(),
       check_out_observations: this.observations(),
       split_invoice: this.splitInvoice(),
-    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (_result) => {
+    };
+    if (lc?.is_late) {
+      // La ventana gobernada manda: dentro de cortesía se registra late_courtesy
+      // (fee 0); fuera, el modo lo decide el aprobador con motivo + cargo.
+      payload.late_checkout_mode = this.lateMode() || (lc.requires_approval ? '' : 'late_courtesy');
+      payload.late_checkout_approved = this.lateMode() === 'late_approved';
+      payload.late_checkout_reason = this.lateReason();
+      payload.late_checkout_fee = this.lateMode() === 'late_approved' ? this.lateCheckoutFee() : 0;
+    }
+
+    this.api.completeCheckOutWithDetail(d.booking_id, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (result) => {
         this.completing.set(false);
         this.canComplete.set(false);
+        // Fee derivado del reloj → la vista completada lo muestra real.
+        if (result.late_checkout_fee != null) this.lateCheckoutFee.set(result.late_checkout_fee);
         this.goToStep(5);
         // Refresh detail; the init effect's id-gate preserves user edits
         // across this refetch.
@@ -499,7 +611,10 @@ export class CheckOutDetailPageComponent {
       },
       error: (err: ApiError) => {
         this.completing.set(false);
-        this.completeError.set(err.message || 'Error al completar check-out.');
+        this.completeError.set(
+          err.message ||
+          'No se pudo completar el check-out. Revisá el saldo y los cargos pendientes e intentá de nuevo.',
+        );
       },
     });
   }

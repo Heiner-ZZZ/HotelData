@@ -1,11 +1,22 @@
-<div class="top-nav" [style.transform]="navTransform()" [style.opacity]="navOpacity()">
+<div
+  class="top-nav"
+  [class.top-nav--guest]="isGuest()"
+  [class.top-nav--guest-lowered]="isGuest()"
+  [style.transform]="navTransform()"
+  [style.opacity]="navOpacity()"
+>
   <div class="nav-leading">
     <button type="button" class="back-btn" (click)="navigateBack()" aria-label="Volver atrás">
       <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
         <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </button>
-    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=20260813c" alt="HotelData" />
+    <img
+      class="brand-logo"
+      [class.brand-logo--guest]="isGuest()"
+      src="/assets/logo-hoteldata.png?v=20260813c"
+      alt="HotelData"
+    />
   </div>
 
   <nav class="primary-nav" aria-label="Navegación principal">
@@ -83,13 +94,18 @@
             <div class="notif-body-sm">
               @for (n of notifications(); track n.id) {
                 <a class="notif-item-sm" [class.unread]="n.unread"
-                   [routerLink]="n.bookingId ? '/account/bookings/' + n.bookingId : null"
-                   (click)="closeNotifications()">
+                   [routerLink]="notifHref(n)"
+                   (click)="onNotifClick(n)">
                   <div class="notif-item-body-sm">
                     <p class="notif-item-title-sm">{{ n.title }}</p>
                     <p class="notif-item-desc-sm">{{ n.description }}</p>
                     <span class="notif-item-time-sm">{{ n.time }}</span>
                   </div>
+                  @if (n.type === 'guest_promotional') {
+                    <span class="notif-item-chevron-sm" aria-hidden="true">
+                      <span class="material-symbols-outlined">chevron_right</span>
+                    </span>
+                  }
                 </a>
               } @empty {
                 <div class="notif-empty-sm">

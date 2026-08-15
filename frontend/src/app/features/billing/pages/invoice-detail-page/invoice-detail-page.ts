@@ -189,7 +189,7 @@ export class InvoiceDetailPageComponent {
   submitAddItem(): void {
     const form = this.addForm();
     if (!form.name || form.unit_price <= 0) {
-      this.actionError.set('El concepto y el precio unitario son obligatorios.');
+      this.actionError.set('El concepto y el precio unitario son obligatorios. Completá ambos campos para agregar el cargo.');
       return;
     }
     this.addBusy.set(true);
@@ -209,7 +209,7 @@ export class InvoiceDetailPageComponent {
         this.addBusy.set(false);
       },
       error: () => {
-        this.actionError.set('No se pudo agregar el cargo.');
+        this.actionError.set('No se pudo agregar el cargo. Verificá que la factura esté emitida y sin pagos confirmados, e intentá de nuevo.');
         this.addBusy.set(false);
       },
     });
@@ -218,7 +218,7 @@ export class InvoiceDetailPageComponent {
   /** Remove a line item from the invoice. */
   async removeItem(item: LineItem): Promise<void> {
     if (item.itemId.startsWith('room_')) {
-      this.actionError.set('No se puede eliminar el cargo de habitación.');
+      this.actionError.set('El cargo de habitación no se puede eliminar. Anulá la factura si necesitás corregirlo.');
       return;
     }
     const ok = await this.confirmDialog.open({
@@ -241,7 +241,7 @@ export class InvoiceDetailPageComponent {
         this.removeBusy.set(null);
       },
       error: () => {
-        this.actionError.set('No se pudo eliminar el concepto.');
+        this.actionError.set('No se pudo eliminar el concepto. Verificá que la factura esté emitida y elegí un concepto que no sea el cargo de habitación, e intentá de nuevo.');
         this.removeBusy.set(null);
       },
     });
@@ -251,7 +251,7 @@ export class InvoiceDetailPageComponent {
   quickAddCharge(qc: { name: string; category: string; icon: string; amount: number; quantity: number }): void {
     const inv = this.invoice();
     if (!inv || !inv.folioId) {
-      this.actionError.set('No hay folio asociado para registrar el cargo.');
+      this.actionError.set('No hay folio asociado para registrar el cargo. Verificá que la reserva tenga un folio abierto antes de agregar el concepto.');
       return;
     }
     this.quickAddBusy.set(qc.name);
@@ -281,7 +281,7 @@ export class InvoiceDetailPageComponent {
         this.quickAddBusy.set(null);
       },
       error: () => {
-        this.actionError.set(`No se pudo agregar "${qc.name}" al folio/factura.`);
+        this.actionError.set(`No se pudo agregar "${qc.name}" al folio/factura. Verificá que haya un turno de caja activo y que la factura esté emitida, e intentá de nuevo.`);
         this.quickAddBusy.set(null);
       },
     });
@@ -300,7 +300,7 @@ export class InvoiceDetailPageComponent {
         this.invoiceResource.reload();
       },
       error: () => {
-        this.actionError.set('No se pudo emitir el documento compensatorio.');
+        this.actionError.set('No se pudo emitir el documento compensatorio. Verificá que la factura esté anulada o reembolsada y que haya un turno de caja activo, e intentá de nuevo.');
         this.creditNoteBusy.set(false);
       },
     });
@@ -319,7 +319,7 @@ export class InvoiceDetailPageComponent {
         this.invoiceResource.reload();
       },
       error: () => {
-        this.actionError.set('No se pudo corregir la reversión contable de la factura.');
+        this.actionError.set('No se pudo corregir la reversión contable de la factura. Verificá que la factura esté anulada o reembolsada y que tenga importe positivo, e intentá de nuevo.');
         this.accountingRepairBusy.set(false);
       },
     });
@@ -340,7 +340,7 @@ export class InvoiceDetailPageComponent {
         this.actionMessage.set('Pago procesado exitosamente.');
         this.invoiceResource.reload();
       },
-      error: () => this.actionError.set('No se pudo procesar el pago.'),
+      error: () => this.actionError.set('No se pudo procesar el pago. Verificá que la factura esté emitida y que haya un turno de caja activo, e intentá de nuevo.'),
     });
   }
 
@@ -367,7 +367,7 @@ export class InvoiceDetailPageComponent {
         this.actionMessage.set('Factura anulada correctamente.');
         this.invoiceResource.reload();
       },
-      error: (err: ApiError) => this.actionError.set(err.message || 'No se pudo anular la factura.'),
+      error: (err: ApiError) => this.actionError.set(err.message || 'No se pudo anular la factura. Verificá que esté pendiente de pago y sin pagos confirmados, e intentá de nuevo.'),
     });
   }
 

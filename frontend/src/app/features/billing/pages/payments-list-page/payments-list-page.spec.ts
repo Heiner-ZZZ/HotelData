@@ -3,7 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { of, Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
@@ -292,5 +292,43 @@ describe('PaymentsListPageComponent', () => {
     expect(ctx.component.linkingPayment()).toBeNull();
     expect(ctx.toast.toasts().some((t) => t.message === 'Pago vinculado al turno correctamente.' && t.type === 'info')).toBe(true);
     expect(ctx.api.getPayments).toHaveBeenCalled();
+  });
+
+  it('muestra el mensaje con acción si falla registrar el pago', () => {
+    const ctx = setup();
+    (ctx.api.createPayment as jest.Mock).mockReturnValueOnce(throwError(() => ({ message: '' })));
+
+    ctx.component.registerPayment({
+      booking_id: 'BK-1',
+      invoice_id: 'INV-1',
+      amount: 109,
+      method: 'card',
+      status: 'confirmed',
+    });
+
+    expect(ctx.component.registerError()).toContain('Verificá el importe, el método de pago');
+    expect(ctx.component.registerError()).toContain('turno de caja activo');
+  });
+
+  it('muestra el mensaje con acción si falla reembolsar el pago', async () => {
+    const ctx = setup('Cobro duplicado');
+    (ctx.api.refundPayment as jest.Mock).mockReturnValueOnce(throwError(() => ({ message: '' })));
+
+    await ctx.component.refund(payment);
+
+    expect(ctx.toast.toasts().some((t) => t.type === 'error'
+      && t.message.includes('Verificá que el pago esté confirmado')
+      && t.message.includes('turno de caja activo'))).toBe(true);
+  });
+
+  it('ubica el sub-nav de facturación ARRIBA del page-header (mismo orden que los dashboards)', () => {
+    const ctx = setup();
+    const el = ctx.fixture.nativeElement as HTMLElement;
+    const page = el.querySelector('.payments-page')!;
+    const nav = page.querySelector('app-billing-sub-nav')!;
+    const header = page.querySelector('app-page-header')!;
+    expect(nav).toBeTruthy();
+    expect(header).toBeTruthy();
+    expect(nav.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

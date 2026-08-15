@@ -4,38 +4,6 @@
   gap: 1rem;
 }
 
-/* ── Sub-nav (Dashboard | Pagos Dashboard | Facturas | Pagos) ──────────── */
-.pdb-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--app-border);
-  padding-bottom: 0.5rem;
-
-  .pdb-nav-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.45rem 0.9rem;
-    border-radius: 999px;
-    font-size: 0.83rem;
-    font-weight: 600;
-    color: var(--muted-text);
-    text-decoration: none;
-    transition: background 0.15s ease, color 0.15s ease;
-
-    &:hover {
-      background: var(--surface-hover);
-      color: var(--app-text);
-    }
-
-    &.active {
-      background: var(--accent-light);
-      color: var(--accent-strong);
-    }
-  }
-}
-
 /* ── Filter bar ─────────────────────────────────────────────────────────── */
 .pdb-filters {
   display: flex;

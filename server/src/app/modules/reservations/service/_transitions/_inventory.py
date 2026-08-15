@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 
 from pymongo import ASCENDING
 
 from src.database.connection import get_database
+
 from .._helpers import utc_now
 
 logger = logging.getLogger(__name__)
@@ -93,8 +94,8 @@ def _deduct_inventory(
 ) -> None:
     """Decrement available_rooms in room_inventory_calendar with optimistic locking."""
     try:
-        check_in = datetime.strptime(check_in_date, "%Y-%m-%d")
-        check_out = datetime.strptime(check_out_date, "%Y-%m-%d")
+        check_in = date.fromisoformat(check_in_date)
+        check_out = date.fromisoformat(check_out_date)
     except (ValueError, TypeError):
         return
 
@@ -108,49 +109,48 @@ def _deduct_inventory(
     # transaction. The old loop mutated the first nights and only afterwards
     # discovered a missing/insufficient night, leaving a reservation that could
     # not be confirmed but had already consumed availability.
-    with db.client.start_session() as session:
-        with session.start_transaction():
-            for date_str in dates:
-                existing = db.room_inventory_calendar.find_one(
-                    {
-                        "prop_id": prop_id,
-                        "room_type_id": room_type_id,
-                        "date": date_str,
-                        "is_deleted": {"$ne": True},
-                    },
-                    {"_id": 0, "available_rooms": 1},
-                    session=session,
+    with db.client.start_session() as session, session.start_transaction():
+        for date_str in dates:
+            existing = db.room_inventory_calendar.find_one(
+                {
+                    "prop_id": prop_id,
+                    "room_type_id": room_type_id,
+                    "date": date_str,
+                    "is_deleted": {"$ne": True},
+                },
+                {"_id": 0, "available_rooms": 1},
+                session=session,
+            )
+            if existing is None:
+                raise ValueError(
+                    f"No hay datos de inventario para la fecha {date_str}. "
+                    f"No se puede confirmar la reserva sin inventario disponible."
                 )
-                if existing is None:
-                    raise ValueError(
-                        f"No hay datos de inventario para la fecha {date_str}. "
-                        f"No se puede confirmar la reserva sin inventario disponible."
-                    )
-                current_avail = existing.get("available_rooms", 0) or 0
-                if current_avail < rooms:
-                    raise ValueError(
-                        f"Inventario insuficiente para {date_str}: "
-                        f"se requieren {rooms} habitación(es) pero solo hay {current_avail} disponible(s)."
-                    )
+            current_avail = existing.get("available_rooms", 0) or 0
+            if current_avail < rooms:
+                raise ValueError(
+                    f"Inventario insuficiente para {date_str}: "
+                    f"se requieren {rooms} habitación(es) pero solo hay {current_avail} disponible(s)."
+                )
 
-            for date_str in dates:
-                result = db.room_inventory_calendar.find_one_and_update(
-                    {
-                        "prop_id": prop_id,
-                        "room_type_id": room_type_id,
-                        "date": date_str,
-                        "is_deleted": {"$ne": True},
-                        "available_rooms": {"$gte": rooms},
-                    },
-                    {"$inc": {"available_rooms": -rooms}},
-                    projection={"_id": 0, "available_rooms": 1},
-                    session=session,
+        for date_str in dates:
+            result = db.room_inventory_calendar.find_one_and_update(
+                {
+                    "prop_id": prop_id,
+                    "room_type_id": room_type_id,
+                    "date": date_str,
+                    "is_deleted": {"$ne": True},
+                    "available_rooms": {"$gte": rooms},
+                },
+                {"$inc": {"available_rooms": -rooms}},
+                projection={"_id": 0, "available_rooms": 1},
+                session=session,
+            )
+            if result is None:
+                raise ValueError(
+                    f"Inventario cambió durante la confirmación para {date_str}; "
+                    "la reserva debe reintentarse."
                 )
-                if result is None:
-                    raise ValueError(
-                        f"Inventario cambió durante la confirmación para {date_str}; "
-                        "la reserva debe reintentarse."
-                    )
 
 
 def _restore_inventory(
@@ -162,8 +162,8 @@ def _restore_inventory(
 ) -> None:
     """Increment available_rooms in room_inventory_calendar. Called on check-out/cancel."""
     try:
-        check_in = datetime.strptime(check_in_date, "%Y-%m-%d")
-        check_out = datetime.strptime(check_out_date, "%Y-%m-%d")
+        check_in = date.fromisoformat(check_in_date)
+        check_out = date.fromisoformat(check_out_date)
     except (ValueError, TypeError):
         return
 

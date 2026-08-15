@@ -38,6 +38,58 @@
   color: var(--success);
 }
 
+// ─── Reconciliation note (Step 3): la factura no cubre los cargos ───
+.co-liq-reconcile {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, transparent);
+  font-size: 12px;
+  color: var(--app-text);
+  .material-symbols-outlined {
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-size: 18px;
+    color: var(--warning);
+  }
+  strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    color: var(--warning-strong);
+  }
+  span {
+    color: var(--muted-text);
+    strong { color: var(--warning); }
+  }
+}
+
+// ─── Invoice metadata beside the reconciliation note ───
+.co-liq-reconcile-invoice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
+  font-size: 11px;
+
+  span {
+    color: var(--muted-text);
+    white-space: nowrap;
+  }
+
+  span strong {
+    display: inline;
+    color: var(--app-text);
+    font-weight: 600;
+  }
+}
+
 // ─── Liquidation Summary (Step 3) ───
 .co-liq-summary {
   margin-bottom: 16px;
@@ -238,6 +290,16 @@
   background: var(--accent-light);
   .material-symbols-outlined { color: var(--accent); }
 }
+.co-inv-complement {
+  border-color: color-mix(in srgb, var(--warning) 55%, transparent);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  .material-symbols-outlined { color: var(--warning); }
+  &:hover {
+    border-color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 16%, transparent);
+    .material-symbols-outlined { color: var(--warning-strong); }
+  }
+}
 .co-inv-btn-label {
   font-size: 13px;
   font-weight: 600;
@@ -313,3 +375,60 @@
   color: var(--danger);
 }
 
+
+/* ── Late check-out: ventana gobernada por la política del hotel ── */
+.co-late-panel {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  &--blocked {
+    border-color: var(--danger);
+    background: var(--danger-light);
+  }
+}
+.co-late-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: var(--app-text);
+  .material-symbols-outlined { font-size: 18px; color: var(--accent); }
+}
+.co-late-minutes {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-text);
+}
+.co-late-courtesy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--success);
+  .material-symbols-outlined { font-size: 16px; }
+}
+.co-late-approve {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  .co-select, .co-input, .co-textarea { width: 100%; }
+}
+.co-late-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--danger);
+  .material-symbols-outlined { font-size: 16px; margin-top: 1px; }
+  code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--surface);
+    border: 1px solid var(--app-border);
+    font-size: 12px;
+  }
+}

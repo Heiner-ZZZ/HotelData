@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from datetime import datetime
@@ -348,7 +349,19 @@ def notifications_list_api(
         has_manage = user_has_permission(db, current_user, "users.manage")
         if not has_manage:
             user_email = (current_user.get("email") or current_user.get("username") or "").strip()
-            match["recipient_email"] = {"$regex": f"^{user_email}$", "$options": "i"}
+            recipient_clause: list[dict[str, Any]] = [
+                {"recipient_email": {"$regex": f"^{re.escape(user_email)}$", "$options": "i"}},
+            ]
+            is_staff = (current_user.get("primary_role") or "").strip() != "cliente"
+            if is_staff:
+                # El equipo (recepción/housekeeping/gerencia) ve en la campanita
+                # las broadcasts operativas sin destinatario (``recipient_email``
+                # vacío: ``housekeeping_check_in``, ``no_show_reopen``,
+                # ``late_checkout_*``, ``early_checkin_*``) — el centro de
+                # notificaciones no es solo el log de auditoría de admin. Los
+                # clientes no las ven.
+                recipient_clause.append({"recipient_email": {"$in": ["", None]}})
+            match["$or"] = recipient_clause
         if notification_type:
             match["notification_type"] = notification_type
 

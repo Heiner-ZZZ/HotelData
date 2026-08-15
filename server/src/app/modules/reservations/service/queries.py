@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from bson import ObjectId
-
 from pymongo import ASCENDING, DESCENDING
 
+from src.app.core.timezone import local_today
+from src.app.modules.hotels.service import hotel_detail
+from src.app.modules.partner.services import (
+    partner_hotel_detail,
+    partner_hotel_policies,
+)
+from src.app.modules.reservations.service.no_show import reopen_window_reason
 from src.app.security.hotel_filter import hotel_filter_from_user
 from src.app.security.role_helpers import get_role_name
 from src.database.connection import get_database
-from src.app.modules.hotels.service import hotel_detail
-from src.app.modules.partner.services import partner_hotel_detail, partner_hotel_policies
 
 logger = logging.getLogger(__name__)
 
@@ -152,9 +156,23 @@ def list_bookings(
         ):
             if g.get("cedula"):
                 cedula_map[g["booking_id"]] = g["cedula"]
+    today_str = local_today()
     for item in items:
         item["hotel"] = contexts.get(item["booking_id"])
         item["cedula"] = cedula_map.get(item.get("booking_id", ""), "")
+        # Ventana de reapertura de no-show (server-authoritative, misma regla
+        # que el calendario de Recepción vía ``reopen_window_reason``): la lista
+        # marca los no-shows sin abrir el timeline. También marca las reservas
+        # REABIERTAS (``no_show_reopened_at``: el gerente reabrió porque el
+        # huésped llegó tras el no-show) con la misma ventana, para que
+        # recepción las detecte sin abrir el calendario — mismo criterio que el
+        # banner ``reopenedNotice`` del detalle de check-in. Solo estos dos
+        # casos llevan ventana; el resto queda en ``None``.
+        stay_status_lower = str(item.get("stay_status") or "").strip().lower()
+        if stay_status_lower == "no_show" or item.get("no_show_reopened_at"):
+            item["reopen_window"] = reopen_window_reason(item, today_str) or "open"
+        else:
+            item["reopen_window"] = None
         # Serialize ObjectId FK fields for JSON
         if isinstance(item.get("coupon_id"), ObjectId):
             item["coupon_id"] = str(item["coupon_id"])
@@ -250,8 +268,8 @@ def _build_price_breakdown(
         return None
 
     try:
-        cin = datetime.strptime(check_in_date, "%Y-%m-%d")
-        cout = datetime.strptime(check_out_date, "%Y-%m-%d")
+        cin = date.fromisoformat(check_in_date)
+        cout = date.fromisoformat(check_out_date)
     except (ValueError, TypeError):
         return None
 
@@ -340,8 +358,15 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
     manual = db.manual_reservations.find_one({"booking_id": booking_id}, {"_id": 0})
 
     # Invoice
+    # ``reservation_invoices.booking_id`` is normally the business key
+    # (``BK-...``). A historical migration stored the booking Mongo ``_id``
+    # instead, so accept both references when rebuilding the detail after a
+    # reload. The booking key remains the canonical value for new writes.
+    booking_references: list[Any] = [booking_id]
+    if booking_oid is not None:
+        booking_references.append(booking_oid)
     invoice = db.reservation_invoices.find_one(
-        {"booking_id": booking_oid},
+        {"booking_id": {"$in": booking_references}},
         {"_id": 1, "invoice_number": 1, "subtotal": 1, "taxes": 1, "total": 1, "status": 1, "issued_at": 1, "paid_at": 1},
     )
     invoice_data = None

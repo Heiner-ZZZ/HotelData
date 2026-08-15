@@ -1,5 +1,6 @@
 .rates-page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
   max-width: 1400px;
   margin: 0 auto;
@@ -32,24 +33,19 @@
   }
 }
 
-/* ── Sidebar + Content Layout ── */
+/* ── Sub-nav + Content Layout ── */
 .rates-layout {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
   align-items: start;
 }
 
 .rates-content {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
   min-width: 0;
-}
-
-@media (max-width: 900px) {
-  .rates-layout {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ── Input / Select / Textarea base styles ── */

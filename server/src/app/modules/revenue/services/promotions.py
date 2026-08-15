@@ -20,6 +20,44 @@ from src.app.modules.revenue.services.common import (
 from src.database.connection import get_database
 
 
+class CouponCodeExistsError(ValueError):
+    """El código ya pertenece a la campaña de cupones de Otra campaña de
+    Tarifas — el marketing debe VINCULARLA en lugar de crear una nueva.
+
+    Lleva la identidad de la campaña dueña (``campaign_id`` + ``campaign_name``)
+    para que la API lo devuelva como error estructurado y el frontend pueda
+    ofrecer «Vincular esta campaña» sin parsear el texto del mensaje.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        campaign_id: str,
+        campaign_name: str,
+        coupon_code: str,
+    ):
+        super().__init__(message)
+        self.campaign_id = campaign_id
+        self.campaign_name = campaign_name
+        self.coupon_code = coupon_code
+
+    @property
+    def detail(self) -> dict[str, str]:
+        """El body estructurado del 400 ``COUPON_CODE_EXISTS`` — CONTRATO ÚNICO
+        con el frontend (el composer de marketing lo detecta por ``code`` y
+        usa ``campaign_id``/``coupon_code`` para ofrecer «Vincular esta
+        campaña» sin parsear texto). Cada ruta que lo lance hace
+        ``detail=exc.detail``: ninguna puede divergir del contrato."""
+        return {
+            "message": str(self),
+            "code": "COUPON_CODE_EXISTS",
+            "campaign_id": self.campaign_id,
+            "campaign_name": self.campaign_name,
+            "coupon_code": self.coupon_code,
+        }
+
+
 def promotions_overview() -> dict[str, Any]:
     collection, source_collection = _active_fact_collection()
     pipeline = [
@@ -359,6 +397,30 @@ def create_promotion_campaign(
     coupon_count_value = max(1, min(int(coupon_count or 10), 1000))
 
     campaign_id = f"PC-{prop_id_value}-{_slugify(clean_name)}"
+
+    # Una sola fuente de verdad de cupones: un código que YA pertenece a
+    # otra campaña no se re-asigna (robaría el cupón a su campaña original).
+    # El marketing debe VINCULAR la campaña existente en lugar de crear una
+    # nueva con el mismo código.
+    clean_coupon = _clean_text(coupon_code)
+    if clean_coupon:
+        existing_coupon = db.coupon_codes.find_one({"coupon_code": clean_coupon.upper()})
+        if existing_coupon and existing_coupon.get("campaign_id") != campaign_id:
+            other = db.promotion_campaigns.find_one(
+                {"campaign_id": existing_coupon.get("campaign_id")},
+                {"_id": 0, "name": 1},
+            )
+            raise CouponCodeExistsError(
+                f"El código {clean_coupon.upper()} ya existe en la campaña "
+                f"«{other.get('name') if other else existing_coupon.get('campaign_id')}» de "
+                "Tarifas. Vincúlala en lugar de crear una nueva.",
+                campaign_id=existing_coupon.get("campaign_id") or "",
+                campaign_name=(
+                    other.get("name") if other else existing_coupon.get("campaign_id") or ""
+                ),
+                coupon_code=clean_coupon.upper(),
+            )
+
     payload = {
         "campaign_id": campaign_id,
         "prop_id": prop_id_value,
@@ -383,8 +445,9 @@ def create_promotion_campaign(
     # RF-002: Generar N códigos de cupón únicos
     _generate_coupon_codes(db, campaign_id, prop_id_value, discount_value, _safe_bool(is_active), coupon_count_value)
 
-    # Compatibilidad: si se pasa coupon_code individual, también se crea
-    clean_coupon = _clean_text(coupon_code)
+    # Compatibilidad: si se pasa coupon_code individual, también se crea y se
+    # marca como cupón principal de la campaña (``is_primary``) — es el que
+    # el marketing muestra en la oferta pública y en el selector de vínculo.
     if clean_coupon:
         db.coupon_codes.find_one_and_update(
             {"coupon_code": clean_coupon.upper()},
@@ -395,6 +458,7 @@ def create_promotion_campaign(
                     "prop_id": prop_id_value,
                     "discount_percent": discount_value,
                     "is_active": _safe_bool(is_active),
+                    "is_primary": True,
                     "updated_at": _now(),
                 },
                 "$setOnInsert": {"created_at": _now()},

@@ -41,10 +41,44 @@ function makeAuth(role: string | null, avatarUrl: string | null = null) {
 
 const themeMock = { isDark: signal(false), toggle: jest.fn() };
 
+function makeClientNotif(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'n1',
+    notificationType: 'guest_promotional',
+    typeLabel: 'Promoción',
+    recipientEmail: 'h@example.com',
+    recipientName: 'H',
+    bookingId: '',
+    propId: 3,
+    status: 'sent',
+    statusLabel: 'Enviado',
+    statusTone: 'success',
+    isUnread: true,
+    errorMessage: '',
+    message: '20% de descuento en tu próxima estadía.',
+    title: 'Oferta de verano',
+    createdAt: '2026-08-13T10:00:00Z',
+    ...overrides,
+  };
+}
+
 describe('TopNavComponent', () => {
-  async function render(role: string | null, avatarUrl: string | null = null) {
+  async function render(
+    role: string | null,
+    avatarUrl: string | null = null,
+    clientItems: unknown[] = [],
+    markRead: jest.Mock = jest.fn(() => of({ id: 'x', read: true })),
+  ) {
     const systemApi = { getNotifications: jest.fn().mockReturnValue(of({ items: [] })) };
-    const clientService = { getMyNotifications: jest.fn().mockReturnValue(of({ items: [], unreadCount: 0 })) };
+    const clientService = {
+      getMyNotifications: jest.fn().mockReturnValue(
+        of({
+          items: clientItems,
+          unreadCount: clientItems.filter((i) => (i as { isUnread?: boolean }).isUnread).length,
+        }),
+      ),
+      markAsRead: markRead,
+    };
 
     await TestBed.configureTestingModule({
       imports: [TopNavComponent],
@@ -63,6 +97,45 @@ describe('TopNavComponent', () => {
     fixture.detectChanges();
     return { fixture, systemApi, clientService };
   }
+
+  it('deep link: una promo de la campanita navega a /hotels/{prop_id} y la marca como leída', async () => {
+    const markRead = jest.fn(() => of({ id: 'n1', read: true }));
+    const { fixture, clientService } = await render('cliente', null, [makeClientNotif()], markRead);
+    const component = fixture.componentInstance;
+    const promo = component.notifications()[0];
+
+    // Deep link Fase 1: la promo lleva a la página pública del hotel.
+    expect(component.notifHref(promo)).toBe('/hotels/3');
+
+    (fixture.nativeElement.querySelector('.notif-bell') as HTMLElement).click();
+    fixture.detectChanges();
+    const link = fixture.nativeElement.querySelector('.notif-item-sm') as HTMLElement;
+    expect(link).not.toBeNull();
+    expect((link.getAttribute('href') || '').includes('/hotels/3')).toBe(true);
+
+    component.onNotifClick(promo);
+    expect(markRead).toHaveBeenCalledWith('n1');
+    expect(component.notifications()[0].unread).toBe(false);
+    fixture.destroy();
+  });
+
+  it('una notificación transaccional mantiene el link a la reserva y no marca nada', async () => {
+    const markRead = jest.fn();
+    const { fixture, clientService } = await render('cliente', null, [
+      makeClientNotif({
+        notificationType: 'guest_confirmed',
+        typeLabel: 'Reserva confirmada',
+        bookingId: 'BK-001',
+      }),
+    ], markRead);
+    const component = fixture.componentInstance;
+    const n = component.notifications()[0];
+
+    expect(component.notifHref(n)).toBe('/account/bookings/BK-001');
+    component.onNotifClick(n);
+    expect(markRead).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
 
   afterEach(() => {
     jest.clearAllMocks();
@@ -90,6 +163,24 @@ describe('TopNavComponent', () => {
     const { clientService, systemApi } = await render('super_admin');
     expect(systemApi.getNotifications).toHaveBeenCalled();
     expect(clientService.getMyNotifications).not.toHaveBeenCalled();
+  });
+
+  it('para el huésped usa el nav a ancho completo y un logo ligeramente mayor', async () => {
+    const { fixture } = await render('cliente');
+    const nav = fixture.nativeElement.querySelector('.top-nav');
+    const logo = fixture.nativeElement.querySelector('.brand-logo');
+
+    expect(nav.classList).toContain('top-nav--guest');
+    expect(logo.classList).toContain('brand-logo--guest');
+    fixture.destroy();
+  });
+
+  it('marca el nav del huésped para bajar 3px y alinear su borde inferior', async () => {
+    const { fixture } = await render('cliente');
+    const nav = fixture.nativeElement.querySelector('.top-nav');
+
+    expect(nav.classList).toContain('top-nav--guest-lowered');
+    fixture.destroy();
   });
 
   it('reemplaza el botón Explorar por enlaces directos en el nav', async () => {

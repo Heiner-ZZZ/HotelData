@@ -28,11 +28,11 @@
       @if (amenitiesResource.value(); as vm) {
         <!-- Tab switcher: Servicios | Peticiones especiales -->
         <nav class="amenity-tabs" aria-label="Secciones del catálogo">
-          <button type="button" class="amenity-tab" [class.is-active]="activeTab() === 'amenities'" (click)="activeTab.set('amenities')">
+          <button type="button" class="amenity-tab" [class.is-active]="activeTab() === 'amenities'" (click)="setActiveTab('amenities')">
             <span class="material-symbols-outlined">spa</span>
             Servicios
           </button>
-          <button type="button" class="amenity-tab" [class.is-active]="activeTab() === 'requests'" (click)="activeTab.set('requests')">
+          <button type="button" class="amenity-tab" [class.is-active]="activeTab() === 'requests'" (click)="setActiveTab('requests')">
             <span class="material-symbols-outlined">room_service</span>
             Peticiones especiales
           </button>

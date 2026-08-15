@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from bson import ObjectId
 
 from src.app.core.state_machine import booking_sm
-
 
 # ── Reservation (booking.status) lifecycle ──
 # Derived from the central booking StateMachine so we never drift.
@@ -76,7 +75,7 @@ class ReservationInput:
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def iso_now() -> str:
@@ -84,7 +83,7 @@ def iso_now() -> str:
 
 
 def generate_prefixed_id(prefix: str) -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     token = secrets.token_hex(4)
     return f"{prefix}-{stamp}-{token}".upper()
 
@@ -92,7 +91,7 @@ def generate_prefixed_id(prefix: str) -> str:
 def _safe_int(value: Any, default: int = 0) -> int:
     try:
         return int(value)
-    except Exception:
+    except (TypeError, ValueError, OverflowError):
         return default
 
 

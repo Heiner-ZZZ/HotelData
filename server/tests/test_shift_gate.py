@@ -101,6 +101,9 @@ def test_create_folio_stamps_shift_id(db):
     stored = db.guest_folios.find_one({"booking_id": booking_id})
     assert stored is not None
     assert stored.get("shift_id") == shift_id
+    room_posting = next(p for p in stored["postings"] if p["type"] == "room")
+    assert room_posting["category_id"] == "habitacion"
+    assert room_posting["category"] == "Habitación"
 
 
 def test_create_folio_keeps_shift_id_null_for_web_channel(db):

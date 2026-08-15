@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   signal,
@@ -10,6 +11,7 @@ import { httpResource } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ThemeService } from '../../../../core/theme/theme.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { BookingSearchBarComponent, type BookingSearchValues } from '../../../../shared/ui/booking-search-bar/booking-search-bar';
 import { API_CONFIG } from '../../../../core/api/api.config';
@@ -41,6 +43,8 @@ export class WelcomePageComponent {
   private readonly router = inject(Router);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly apiConfig = inject(API_CONFIG);
+  private readonly theme = inject(ThemeService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly year = new Date().getFullYear();
 
@@ -159,6 +163,12 @@ export class WelcomePageComponent {
   readonly selectedCurrency = signal<string>(this.readStoredCurrency());
 
   constructor() {
+    // El landing público /welcome SIEMPRE se ve en modo claro, sin importar
+    // la preferencia del usuario (la que manda en el resto de la app). Se
+    // libera al salir de la ruta para que el resto respete su preferencia.
+    this.theme.forceLight(true);
+    this.destroyRef.onDestroy(() => this.theme.forceLight(false));
+
     effect(() => {
       if (this.hasSession()) {
         const homeHref = this.authService.authState().homeHref;

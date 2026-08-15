@@ -152,18 +152,54 @@ export class PoliciesPageComponent {
     const locked = !!this.selectedRoomTypeId();
     const checkIn = this.policyForm.controls.checkInTime;
     const checkOut = this.policyForm.controls.checkOutTime;
+    const earlyEnabled = this.policyForm.controls.earlyCheckInEnabled;
+    const earlyCourtesy = this.policyForm.controls.earlyCheckInCourtesyMinutes;
+    const earlyFee = this.policyForm.controls.earlyCheckInDefaultFee;
+    const lateEnabled = this.policyForm.controls.lateCheckoutEnabled;
+    const lateCourtesy = this.policyForm.controls.lateCheckoutCourtesyMinutes;
+    const lateFee = this.policyForm.controls.lateCheckoutDefaultFee;
+    const guaranteed = this.policyForm.controls.guaranteedReservation;
+    const lateCutoff = this.policyForm.controls.lateArrivalCutoff;
+    const noShowExec = this.policyForm.controls.noShowExecution;
     if (locked) {
       checkIn.disable();
       checkOut.disable();
+      earlyEnabled.disable();
+      earlyCourtesy.disable();
+      earlyFee.disable();
+      lateEnabled.disable();
+      lateCourtesy.disable();
+      lateFee.disable();
+      guaranteed.disable();
+      lateCutoff.disable();
+      noShowExec.disable();
     } else {
       checkIn.enable();
       checkOut.enable();
+      earlyEnabled.enable();
+      earlyCourtesy.enable();
+      earlyFee.enable();
+      lateEnabled.enable();
+      lateCourtesy.enable();
+      lateFee.enable();
+      guaranteed.enable();
+      lateCutoff.enable();
+      noShowExec.enable();
     }
   }
 
   readonly policyForm = this.formBuilder.nonNullable.group({
     checkInTime: [''],
     checkOutTime: [''],
+    earlyCheckInEnabled: [true],
+    earlyCheckInCourtesyMinutes: [60, [Validators.min(0), Validators.max(240)]],
+    earlyCheckInDefaultFee: [0, [Validators.min(0)]],
+    lateCheckoutEnabled: [true],
+    lateCheckoutCourtesyMinutes: [60, [Validators.min(0), Validators.max(240)]],
+    lateCheckoutDefaultFee: [0, [Validators.min(0)]],
+    guaranteedReservation: [false],
+    lateArrivalCutoff: ['23:59'],
+    noShowExecution: ['next_day'],
     cancellationPolicy: [''],
     cancellationHours: [0, [Validators.min(0), Validators.max(720)]],
     cancellationPenaltyPercent: [100, [Validators.min(0), Validators.max(100)]],
@@ -241,6 +277,15 @@ export class PoliciesPageComponent {
         // Check-in/check-out: always use hotel-level values (global, not per-room)
         checkInTime: this.hotelCheckInTime || vm.checkInTime,
         checkOutTime: this.hotelCheckOutTime || vm.checkOutTime,
+        earlyCheckInEnabled: vm.earlyCheckInEnabled,
+        earlyCheckInCourtesyMinutes: vm.earlyCheckInCourtesyMinutes,
+        earlyCheckInDefaultFee: vm.earlyCheckInDefaultFee,
+        lateCheckoutEnabled: vm.lateCheckoutEnabled,
+        lateCheckoutCourtesyMinutes: vm.lateCheckoutCourtesyMinutes,
+        lateCheckoutDefaultFee: vm.lateCheckoutDefaultFee,
+        guaranteedReservation: vm.guaranteedReservation,
+        lateArrivalCutoff: vm.lateArrivalCutoff,
+        noShowExecution: vm.noShowExecution,
         cancellationPolicy: vm.cancellationPolicy,
         cancellationHours: vm.cancellationHours,
         cancellationPenaltyPercent: vm.cancellationPenaltyPercent,
@@ -312,6 +357,15 @@ export class PoliciesPageComponent {
       // because these are global hotel settings, not per-room-type
       checkInTime: rtId ? '' : raw.checkInTime,
       checkOutTime: rtId ? '' : raw.checkOutTime,
+      earlyCheckInEnabled: raw.earlyCheckInEnabled,
+      earlyCheckInCourtesyMinutes: raw.earlyCheckInCourtesyMinutes,
+      earlyCheckInDefaultFee: raw.earlyCheckInDefaultFee,
+      lateCheckoutEnabled: raw.lateCheckoutEnabled,
+      lateCheckoutCourtesyMinutes: raw.lateCheckoutCourtesyMinutes,
+      lateCheckoutDefaultFee: raw.lateCheckoutDefaultFee,
+      guaranteedReservation: raw.guaranteedReservation,
+      lateArrivalCutoff: raw.lateArrivalCutoff,
+      noShowExecution: raw.noShowExecution as PoliciesViewModel['noShowExecution'],
       cancellationPolicy: raw.cancellationPolicy,
       cancellationHours: raw.cancellationHours,
       cancellationPenaltyPercent: raw.cancellationPenaltyPercent,

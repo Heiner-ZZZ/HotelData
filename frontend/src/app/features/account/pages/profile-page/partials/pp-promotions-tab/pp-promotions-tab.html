@@ -1,0 +1,83 @@
+@switch (viewState()) {
+  @case ('loading') {
+    <app-loading-state label="Cargando promociones..." />
+  }
+  @case ('error') {
+    <app-error-state
+      title="No fue posible cargar las promociones"
+      description="Intenta nuevamente más tarde."
+    />
+  }
+  @case ('empty') {
+    <app-empty-state
+      icon="campaign_off"
+      title="Sin promociones todavía"
+      description="Cuando los hoteles te envíen publicidad, promociones, novedades u ofertas, aparecerán aquí."
+    />
+  }
+  @default {
+    <div class="promo-tab">
+      <section class="surface-card promo-tab-intro">
+        <span class="material-symbols-outlined promo-tab-intro-icon">campaign</span>
+        <div class="promo-tab-intro-copy">
+          <h3>Promociones recibidas</h3>
+          <p>Publicidad, promociones, novedades y ofertas de los hoteles que aceptaste recibir.</p>
+        </div>
+        <span class="promo-tab-count">{{ total() }}</span>
+      </section>
+
+      <div class="promo-tab-list">
+        @for (item of items(); track item.createdAt) {
+          <div
+            class="promo-tab-card"
+            [class.is-unread]="item.isUnread"
+            [class.is-clickable]="item.propId > 0"
+            role="button"
+            tabindex="0"
+            (click)="open(item)"
+            (keydown.enter)="open(item)"
+            (keydown.space)="open(item); $event.preventDefault()"
+            [attr.aria-label]="'Ver oferta del hotel: ' + (item.title || item.message)"
+          >
+            <div class="promo-tab-card-icon">
+              <span class="material-symbols-outlined">campaign</span>
+            </div>
+            <div class="promo-tab-card-body">
+              <div class="promo-tab-card-head">
+                <span class="promo-tab-card-type">{{ item.typeLabel }}</span>
+                <span class="promo-tab-card-time">{{ item.createdAt | date: 'd MMM yyyy, HH:mm' }}</span>
+              </div>
+              @if (item.title) {
+                <strong class="promo-tab-card-title">{{ item.title }}</strong>
+              }
+              @if (item.message) {
+                <p class="promo-tab-card-msg">{{ item.message }}</p>
+              }
+            </div>
+            @if (item.isUnread) {
+              <span class="promo-tab-card-dot" aria-label="No leída"></span>
+            }
+          </div>
+        }
+      </div>
+
+      @if (hasMore()) {
+        <button type="button" class="promo-tab-more" (click)="loadMore()" [disabled]="loadingMore()">
+          <span class="material-symbols-outlined">{{ loadingMore() ? 'sync' : 'expand_more' }}</span>
+          {{ loadingMore() ? 'Cargando...' : 'Cargar más promociones' }}
+        </button>
+        @if (loadingMore()) {
+          <p class="promo-tab-more-hint" role="status">
+            Mostrando {{ items().length }} de {{ total() }} promociones.
+          </p>
+        }
+      }
+
+      <p class="promo-tab-note">
+        <span class="material-symbols-outlined">info</span>
+        Las notificaciones de reservas y facturas (transaccionales) se ven en la campanita de
+        notificaciones, separadas de estas promociones.
+      </p>
+    </div>
+  }
+}

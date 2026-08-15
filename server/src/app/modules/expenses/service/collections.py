@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from pymongo import ASCENDING, DESCENDING, IndexModel
@@ -51,7 +52,14 @@ LEDGER_INDEXES = [
     IndexModel([("journal_entry_id", ASCENDING)], name="idx_ledger_journal"),
     # One source event owns exactly one journal pair. This makes retries safe
     # and lets reconciliation distinguish a complete pair from a half-write.
-    IndexModel([("source", ASCENDING), ("source_id", ASCENDING), ("account_code", ASCENDING)], name="idx_ledger_source_account", unique=True, partialFilterExpression={"source_id": {"$exists": True, "$ne": ""}}),
+    # MongoDB partial indexes support comparison operators but reject `$ne`.
+    # `$gt: ""` keeps only non-empty string source ids in the unique index.
+    IndexModel(
+        [("source", ASCENDING), ("source_id", ASCENDING), ("account_code", ASCENDING)],
+        name="idx_ledger_source_account",
+        unique=True,
+        partialFilterExpression={"source_id": {"$gt": ""}},
+    ),
 ]
 
 CHART_INDEXES = [

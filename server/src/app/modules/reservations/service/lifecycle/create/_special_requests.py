@@ -18,7 +18,9 @@ import logging
 from typing import Any
 
 from src.app.modules.partner.services._common import normalize_label
-from src.app.modules.partner.services.content.special_requests import special_requests_lookup
+from src.app.modules.partner.services.content.special_requests import (
+    special_requests_lookup,
+)
 from src.database.connection import get_database
 
 logger = logging.getLogger(__name__)
@@ -50,9 +52,7 @@ def resolve_late_checkin(
             if entry and entry.get("late_arrival"):
                 return True
     arrival = (estimated_arrival_time or "").strip()
-    if arrival and arrival >= LATE_CHECKIN_THRESHOLD:
-        return True
-    return False
+    return bool(arrival and arrival >= LATE_CHECKIN_THRESHOLD)
 
 
 def validate_special_requests(
@@ -134,7 +134,9 @@ def _generate_special_request_charges(
     lookup = special_requests_lookup(prop_id)
 
     from src.app.modules.housekeeping.schemas import AdditionalChargeCreate
-    from src.app.modules.housekeeping.service.lifecycle.charges import create_additional_charge
+    from src.app.modules.housekeeping.service.lifecycle.charges import (
+        create_additional_charge,
+    )
 
     created: list[dict[str, Any]] = []
     for raw in selected:

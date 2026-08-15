@@ -9,6 +9,7 @@ from src.app.modules.hotels.service import (
     hotel_detail,
 )
 from src.app.modules.hotels.service.availability import search_available_hotels
+from src.app.modules.notifications.promotions import list_public_offers
 from src.app.modules.hotels.service.compare import compare_hotels_with_availability
 from src.app.modules.hotels.service.lookups import suggest_destinations
 from src.app.modules.hotels.service.similar import similar_hotels
@@ -146,3 +147,22 @@ def detail_api(prop_id: int):
     if hotel is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Hotel not found")
     return hotel
+
+
+@api_router.get("/{prop_id}/promotions")
+def promotions_api(prop_id: int):
+    """Public: active promotional offers of a hotel (sent campaigns).
+
+    Fase 1 del modelo de ofertas: la página pública del hotel anuncia las
+    campañas promocionales enviadas (``guest_promotional`` agrupadas por
+    ``campaign_id``), más recientes primero. Solo se exponen título y fecha
+    de envío — NUNCA el ``message`` crudo (PII: marketing puede haberlo
+    personalizado con el nombre del huésped). No requiere autenticación.
+    404 cuando el hotel no existe (consistente con ``GET /api/hotels/{id}``).
+    """
+    result = list_public_offers(prop_id)
+    if result is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND, detail="Hotel not found"
+        )
+    return result

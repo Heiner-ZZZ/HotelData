@@ -7,6 +7,7 @@ import { of, Subject } from 'rxjs';
 
 import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ThemeService } from '../../../../core/theme/theme.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { SettingsApiService } from '../../settings/services/settings-api.service';
 import type { SettingsViewModel } from '../../settings/models/settings.model';
@@ -41,6 +42,15 @@ describe('SettingsPageComponent — modo CRUD del nav', () => {
     const api = { getSettings: jest.fn(), updateSettings: jest.fn(), changePassword: jest.fn() };
     const toast = { success: jest.fn(), error: jest.fn() };
     const auth = { currentUser: signal(null), updateAvatar: jest.fn() };
+    // La página delega la aplicación del tema a ThemeService (única fuente de
+    // verdad); el mock evita que el servicio real toque BD y localStorage.
+    const theme = {
+      preference: signal('system'),
+      isDark: signal(false),
+      toggle: jest.fn(),
+      forceLight: jest.fn(),
+      setPreference: jest.fn(),
+    };
 
     const settings: SettingsViewModel = { defaultDashboard: '/management', theme: 'system' };
     api.getSettings.mockReturnValue(of(settings));
@@ -52,6 +62,7 @@ describe('SettingsPageComponent — modo CRUD del nav', () => {
         provideHttpClientTesting(),
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
+        { provide: ThemeService, useValue: theme },
         { provide: SettingsApiService, useValue: api },
         { provide: ToastService, useValue: toast },
       ],
@@ -71,6 +82,7 @@ describe('SettingsPageComponent — modo CRUD del nav', () => {
       api,
       toast,
       settings,
+      theme,
     };
   }
 
@@ -136,6 +148,22 @@ describe('SettingsPageComponent — modo CRUD del nav', () => {
     expect(ctx.mode.mode()).toBe('read');
     expect(pageEl(ctx).querySelector('.settings-form .unsaved-dot')).toBeNull();
     expect(pageEl(ctx).querySelector('.settings-form .form-status')).toBeNull();
+  });
+
+  it('al cargar/salvar, delega la aplicación del tema a ThemeService (misma fuente de verdad que el icono)', () => {
+    const ctx = setup();
+
+    // Al cargar: aplica el tema de la BD sin re-persistir.
+    expect(ctx.theme.setPreference).toHaveBeenCalledWith('system', false);
+    ctx.theme.setPreference.mockClear();
+
+    ctx.component.setTab('preferences');
+    ctx.component.form.controls.theme.setValue('dark');
+    ctx.api.updateSettings.mockReturnValue(of({ defaultDashboard: '/management', theme: 'dark' }));
+    ctx.component.save();
+
+    // Al guardar: aplica el tema persistido sin doble PUT (persist=false).
+    expect(ctx.theme.setPreference).toHaveBeenCalledWith('dark', false);
   });
 
   it('el modo refleja solo la pestaña activa (Seguridad ↔ Preferencias)', () => {

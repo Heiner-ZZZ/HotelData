@@ -20,6 +20,20 @@ import type { FulfillmentItem } from '../../../models/reservations.model';
                 <tr><th>Tipo de habitación</th><td>{{ rt.name }}</td></tr>
               }
               <tr class="date-row"><th>Fechas</th><td><span class="date-range">{{ vm()?.checkInDate }}</span> <span class="date-arrow">→</span> <span class="date-range">{{ vm()?.checkOutDate }}</span></td></tr>
+              @if (isExtendedDeparture(vm()?.checkOutMode)) {
+                <tr>
+                  <th>Salida extendida</th>
+                  <td>
+                    <span class="rd-extended-departure">
+                      <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+                      {{ lateCheckoutModeLabel(vm()?.checkOutMode) }}
+                      @if ((vm()?.lateCheckoutMinutes ?? 0) > 0) {
+                        · {{ vm()?.lateCheckoutMinutes }} min tras las {{ vm()?.lateCheckoutPolicyTime || 'hora de política' }}
+                      }
+                    </span>
+                  </td>
+                </tr>
+              }
               <tr>
                 <th>Llegada estimada</th>
                 <td>
@@ -138,4 +152,13 @@ export class RdInfoPanelsComponent {
   /** Solo staff puede marcar/reabrir cumplimiento (huésped ve el checklist en solo lectura). */
   readonly canToggle = input<boolean>(true);
   readonly toggleFulfillment = output<{ kind: 'special_request' | 'amenity'; label: string; status: 'pending' | 'fulfilled' }>();
+
+  /** Only persisted late modes render this row; normal departures stay unchanged. */
+  isExtendedDeparture(mode: string | null | undefined): boolean {
+    return mode === 'late_approved' || mode === 'late_courtesy';
+  }
+
+  lateCheckoutModeLabel(mode: string | null | undefined): string {
+    return mode === 'late_approved' ? 'Aprobado' : 'Cortesía';
+  }
 }

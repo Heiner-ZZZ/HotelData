@@ -178,9 +178,15 @@ def validate_coupon_api(payload: dict = Body(...), current_user: dict = Depends(
     coupon_code = payload.get("coupon_code") or payload.get("promo_code")
     prop_id = payload.get("prop_id")
     if not coupon_code:
-        raise HTTPException(status_code=400, detail="coupon_code is required")
+        raise HTTPException(
+            status_code=400,
+            detail="El código promocional es obligatorio. Ingresalo para validarlo.",
+        )
     if not prop_id:
-        raise HTTPException(status_code=400, detail="prop_id is required")
+        raise HTTPException(
+            status_code=400,
+            detail="El hotel es obligatorio para validar el código. Seleccioná un hotel e intentá de nuevo.",
+        )
     error, discount, _ = validate_coupon_code(coupon_code, int(prop_id))
     return {"valid": error is None, "message": error or "Código válido", "discount_percent": discount or 0}
 
@@ -245,7 +251,10 @@ def reservation_detail_api(booking_id: str, current_user: dict = Depends(require
 
     detail = get_booking_detail(booking_id)
     if detail is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.",
+        )
     # Flatten booking fields to top-level for BookingResponse validation
     data = {**detail.get("booking", {}), **detail}
     data.pop("booking", None)
@@ -296,9 +305,19 @@ def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": booking_id})
     if booking is None:
-        raise HTTPException(status_code=404, detail="Booking not found")
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.",
+        )
     if booking.get("status") != "pending":
-        raise HTTPException(status_code=400, detail="Only pending bookings can be previewed for cancellation")
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Solo se pueden previsualizar cancelaciones de reservas pendientes; "
+                "esta reserva está en estado '" + str(booking.get("status", "")) + "'. "
+                "Contactá a recepción para gestionar la cancelación."
+            ),
+        )
     today_str = local_today()
     if today_str >= (booking.get("check_in_date") or ""):
         raise HTTPException(status_code=400, detail="No se puede cancelar una reserva cuya fecha de entrada ya ha comenzado o pasado.")
@@ -388,7 +407,10 @@ def reservation_recalculate_price_api(
         {"_id": 0, "prop_id": 1},
     )
     if booking is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.",
+        )
     prop_id = int(booking.get("prop_id", 0) or 0)
     if not user_can_access_hotel(current_user, prop_id):
         raise HTTPException(
@@ -397,7 +419,10 @@ def reservation_recalculate_price_api(
         )
     result = backfill_single_booking(db, booking_id)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.",
+        )
     return result
 
 

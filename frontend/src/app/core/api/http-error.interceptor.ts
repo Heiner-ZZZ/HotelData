@@ -24,7 +24,9 @@ export const httpErrorInterceptor: HttpInterceptorFn = (request, next) => {
         const detail = error.error?.detail;
         const message =
           error.error?.message ||
-          (typeof detail === 'string' ? detail : detail?.detail) ||
+          (typeof detail === 'string'
+            ? detail
+            : detail?.detail ?? detail?.message) ||
           error.message ||
           'Unexpected API error';
 

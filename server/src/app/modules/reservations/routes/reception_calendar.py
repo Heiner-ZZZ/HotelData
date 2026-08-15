@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
-from src.app.core.timezone import local_today, local_now
+from src.app.core.timezone import local_now, local_today
+from src.app.modules.reservations.service.no_show import reopen_window_reason
 from src.app.security.dependencies import require_permission
 from src.database.connection import get_database
 
@@ -164,6 +165,7 @@ def reception_calendar_api(
                 "check_out_time": 1,
                 "total_nights": 1,
                 "status": 1,
+                "stay_status": 1,
                 "room_type_id": 1,
                 "assigned_rooms": 1,
                 "total_price": 1,
@@ -197,6 +199,16 @@ def reception_calendar_api(
         check_out_time_str = b.get("check_out_time") or ""
         visual = _reservation_status_label(b, today_str)
 
+        # Ventana de reapertura de no-show (server-authoritative, misma regla
+        # que ``reopen_no_show``): ``'open'`` cuando el no-show es reabrible
+        # (check-in de hoy/ayer + estadía vigente), ``'too_late'``/``'stay_ended'``
+        # cuando la ventana cerró, y ``None`` para reservas que no son no-show.
+        # La UI marca los reabribles y oculta la acción en los antiguos.
+        stay_status = str(b.get("stay_status") or "").strip().lower()
+        reopen_window: str | None = None
+        if stay_status == "no_show":
+            reopen_window = reopen_window_reason(b, today_str) or "open"
+
         reservation_base = {
             "booking_id": b.get("booking_id", ""),
             "guest_name": b.get("guest_name", ""),
@@ -210,7 +222,9 @@ def reception_calendar_api(
             "check_out_time": check_out_time_str,
             "total_nights": int(b.get("total_nights") or 0),
             "status": b.get("status", ""),
+            "stay_status": stay_status,
             "visual_status": visual,
+            "reopen_window": reopen_window,
             "assigned_rooms": valid_assigned if not has_invalid_assignment else [],
             "total_price": b.get("total_price"),
             "currency": b.get("currency", "USD"),
@@ -270,4 +284,109 @@ def reception_calendar_api(
         "today": today_str,
         "check_in_time": default_times["check_in_time"],
         "check_out_time": default_times["check_out_time"],
+    }
+
+
+@reception_calendar_router.get("/no-shows/reopen-window")
+def no_show_reopen_window_api(
+    prop_id: int = Query(..., ge=1),
+    current_user: dict = Depends(require_permission("reservations.read")),
+):
+    """Listado read-only de no-shows con su ventana de reapertura.
+
+    Recepción consulta qué no-shows están dentro de la ventana (check-in de
+    hoy/ayer + estadía vigente) para derivarlos al gerente, y cuáles ya
+    cerraron (retraso o estadía terminada). Misma regla que ``reopen_no_show``
+    vía ``reopen_window_reason`` — el listado es informativo: la acción sigue
+    exigiendo ``check-ins.no_show_reopen`` en el endpoint de reapertura.
+
+    Response:
+    {
+      "prop_id": 1,
+      "today": "2026-08-14",
+      "total": 3,
+      "reopenable": 1,
+      "closed": 2,
+      "items": [ { booking_id, guest_name, check_in_date, check_out_date,
+                  total_nights, room_number, status, reopen_window,
+                  reopenable, days_late, no_show_penalty_amount,
+                  no_show_processed_at } ]
+    }
+    """
+    db = get_database()
+    today_str = local_today()
+
+    room_by_id: dict[str, dict[str, Any]] = {}
+    for hr in db.hotel_rooms.find(
+        {"prop_id": prop_id, "is_active": True},
+        {"_id": 0, "hotel_room_id": 1, "room_label": 1},
+    ):
+        room_by_id[hr["hotel_room_id"]] = hr
+
+    bookings = list(
+        db.booking_orders.find(
+            {"prop_id": prop_id, "stay_status": "no_show"},
+            {
+                "_id": 0,
+                "booking_id": 1,
+                "guest_name": 1,
+                "check_in_date": 1,
+                "check_out_date": 1,
+                "total_nights": 1,
+                "assigned_rooms": 1,
+                "status": 1,
+                "no_show_penalty_amount": 1,
+                "no_show_processed_at": 1,
+            },
+        ).sort([("check_in_date", 1)])
+    )
+
+    today_date = date.fromisoformat(today_str)
+    items: list[dict[str, Any]] = []
+    for b in bookings:
+        window = reopen_window_reason(b, today_str) or "open"
+        try:
+            ci_date = date.fromisoformat(str(b.get("check_in_date") or "")[:10])
+            days_late = max(0, (today_date - ci_date).days)
+        except (ValueError, TypeError):
+            days_late = None
+
+        raw_assigned = b.get("assigned_rooms") or []
+        if isinstance(raw_assigned, str):
+            raw_assigned = [raw_assigned]
+        room_labels: list[str] = []
+        for value in raw_assigned:
+            room = room_by_id.get(_normalise_assigned_room_id(value))
+            if room:
+                room_labels.append(room.get("room_label") or "")
+
+        items.append(
+            {
+                "booking_id": b.get("booking_id", ""),
+                "guest_name": b.get("guest_name", ""),
+                "check_in_date": (b.get("check_in_date") or "")[:10],
+                "check_out_date": (b.get("check_out_date") or "")[:10],
+                "total_nights": int(b.get("total_nights") or 0),
+                "room_number": ", ".join(label for label in room_labels if label) or "Sin asignar",
+                "status": b.get("status", ""),
+                "reopen_window": window,
+                "reopenable": window == "open",
+                "days_late": days_late,
+                "no_show_penalty_amount": b.get("no_show_penalty_amount"),
+                "no_show_processed_at": (
+                    b.get("no_show_processed_at").isoformat()
+                    if isinstance(b.get("no_show_processed_at"), datetime)
+                    else str(b.get("no_show_processed_at") or "")
+                ),
+            }
+        )
+
+    reopenable_count = sum(1 for item in items if item["reopenable"])
+    return {
+        "prop_id": prop_id,
+        "today": today_str,
+        "total": len(items),
+        "reopenable": reopenable_count,
+        "closed": len(items) - reopenable_count,
+        "items": items,
     }

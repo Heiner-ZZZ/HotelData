@@ -22,13 +22,14 @@ import type { PaymentListItem } from '../../models/billing.model';
 import { PaymentRegisterModalComponent } from '../../components/payment-register-modal/payment-register-modal';
 import type { PaymentRegisterPayload } from '../../components/payment-register-modal/payment-register-modal';
 import { LinkShiftModalComponent } from '../../components/link-shift-modal/link-shift-modal';
+import { BillingSubNavComponent } from '../../components/billing-sub-nav/billing-sub-nav';
 
 @Component({
   selector: 'app-payments-list-page',
   imports: [
     CurrencyPipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
     PageHeaderComponent, StatusBadgeComponent, RouterLink, FormsModule,
-    PropertySelectorComponent, PaymentRegisterModalComponent, LinkShiftModalComponent,
+    PropertySelectorComponent, PaymentRegisterModalComponent, LinkShiftModalComponent, BillingSubNavComponent,
   ],
   templateUrl: './payments-list-page.html',
   styleUrl: './payments-list-page.scss',
@@ -108,7 +109,7 @@ export class PaymentsListPageComponent implements OnInit {
       },
       error: (err: ApiError) => {
         this.registerSubmitting.set(false);
-        this.registerError.set(err.message || 'No se pudo registrar el pago.');
+        this.registerError.set(err.message || 'No se pudo registrar el pago. Verificá el importe, el método de pago y que haya un turno de caja activo, e intentá de nuevo.');
       },
     });
   }
@@ -245,7 +246,7 @@ export class PaymentsListPageComponent implements OnInit {
           this.paymentsResource.reload();
         },
         error: (err: ApiError) => {
-          this.toast.show(err.message || 'Error al reembolsar el pago.', 'error', 5000);
+          this.toast.show(err.message || 'No se pudo reembolsar el pago. Verificá que el pago esté confirmado y que haya un turno de caja activo, e intentá de nuevo.', 'error', 5000);
           this.refundingId.set(null);
         },
       });

@@ -186,6 +186,136 @@
               </div>
             </div>
 
+            <div class="field-group field-span">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">schedule</span>
+                <span>Early check-in</span>
+                <app-info-tooltip
+                  title="Llegada anticipada"
+                  icon="info"
+                  text="La cortesía se aplica dentro de la ventana configurada. Fuera de ella se necesita aprobación explícita y el cargo es opcional. La reserva conserva sus fechas originales."
+                ></app-info-tooltip>
+              </div>
+              <div class="field-row">
+                <label class="field checkbox-field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">verified</span>
+                    Permitir early check-in
+                  </span>
+                  <input type="checkbox" formControlName="earlyCheckInEnabled" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">timer</span>
+                    Cortesía (minutos)
+                  </span>
+                  <input type="number" min="0" max="240" formControlName="earlyCheckInCourtesyMinutes" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">payments</span>
+                    Cargo predeterminado ($)
+                  </span>
+                  <input type="number" min="0" step="0.01" formControlName="earlyCheckInDefaultFee" />
+                </label>
+              </div>
+              <p class="field-help">Dentro de la cortesía se registra una llegada anticipada autorizada. Más temprano exige motivo y aprobación.</p>
+            </div>
+
+            <div class="field-group field-span">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">logout</span>
+                <span>Late check-out</span>
+                <app-info-tooltip
+                  title="Salida tardía"
+                  icon="logout"
+                  text="La cortesía se aplica dentro de la ventana configurada tras la hora de check-out. Fuera de ella se necesita aprobación del gerente y el cargo es opcional. La estadía conserva sus fechas originales."
+                ></app-info-tooltip>
+              </div>
+              <div class="field-row">
+                <label class="field checkbox-field" [class.field--disabled]="!!selectedRoomTypeId() || !!selectedRatePlanId()">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">verified</span>
+                    Permitir late check-out
+                    @if (selectedRoomTypeId() || selectedRatePlanId()) {
+                      <span class="field-hint">global</span>
+                    }
+                  </span>
+                  <input type="checkbox" formControlName="lateCheckoutEnabled" />
+                </label>
+                <label class="field" [class.field--disabled]="!!selectedRoomTypeId() || !!selectedRatePlanId()">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">timer</span>
+                    Cortesía (minutos)
+                    @if (selectedRoomTypeId() || selectedRatePlanId()) {
+                      <span class="field-hint">global</span>
+                    }
+                  </span>
+                  <input type="number" min="0" max="240" formControlName="lateCheckoutCourtesyMinutes" />
+                </label>
+                <label class="field" [class.field--disabled]="!!selectedRoomTypeId() || !!selectedRatePlanId()">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">payments</span>
+                    Cargo predeterminado ($)
+                    @if (selectedRoomTypeId() || selectedRatePlanId()) {
+                      <span class="field-hint">global</span>
+                    }
+                  </span>
+                  <input type="number" min="0" step="0.01" formControlName="lateCheckoutDefaultFee" />
+                </label>
+              </div>
+              <p class="field-help">Dentro de la cortesía la salida tardía se registra sin cargo. Más tarde exige motivo y aprobación del gerente.</p>
+            </div>
+
+            <div class="field-group field-span">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">nights_stay</span>
+                <span>Llegadas tardías y no-show</span>
+                <app-info-tooltip
+                  title="Llegada tardía"
+                  icon="nights_stay"
+                  text="<p>Define cómo se maneja al huésped que llega fuera del horario de check-in.</p><ul><li><strong>Reserva garantizada</strong> — el auto no-show nunca la procesa; la decisión queda en recepción o gerencia.</li><li><strong>Hora límite de llegada</strong> — pasada esta hora el día del check-in, la llegada se trata como tardía.</li><li><strong>Ejecución de no-show</strong> — <em>Día siguiente</em>: el proceso automático actúa a partir del día siguiente; <em>Mismo día tras la hora límite</em>: también el mismo día una vez pasada la hora; <em>Solo manual</em>: nunca automático.</li></ul><p>Una llegada tardía declarada nunca mueve las fechas de la reserva: la estadía conserva sus noches y su check-out.</p>">
+                </app-info-tooltip>
+              </div>
+              <div class="field-row">
+                <label class="field checkbox-field" [class.field--disabled]="!!selectedRoomTypeId() || !!selectedRatePlanId()">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">verified_user</span>
+                    Reserva garantizada
+                    @if (selectedRoomTypeId() || selectedRatePlanId()) {
+                      <span class="field-hint">global</span>
+                    }
+                  </span>
+                  <input type="checkbox" formControlName="guaranteedReservation" />
+                </label>
+                <label class="field" [class.field--disabled]="!!selectedRoomTypeId() || !!selectedRatePlanId()">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">schedule</span>
+                    Hora límite de llegada
+                    @if (selectedRoomTypeId() || selectedRatePlanId()) {
+                      <span class="field-hint">global</span>
+                    }
+                  </span>
+                  <input type="time" formControlName="lateArrivalCutoff" />
+                </label>
+                <label class="field" [class.field--disabled]="!!selectedRoomTypeId() || !!selectedRatePlanId()">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">event_busy</span>
+                    Ejecución de no-show
+                    @if (selectedRoomTypeId() || selectedRatePlanId()) {
+                      <span class="field-hint">global</span>
+                    }
+                  </span>
+                  <select formControlName="noShowExecution">
+                    <option value="next_day">Día siguiente (después de medianoche)</option>
+                    <option value="same_day_cutoff">Mismo día tras la hora límite</option>
+                    <option value="manual">Solo manual (nunca automático)</option>
+                  </select>
+                </label>
+              </div>
+              <p class="field-help">Una reserva garantizada o con llegada tardía declarada queda protegida del auto no-show. La estadía conserva sus fechas originales.</p>
+            </div>
+
             <div class="field-group">
               <div class="field-group-header">
                 <span class="material-symbols-outlined field-group-icon">nights_stay</span>

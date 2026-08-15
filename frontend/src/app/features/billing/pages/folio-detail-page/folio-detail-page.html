@@ -158,7 +158,7 @@
                 <div class="fl-group">
                   <div class="fl-group-header">
                     <span class="material-symbols-outlined fl-group-icon">{{ categoryIcon(group[0]) }}</span>
-                    <span class="fl-group-label">{{ group[0] }}</span>
+                    <span class="fl-group-label">{{ categoryLabel(group[0]) }}</span>
                     <span class="fl-group-total">
                       @if (group[0] === 'Habitación' || group[0] === 'habitacion') {
                         ${{ f.totalRoom.toFixed(2) }}
@@ -276,6 +276,33 @@
                 }
               </div>
 
+              @if (reconcileNote(); as note) {
+                <div class="fl-reconcile-note fl-reconcile-note--print" role="note" aria-label="Cargos sin facturar">
+                  <span class="material-symbols-outlined">fact_check</span>
+                  <div>
+                    <strong>La factura no cubre los cargos adicionales</strong>
+                    <span>
+                      La factura {{ note.invoiceNumber }} se emitió antes de los últimos cargos:
+                      faltan <strong>${{ note.gap.toFixed(2) }}</strong> sin facturar.
+                      Emití una factura complementaria antes de entregar el comprobante.
+                    </span>
+                    <button
+                      type="button"
+                      class="fl-btn fl-btn-primary fl-reconcile-action"
+                      data-action="emit-complement"
+                      (click)="emitComplementInvoice()"
+                      [disabled]="complementing() || postingBusy()">
+                      @if (complementing()) {
+                        <span class="spinner"></span> Emitiendo...
+                      } @else {
+                        <span class="material-symbols-outlined">receipt_long</span>
+                        Emitir factura complementaria
+                      }
+                    </button>
+                  </div>
+                </div>
+              }
+
               @if (isOpen() && f.reopenedAt) {
                 <div class="fl-toast" role="status">
                   <span class="material-symbols-outlined">history</span>
@@ -286,6 +313,7 @@
                 <div class="fl-toast error" role="alert">
                   <span class="material-symbols-outlined">warning</span>
                   No se puede cerrar: saldo pendiente de ${{ f.totalDue.toFixed(2) }}.
+                  Registrá el pago del saldo o resolvelo con un write-off / liquidación externa aprobado antes de cerrar.
                 </div>
               }
               @if (isOpen() && f.totalDue > 0.005) {
@@ -296,13 +324,22 @@
                     <button type="button" class="fl-btn fl-btn-primary" (click)="startSettlement('payment')" [disabled]="postingBusy()">
                       <span class="material-symbols-outlined">payments</span> Registrar pago
                     </button>
-                    <button type="button" class="fl-btn fl-btn-outline" (click)="startSettlement('write_off')" [disabled]="postingBusy()">
-                      <span class="material-symbols-outlined">fact_check</span> Write-off aprobado
-                    </button>
-                    <button type="button" class="fl-btn fl-btn-outline" (click)="startSettlement('external_settlement')" [disabled]="postingBusy()">
-                      <span class="material-symbols-outlined">verified</span> Liquidación externa
-                    </button>
+                    @if (canApproveWriteOff()) {
+                      <button type="button" class="fl-btn fl-btn-outline" (click)="startSettlement('write_off')" [disabled]="postingBusy()">
+                        <span class="material-symbols-outlined">fact_check</span> Write-off aprobado
+                      </button>
+                      <button type="button" class="fl-btn fl-btn-outline" (click)="startSettlement('external_settlement')" [disabled]="postingBusy()">
+                        <span class="material-symbols-outlined">verified</span> Liquidación externa
+                      </button>
+                    }
                   </div>
+                  @if (!canApproveWriteOff()) {
+                    <div class="fl-settlement-help" role="status">
+                      <span class="material-symbols-outlined">lock</span>
+                      El write-off y la liquidación externa requieren el permiso
+                      <code>billing.write_off.approve</code>. Derivá el folio al gerente para que autorice la excepción.
+                    </div>
+                  }
                   @if (settlementMode() !== 'idle') {
                     <div class="fl-settlement-form">
                       <strong>{{ settlementMode() === 'payment' ? 'Registrar pago' : settlementMode() === 'write_off' ? 'Autorizar write-off' : 'Documentar liquidación externa' }}</strong>

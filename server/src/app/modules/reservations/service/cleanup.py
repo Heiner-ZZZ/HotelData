@@ -4,14 +4,12 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
-from src.database.connection import get_database
-from src.app.security.session import ensure_utc
 from src.app.core.timezone import local_now, local_today
-
-from src.app.modules.reservations.notifications import notify_guest_status_change
 from src.app.modules.partner.services.audit import register_action
-from ._helpers import utc_now
+from src.app.modules.reservations.notifications import notify_guest_status_change
+from src.database.connection import get_database
 
+from ._helpers import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +66,8 @@ def auto_cancel_expired_pending() -> dict[str, Any]:
                 "errors": len(errors),
             },
         })
-    except Exception as exc:
-        logger.exception("Failed to log auto_cancel execution: %s", exc)
+    except Exception:
+        logger.exception("Failed to log auto_cancel execution")
 
     return {
         "cancelled": cancelled,
@@ -174,7 +172,7 @@ def _calculate_cancellation_penalty(
                 "hours_until_checkin": None, "cancellation_hours": 0}
 
     try:
-        checkin_dt = ensure_utc(datetime.strptime(check_in_date, "%Y-%m-%d"))
+        checkin_dt = datetime.fromisoformat(f"{check_in_date}T00:00:00+00:00")
     except (ValueError, TypeError):
         return {"free_cancellation": True, "penalty_percent": 0, "penalty_amount": 0.0,
                 "hours_until_checkin": None, "cancellation_hours": cancellation_hours}
@@ -219,9 +217,12 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": booking_id})
     if booking is None:
-        raise ValueError("booking not found")
+        raise ValueError("No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.")
     if booking.get("status") != "pending":
-        raise ValueError("only pending bookings can be cancelled")
+        raise ValueError(
+            "Solo se pueden cancelar reservas pendientes; esta reserva está en estado "
+            f"'{booking.get('status', '')}'. Contactá a recepción para gestionar la cancelación."
+        )
     today_str = local_today()
     if today_str >= booking.get("check_in_date", ""):
         raise ValueError("No se puede cancelar una reserva cuya fecha de entrada ya ha comenzado o pasado.")

@@ -112,20 +112,20 @@
     font-weight: 500;
   }
 
-  /* ── Custom scrollbar ── */
+  /* ── Custom scrollbar (verde de marca, tokens globales) ── */
   &::-webkit-scrollbar { width: 6px; height: 6px; }
   &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
-    border-radius: 3px;
-    &:hover { background: var(--gray-400); }
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
+    &:hover { background: var(--scrollbar-thumb-hover); }
   }
   .ag-body-viewport::-webkit-scrollbar { width: 6px; height: 6px; }
   .ag-body-viewport::-webkit-scrollbar-track { background: transparent; }
   .ag-body-viewport::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
-    border-radius: 3px;
-    &:hover { background: var(--gray-400); }
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
+    &:hover { background: var(--scrollbar-thumb-hover); }
   }
 
   /* ── Group rows (journal entry headers) — flat-array driven, not treeData ── */

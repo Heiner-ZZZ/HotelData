@@ -19,6 +19,12 @@
 /** Wildcard granted to ``super_admin`` and ``admin_sistema``. Grants every permission check. */
 export const SUPERUSER_WILDCARD = '*.*';
 
+// ── Check-in approval (server: reservations/routes/management.py) ──
+/** Authorize an arrival outside the hotel's courtesy window. */
+export const CHECK_INS_EARLY_APPROVE = 'check-ins.early_approve';
+/** Reopen a booking closed as no-show (manager only). */
+export const CHECK_INS_NO_SHOW_REOPEN = 'check-ins.no_show_reopen';
+
 // ── Shift management (server: server/src/app/modules/reception/routes.py) ──
 /** Gerencia turnos: bypass de schedule-check, force-open conflictado. */
 export const SHIFTS_MANAGE = 'shifts.manage';
@@ -42,6 +48,10 @@ export const LOST_FOUND_DELETE = 'lost-found.delete';
 // ── Equipo y permisos del hotel (server: server/src/app/modules/hotel_permissions/) ──
 /** Gestionar roles y permisos del equipo en un hotel (gate del nav item). */
 export const HOTEL_MANAGE_ROLES = 'hotel.manage_roles';
+
+// ── Facturación (server: server/src/app/modules/billing/routes.py) ──
+/** Autorizar cierre de folio con saldo por excepción (write-off / cortesía / settlement externo) — supervisor. */
+export const BILLING_WRITE_OFF_APPROVE = 'billing.write_off.approve';
 
 // ── Informes (server: server/src/app/modules/reports/routes.py + reports.* codes) ──
 /** Descargar/exportar informes (CSV/XLSX/PDF) — global a lo que ya puedes leer. */
@@ -70,6 +80,8 @@ export const HR_SHIFTS_MANAGE = 'hr.shifts.manage';
  */
 export type PermissionCode =
   | typeof SUPERUSER_WILDCARD
+  | typeof CHECK_INS_EARLY_APPROVE
+  | typeof CHECK_INS_NO_SHOW_REOPEN
   | typeof SHIFTS_MANAGE
   | typeof SHIFTS_CREATE
   | typeof SHIFTS_UPDATE
@@ -79,6 +91,7 @@ export type PermissionCode =
   | typeof LOST_FOUND_UPDATE
   | typeof LOST_FOUND_DELETE
   | typeof HOTEL_MANAGE_ROLES
+  | typeof BILLING_WRITE_OFF_APPROVE
   | typeof REPORTS_DOWNLOAD
   | typeof HR_PORTAL_READ
   | typeof HR_DIRECTORY_READ

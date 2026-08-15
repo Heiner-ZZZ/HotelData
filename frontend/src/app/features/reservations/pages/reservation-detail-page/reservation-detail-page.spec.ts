@@ -115,4 +115,43 @@ describe('ReservationDetailPageComponent — canMarkNoShow', () => {
     } as unknown as ReservationDetailDto);
     expect(component.canMarkNoShow()).toBe(false);
   });
+
+  it('muestra la fila Salida extendida con el modo y los minutos server-authoritative', async () => {
+    const { fixture } = await renderDetail({
+      ...BASE_DTO,
+      check_out_mode: 'late_approved',
+      check_out_time_actual: '12:37',
+      late_checkout_minutes: 37,
+      late_checkout_policy_time: '12:00',
+    } as unknown as ReservationDetailDto);
+
+    const rendered = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(rendered).toContain('Salida extendida');
+    expect(rendered).toContain('Aprobado');
+    expect(rendered).toContain('37 min tras las 12:00');
+  });
+
+  it('muestra Cortesía para una salida extendida dentro de la cortesía', async () => {
+    const { fixture } = await renderDetail({
+      ...BASE_DTO,
+      check_out_mode: 'late_courtesy',
+      late_checkout_minutes: 30,
+      late_checkout_policy_time: '12:00',
+    } as unknown as ReservationDetailDto);
+
+    const rendered = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(rendered).toContain('Salida extendida');
+    expect(rendered).toContain('Cortesía');
+    expect(rendered).toContain('30 min tras las 12:00');
+  });
+
+  it('NO muestra Salida extendida para una salida normal', async () => {
+    const { fixture } = await renderDetail({
+      ...BASE_DTO,
+      check_out_mode: null,
+      late_checkout_minutes: 0,
+    } as unknown as ReservationDetailDto);
+
+    expect((fixture.nativeElement as HTMLElement).textContent ?? '').not.toContain('Salida extendida');
+  });
 });

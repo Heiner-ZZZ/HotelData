@@ -26,6 +26,10 @@ export interface ReservationListItem {
   currency: string;
   totalNights: number;
   stayStatus: string;
+  /** Ventana de reapertura de no-show (server-authoritative): 'open' | 'too_late' | 'stay_ended' | null. */
+  reopenWindow: string | null;
+  /** Marca de reapertura: el gerente reabrió el no-show porque el huésped llegó tras el no-show. */
+  noShowReopenedAt: string | null;
   folio: string;
   checkInTime: string;
   checkOutTime: string;
@@ -243,6 +247,12 @@ export interface ReservationDetailViewModel {
   estimatedArrivalTime: string;
   /** Marcador de late check-in. */
   lateCheckin: boolean;
+  /** Resultado de late check-out estampado por el backend al completar la salida. */
+  checkOutMode: string | null;
+  lateCheckoutMinutes: number;
+  lateCheckoutPolicyTime: string;
+  checkOutDateActual: string | null;
+  checkOutTimeActual: string | null;
   isManual: boolean;
   manualReservationId: string | null;
   canCancel: boolean;

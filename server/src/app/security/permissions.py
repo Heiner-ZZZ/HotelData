@@ -22,7 +22,6 @@ from pymongo.database import Database
 
 from src.app.security.role_helpers import get_role_name, is_super_admin
 
-
 logger = logging.getLogger(__name__)
 
 # Actions that ``.manage`` expands into
@@ -36,6 +35,37 @@ _MANAGE_CRUD_ACTIONS = ("create", "read", "update", "delete")
 # KEEP IN SYNC: admin/routes.py (_PREVIEW_READ_DEP_ACTIONS) y
 # admin/service/role_update.py (missing_read check).
 READ_DEP_ACTIONS = frozenset({"create", "update", "delete", "manage", "execute"})
+
+# Sensitive operational capability: a receptionist can complete a normal or
+# courtesy check-in, but only a hotel manager (or super_admin bypass) may
+# authorize an arrival outside the courtesy window.
+EARLY_CHECK_IN_APPROVAL_PERMISSION = "check-ins.early_approve"
+
+# Reabrir una reserva ya marcada como no-show es una autorización gerencial:
+# el huésped llegó después de que el no-show fue cerrado (política de llegadas),
+# así que la recepción no puede hacerlo por sí sola.
+NO_SHOW_REOPEN_PERMISSION = "check-ins.no_show_reopen"
+
+# Autorizar un late check-out fuera de la ventana de cortesía es igual de
+# sensible que el early approve: la recepción completa el check-out normal o
+# dentro de la cortesía, pero solo el gerente (o super_admin) puede extender
+# la salida más allá de la gracia configurada en la política del hotel.
+LATE_CHECKOUT_APPROVAL_PERMISSION = "check-ins.late_checkout_approve"
+
+# Role allow-list compartida por las tres autorizaciones gerenciales (early
+# approve, no-show reopen, late check-out approve). Defensa en profundidad:
+# aunque alguien otorgue el código de permiso a un rol de recepción, el gate
+# exige además que el rol primario esté en esta lista.
+MANAGER_AUTHORIZATION_ROLES = frozenset({"gerente_hotel", "super_admin"})
+
+# ── Autorizaciones de supervisor (mismo patrón, allow-list distinta) ──
+# Cerrar un folio CON SALDO mediante una excepción (write-off, cortesía o
+# settlement externo) es un ajuste financiero: la recepción tiene
+# ``billing.manage`` pero NO puede condonar saldos sin aprobación. El gate
+# reutiliza ``require_manager_authorization`` con esta allow-list (agrega
+# ``admin_sistema`` como supervisor de nivel sistema).
+FOLIO_ADJUST_APPROVAL_PERMISSION = "billing.write_off.approve"
+SUPERVISOR_AUTHORIZATION_ROLES = frozenset({"gerente_hotel", "admin_sistema", "super_admin"})
 
 # Guest-facing codes (auto-servicio del huésped — sección "Cliente" del editor
 # de roles). super_admin conserva el bypass ``*.*`` para AUTH (``user_has_permission``
@@ -102,11 +132,8 @@ def _normalize_role_ids(user: dict[str, Any]) -> list[ObjectId]:
     for role_id in user.get("role_ids", []) or []:
         if isinstance(role_id, ObjectId):
             role_ids.append(role_id)
-        elif isinstance(role_id, str):
-            try:
-                role_ids.append(ObjectId(role_id))
-            except Exception:
-                continue
+        elif isinstance(role_id, str) and ObjectId.is_valid(role_id):
+            role_ids.append(ObjectId(role_id))
     return role_ids
 
 
@@ -210,3 +237,59 @@ def user_has_permission(
     if "*.*" in codes:
         return True
     return permission_code in codes
+
+
+def require_supervisor_authorization(
+    db: Database,
+    user: dict[str, Any] | None,
+    *,
+    permission_code: str,
+    allowed_roles: frozenset[str] | set[str] | None = None,
+) -> bool:
+    """Supervisor-level authorization — same unified gate, different allow-list.
+
+    Reusa ``require_manager_authorization`` completo (inactivo → False,
+    super_admin bypass, role allow-list + permiso embebido) cambiando el
+    default de ``allowed_roles`` a ``SUPERVISOR_AUTHORIZATION_ROLES``. Es el
+    patrón para áreas donde la aprobación exige un supervisor distinto del
+    gerente operativo (ej. ajustes del folio / write-off).
+    """
+    return require_manager_authorization(
+        db,
+        user,
+        permission_code=permission_code,
+        allowed_roles=allowed_roles if allowed_roles is not None else SUPERVISOR_AUTHORIZATION_ROLES,
+    )
+
+
+def require_manager_authorization(
+    db: Database,
+    user: dict[str, Any] | None,
+    *,
+    permission_code: str,
+    allowed_roles: frozenset[str] | set[str] | None = None,
+) -> bool:
+    """Return whether ``user`` may perform a sensitive manager-only operation.
+
+    Single gate for the three operational authorizations that share one
+    contract (early check-in approval, no-show reopen, late check-out
+    approval): the capability is catalogued for the manager role, and the
+    role allow-list is intentional defense in depth — it prevents an ad-hoc
+    front-desk role grant from silently becoming an approval authority even
+    if the permission code were added to a receptionist role.
+
+    - Inactive users always return False.
+    - ``super_admin`` always bypasses (sentinel ``*.*`` / primary role).
+    - ``allowed_roles`` (default ``MANAGER_AUTHORIZATION_ROLES``) narrows the
+      gate to the documented roles; a user whose primary role is not in the
+      list is denied regardless of the permission.
+    """
+    if not user or not user.get("is_active", True):
+        return False
+    if is_super_admin(user):
+        return True
+    if allowed_roles is None:
+        allowed_roles = MANAGER_AUTHORIZATION_ROLES
+    if get_role_name(user) not in allowed_roles:
+        return False
+    return user_has_permission(db, user, permission_code)

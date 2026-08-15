@@ -1,5 +1,5 @@
 <div class="bdb-page">
-  <app-horizontal-sub-nav [activeSlug]="'gestion.billing.informes.facturas'" />
+  <app-billing-sub-nav />
   <app-page-header
     title="Dashboard de facturación"
     description="Monto facturado por período: emisión, cobro, pendiente y anulación por hotel."
@@ -12,12 +12,6 @@
     />
   </app-page-header>
 
-  <nav class="bdb-nav" aria-label="Facturación">
-    <a routerLink="/management/billing/dashboard" class="bdb-nav-link active">Dashboard</a>
-    <a routerLink="/management/billing/payments-dashboard" class="bdb-nav-link">Pagos Dashboard</a>
-    <a routerLink="/management/billing/invoices" class="bdb-nav-link">Facturas</a>
-    <a routerLink="/management/billing/payments" class="bdb-nav-link">Pagos</a>
-  </nav>
 
   @if (selectedPropId()) {
     <!-- ═══ Filter bar ═══ -->

@@ -1,17 +1,30 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from pymongo import ASCENDING
 
-from src.database.connection import get_database
-from src.app.modules.partner.services import partner_hotel_policies
-
 from src.app.core.timezone import local_today
-from ._helpers import _safe_int, _clean_text, CHECKIN_COMPLETED_STAY_STATUSES, CHECKOUT_COMPLETED_STAY_STATUSES
-from .queries import hotel_booking_context
+from src.app.modules.partner.services import partner_hotel_policies
+from src.database.connection import get_database
+
+from ._helpers import (
+    CHECKIN_COMPLETED_STAY_STATUSES,
+    CHECKOUT_COMPLETED_STAY_STATUSES,
+    _clean_text,
+    _safe_int,
+)
+from ._history_lookup import (
+    _booking_history_lookup,
+    _derived_stay_status,
+    _guest_lookup,
+    _reservation_status_label,
+)
 from ._hotel_options import reservation_hotel_options
-from ._history_lookup import _booking_history_lookup, _guest_lookup, _derived_stay_status, _reservation_status_label
+from .queries import hotel_booking_context
+
+logger = logging.getLogger(__name__)
 
 
 def _operational_item(
@@ -145,6 +158,7 @@ def _list_operational_bookings(*, flow: str, operation_date: str, prop_id: int |
             db.booking_orders.find(filters, {"_id": 0}).sort([(field, ASCENDING), ("created_at", ASCENDING)])
         )
     except Exception:
+        logger.exception("Failed to load %s bookings for %s", flow, operation_date)
         items = []
     booking_ids = [item["booking_id"] for item in items]
     guest_lookup = _guest_lookup(booking_ids)
@@ -164,6 +178,7 @@ def _list_operational_bookings(*, flow: str, operation_date: str, prop_id: int |
     try:
         property_options = reservation_hotel_options(limit=100, user=user)
     except Exception:
+        logger.exception("Failed to load reservation hotel options")
         property_options = []
     return {
         "operation_date": operation_date,

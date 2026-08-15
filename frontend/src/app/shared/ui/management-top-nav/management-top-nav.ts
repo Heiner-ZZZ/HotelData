@@ -166,13 +166,40 @@ export class ManagementTopNavComponent implements OnInit {
   });
 
   readonly pollingError = signal(false);
-  /** Whether the user has admin-level access to the notifications API. */
+  /** Whether the user can see the notifications panel (staff roles).
+   *
+   * Todos los roles staff (super_admin, admin_sistema, gerente_hotel,
+   * recepcionista, housekeeping, …) ven la campanita — el centro de
+   * notificaciones del equipo — con sus broadcasts operativas
+   * (``housekeeping_check_in``, ``no_show_reopen``, ``late_checkout_*``,
+   * ``early_checkin_*``). Los clientes usan el portal de huésped, no esta
+   * bandeja.
+   */
   readonly canViewNotifications = computed(() => {
     const role = this.currentUser()?.primaryRole;
-    return role === 'super_admin' || role === 'admin_sistema';
+    return !!role && role !== 'cliente';
   });
 
-  readonly notifications = signal<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }[]>([]);
+  readonly notifications = signal<{ id: number; icon: string; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }[]>([]);
+
+  /** Icono por tipo de notificación (Material Symbols). */
+  notificationIcon(type: string): string {
+    if (type.includes('confirmed')) return 'check_circle';
+    if (type.includes('rejected') || type.includes('cancelled')) return 'cancel';
+    if (type.includes('checked_in')) return 'login';
+    if (type.includes('checked_out')) return 'logout';
+    if (type.includes('invoice')) return 'receipt_long';
+    if (type.includes('late_arrival')) return 'nights_stay';
+    if (type.includes('no_show')) return 'undo';
+    if (type.includes('late_checkout')) return 'schedule';
+    if (type.includes('early_checkin')) return 'alarm';
+    if (type.includes('housekeeping_check_in')) return 'cleaning_services';
+    if (type.includes('amenity')) return 'spa';
+    if (type.includes('review')) return 'star';
+    if (type.includes('permissions')) return 'manage_accounts';
+    if (type.includes('shift')) return 'point_of_sale';
+    return 'notifications';
+  }
 
   readonly unreadCount = computed(() => this.notifications().filter(n => n.unread).length);
 
@@ -232,11 +259,15 @@ export class ManagementTopNavComponent implements OnInit {
         next: (viewModel) => {
           this.pollingError.set(false);
           const currentUserEmail = this.currentUser()?.email?.toLowerCase() || '';
+          // Personales (dirigidas al email del usuario) + broadcast de equipo
+          // (``recipient_email`` vacío: housekeeping, late/early check-out) —
+          // los roles admin ven las operativas para supervisar la operación.
           const filteredItems = viewModel.items.filter(item =>
-            item.recipientEmail?.toLowerCase() === currentUserEmail
+            !item.recipientEmail || item.recipientEmail.toLowerCase() === currentUserEmail
           );
           const mapped = filteredItems.map((item, idx) => ({
             id: idx + 1,
+            icon: this.notificationIcon(item.notificationType),
             title: item.typeLabel,
             description: `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
             time: this._timeAgo(item.createdAt),

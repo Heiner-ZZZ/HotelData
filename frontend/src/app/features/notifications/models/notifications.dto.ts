@@ -1,4 +1,5 @@
 export interface ClientNotificationDto {
+  _id: string;
   notification_type: string;
   type_label: string;
   recipient_email: string;
@@ -9,6 +10,8 @@ export interface ClientNotificationDto {
   status_label: string;
   status_tone: string;
   message: string;
+  /** Título de la promoción (solo guest_promotional; vacío en transaccionales). */
+  title?: string;
   is_unread?: boolean;
   error_message: string;
   created_at_iso: string;

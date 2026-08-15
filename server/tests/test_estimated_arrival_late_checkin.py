@@ -201,4 +201,4 @@ class TestArrivalValidation:
             seeded_hotel, _days_from_today(1), _days_from_today(3),
             estimated_arrival_time="25:99")
         errors = validate_booking_form_requirements(payload)
-        assert any("estimated_arrival_time" in e.lower() and "HH:MM" in e for e in errors)
+        assert any("llegada" in e.lower() and "HH:MM" in e for e in errors)

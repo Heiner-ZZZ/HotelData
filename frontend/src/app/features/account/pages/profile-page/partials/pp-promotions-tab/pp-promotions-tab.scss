@@ -1,0 +1,220 @@
+.promo-tab {
+  display: grid;
+  gap: 1rem;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 0 2rem;
+
+  > * {
+    animation: promo-tab-fade 360ms cubic-bezier(0.21, 0.69, 0.43, 1) backwards;
+  }
+}
+
+@keyframes promo-tab-fade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Intro ── */
+.promo-tab-intro {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1.15rem 1.3rem;
+  border-radius: 14px;
+}
+
+.promo-tab-intro-icon {
+  font-size: 1.5rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.promo-tab-intro-copy {
+  flex: 1;
+  min-width: 0;
+
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--app-text);
+  }
+
+  p {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: var(--muted-text);
+    line-height: 1.45;
+  }
+}
+
+.promo-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+/* ── List ── */
+.promo-tab-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.promo-tab-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--surface);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+
+  &.is-unread {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--app-border));
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.promo-tab-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 1.35rem;
+  }
+}
+
+.promo-tab-card-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.promo-tab-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.promo-tab-card-type {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.promo-tab-card-time {
+  font-size: 0.7rem;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.promo-tab-card-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--app-text);
+  line-height: 1.35;
+}
+
+.promo-tab-card-msg {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted-text);
+  line-height: 1.5;
+}
+
+.promo-tab-card-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.35rem;
+}
+
+/* ── Cargar más ── */
+.promo-tab-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0 1.25rem;
+  margin: 0.25rem auto 0;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+  justify-self: center;
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    color: var(--accent);
+  }
+
+  &:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--app-border));
+    background: var(--surface-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+
+    .material-symbols-outlined {
+      animation: promo-tab-spin 900ms linear infinite;
+    }
+  }
+}
+
+.promo-tab-more-hint {
+  margin: -0.35rem 0 0;
+  text-align: center;
+  font-size: 0.74rem;
+  color: var(--muted-text);
+}
+
+@keyframes promo-tab-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Note ── */
+.promo-tab-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted-text);
+  line-height: 1.5;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    color: var(--muted-text);
+    margin-top: 1px;
+  }
+}

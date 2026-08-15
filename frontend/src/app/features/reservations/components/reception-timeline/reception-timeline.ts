@@ -94,6 +94,9 @@ function roomStatusColor(status: string): string {
 
 type TimelineView = 'TimelineWeek' | 'TimelineMonth';
 
+/** Height shared by the monthly appointment and Syncfusion's overlap lane math. */
+const MONTHLY_APPOINTMENT_HEIGHT = '4.5rem';
+
 interface TimelineEvent {
   Id: string;
   Subject: string;
@@ -112,6 +115,9 @@ interface TimelineEvent {
   CheckInTime: string;
   EstimatedArrivalTime: string;
   LateCheckin: boolean;
+  StayStatus: string;
+  /** Ventana de reapertura de no-show: 'open' | 'too_late' | 'stay_ended' | null. */
+  ReopenWindow: ReceptionCalendarReservation['reopenWindow'];
   CheckOutDate: string;
   CheckOutTime: string;
   TotalNights: number;
@@ -348,6 +354,8 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       CheckInTime: reservation.checkInTime,
       EstimatedArrivalTime: reservation.estimatedArrivalTime || '',
       LateCheckin: !!reservation.lateCheckin,
+      StayStatus: reservation.stayStatus || '',
+      ReopenWindow: reservation.reopenWindow ?? null,
       CheckOutDate: reservation.checkOutDate,
       CheckOutTime: reservation.checkOutTime,
       TotalNights: reservation.totalNights,
@@ -436,8 +444,8 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       this.positionSelectionPopover(this.selectedAnchor);
     }
     this.scheduleNowLine();
-    // El ancho de las barras cambia con el viewport: re-evalúa la disclosure
-    // progresiva de los chips resumen (persona · grupo · noches).
+    // El ancho y la altura de las barras cambian con el viewport: conserva
+    // visibles todos los indicadores y deja que el layout apilado se refluya.
     this.hotelSchedule?.element
       .querySelectorAll<HTMLElement>('.e-appointment')
       .forEach((appointment) => this.applyMetaDisclosure(appointment));
@@ -1015,7 +1023,7 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     // only after the SPA navigation succeeds: at that point the destination
     // component and the shared OnPush nav are both alive, so the signal update
     // cannot be lost to the router's navigation lifecycle.
-    let navigated = false;
+    let navigated: boolean;
     try {
       navigated = await this.router.navigate(['/management/recepcion/new'], {
         queryParams: {
@@ -1155,7 +1163,9 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       checkOutTime: event.CheckOutTime,
       totalNights: event.TotalNights,
       status: event.VisualStatus,
+      stayStatus: event.StayStatus || '',
       visualStatus: event.VisualStatus,
+      reopenWindow: event.ReopenWindow ?? null,
       assignedRooms: event.RoomId === 'UNASSIGNED' ? [] : [event.RoomId],
       hotelRoomId: event.RoomId,
       roomNumber: event.RoomNumber,
@@ -1186,6 +1196,15 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     if (!style) return;
 
     args.element.classList.add(`hotel-event-${event.VisualStatus}`);
+    if (this.currentView() === 'TimelineMonth') {
+      args.element.classList.add('timeline-appointment-stacked');
+      // Syncfusion calculates the vertical lane offset before eventRendered
+      // from the generic `.e-appointment` height. Keep the rendered node at
+      // that same fixed height; otherwise its wrapped metadata grows past the
+      // measured lane and concurrent reservations overlap visually.
+      args.element.style.setProperty('height', MONTHLY_APPOINTMENT_HEIGHT, 'important');
+      args.element.style.setProperty('min-height', MONTHLY_APPOINTMENT_HEIGHT, 'important');
+    }
     const isPast = event.VisualStatus === 'past';
     args.element.style.setProperty(
       'background-color',
@@ -1196,13 +1215,17 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
 
     this.appendAppointmentMeta(args.element, event);
     this.appendLateCheckinMarker(args.element, event);
+    this.appendNoShowMarker(args.element, event);
   }
 
   /**
-   * Marcador visual de late check-in en la barra de la reserva: un icono de
-   * luna con tooltip cuando el huésped declaró llegada tardía (petición
-   * "Llegada tarde" u hora estimada ≥ 20:00). Idempotente por render.
+   * Las reservas mensuales usan una segunda fila para los indicadores. Esto
+   * conserva la información completa sin poner los iconos encima del nombre.
    */
+  private isStackedAppointment(element: HTMLElement): boolean {
+    return element.classList.contains('timeline-appointment-stacked');
+  }
+
   private appendLateCheckinMarker(element: HTMLElement, event: TimelineEvent): void {
     if (!event.LateCheckin) return;
     if (element.querySelector('.timeline-late-marker')) return;
@@ -1213,15 +1236,60 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     const icon = document.createElement('span');
     icon.className = 'material-symbols-outlined';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = 'nights_stay';
+    // `schedule` comunica hora de llegada; `nights_stay` queda reservado
+    // exclusivamente para el número de noches.
+    icon.textContent = 'schedule';
     marker.appendChild(icon);
-    element.appendChild(marker);
+
+    // En Mes, la marca comparte la fila inferior con personas/noches. En
+    // Semana se conserva el comportamiento anterior dentro de la barra.
+    const target = this.isStackedAppointment(element)
+      ? element.querySelector<HTMLElement>('.timeline-app-meta') ?? element
+      : element;
+    target.appendChild(marker);
+  }
+
+  /**
+   * Marca en la barra las reservas no-show: icono ``event_busy`` + clase
+   * ``timeline-noshow-marker``. Cuando la ventana de reapertura está abierta
+   * (check-in de hoy/ayer + estadía vigente) agrega ``is-reopenable`` (acento
+   * ámbar + chip "Reabrible"); los antiguos quedan sin la marca de reapertura
+   * para no invitar a una acción que la API rechazaría. ``ReopenWindow`` viene
+   * del backend (server-authoritative, misma regla que ``reopen_no_show``).
+   */
+  private appendNoShowMarker(element: HTMLElement, event: TimelineEvent): void {
+    if (event.StayStatus !== 'no_show') return;
+    if (element.querySelector('.timeline-noshow-marker')) return;
+    const reopenable = event.ReopenWindow === 'open';
+    const marker = document.createElement('span');
+    marker.className = 'timeline-noshow-marker' + (reopenable ? ' is-reopenable' : '');
+    marker.setAttribute(
+      'aria-label',
+      reopenable
+        ? 'No-show: reabrible dentro de la ventana (hoy o ayer con estadía vigente)'
+        : 'No-show: ventana de reapertura cerrada',
+    );
+    marker.title = reopenable
+      ? 'No-show — reabrible (hoy o ayer con estadía vigente)'
+      : 'No-show — ventana de reapertura cerrada';
+    const icon = document.createElement('span');
+    icon.className = 'material-symbols-outlined';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = 'event_busy';
+    marker.appendChild(icon);
+
+    // En Mes la marca comparte la fila inferior con personas/noches; en
+    // Semana se conserva dentro de la barra (mismo patrón que late check-in).
+    const target = this.isStackedAppointment(element)
+      ? element.querySelector<HTMLElement>('.timeline-app-meta') ?? element
+      : element;
+    target.appendChild(marker);
   }
 
   /**
    * Añade a la barra un chip resumen compacto con los ocupantes y noches:
-   * noches = total de noches (solo si es más de un día). Los ítems se ocultan
-   * progresivamente según el ancho disponible de la barra.
+   * noches = total de noches (incluye estancias de una sola noche). En Mes la fila puede
+   * envolver para conservar todos los ítems aunque la celda sea estrecha.
    *
    * Validación anti-ambigüedad: NUNCA se muestran juntos el icono de persona
    * sola y el de grupo con el mismo número (dos iconos distintos diciendo
@@ -1258,18 +1326,17 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     const groupItem = isGroup ? item('group', total) : null;
     if (personItem) meta.append(personItem);
     if (groupItem) meta.append(groupItem);
-    let nightsItem: HTMLSpanElement | null = null;
-    if (nights > 1) {
-      nightsItem = item('nights_stay', nights);
-      meta.append(nightsItem);
+    if (nights > 0) {
+      meta.append(item('nights_stay', nights));
     }
 
+    // En Mes la meta se coloca en una fila inferior de la misma barra; en
+    // Semana conserva su posición flotante original mediante sus estilos.
     element.appendChild(meta);
 
-    // La medición se difiere dos frames: onEventRendered dispara antes de que
-    // Syncfusion posicione/estire el elemento (ancho inicial 0), así que
-    // esconder con un ancho a medias dejaría todos los chips ocultos o
-    // visibles por error.
+    // La actualización se difiere dos frames para que Syncfusion haya
+    // terminado de dimensionar la barra antes de limpiar cualquier estado
+    // residual.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => this.applyMetaDisclosure(element));
     });
@@ -1277,21 +1344,16 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Progressive disclosure del chip resumen según el ancho real de la barra
-   * (prioridad: persona → grupo → noches). Idempotente; también lo llama
-   * `onWindowResize` para que la visibilidad siga al viewport. Nota: asume
-   * que Syncfusion crea nodos frescos por render — si reusara el elemento de
-   * una reserva con datos cambiados, el guard de `appendAppointmentMeta`
-   * conservaría el chip anterior.
+   * Mantiene la información completa de la barra. Antes se ocultaban los
+   * indicadores por umbrales de ancho; en la vista mensual ahora se apilan y
+   * pueden envolver en varias líneas cuando la celda es estrecha.
    */
   private applyMetaDisclosure(element: HTMLElement): void {
     const meta = element.querySelector<HTMLElement>('.timeline-app-meta');
     if (!meta) return;
-    const items = Array.from(meta.querySelectorAll<HTMLElement>('.timeline-app-meta-item'));
-    const width = element.getBoundingClientRect().width;
-    meta.classList.toggle('timeline-app-meta--hidden', width > 0 && width < 70);
-    items[0]?.classList.toggle('timeline-app-meta-item--hidden', width > 0 && width < 110);
-    items[1]?.classList.toggle('timeline-app-meta-item--hidden', width > 0 && width < 200);
+    meta.classList.remove('timeline-app-meta--hidden');
+    meta.querySelectorAll<HTMLElement>('.timeline-app-meta-item')
+      .forEach((item) => item.classList.remove('timeline-app-meta-item--hidden'));
   }
 
   private scheduleSelectionPopoverPosition(element: HTMLElement | HTMLElement[]): void {

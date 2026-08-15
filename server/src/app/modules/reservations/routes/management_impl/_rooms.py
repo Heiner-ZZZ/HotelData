@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import HTTPException
-
 from pymongo import ASCENDING
 
 from src.app.core.timezone import local_today
-from src.app.modules.reservations.service._helpers import utc_now
 from src.app.modules.partner.services.audit import register_action
+from src.app.modules.reservations.service._helpers import utc_now
+
+logger = logging.getLogger(__name__)
 
 
 def get_available_rooms(
@@ -182,6 +184,7 @@ def assign_rooms_to_booking(
                 metadata={"assigned_rooms": room_ids, "guest_name": booking_full.get("guest_name", "")},
             )
     except Exception:
-        pass  # audit failure must never block the operation
+        # Audit failure must never block the room assignment operation.
+        logger.exception("Failed to register room assignment audit for %s", booking_id)
 
     return {"booking_id": booking_id, "assigned_rooms": room_ids, "assigned_count": len(room_ids)}

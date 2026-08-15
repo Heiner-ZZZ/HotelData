@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 from src.app.security.hotel_filter import hotel_filter_from_user
 from src.database.connection import get_database
 
@@ -12,7 +11,7 @@ def reservation_hotel_options(limit: int = 100, user: dict[str, Any] | None = No
     user_filter = hotel_filter_from_user(user)
     allowed_ids: set[int] | None = None
     if "prop_id" in user_filter:
-        allowed_ids = set(int(p) for p in user_filter["prop_id"]["$in"])
+        allowed_ids = {int(p) for p in user_filter["prop_id"]["$in"]}
 
     has_dim = db.dim_hotels.estimated_document_count() > 0
     if not has_dim:

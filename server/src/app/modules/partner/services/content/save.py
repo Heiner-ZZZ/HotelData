@@ -4,7 +4,13 @@ from typing import Any
 
 from pymongo import ReturnDocument
 
-from src.app.modules.partner.services._common import clean_text, normalize_label, now_utc, register_content_change, safe_bool
+from src.app.modules.partner.services._common import (
+    clean_text,
+    normalize_label,
+    now_utc,
+    register_content_change,
+    safe_bool,
+)
 from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.content.amenities import _amenity_category
 from src.app.modules.partner.services.content.queries import content_page_for_prop
@@ -111,8 +117,7 @@ def save_special_requests(
         threshold = int(high_floor_from) if high_floor_from is not None else 3
     except (ValueError, TypeError):
         threshold = 3
-    if threshold < 1:
-        threshold = 1
+    threshold = max(threshold, 1)
 
     db = get_database()
     document = db.hotel_content_pages.find_one_and_update(
@@ -273,6 +278,15 @@ def save_partner_hotel_policies(
     deposit_percent: Any = None,
     deposit_required: Any = None,
     cancellation_penalty_percent: Any = None,
+    early_check_in_enabled: Any = None,
+    early_check_in_courtesy_minutes: Any = None,
+    early_check_in_default_fee: Any = None,
+    late_checkout_enabled: Any = None,
+    late_checkout_courtesy_minutes: Any = None,
+    late_checkout_default_fee: Any = None,
+    guaranteed_reservation: Any = None,
+    late_arrival_cutoff: Any = None,
+    no_show_execution: Any = None,
     changed_by: str = "partner_web",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
@@ -319,6 +333,42 @@ def save_partner_hotel_policies(
         parsed_cancel_penalty = int(float(str(cancellation_penalty_percent))) if cancellation_penalty_percent is not None else None
     except (ValueError, TypeError):
         parsed_cancel_penalty = None
+    parsed_early_enabled = safe_bool(early_check_in_enabled) if early_check_in_enabled is not None else None
+    try:
+        parsed_early_courtesy = max(0, min(int(float(str(early_check_in_courtesy_minutes))), 240)) if early_check_in_courtesy_minutes is not None else None
+    except (ValueError, TypeError):
+        parsed_early_courtesy = None
+    parsed_early_fee = _parse_fee(early_check_in_default_fee) if early_check_in_default_fee is not None else None
+    # Late check-out: misma política hotel-wide que early check-in (la ventana
+    # de salida es global del hotel, nunca por tipo de habitación / plan).
+    parsed_late_checkout_enabled = safe_bool(late_checkout_enabled) if late_checkout_enabled is not None else None
+    try:
+        parsed_late_courtesy = max(0, min(int(float(str(late_checkout_courtesy_minutes))), 240)) if late_checkout_courtesy_minutes is not None else None
+    except (ValueError, TypeError):
+        parsed_late_courtesy = None
+    parsed_late_fee = _parse_fee(late_checkout_default_fee) if late_checkout_default_fee is not None else None
+    parsed_guaranteed = safe_bool(guaranteed_reservation) if guaranteed_reservation is not None else None
+    parsed_late_cutoff: str | None = None
+    if late_arrival_cutoff not in (None, ""):
+        # _parse_time devuelve el raw sin normalizar cuando no parsea
+        # (backward compat) — validar HH:MM aquí de forma explícita.
+        raw_cutoff = clean_text(late_arrival_cutoff)
+        cutoff_parts = raw_cutoff.split(":")
+        cutoff_ok = len(cutoff_parts) == 2
+        if cutoff_ok:
+            try:
+                cutoff_h, cutoff_m = int(cutoff_parts[0]), int(cutoff_parts[1])
+                cutoff_ok = 0 <= cutoff_h <= 23 and 0 <= cutoff_m <= 59
+            except (TypeError, ValueError):
+                cutoff_ok = False
+        if not cutoff_ok:
+            raise ValueError("La hora límite de llegada debe tener formato HH:MM (ej. 23:59).")
+        parsed_late_cutoff = f"{cutoff_h:02d}:{cutoff_m:02d}"
+    parsed_no_show_execution = (
+        clean_text(no_show_execution).lower() if no_show_execution not in (None, "") else None
+    )
+    if parsed_no_show_execution not in (None, "next_day", "same_day_cutoff", "manual"):
+        raise ValueError("La ejecución de no-show debe ser next_day, same_day_cutoff o manual.")
 
     # RF-005: Validate min_stay >= 1, max_stay >= min_stay, max_stay <= 365
     if parsed_min_stay is not None and parsed_min_stay < 1:
@@ -371,6 +421,30 @@ def save_partner_hotel_policies(
         payload["deposit_required"] = parsed_deposit_required
     if parsed_cancel_penalty is not None:
         payload["cancellation_penalty_percent"] = max(0, min(parsed_cancel_penalty, 100))
+    # Early check-in is a hotel-wide arrival policy, just like check-in/out
+    # hours; room-type and rate-plan scopes must not silently override it.
+    if not clean_room_type and not clean_rate_plan:
+        if parsed_early_enabled is not None:
+            payload["early_check_in_enabled"] = parsed_early_enabled
+        if parsed_early_courtesy is not None:
+            payload["early_check_in_courtesy_minutes"] = parsed_early_courtesy
+        if parsed_early_fee is not None:
+            payload["early_check_in_default_fee"] = parsed_early_fee
+        if parsed_late_checkout_enabled is not None:
+            payload["late_checkout_enabled"] = parsed_late_checkout_enabled
+        if parsed_late_courtesy is not None:
+            payload["late_checkout_courtesy_minutes"] = parsed_late_courtesy
+        if parsed_late_fee is not None:
+            payload["late_checkout_default_fee"] = parsed_late_fee
+        # Late arrival / no-show es política hotel-wide, mismo contrato que
+        # early_check_in: las filas por tipo de habitación / plan tarifario
+        # nunca deben pisar los valores globales.
+        if parsed_guaranteed is not None:
+            payload["guaranteed_reservation"] = parsed_guaranteed
+        if parsed_late_cutoff is not None:
+            payload["late_arrival_cutoff"] = parsed_late_cutoff
+        if parsed_no_show_execution is not None:
+            payload["no_show_execution"] = parsed_no_show_execution
 
     document = db.hotel_policies.find_one_and_update(
         filter_,

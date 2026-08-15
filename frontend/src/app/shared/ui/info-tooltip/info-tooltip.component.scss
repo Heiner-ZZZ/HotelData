@@ -101,7 +101,11 @@
   /* Reset inherited nowrap so long descriptions wrap inside the popover */
   white-space: normal;
 
-  /* Hidden by default — shown on hover */
+  /* Hidden by default — shown on hover. Caja 0×0 mientras está oculta para
+     que NO estire el área scrollable del contenedor (popovers absolutos
+     cerca del borde derecho inflaban el scroll horizontal de la página). */
+  width: 0;
+  height: 0;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-8px) scale(0.96);
@@ -112,6 +116,8 @@
   pointer-events: none;
 
   .info-tooltip:hover & {
+    width: 320px;
+    height: auto;
     opacity: 1;
     visibility: visible;
     transform: translateY(0) scale(1);

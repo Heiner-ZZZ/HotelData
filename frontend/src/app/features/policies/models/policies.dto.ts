@@ -17,6 +17,15 @@ export interface PoliciesDto {
   policies: {
     check_in_time: string;
     check_out_time: string;
+    early_check_in_enabled?: boolean;
+    early_check_in_courtesy_minutes?: number;
+    early_check_in_default_fee?: number;
+    late_checkout_enabled?: boolean;
+    late_checkout_courtesy_minutes?: number;
+    late_checkout_default_fee?: number;
+    guaranteed_reservation?: boolean;
+    late_arrival_cutoff?: string;
+    no_show_execution?: 'next_day' | 'same_day_cutoff' | 'manual';
     cancellation_policy: string;
     pet_policy: string;
     children_policy: string;
@@ -55,6 +64,15 @@ export interface PoliciesSaveDto {
   prop_id: number;
   check_in_time: string;
   check_out_time: string;
+  early_check_in_enabled?: boolean;
+  early_check_in_courtesy_minutes?: number;
+  early_check_in_default_fee?: number;
+  late_checkout_enabled?: boolean;
+  late_checkout_courtesy_minutes?: number;
+  late_checkout_default_fee?: number;
+  guaranteed_reservation?: boolean;
+  late_arrival_cutoff?: string;
+  no_show_execution?: 'next_day' | 'same_day_cutoff' | 'manual';
   cancellation_policy: string;
   pet_policy: string;
   children_policy: string;

@@ -54,6 +54,11 @@ export class NotificationsPageComponent {
     if (type.includes('checked_in')) return 'login';
     if (type.includes('checked_out')) return 'logout';
     if (type.includes('invoice')) return 'receipt_long';
+    if (type.includes('late_arrival')) return 'nights_stay';
+    if (type.includes('no_show')) return 'undo';
+    if (type.includes('late_checkout')) return 'schedule';
+    if (type.includes('early_checkin')) return 'alarm';
+    if (type.includes('housekeeping_check_in')) return 'cleaning_services';
     if (type.includes('amenity')) return 'spa';
     if (type.includes('review')) return 'star';
     if (type.includes('permissions')) return 'manage_accounts';

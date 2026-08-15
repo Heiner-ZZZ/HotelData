@@ -7,7 +7,9 @@ Covers:
 - Room (housekeeping) status transitions
 - Invoice status transitions (issued → paid → refunded)
 - Payment status transitions
-- Stay-status (check-in/out) transitions
+- Stay-status (check-in/out) transitions, incl. no-show gerencial reabrible
+  (``no_show → pending``, la única salida del no-show tras la feature de
+  reapertura) y su documentación de grafo
 - Task (housekeeping/maintenance) transitions
 - Terminal state detection
 - Initial state detection
@@ -317,6 +319,20 @@ class TestBookingStateMachine:
 # =============================================================================
 
 class TestStayStateMachine:
+    """Grafo de Stay-status (ortogonal a ``booking.status``):
+
+    ::
+
+        pending ──► checked_in ──► checked_out (terminal)
+           │
+           └──► no_show ──► pending   # reapertura gerencial (no-show reabrible)
+
+    Desde la feature de reapertura de no-show, ``no_show`` YA NO es un
+    estado terminal: el gerente (``check-ins.no_show_reopen``) puede
+    reabrir la reserva y devolverla a ``pending`` para el check-in normal.
+    La única salida de ``no_show`` es esa reapertura.
+    """
+
     def test_pending_can_check_in(self):
         assert stay_sm.can_transition("pending", "checked_in") is True
         assert stay_sm.can_transition("pending", "no_show") is True
@@ -326,7 +342,33 @@ class TestStayStateMachine:
 
     def test_checked_out_is_terminal(self):
         assert stay_sm.is_terminal("checked_out") is True
-        assert stay_sm.is_terminal("no_show") is True
+
+    def test_no_show_is_not_terminal_anymore(self):
+        """Tras la feature de reapertura, el no-show tiene salida
+        (``no_show → pending``): ya no es un estado terminal."""
+        assert stay_sm.is_terminal("no_show") is False
+
+    def test_no_show_can_be_reopened_to_pending(self):
+        """La reapertura gerencial es la ÚNICA salida de ``no_show``."""
+        assert stay_sm.can_transition("no_show", "pending") is True
+        assert stay_sm.get_valid_next_states("no_show") == ["pending"]
+        assert "pending" in stay_sm.get_valid_previous_states("no_show")
+
+    def test_no_show_cannot_transition_elsewhere(self):
+        """El no-show no puede saltar directo a check-in/out ni reabrirse
+        desde otro estado: el único camino de vuelta es pending."""
+        assert stay_sm.can_transition("no_show", "checked_in") is False
+        assert stay_sm.can_transition("no_show", "checked_out") is False
+        assert stay_sm.can_transition("checked_in", "no_show") is False
+        assert stay_sm.can_transition("checked_out", "no_show") is False
+        assert stay_sm.can_transition("checked_out", "pending") is False
+
+    def test_reopen_transition_validates_without_raising(self):
+        """``no_show → pending`` pasa la validación central; cualquier otra
+        salida desde un terminal (checked_out) sigue rechazada."""
+        stay_sm.validate_transition("no_show", "pending")  # no raise
+        with pytest.raises(ValueError, match="terminal"):
+            stay_sm.validate_transition("checked_out", "no_show")
 
     def test_cannot_skip_to_checkout(self):
         assert stay_sm.can_transition("pending", "checked_out") is False

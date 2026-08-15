@@ -8,7 +8,9 @@
     <script src="/runtime-config.js"></script>
     <script>
       (function() {
-        if (window.location.pathname === '/login') { return; }
+        // /login y /welcome (landing público) siempre en modo claro — el
+        // Angular app forceLight(/welcome) lo mantiene tras el arranque.
+        if (window.location.pathname === '/login' || window.location.pathname === '/welcome') { return; }
         var theme = localStorage.getItem('hoteldata-theme');
         if (!theme) {
           theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

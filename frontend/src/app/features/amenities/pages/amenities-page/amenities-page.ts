@@ -191,7 +191,7 @@ export class AmenitiesPageComponent {
     effect(() => {
       if (!this.selectedPropId()) this.propertyCtx.clear();
     });
-    // Clean up the transient mode if the page is destroyed mid-edit.
+    // Clean up the transient mode when leaving the page.
     this.destroyRef.onDestroy(() => this.opMode.reset());
     // Sync httpResource → writable photoList signal (needed for optimistic delete)
     effect(() => {
@@ -381,7 +381,31 @@ export class AmenitiesPageComponent {
   }
 
   // ═══ Peticiones especiales tab ═══
-  readonly activeTab = signal<'amenities' | 'requests'>('amenities');
+  /** The route parameter is the source of truth and changes without recreating this page. */
+  private readonly activeSection = toSignal(
+    this.route.paramMap.pipe(map((params) => params.get('section') ?? 'servicios')),
+    {
+      initialValue:
+        this.route.snapshot.paramMap.get('section')
+        ?? this.route.snapshot.url[0]?.path
+        ?? 'servicios',
+    },
+  );
+
+  readonly activeTab = computed<'amenities' | 'requests'>(() =>
+    this.activeSection() === 'especialsPeticions' ? 'requests' : 'amenities',
+  );
+
+  /** Navigate instead of only changing local state, so the browser URL identifies the section. */
+  setActiveTab(tab: 'amenities' | 'requests'): void {
+    if (this.activeTab() === tab) return;
+
+    const path = tab === 'requests' ? 'especialsPeticions' : 'servicios';
+    void this.router.navigate(['/management/amenities', path], {
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
 
   /** Editable copy of the per-hotel special-requests catalog. */
   readonly requestOptions = signal<SpecialRequestOptionView[]>([]);

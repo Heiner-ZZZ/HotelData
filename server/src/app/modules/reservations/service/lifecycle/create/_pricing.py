@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from src.database.connection import get_database
@@ -59,8 +59,8 @@ def _calculate_total_price(
     """Calculate booking price with occupancy and tax support."""
     db = get_database()
     try:
-        check_in = datetime.strptime(check_in_date, "%Y-%m-%d")
-        check_out = datetime.strptime(check_out_date, "%Y-%m-%d")
+        check_in = date.fromisoformat(check_in_date)
+        check_out = date.fromisoformat(check_out_date)
     except (ValueError, TypeError):
         return None, "USD", 0, 0.0, 0.0, False
 
@@ -173,7 +173,7 @@ def _resolve_season_id(prop_id: int, check_in_date: str) -> str:
         return ""
     db = get_database()
     try:
-        check_in = datetime.strptime(check_in_date, "%Y-%m-%d").date()
+        check_in = date.fromisoformat(check_in_date)
     except (ValueError, TypeError):
         return ""
     rules = list(db.rate_rules.find(
@@ -182,8 +182,8 @@ def _resolve_season_id(prop_id: int, check_in_date: str) -> str:
     ).sort([("start_date", 1)]))
     for rule in rules:
         try:
-            r_start = datetime.strptime(str(rule.get("start_date", "")), "%Y-%m-%d").date()
-            r_end = datetime.strptime(str(rule.get("end_date", "")), "%Y-%m-%d").date()
+            r_start = date.fromisoformat(str(rule.get("start_date", "")))
+            r_end = date.fromisoformat(str(rule.get("end_date", "")))
             if r_start <= check_in <= r_end:
                 slug = str(rule.get("name", "")).strip().lower().replace(" ", "_")
                 return slug if slug else ""

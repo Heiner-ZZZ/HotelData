@@ -8,24 +8,33 @@ from typing import Any
 from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
 
-from src.database.connection import get_database
-from .._helpers import ReservationInput, generate_prefixed_id, utc_now
-from ...collections import ensure_reservation_collections
-from ...validation import validate_reservation_input
+from src.app.core.resolvers import resolve_hotel_id
+from src.app.core.timezone import local_today
+from src.app.modules.reservations.service.lifecycle.create._amenities import (
+    _generate_amenity_charges,
+)
 from src.app.modules.reservations.service.lifecycle.create._availability import (
     _check_availability,
     validate_requested_room,
 )
-from src.app.modules.reservations.service.lifecycle.create._pricing import _calculate_total_price, _resolve_season_id
-from src.app.modules.reservations.service.lifecycle.create._validation import _validate_deposit, validate_coupon_code
-from src.app.core.resolvers import resolve_hotel_id
-from src.app.core.timezone import local_today
-from src.app.modules.reservations.service.lifecycle.create._amenities import _generate_amenity_charges
+from src.app.modules.reservations.service.lifecycle.create._pricing import (
+    _calculate_total_price,
+    _resolve_season_id,
+)
 from src.app.modules.reservations.service.lifecycle.create._special_requests import (
     _generate_special_request_charges,
     resolve_late_checkin,
     validate_special_requests,
 )
+from src.app.modules.reservations.service.lifecycle.create._validation import (
+    _validate_deposit,
+    validate_coupon_code,
+)
+from src.database.connection import get_database
+
+from ...collections import ensure_reservation_collections
+from ...validation import validate_reservation_input
+from .._helpers import ReservationInput, generate_prefixed_id, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +50,7 @@ def _get_cancellation_policy_text(prop_id: int) -> str | None:
         if policy and policy.get("cancellation_policy"):
             return policy["cancellation_policy"]
     except Exception:
-        pass
+        logger.exception("Failed to load cancellation policy for prop_id=%s", prop_id)
     return None
 
 
@@ -81,7 +90,7 @@ def create_booking(
         payload.rooms, payload.room_type_id, rate_plan_id=payload.rate_plan_id,
     )
     if avail_error:
-        raise ValueError(f"Cannot create booking: {avail_error}")
+        raise ValueError(f"No se pudo crear la reserva: {avail_error}")
 
     coupon_error, discount_percent, coupon_id = validate_coupon_code(payload.coupon_code, payload.prop_id)
     if coupon_error:
@@ -121,7 +130,10 @@ def create_booking(
     contract_id = ""
     pricing_source = ""
     if payload.contract_code:
-        from src.app.modules.partner.services.rates.contracts import validate_contract_code, apply_contract_pricing
+        from src.app.modules.partner.services.rates.contracts import (
+            apply_contract_pricing,
+            validate_contract_code,
+        )
         contract_error, cdata = validate_contract_code(
             payload.contract_code, payload.prop_id,
             rate_plan_id="", room_type_id=payload.room_type_id,
@@ -262,7 +274,7 @@ def create_booking(
     try:
         db.booking_orders.insert_one(booking_document)
     except DuplicateKeyError:
-        raise ValueError("booking_id already exists, retry")
+        raise ValueError("Ocurrió un conflicto al generar el número de reserva. Intentá de nuevo.")
 
     db.booking_guests.insert_one({
         "booking_id": booking_id, "guest_name": payload.guest_name,
@@ -288,14 +300,10 @@ def create_booking(
     ]
 
     # ── Generate additional charges for priced special requests ──
-    request_charges = _generate_special_request_charges(
+    _generate_special_request_charges(
         booking_id=booking_id, prop_id=payload.prop_id,
         selected_requests=payload.special_requests,
     )
-    request_charges_summary = [
-        {"concept": c.get("concept", ""), "amount": c.get("amount", 0), "total": c.get("total", c.get("amount", 0))}
-        for c in request_charges
-    ]
 
     manual_document = None
     if manual_reservation:
@@ -331,7 +339,7 @@ def create_booking(
         if hc and hc.get("display_name"):
             hotel_label = hc["display_name"]
     except Exception:
-        pass
+        logger.exception("Failed to resolve hotel labels for prop_id=%s", payload.prop_id)
 
     # ── Cancellation policy ──
     cancellation_policy = _get_cancellation_policy_text(payload.prop_id)
@@ -374,7 +382,7 @@ def modify_booking(
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": booking_id})
     if not booking:
-        raise ValueError("Booking not found")
+        raise ValueError("No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.")
 
     current_status = booking.get("status", "")
     current_stay_status = booking.get("stay_status", "")
@@ -384,16 +392,28 @@ def modify_booking(
     ) and all(x is None for x in (check_out_date, room_type_id, rooms, comment))
 
     if current_status in ("cancelled", "rejected"):
-        raise ValueError(f"Cannot modify a booking with status '{current_status}'")
+        raise ValueError(
+            f"No se puede modificar una reserva en estado '{current_status}'. "
+            "Creá una reserva nueva si necesitás registrar el cambio."
+        )
     if current_stay_status == "checked_out":
-        raise ValueError("No se puede modificar una reserva que ya ha finalizado (Check-out completado).")
+        raise ValueError(
+            "No se puede modificar una reserva que ya finalizó (check-out completado). "
+            "Si necesitás registrar cambios, creá una reserva nueva."
+        )
 
     today_str = local_today()
     if today_str >= booking.get("check_out_date", ""):
-        raise ValueError("No se puede modificar una reserva cuyas fechas de estancia ya han pasado o finalizado.")
+        raise ValueError(
+            "No se puede modificar una reserva cuyas fechas de estancia ya pasaron "
+            "o finalizaron. Para nuevas fechas, creá una reserva nueva."
+        )
 
     if current_stay_status == "checked_in" and not only_datetime:
-        raise ValueError(f"Cannot modify booking '{booking_id}' — stay status is 'checked_in'. Only date/time can be edited.")
+        raise ValueError(
+            f"No se puede modificar la reserva '{booking_id}': el huésped ya está "
+            "registrado (check-in). Solo podés editar la fecha y la hora de check-in/out."
+        )
 
     new_check_in = check_in_date if check_in_date is not None else booking.get("check_in_date", "")
     new_check_out = check_out_date if check_out_date is not None else booking.get("check_out_date", "")
@@ -431,7 +451,7 @@ def modify_booking(
             rate_plan_id=booking.get("rate_plan_id", ""),
         )
         if avail_error:
-            raise ValueError(f"Cannot modify booking: {avail_error}")
+            raise ValueError(f"No se pudo modificar la reserva: {avail_error}")
 
         total_price, currency, total_nights, tax_rate, tax_amount, tax_included = _calculate_total_price(
             int(booking.get("prop_id", 0)), new_room_type, new_check_in, new_check_out, new_rooms,
@@ -520,7 +540,9 @@ def modify_booking(
 
     if not booking.get("is_test") and booking.get("guest_email"):
         try:
-            from src.app.modules.reservations.notifications import notify_guest_status_change
+            from src.app.modules.reservations.notifications import (
+                notify_guest_status_change,
+            )
             notify_guest_status_change(
                 booking_id=booking_id, guest_name=booking.get("guest_name", ""),
                 guest_email=booking.get("guest_email", ""), new_status="modified",
@@ -530,7 +552,7 @@ def modify_booking(
                 total_nights=total_nights,
             )
         except Exception:
-            pass
+            logger.exception("Failed to notify guest about booking modification %s", booking_id)
 
     return {
         "booking_id": booking_id, "status": current_status,

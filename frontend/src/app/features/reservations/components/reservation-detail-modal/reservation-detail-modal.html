@@ -68,7 +68,7 @@
           </div>
         }
 
-        @if (reservation().visualStatus === 'active' && stayAlert(); as alert) {
+        @if ((reservation().visualStatus === 'active' || reservation().stayStatus === 'no_show') && stayAlert(); as alert) {
           <div class="reservation-detail-stay-alert" [class]="'is-' + alert.kind" role="status">
             <span class="material-symbols-outlined" aria-hidden="true">{{ alert.icon }}</span>
             <span>{{ alert.message }}</span>
@@ -96,9 +96,65 @@
             <span class="material-symbols-outlined">logout</span>
             Ir a Check-out
           </a>
+          @if (canReopenNoShow()) {
+            <button
+              type="button"
+              class="reservation-detail-action reservation-detail-reopen"
+              (click)="openReopenDialog()"
+              aria-describedby="rd-reopen-help"
+            >
+              <span class="material-symbols-outlined">replay</span>
+              Reabrir no-show
+            </button>
+            <span id="rd-reopen-help" class="visually-hidden">
+              Solo un gerente de hotel puede reabrir la reserva dentro de la ventana (hoy o ayer con estadía vigente).
+            </span>
+          }
           <button type="button" class="reservation-detail-action reservation-detail-ghost" (click)="close()">Cerrar</button>
         </div>
       }
     </div>
+
+    @if (reopenDialogOpen()) {
+      <div class="rd-reopen-backdrop" (click)="cancelReopenDialog()">
+        <section class="rd-reopen-dialog" role="dialog" aria-modal="true" aria-labelledby="rd-reopen-title"
+          (click)="$event.stopPropagation()">
+          <span class="material-symbols-outlined rd-reopen-icon" aria-hidden="true">replay</span>
+          <h3 id="rd-reopen-title">Reabrir no-show</h3>
+          <p>
+            La reserva vuelve a <strong>pendiente</strong> y el folio de penalización se retira. El huésped podrá hacer check-in.
+          </p>
+          <label for="rd-reopen-reason">Motivo de la reapertura</label>
+          <textarea
+            id="rd-reopen-reason"
+            rows="3"
+            [value]="reopenReason()"
+            (input)="reopenReason.set($any($event.target).value)"
+            placeholder="Ej.: el huésped llegó tarde tras el cierre del no-show"
+            aria-invalid="!!reopenError()"
+          ></textarea>
+          @if (reopenError()) {
+            <p class="rd-reopen-error" role="alert">{{ reopenError() }}</p>
+          }
+          <div class="rd-reopen-actions">
+            <button type="button" class="rd-reopen-cancel" (click)="cancelReopenDialog()" [disabled]="reopenPending()">Cancelar</button>
+            <button
+              type="button"
+              class="rd-reopen-confirm"
+              (click)="confirmReopenNoShow()"
+              [disabled]="reopenPending() || !reopenReason().trim()"
+            >
+              @if (reopenPending()) {
+                <span class="material-symbols-outlined spinning">sync</span>
+                Reabriendo…
+              } @else {
+                <span class="material-symbols-outlined">replay</span>
+                Reabrir reserva
+              }
+            </button>
+          </div>
+        </section>
+      </div>
+    }
   </article>
 </div>

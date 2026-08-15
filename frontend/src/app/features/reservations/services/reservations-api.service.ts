@@ -112,7 +112,9 @@ export interface ReceptionCalendarDto {
       check_out_time: string;
       total_nights: number;
       status: string;
+      stay_status?: string | null;
       visual_status: string;
+      reopen_window?: 'open' | 'too_late' | 'stay_ended' | null;
       assigned_rooms: string[];
       hotel_room_id: string;
       room_number: string;
@@ -160,7 +162,9 @@ function mapReceptionReservation(r: ReceptionCalendarDto['rooms'][number]['reser
     checkOutTime: r.check_out_time,
     totalNights: r.total_nights,
     status: r.status,
+    stayStatus: r.stay_status || '',
     visualStatus: r.visual_status as ReceptionCalendarReservation['visualStatus'],
+    reopenWindow: (r.reopen_window as ReceptionCalendarReservation['reopenWindow']) ?? null,
     assignedRooms: r.assigned_rooms,
     hotelRoomId: r.hotel_room_id,
     roomNumber: r.room_number,

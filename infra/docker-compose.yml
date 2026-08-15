@@ -182,6 +182,7 @@ services:
     volumes:
       - ../server/src:/app/src
       - ../server/config:/app/config
+      - ../server/pyproject.toml:/app/pyproject.toml:ro
       - ../server/scripts:/app/scripts
       - ../server/tests:/app/tests
       - ../data:/app/data

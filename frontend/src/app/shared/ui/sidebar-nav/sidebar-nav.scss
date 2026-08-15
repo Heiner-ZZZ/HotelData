@@ -8,6 +8,9 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  /* Sombra sutil a la derecha de la línea vertical (más tenue que la del nav
+     superior: 22% vs 35/18%): acompaña el borde sin robar protagonismo. */
+  box-shadow: 4px 0 10px -4px color-mix(in srgb, var(--accent) 22%, transparent);
   background: var(--surface);
   transition: width 0.2s ease, min-width 0.2s ease;
   overflow: visible;
@@ -24,8 +27,14 @@
   /* El botón de colapso vive sobre el borde derecho (en la línea que
      divide sidebar de topbar), así que no necesita reservar espacio
      interno: padding simétrico y el logo queda centrado de verdad. */
-  padding: 0.15rem 0.5rem;
+  /* padding-bottom mayor que el top: la línea fina que cierra la caja del
+     logo queda 2-3px más abajo, cerca del nav superior (sin mover el logo). */
+  padding: 0.15rem 0.5rem 0.3rem;
   border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  /* Misma sombra inferior que el nav superior (mgmt-topbar): la línea fina
+     del logo recibe el mismo tinte accent, coherente en dark mode. */
+  box-shadow: 0 3px 12px -2px color-mix(in srgb, var(--accent) 35%, transparent),
+              0 1px 4px color-mix(in srgb, var(--accent) 18%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;

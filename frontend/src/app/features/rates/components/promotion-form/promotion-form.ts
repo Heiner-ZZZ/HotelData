@@ -4,6 +4,10 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import {
+  parseCouponConflict,
+  type CouponConflict,
+} from '../../../../shared/utils/coupon-conflict.util';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { RatesApiService } from '../../services/rates-api.service';
 import type { RatesViewModel } from '../../models/rates.model';
@@ -58,6 +62,11 @@ export class PromotionFormComponent {
 
   /** Error del backend (o bloqueo client-side) mostrado inline en el form. */
   readonly inlineError = signal<string | null>(null);
+
+  /** Conflicto de código ESTRUCTURADO (400 ``COUPON_CODE_EXISTS``): el código
+   *  ya pertenece a la campaña «X». Banner destacado que reemplaza el inline
+   *  genérico — muestra la campaña dueña y ofrece quitar el código. */
+  readonly couponConflict = signal<CouponConflict | null>(null);
 
   /** Snapshot reactivo del form para derivar la advertencia de reducción. */
   private readonly formValues = toSignal(this.form.valueChanges, {
@@ -128,6 +137,12 @@ export class PromotionFormComponent {
         });
       }
     });
+
+    // Editar el código de cupón invalida el conflicto al instante (el usuario
+    // ya cambió de idea — el banner no debe quedarse colgado de un código viejo).
+    this.form.controls.couponCode.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.couponConflict.set(null));
   }
 
   async cancelEdit(): Promise<void> {
@@ -174,6 +189,7 @@ export class PromotionFormComponent {
       return;
     }
     this.inlineError.set(null);
+    this.couponConflict.set(null);
 
     // Cupones retirados (borrado lógico) en ESTE guardado: lo reporta la
     // respuesta del backend al reducir coupon_count y se muestra en el toast.
@@ -233,6 +249,14 @@ export class PromotionFormComponent {
           this.promoCreated.emit();
         },
         error: (error: ApiError) => {
+          const conflict = parseCouponConflict(error);
+          if (conflict) {
+            // Banner destacado y accionable — reemplaza el inline genérico y
+            // NO dispara el toast del padre (el interceptor global ya avisa).
+            this.couponConflict.set(conflict);
+            this.inlineError.set(null);
+            return;
+          }
           const message = error.message || 'No fue posible crear la promoción.';
           // El error del backend se muestra inline en el form (además del toast).
           this.inlineError.set(message);
@@ -240,5 +264,18 @@ export class PromotionFormComponent {
           this.messageChange.emit('');
         },
       });
+  }
+
+  /** «Usar otro código» desde el banner: limpia el campo de cupón (el cupón
+   *  es opcional en Tarifas — crear la campaña sin él también resuelve). */
+  clearConflictCode(): void {
+    this.form.controls.couponCode.setValue('');
+    this.couponConflict.set(null);
+  }
+
+  /** Descarta el aviso (el conflicto reaparece si se reintenta con el mismo
+   *  código — el backend es la autoridad). */
+  dismissCouponConflict(): void {
+    this.couponConflict.set(null);
   }
 }

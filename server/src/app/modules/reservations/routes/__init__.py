@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .reservations import router, api_router
 from .management import management_api_router
+from .reservations import api_router, router
 
-__all__ = ["router", "api_router", "management_api_router"]
+__all__ = ["api_router", "management_api_router", "router"]

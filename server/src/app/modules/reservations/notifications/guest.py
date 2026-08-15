@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from config.settings import get_settings
 from src.app.email.service import send_email
 from src.app.email.templates import status_badge
 from src.database.connection import get_database
 
-from ..email_templates import guest_invoice_html, guest_status_change_html
+from ..email_templates import (
+    guest_invoice_html,
+    guest_late_arrival_html,
+    guest_status_change_html,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +92,7 @@ def _log_notification(
             "prop_id": prop_id,
             "status": status,
             "error_message": error_message,
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
         })
     except Exception:
         logger.exception("Failed to write notification_log for %s (%s)", notification_type, booking_id)
@@ -286,3 +290,95 @@ def notify_guest_invoice(
         status=status,
         error_message=error_msg,
     )
+
+
+def notify_guest_late_arrival(
+    booking_id: str,
+    guest_name: str,
+    guest_email: str,
+    prop_id: int,
+    check_in_date: str,
+    check_out_date: str,
+    total_nights: int,
+    estimated_arrival_time: str = "",
+) -> None:
+    """Notify a guest that reception registered their late arrival.
+
+    Writes a ``guest_late_arrival`` row to ``notification_log`` (delivered to
+    the guest bell via ``GET /api/notifications/my`` — ``status="sent"`` means
+    unread) and, best-effort, emails the same content. The email result is
+    recorded separately in ``email_status``; a mail failure never blocks the
+    bell row.
+    """
+    if not guest_email:
+        logger.warning("No guest email for booking %s — skipping late-arrival notification", booking_id)
+        return
+
+    settings = get_settings()
+    detail_url = f"{settings.app_base_url}/reservations/{booking_id}"
+
+    db = get_database()
+    hotel = db.dim_hotels.find_one(
+        {"prop_id": prop_id},
+        {"_id": 0, "display_name": 1, "hotel_name": 1},
+    )
+    hotel_label = (
+        (hotel or {}).get("display_name")
+        or (hotel or {}).get("hotel_name")
+        or f"Propiedad #{prop_id}"
+    )
+
+    nights_label = f"{total_nights} {'noche' if total_nights == 1 else 'noches'}"
+    eta_line = (
+        f' Llegada estimada: <strong>{estimated_arrival_time}</strong>.'
+        if estimated_arrival_time
+        else ""
+    )
+
+    html = guest_late_arrival_html(
+        hotel_label=hotel_label,
+        booking_id=booking_id,
+        guest_name=guest_name,
+        check_in_date=check_in_date,
+        check_out_date=check_out_date,
+        nights_label=nights_label,
+        eta_line=eta_line,
+        detail_url=detail_url,
+    )
+
+    subject = f"Llegada tardía registrada — {booking_id}"
+    email_status = "sent"
+    email_error = ""
+    try:
+        ok = send_email(guest_email, subject, html)
+        if not ok:
+            email_status = "failed"
+            email_error = "send_email returned False"
+    except Exception as exc:
+        logger.exception("Error sending late-arrival email to %s for booking %s", guest_email, booking_id)
+        email_status = "error"
+        email_error = str(exc)
+
+    bell_message = (
+        f"El hotel registró tu llegada tardía para el check-in del {check_in_date}."
+        + (f" Hora estimada de llegada: {estimated_arrival_time}." if estimated_arrival_time else "")
+    )
+    try:
+        db.notification_log.insert_one({
+            "notification_type": "guest_late_arrival",
+            "recipient_email": guest_email,
+            "recipient_name": guest_name,
+            "booking_id": booking_id,
+            "prop_id": prop_id,
+            "status": "sent",  # entregada a la campanita del huésped = no leída
+            "email_status": email_status,
+            "error_message": email_error,
+            "title": "Llegada tardía registrada",
+            "message": bell_message,
+            "created_at": datetime.now(UTC),
+        })
+    except Exception:
+        logger.exception("Failed to write late-arrival notification row for %s", booking_id)
+
+    if email_status == "sent":
+        logger.info("Late-arrival notification sent to %s for booking %s", guest_email, booking_id)

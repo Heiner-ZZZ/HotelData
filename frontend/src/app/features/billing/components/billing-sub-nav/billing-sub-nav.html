@@ -1,0 +1,16 @@
+@if (visibleItems().length) {
+  <nav class="billing-sub-nav" aria-label="Facturación">
+    @for (item of visibleItems(); track item.href) {
+      <a
+        [routerLink]="item.href"
+        class="billing-sub-nav-link"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: false }"
+      >
+        <span class="material-symbols-outlined billing-nav-icon">{{ item.icon }}</span>
+        <span class="billing-nav-label">{{ item.label }}</span>
+      </a>
+    }
+    <ng-content select="[slot=actions]" />
+  </nav>
+}

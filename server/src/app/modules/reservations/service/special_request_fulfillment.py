@@ -16,7 +16,7 @@ Legacy bookings (created before the fields existed) normalize every item to
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from src.database.connection import get_database
@@ -108,7 +108,7 @@ def _update_fulfillment(booking_id: str, kind: str, label: str, status: str) -> 
     if status not in VALID_STATUSES:
         raise ValueError("Estado inválido. Usa 'pending' o 'fulfilled'.")
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     stored = [item for item in (booking.get(storage_field) or []) if not isinstance(item, dict) or item.get("label") != label]
     stored.append({
         "label": label,

@@ -4,6 +4,13 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { DateRangePickerComponent } from '../../../../../shared/ui/date-range-picker/date-range-picker';
 import { FormGroup } from '@angular/forms';
 
+import {
+  plannerDatesError,
+  plannerHotelError,
+  plannerOccupancyError,
+  plannerTimeError,
+} from './reservation-form-messages';
+
 @Component({
   selector: 'app-rn-planner-section',
   standalone: true,
@@ -12,7 +19,7 @@ import { FormGroup } from '@angular/forms';
   template: `
     <section class="surface-card planner-section" [formGroup]="form()">
       <div class="planner-grid">
-        <label class="planner-field" [class.field-error]="false">
+        <label class="planner-field" [class.field-error]="plannerHotelError(form().get('propId')) !== null">
           <span class="material-symbols-outlined planner-icon">location_on</span>
           <div class="planner-copy">
             <span class="planner-label">Hotel</span>
@@ -25,6 +32,9 @@ import { FormGroup } from '@angular/forms';
               </select>
               <span class="material-symbols-outlined select-arrow">expand_more</span>
             </div>
+            @if (plannerHotelError(form().get('propId')); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
           </div>
         </label>
 
@@ -41,6 +51,9 @@ import { FormGroup } from '@angular/forms';
                 (endChange)="endDateChange.emit($event)"
               />
             </div>
+            @if (plannerDatesError(form()); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
             @if (checkInDate() && checkOutDate()) {
               <div class="times-section">
                 <span class="times-section-label">
@@ -53,11 +66,17 @@ import { FormGroup } from '@angular/forms';
                     <span class="material-symbols-outlined time-box-icon">login</span>
                     <span class="time-box-label">Entrada *</span>
                     <input type="time" formControlName="checkInTime" class="time-input" required aria-required="true" />
+                    @if (plannerTimeError(form().get('checkInTime'), 'in'); as err) {
+                      <span class="field-error-msg" role="alert">{{ err }}</span>
+                    }
                   </label>
                   <label class="time-box">
                     <span class="material-symbols-outlined time-box-icon">logout</span>
                     <span class="time-box-label">Salida *</span>
                     <input type="time" formControlName="checkOutTime" class="time-input" required aria-required="true" />
+                    @if (plannerTimeError(form().get('checkOutTime'), 'out'); as err) {
+                      <span class="field-error-msg" role="alert">{{ err }}</span>
+                    }
                   </label>
                 </div>
               </div>
@@ -85,6 +104,9 @@ import { FormGroup } from '@angular/forms';
                     <span class="material-symbols-outlined">add</span>
                   </button>
                 </div>
+                @if (plannerOccupancyError(form().get('adults'), 'adults'); as err) {
+                  <span class="field-error-msg" role="alert">{{ err }}</span>
+                }
               </div>
               <div class="mini-stepper">
                 <span class="mini-stepper-label">Niños</span>
@@ -97,6 +119,9 @@ import { FormGroup } from '@angular/forms';
                     <span class="material-symbols-outlined">add</span>
                   </button>
                 </div>
+                @if (plannerOccupancyError(form().get('children'), 'children'); as err) {
+                  <span class="field-error-msg" role="alert">{{ err }}</span>
+                }
               </div>
               <div class="mini-stepper">
                 <span class="mini-stepper-label">Habitaciones</span>
@@ -109,6 +134,9 @@ import { FormGroup } from '@angular/forms';
                     <span class="material-symbols-outlined">add</span>
                   </button>
                 </div>
+                @if (plannerOccupancyError(form().get('rooms'), 'rooms'); as err) {
+                  <span class="field-error-msg" role="alert">{{ err }}</span>
+                }
               </div>
             </div>
           </div>
@@ -140,6 +168,9 @@ import { FormGroup } from '@angular/forms';
               <span class="material-symbols-outlined avail-icon">{{ avail.icon }}</span>
               <span>{{ avail.label }}</span>
             </div>
+            @if (avail.message) {
+              <span class="field-error-msg" role="alert">{{ avail.message }}</span>
+            }
           }
           @if (computedNights() > 0) {
             <div class="nights-badge">
@@ -196,7 +227,7 @@ export class RnPlannerSectionComponent {
   readonly children = input(0);
   readonly rooms = input(1);
   readonly computedNights = input(0);
-  readonly availabilityInfo = input<{ label: string; icon: string; color: string } | null>(null);
+  readonly availabilityInfo = input<{ label: string; icon: string; color: string; message?: string } | null>(null);
   readonly ratePlans = input<{ ratePlanId: string; name: string; description: string; totalPrice: number; currency: string; avgRatePerNight: number; nights: number }[]>([]);
   readonly ratePlansLoading = input(false);
   readonly selectedRatePlanId = input<string>('');
@@ -206,6 +237,12 @@ export class RnPlannerSectionComponent {
   readonly adjust = output<{ field: string; delta: number }>();
   readonly continueClick = output<void>();
   readonly ratePlanSelect = output<string>();
+
+  // Helpers de mensajes con acción (expuestos para el template).
+  readonly plannerHotelError = plannerHotelError;
+  readonly plannerDatesError = plannerDatesError;
+  readonly plannerTimeError = plannerTimeError;
+  readonly plannerOccupancyError = plannerOccupancyError;
 
   onAdjust(field: string, delta: number) {
     this.adjust.emit({ field, delta });

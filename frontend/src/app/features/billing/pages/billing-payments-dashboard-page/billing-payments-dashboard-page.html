@@ -1,5 +1,5 @@
 <div class="pdb-page">
-  <app-horizontal-sub-nav [activeSlug]="'gestion.billing.informes.pagos'" />
+  <app-billing-sub-nav />
   <app-page-header
     title="Dashboard de pagos"
     description="Total de pagos por método y saldo pendiente por hotel y período."
@@ -12,12 +12,6 @@
     />
   </app-page-header>
 
-  <nav class="pdb-nav" aria-label="Facturación">
-    <a routerLink="/management/billing/dashboard" class="pdb-nav-link">Dashboard</a>
-    <a routerLink="/management/billing/payments-dashboard" class="pdb-nav-link active">Pagos Dashboard</a>
-    <a routerLink="/management/billing/invoices" class="pdb-nav-link">Facturas</a>
-    <a routerLink="/management/billing/payments" class="pdb-nav-link">Pagos</a>
-  </nav>
 
   @if (selectedPropId()) {
     <!-- ═══ Filter bar ═══ -->

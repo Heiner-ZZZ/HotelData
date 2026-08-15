@@ -45,8 +45,8 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 2px;
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
   }
 }
 

@@ -1,0 +1,59 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Scrollbars globales — píldora verde de marca
+
+   Un solo diseño para TODA la app (light + dark), sin tocar componente
+   por componente. Cubre también paneles de librerías (Syncfusion,
+   AG Grid, modales) porque se aplica a *cualquier* elemento con scroll.
+
+   🔤 Forma: píldora (border-radius completo) con anillo interior del
+   color del track — el thumb nunca se pega al borde del panel y se ve
+   como una pieza flotante, no como un bloque.
+
+   🎨 Colores: viven en `_scss-variables.scss` (--scrollbar-*), canónico
+   y con versión dark. NUNCA hardcodear aquí.
+
+   🦊 Firefox no soporta ::-webkit-scrollbar: usa `scrollbar-color` +
+   `scrollbar-width` (barras finas con los mismos tokens).
+
+   ♿ Accesibilidad: el thumb usa el verde de marca con contraste ≥ 3:1
+   contra el track en ambos temas (WCAG 1.4.11 componentes UI); el ancho
+   mínimo del thumb garantiza un agarre usable (WCAG 2.5.8).
+   ═══════════════════════════════════════════════════════════════════ */
+
+* {
+  scrollbar-width: thin; /* Firefox: 6-8px, respeta prefers-reduced-motion del SO */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size, 10px);
+  height: var(--scrollbar-size, 10px);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid var(--scrollbar-track); /* anillo integrador */
+  background-clip: padding-box;
+  min-height: 40px; /* agarre usable */
+  min-width: 40px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-active);
+  background-clip: padding-box;
+}
+
+/* Esquina donde se cruzan las barras V+H: sin hueco blanco, hereda el carril */
+*::-webkit-scrollbar-corner {
+  background: var(--scrollbar-corner);
+}

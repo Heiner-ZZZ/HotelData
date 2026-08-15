@@ -350,7 +350,9 @@ export class CheckOutsPageComponent {
       },
       error: (err: ApiError) => {
         this.chargeSaving.set(false);
-        this.chargeError.set(err.message || 'Error al crear el cargo.');
+        this.chargeError.set(
+          err.message || 'No se pudo crear el cargo. Revisá el concepto y el monto e intentá de nuevo.',
+        );
       },
     });
   }
@@ -367,7 +369,10 @@ export class CheckOutsPageComponent {
         this.confirmPending.set(false);
       },
       error: (err: ApiError) => {
-        this.errorMessage.set(err.message || 'Error al completar check-out.');
+        this.errorMessage.set(
+          err.message ||
+          'No se pudo completar el check-out. Revisá el saldo y los cargos pendientes e intentá de nuevo.',
+        );
         this.message.set('');
         this.confirmPending.set(false);
       },

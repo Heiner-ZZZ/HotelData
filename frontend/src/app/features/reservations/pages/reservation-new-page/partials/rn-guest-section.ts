@@ -3,6 +3,12 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 
 import type { RecentGuestView } from './reservation-form.types';
+import {
+  guestCedulaError,
+  guestEmailError,
+  guestNameError,
+  guestPhoneError,
+} from './reservation-form-messages';
 
 interface GuestAmenityItemView {
   label: string;
@@ -54,6 +60,9 @@ interface SpecialRequestView {
             <span class="material-symbols-outlined input-prefix">badge</span>
             <input formControlName="guestName" autocomplete="name" [attr.readonly]="isClient() || null"
               (input)="guestInput.emit($any($event.target).value)" (focus)="guestFocus.emit()" (blur)="guestBlur.emit()" />
+            @if (guestNameError(form().get('guestName')); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
           </div>
         </label>
         <label class="field">
@@ -62,6 +71,9 @@ interface SpecialRequestView {
             <span class="material-symbols-outlined input-prefix">mail</span>
             <input formControlName="guestEmail" type="email" placeholder="ejemplo@correo.com" autocomplete="email"
               [attr.readonly]="isClient() || null" [class.readonly-field]="isClient()" />
+            @if (guestEmailError(form().get('guestEmail')); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
           </div>
         </label>
       </div>
@@ -71,7 +83,9 @@ interface SpecialRequestView {
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">phone</span>
             <input formControlName="guestPhone" type="tel" placeholder="+52 555 123 4567" autocomplete="tel" required aria-required="true" />
-            @if (form().get('guestPhone')?.touched && form().get('guestPhone')?.hasError('required')) { <span class="field-error-msg">El teléfono es obligatorio.</span> }
+            @if (guestPhoneError(form().get('guestPhone')); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
           </div>
         </label>
         <label class="field">
@@ -79,7 +93,9 @@ interface SpecialRequestView {
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">badge</span>
             <input formControlName="cedula" type="text" placeholder="Ej: 123456789" autocomplete="off" required aria-required="true" />
-            @if (form().get('cedula')?.touched && form().get('cedula')?.hasError('required')) { <span class="field-error-msg">La cédula es obligatoria.</span> }
+            @if (guestCedulaError(form().get('cedula')); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
           </div>
         </label>
       </div>
@@ -271,4 +287,10 @@ export class RnGuestSectionComponent {
     const checked = (event.target as HTMLInputElement | null)?.checked ?? false;
     this.toggleRequest.emit({ request, checked });
   }
+
+  // Helpers de mensajes con acción (expuestos para el template).
+  readonly guestNameError = guestNameError;
+  readonly guestEmailError = guestEmailError;
+  readonly guestPhoneError = guestPhoneError;
+  readonly guestCedulaError = guestCedulaError;
 }

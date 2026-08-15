@@ -162,6 +162,51 @@ def _enrich_folio(doc: dict) -> dict:
     return doc
 
 
+def _attach_invoice_reconciliation(db: Any, doc: dict, enriched: dict) -> None:
+    """Attach invoice coverage metadata used by the folio receipt.
+
+    ``invoice_covered_subtotal`` sums every non-cancelled invoice for the
+    booking (main + complementary invoices), matching the check-out detail's
+    reconciliation contract. The folio page can then show the same warning in
+    both the live view and its printed/PDF receipt without guessing from labels.
+    """
+    booking_id = str(doc.get("booking_id") or "")
+    if not booking_id:
+        return
+
+    invoices = list(db.reservation_invoices.find(
+        {"booking_id": booking_id},
+        {"invoice_number": 1, "subtotal": 1, "status": 1, "issued_at": 1},
+    ).sort("issued_at", -1))
+    if not invoices:
+        return
+
+    active_invoices = [invoice for invoice in invoices if invoice.get("status") != "cancelled"]
+    if not active_invoices:
+        return
+
+    covered_subtotal = round(sum(
+        float(invoice.get("subtotal", 0) or 0) for invoice in active_invoices
+    ), 2)
+    linked_invoice_id = str(doc.get("invoice_id") or "")
+    primary = next(
+        (invoice for invoice in active_invoices if str(invoice.get("_id")) == linked_invoice_id),
+        None,
+    ) or active_invoices[0]
+
+    # Some historical check-outs created the invoice before the folio FK was
+    # backfilled. The booking-scoped invoice is still the authoritative source
+    # for the printed receipt, so expose it as the effective folio invoice
+    # without mutating Mongo from this read path.
+    enriched["has_invoice"] = True
+    if not doc.get("invoice_id") and primary.get("_id"):
+        enriched["invoice_id"] = primary["_id"]
+    enriched["invoice_number"] = primary.get("invoice_number") or ""
+    enriched["invoice_status"] = primary.get("status") or ""
+    enriched["invoice_subtotal"] = round(float(primary.get("subtotal", 0) or 0), 2)
+    enriched["invoice_covered_subtotal"] = covered_subtotal
+
+
 # ── Core Operations ──
 
 
@@ -452,6 +497,16 @@ def _reconcile_confirmed_payments(db: Any, booking_id: str) -> None:
             )
 
 
+def _canonicalize_folio_category(category: str, category_id: str = "") -> tuple[str, str]:
+    """Resolve a folio category through the canonical id/label catalog path."""
+    if category_id:
+        entry = next((c for c in FOLIO_CATEGORIES if c["id"] == category_id), None)
+        return (entry["label"], category_id) if entry is not None else (category, category_id)
+
+    entry = next((c for c in FOLIO_CATEGORIES if c["id"] == category), None)
+    return (entry["label"], category) if entry is not None else (category, "")
+
+
 def create_folio(booking_id: str, *, shift_id: str | None = None) -> dict | None:
     """Create a new folio for a booking at check-in.
 
@@ -506,11 +561,16 @@ def create_folio(booking_id: str, *, shift_id: str | None = None) -> dict | None
     folio_number = _generate_folio_number()
     now = _now()
 
-    # Initial posting: room charge
+    # Initial posting: room charge. Use the same canonical category resolver as
+    # post_to_folio so the first posting carries the catalog id as well.
+    room_category, room_category_id = _canonicalize_folio_category(
+        "Habitación", "habitacion"
+    )
     initial_posting = {
         "posting_id": ObjectId(),
         "type": "room",
-        "category": "Habitación",
+        "category": room_category,
+        "category_id": room_category_id,
         "concept": f"{booking.get('room_type_name', 'Habitación')} — {total_nights} noche(s)",
         "amount": total_price,
         "quantity": total_nights,
@@ -600,6 +660,18 @@ def get_folio(booking_id: str) -> dict | None:
     db = get_database()
     doc = db[FOLIO_COLLECTION].find_one({"booking_id": booking_id})
     if not doc:
+        # Recovery path for no-shows processed before the folio insert became
+        # collision-safe: the booking state and penalty are already persisted,
+        # so recreate the missing penalty folio idempotently before returning
+        # the billing 404. Normal bookings remain read-only here.
+        booking = _find_booking(booking_id)
+        if booking and booking.get("stay_status") == "no_show":
+            from src.app.modules.reservations.service.no_show import (
+                ensure_no_show_folio,
+            )
+            ensure_no_show_folio(db, booking)
+            doc = db[FOLIO_COLLECTION].find_one({"booking_id": booking_id})
+    if not doc:
         return None
 
     updates: dict = {}
@@ -629,6 +701,7 @@ def get_folio(booking_id: str) -> dict | None:
 
     enriched = _enrich_folio(doc)
     enriched["created_shift"] = _resolve_created_shift(doc)
+    _attach_invoice_reconciliation(db, doc, enriched)
     return enriched
 
 
@@ -645,6 +718,7 @@ def get_folio_by_id(folio_id: str) -> dict | None:
         return None
     enriched = _enrich_folio(doc)
     enriched["created_shift"] = _resolve_created_shift(doc)
+    _attach_invoice_reconciliation(db, doc, enriched)
     return enriched
 
 
@@ -653,6 +727,7 @@ def post_to_folio(
     *,
     posting_type: str = "charge",
     category: str = "Otros",
+    category_id: str = "",
     concept: str = "",
     amount: float = 0.0,
     quantity: int = 1,
@@ -669,6 +744,12 @@ def post_to_folio(
     Automatically recalculates total_charges, total_discounts,
     total_payments, and total_due on the folio.
 
+    ``category_id`` (optional) is the canonical catalog id (``FOLIO_CATEGORIES``).
+    When provided, the label is resolved from the catalog and stored in
+    ``category`` — automatic postings (late check-out, early check-in,
+    no-show penalty) use the id so the frontend can resolve label/icon
+    without string-matching labels.
+
     ``shift_id``/``shift_attribution`` (optional) stamp the responsible
     cashier shift on the posting entry — used by the front-desk routes so
     every money movement is attributable.
@@ -676,6 +757,11 @@ def post_to_folio(
     Returns the updated folio, or None if not found.
     """
     db = get_database()
+
+    # Algunos callers históricos guardan el id del catálogo en ``category``
+    # (ej. los postings manuales del formulario). La misma ruta canónica sirve
+    # tanto para resolver ese quirk como para los ids explícitos.
+    category, category_id = _canonicalize_folio_category(category, category_id)
 
     amount = round(amount, 2)
     if unit_price is None:
@@ -721,6 +807,8 @@ def post_to_folio(
         "reference_type": reference_type,
         "posted_at": now,
     }
+    if category_id:
+        posting["category_id"] = category_id
     if shift_id:
         try:
             posting["shift_id"] = ObjectId(shift_id)
@@ -1537,6 +1625,8 @@ FOLIO_CATEGORIES = [
     {"id": "llamadas", "label": "Llamadas", "icon": "phone"},
     {"id": "danos", "label": "Daños", "icon": "warning"},
     {"id": "late_checkout", "label": "Late Check-Out", "icon": "schedule"},
+    {"id": "early_checkin", "label": "Early Check-In", "icon": "alarm"},
+    {"id": "no_show", "label": "No-Show", "icon": "event_busy"},
     {"id": "descuento", "label": "Descuento", "icon": "sell"},
     {"id": "otros", "label": "Otros", "icon": "more_horiz"},
 ]

@@ -52,6 +52,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../amenities/amenities.routes').then((m) => m.AMENITIES_ROUTES)
   },
   {
+    path: 'promotions',
+    loadChildren: () =>
+      import('../marketing/marketing.routes').then((m) => m.MARKETING_ROUTES)
+  },
+  {
     path: 'products',
     loadChildren: () =>
       import('../products/products.routes').then((m) => m.PRODUCTS_ROUTES)

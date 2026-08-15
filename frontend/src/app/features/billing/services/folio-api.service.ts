@@ -6,6 +6,8 @@ export interface FolioPosting {
   postingId: string;
   type: 'room' | 'charge' | 'charge_reversal' | 'refund' | 'discount' | 'payment' | 'adjustment';
   category: string;
+  /** Canonical catalog id (FOLIO_CATEGORIES) — null on legacy postings that only carry the label. */
+  categoryId: string | null;
   concept: string;
   amount: number;
   quantity: number;
@@ -37,11 +39,15 @@ export interface FolioDto {
   close_reason?: string | null;
   is_expired: boolean;
   has_invoice: boolean;
-  total_room: number;
+  total_room?: number;
   total_charges: number;
-  total_discounts: number;
+  total_discounts?: number;
   total_payments: number;
   total_due: number;
+  invoice_number?: string | null;
+  invoice_status?: string | null;
+  invoice_subtotal?: number | null;
+  invoice_covered_subtotal?: number | null;
   postings: FolioPostingRaw[];
   posting_count: number;
   created_at: string;
@@ -83,6 +89,7 @@ export interface FolioPostingRaw {
   posting_id: string;
   type: string;
   category: string;
+  category_id?: string | null;
   concept: string;
   amount: number;
   quantity: number;
@@ -118,6 +125,10 @@ export interface FolioViewModel {
   totalDiscounts: number;
   totalPayments: number;
   totalDue: number;
+  invoiceNumber: string | null;
+  invoiceStatus: string | null;
+  invoiceSubtotal: number | null;
+  invoiceCoveredSubtotal: number | null;
   postings: FolioPosting[];
   postingCount: number;
   createdAt: string;
@@ -181,6 +192,13 @@ export interface FolioSettlementPayload {
   external_reference?: string;
 }
 
+export interface FolioComplementInvoiceResponse {
+  id: string;
+  invoice_number: string;
+  status: string;
+  total: number;
+}
+
 export type FolioCloseState = 'ready' | 'balance_due' | 'not_open';
 
 export function getFolioCloseState(
@@ -188,6 +206,27 @@ export function getFolioCloseState(
 ): FolioCloseState {
   if (!folio || folio.status !== 'open') return 'not_open';
   return folio.totalDue > 0.005 ? 'balance_due' : 'ready';
+}
+
+export interface FolioReconciliationNote {
+  invoiceNumber: string;
+  gap: number;
+}
+
+export function getFolioReconciliationNote(
+  folio: Pick<FolioViewModel, 'hasInvoice' | 'invoiceId' | 'invoiceNumber' | 'invoiceStatus' | 'invoiceCoveredSubtotal' | 'totalRoom' | 'totalCharges' | 'totalDiscounts'> | null | undefined,
+): FolioReconciliationNote | null {
+  if (!folio || !folio.hasInvoice || folio.invoiceStatus === 'cancelled') return null;
+  if (folio.invoiceCoveredSubtotal == null) return null;
+
+  const liveSubtotal = folio.totalRoom + folio.totalCharges - folio.totalDiscounts;
+  const gap = Math.round((liveSubtotal - folio.invoiceCoveredSubtotal) * 100) / 100;
+  if (gap <= 0.005) return null;
+
+  return {
+    invoiceNumber: folio.invoiceNumber || folio.invoiceId || 'la factura emitida',
+    gap,
+  };
 }
 
 export interface FolioCategory {
@@ -214,15 +253,20 @@ export function mapFolio(dto: FolioDto): FolioViewModel {
     closeReason: dto.close_reason ?? null,
     isExpired: dto.is_expired ?? false,
     hasInvoice: dto.has_invoice ?? false,
-    totalRoom: dto.total_room,
+    totalRoom: dto.total_room ?? 0,
     totalCharges: dto.total_charges,
-    totalDiscounts: dto.total_discounts,
+    totalDiscounts: dto.total_discounts ?? 0,
     totalPayments: dto.total_payments,
     totalDue: dto.total_due,
+    invoiceNumber: dto.invoice_number ?? null,
+    invoiceStatus: dto.invoice_status ?? null,
+    invoiceSubtotal: dto.invoice_subtotal ?? null,
+    invoiceCoveredSubtotal: dto.invoice_covered_subtotal ?? null,
     postings: (dto.postings || []).map((p: FolioPostingRaw) => ({
       postingId: p.posting_id,
       type: p.type as FolioPosting['type'],
       category: p.category,
+      categoryId: p.category_id ?? null,
       concept: p.concept,
       amount: p.amount,
       quantity: p.quantity,
@@ -286,6 +330,15 @@ export class FolioApiService {
   /** Post a transaction to the guest's folio. */
   postToFolio(bookingId: string, payload: FolioPostPayload): Observable<FolioViewModel> {
     return this.http.post<FolioDto>(`${this.base}/${bookingId}/post`, payload, { withCredentials: true }).pipe(map(mapFolio));
+  }
+
+  /** Emit the complementary invoice for the folio's current unbilled gap. */
+  emitComplementInvoice(bookingId: string, propId: number): Observable<FolioComplementInvoiceResponse> {
+    return this.http.post<FolioComplementInvoiceResponse>(
+      '/billing/invoices/complement',
+      { booking_id: bookingId, prop_id: propId },
+      { withCredentials: true },
+    );
   }
 
   /** Reopen a closed folio with a collectible balance. */

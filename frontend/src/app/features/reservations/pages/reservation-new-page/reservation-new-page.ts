@@ -16,6 +16,7 @@ import { RnPlannerSectionComponent } from './partials/rn-planner-section';
 import { RnGuestSectionComponent } from './partials/rn-guest-section';
 import { RnReviewSectionComponent } from './partials/rn-review-section';
 import { mapReservationOptions } from '../../mappers/reservations.mapper';
+import { availabilityInfoFor } from './partials/reservation-form-messages';
 import type { RatePlanOption, ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
 import type { ReservationOptionsDto } from '../../models/reservations.dto';
 import { ReservationsApiService } from '../../services/reservations-api.service';
@@ -115,7 +116,7 @@ export class ReservationNewPageComponent {
     propId: [0, [Validators.required, Validators.min(1)]],
     guestName: ['', [Validators.required]],
     guestEmail: ['', [Validators.required, Validators.email]],
-    guestPhone: ['', [Validators.required]],
+    guestPhone: ['', [Validators.required, Validators.pattern(/^[\d\s\-\+\(\)\.]+$/)]],
     checkInDate: ['', [Validators.required]],
     checkOutDate: ['', [Validators.required]],
     // Standard overnight booking requires both arrival and departure times.
@@ -330,16 +331,8 @@ export class ReservationNewPageComponent {
   });
 
   /** Availability label and icon for a given hotel (legacy API consumed by `rn-planner-section`). */
-  getHotelAvailabilityInfo(propId: number): { label: string; icon: string; color: string } | null {
-    const status = this.hotelAvailabilityStatus()[propId];
-    if (!status || status === 'unknown') return null;
-    switch (status) {
-      case 'checking': return { label: 'Verificando...', icon: 'sync', color: 'var(--muted-text)' };
-      case 'has_inventory': return { label: 'Disponible', icon: 'check_circle', color: 'var(--success)' };
-      case 'no_inventory': return { label: 'Sin disponibilidad', icon: 'error', color: 'var(--danger)' };
-      case 'no_room_types': return { label: 'Sin tipos de habitación', icon: 'warning', color: 'var(--warning)' };
-      default: return null;
-    }
+  getHotelAvailabilityInfo(propId: number): { label: string; icon: string; color: string; message?: string } | null {
+    return availabilityInfoFor(this.hotelAvailabilityStatus()[propId], this.availabilityResource.value()?.message);
   }
 
   /**
@@ -586,7 +579,7 @@ export class ReservationNewPageComponent {
   goToReview() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.toast.warning('Completa los campos obligatorios y selecciona fechas válidas para continuar.');
+      this.toast.warning('Hay campos obligatorios sin completar o fechas inválidas. Completá los campos marcados en rojo y ajustá las fechas para continuar.');
       return;
     }
     this.step.set('review');
@@ -605,7 +598,7 @@ export class ReservationNewPageComponent {
     const cvv = this.cardCvv().trim();
 
     if (!cardNum || !holder || !exp || !cvv) {
-      this.paymentError.set('Todos los campos de la tarjeta son requeridos.');
+      this.paymentError.set('Completá el número, titular, vencimiento y CVV de la tarjeta para continuar.');
       return;
     }
 
@@ -653,6 +646,7 @@ export class ReservationNewPageComponent {
         },
         error: () => {
           this.previewing.set(false);
+          this.toast.error('No se pudo calcular la disponibilidad y el precio. Revisá el hotel y las fechas seleccionadas, e intentá de nuevo.');
         }
       });
   }
@@ -715,7 +709,7 @@ export class ReservationNewPageComponent {
     }
     const previewData = this.preview();
     if (previewData && !previewData.available) {
-      this.toast.error('No hay habitaciones disponibles para las fechas seleccionadas.');
+      this.toast.error('No hay habitaciones disponibles para las fechas seleccionadas. Probá con otras fechas o elegí otro hotel.');
       this.step.set('details');
       return;
     }

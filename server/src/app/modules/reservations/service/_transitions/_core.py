@@ -6,16 +6,17 @@ import logging
 import secrets
 from typing import Any
 
-from src.database.connection import get_database
 from src.app.core.state_machine import booking_sm
-from .._helpers import utc_now
-from src.app.modules.reservations.notifications import notify_guest_status_change
 from src.app.modules.billing.service import generate_invoice_for_booking
 from src.app.modules.partner.services.audit import register_action
+from src.app.modules.reservations.notifications import notify_guest_status_change
 from src.app.modules.reservations.service._transitions._inventory import (
     _auto_assign_rooms,
     _deduct_inventory,
 )
+from src.database.connection import get_database
+
+from .._helpers import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,9 @@ def _transition_status(
         check_out = (booking.get("check_out_date") or "").strip()
         rooms_count = int(booking.get("rooms", 1) or 1)
         if room_type and prop_id > 0 and check_in and check_out:
-            from src.app.modules.reservations.service.lifecycle.create._availability import _check_availability
+            from src.app.modules.reservations.service.lifecycle.create._availability import (
+                _check_availability,
+            )
             avail_error = _check_availability(prop_id, check_in, check_out, rooms_count, room_type)
             if avail_error:
                 raise ValueError(avail_error)
@@ -151,7 +154,9 @@ def _transition_status(
                     if card_last4 or payment_method:
                         try:
                             from src.app.modules.billing.schemas import PaymentCreate
-                            from src.app.modules.billing.service.lifecycle.payments import create_payment as create_billing_payment
+                            from src.app.modules.billing.service.lifecycle.payments import (
+                                create_payment as create_billing_payment,
+                            )
                             pay_result = create_billing_payment(PaymentCreate(
                                 booking_id=str(booking.get("booking_id") or booking_id),
                                 invoice_id=inv_result.get("id", inv_result.get("_id", "")),

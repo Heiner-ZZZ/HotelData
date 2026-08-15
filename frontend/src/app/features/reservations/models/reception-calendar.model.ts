@@ -14,7 +14,15 @@ export interface ReceptionCalendarReservation {
   checkOutTime: string;
   totalNights: number;
   status: string;
+  /** stay_status del booking (no_show, pending, checked_in, …). */
+  stayStatus: string;
   visualStatus: 'active' | 'upcoming' | 'past' | 'cancelled';
+  /**
+   * Ventana de reapertura de no-show (server-authoritative, misma regla que
+   * ``reopen_no_show``): ``'open'`` = reabrible (hoy/ayer + estadía vigente),
+   * ``'too_late'``/``'stay_ended'`` = ventana cerrada, ``null`` = no aplica.
+   */
+  reopenWindow: 'open' | 'too_late' | 'stay_ended' | null;
   assignedRooms: string[];
   hotelRoomId: string;
   roomNumber: string;

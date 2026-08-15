@@ -17,12 +17,11 @@ RULES (canonical from prior Fases):
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Any
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from src.app.core.types import ListToCommaStr, ObjectIdStr
-
 
 # ── Module Status (kept pre-Fase — no migration needed) ─────────────────
 
@@ -161,6 +160,18 @@ class BookingResponse(BaseModel):
     )
     status: str = ""
     stay_status: str | None = None
+    # Late check-out outcome persisted by the completion flow. These fields are
+    # read-only booking facts for reservation history; the UI must not infer a
+    # late departure from the current clock or policy.
+    check_out_mode: str | None = None
+    late_checkout_minutes: int = 0
+    late_checkout_policy_time: str | None = None
+    check_out_date_actual: str | None = None
+    check_out_time_actual: str | None = None
+    # Ventana de reapertura de no-show (server-authoritative, misma regla que
+    # el calendario de Recepción): 'open' | 'too_late' | 'stay_ended' | None.
+    # Solo las reservas no-show llevan ventana; el resto serializa ``None``.
+    reopen_window: str | None = None
     check_in_date: str | None = None
     check_out_date: str | None = None
     total_nights: int | None = None

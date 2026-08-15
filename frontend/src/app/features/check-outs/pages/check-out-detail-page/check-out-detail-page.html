@@ -35,8 +35,11 @@
                 Esta reserva nunca registró un check-in, por lo que no tiene una estancia activa que cerrar.
                 @if (noShowStay()) {
                   Fue marcada como <strong>no-show</strong>: el huésped nunca llegó a la propiedad.
+                  Si llegó después, pedile al gerente que reabra la reserva (hoy o ayer con estadía vigente)
+                  y hacé el check-in antes de liquidar.
                 } @else {
-                  Si el huésped no llegó, márcala como <strong>no-show</strong> para cerrar la estancia sin liquidación.
+                  Si el huésped no llegó, marcá la reserva como <strong>no-show</strong> para cerrarla sin liquidación;
+                  si llegó, hacé primero su check-in y luego completá la liquidación.
                 }
               </span>
             </div>
@@ -53,7 +56,7 @@
             }
           </div>
 
-          @if (noShowResult(); as ns) {
+          @if (displayedNoShowResult(); as ns) {
             <div class="co-noshow-folio">
               <span class="material-symbols-outlined">receipt_long</span>
               <div>
@@ -144,6 +147,7 @@
             [lateFee]="lateFee()"
             [discountVal]="discountVal()"
             [discountReason]="discountReason()"
+            [reconcileNote]="invoiceReconcileNote()"
             [subtotal]="subtotal()"
             [taxes]="taxes()"
             [grandTotal]="grandTotal()"
@@ -152,10 +156,18 @@
             [currency]="currency()"
             [paymentMethod]="paymentMethod()"
             [paymentRef]="paymentRef()"
+            [lateContext]="lateContext()"
+            [canApproveLate]="canApproveLate()"
+            [lateMode]="lateMode()"
+            [lateReason]="lateReason()"
+            [lateBlocked]="lateBlocked()"
             (prev)="prevStep()"
             (next)="nextStep()"
             (paymentMethodChange)="paymentMethod.set($event)"
             (paymentRefChange)="paymentRef.set($event)"
+            (lateModeChange)="setLateMode($event)"
+            (lateReasonChange)="lateReason.set($event)"
+            (lateFeeChange)="lateCheckoutFee.set($event)"
           />
         }
 
@@ -170,10 +182,12 @@
             [subtotal]="subtotal()"
             [taxes]="taxes()"
             [currency]="currency()"
+            [reconcileGap]="invoiceReconcileNote()?.gap ?? 0"
             (prev)="prevStep()"
             (next)="nextStep()"
             (splitInvoiceChange)="splitInvoice.set($event)"
             (invoiceEmitted)="onInvoiceEmitted()"
+            (complementEmitted)="onComplementEmitted()"
           />
         }
 
@@ -208,6 +222,9 @@
             [checkOutDate]="vm.check_out_date"
             [totalNights]="vm.total_nights"
             [checkOutTimeActual]="vm.check_out_time_actual || ''"
+            [checkOutMode]="vm.check_out_mode"
+            [lateCheckoutMinutes]="vm.late_checkout_minutes || 0"
+            [lateCheckoutPolicyTime]="vm.late_checkout_policy_time || ''"
             [checkOutBy]="vm.check_out_by || ''"
             [checkOutShift]="checkOutShift()"
             [charges]="chargeDetailEntries()"
@@ -221,6 +238,8 @@
             [hasPayments]="hasExistingPayments()"
             [totalPaid]="totalPaid()"
             [balanceDue]="balanceDue()"
+            [reconcileNote]="invoiceReconcileNote()"
+            [invoice]="vm.invoice"
             [currency]="currency()"
             [paymentMethod]="vm.check_out_payment_method"
             [paymentRef]="vm.check_out_payment_ref"

@@ -34,6 +34,7 @@
       <option value="" [selected]="!currentStayStatusFilter()">Estadía</option>
       <option value="checked_in" [selected]="currentStayStatusFilter() === 'checked_in'">Check-in</option>
       <option value="checked_out" [selected]="currentStayStatusFilter() === 'checked_out'">Check-out</option>
+      <option value="no_show" [selected]="currentStayStatusFilter() === 'no_show'">No Show</option>
       <option value="none" [selected]="currentStayStatusFilter() === 'none'">Sin check-in</option>
     </select>
   </div>

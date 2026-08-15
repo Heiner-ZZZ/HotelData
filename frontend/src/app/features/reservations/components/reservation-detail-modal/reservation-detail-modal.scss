@@ -222,6 +222,138 @@
     background: color-mix(in srgb, var(--accent) 10%, var(--surface));
     color: var(--accent-strong);
   }
+
+  &.is-danger {
+    border-color: color-mix(in srgb, var(--danger) 45%, var(--app-border));
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger-strong);
+  }
+}
+
+/* Acción gerencial de reapertura de no-show (solo dentro de la ventana). */
+.reservation-detail-action.reservation-detail-reopen {
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--app-border));
+  color: var(--warning-strong);
+
+  .material-symbols-outlined {
+    color: var(--warning);
+  }
+}
+
+/* Diálogo de reapertura dentro del modal (patrón check-in detail). */
+.rd-reopen-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 1rem;
+}
+
+.rd-reopen-dialog {
+  width: min(420px, 100%);
+  background: var(--surface-raised);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1.02rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--muted-text);
+    line-height: 1.45;
+  }
+
+  label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--app-text);
+  }
+
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--app-text);
+    padding: 0.55rem 0.65rem;
+    font: inherit;
+    font-size: 0.82rem;
+
+    &:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+  }
+}
+
+.rd-reopen-icon {
+  font-size: 1.8rem;
+  color: var(--warning);
+}
+
+.rd-reopen-error {
+  color: var(--danger-strong) !important;
+  font-weight: 650;
+}
+
+.rd-reopen-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 8px;
+    padding: 0.5rem 0.85rem;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.rd-reopen-cancel {
+  background: transparent;
+  color: var(--muted-text);
+  border: 1px solid var(--app-border);
+}
+
+.rd-reopen-confirm {
+  background: var(--warning);
+  color: var(--on-warning);
+  border: 1px solid transparent;
+
+  .spinning {
+    animation: rd-spin 1s linear infinite;
+  }
+}
+
+@keyframes rd-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 600px) {

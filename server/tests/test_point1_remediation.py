@@ -1307,6 +1307,81 @@ def test_reconciliation_does_not_mutate_invoice_with_confirmed_payment(db):
     assert unchanged["line_items"] == [{"item_id": "room-1", "type": "room", "total": 100.0}]
 
 
+def test_check_out_falls_back_to_split_invoice_when_guest_invoice_is_immutable(db):
+    """Reconciliación: ``complete_check_out`` no puede plegar cargos a una
+    factura inmutable (con pago confirmado) → fallback automático a la factura
+    split de consumos en vez de loguear y abandonar los cargos sin facturar.
+
+    La conciliación exige: (1) la snapshot fiscal principal NO se muta (misma
+    inmutabilidad que ``update_invoice_additional_charges``); (2) los cargos
+    activos quedan CUBIERTOS por la split ``charges_only`` (extras_total == suma
+    de cargos activos, con cada charge_id en los line items); (3) el booking
+    proyecta los cargos en ``total_charges``.
+    """
+    from src.app.modules.reservations.service import complete_check_out
+
+    booking_id = _booking(db, booking_id="BK-P1-CO-FALLBACK")
+    invoice_id = db.reservation_invoices.insert_one({
+        "booking_id": booking_id,
+        "prop_id": 901,
+        "invoice_number": "INV-P1-CO-PAID",
+        "room_subtotal": 100.0,
+        "subtotal": 100.0,
+        "taxes": 16.0,
+        "total": 116.0,
+        "status": "partially_paid",
+        "line_items": [{"item_id": "room-1", "type": "room", "total": 100.0}],
+    }).inserted_id
+    db.reservation_payments.insert_one({
+        "booking_id": booking_id,
+        "invoice_id": invoice_id,
+        "amount": 40.0,
+        "status": "confirmed",
+    })
+    # Cargos activos registrados DESPUÉS del pago → el plegado fallaría.
+    charge_ids = [
+        db.additional_charges.insert_one({
+            "booking_id": booking_id, "prop_id": 901,
+            "concept": "Minibar", "amount": 10.0, "quantity": 1, "total": 10.0,
+            "category": "minibar", "status": "active",
+        }).inserted_id,
+        db.additional_charges.insert_one({
+            "booking_id": booking_id, "prop_id": 901,
+            "concept": "Parking", "amount": 15.0, "quantity": 1, "total": 15.0,
+            "category": "parking", "status": "active",
+        }).inserted_id,
+    ]
+
+    result = complete_check_out(booking_id, changed_by="recep.prueba", keys_returned=True)
+
+    assert result["stay_status"] == "checked_out"
+
+    # (1) La factura principal quedó intacta (snapshot inmutable preservada).
+    main = db.reservation_invoices.find_one({"_id": invoice_id})
+    assert main["total"] == 116.0
+    assert main["line_items"] == [{"item_id": "room-1", "type": "room", "total": 100.0}]
+
+    # (2) Conciliación: los cargos activos quedaron cubiertos por la split.
+    split = db.reservation_invoices.find_one({
+        "booking_id": booking_id,
+        "split_type": "charges_only",
+        "status": {"$ne": "cancelled"},
+    })
+    assert split is not None, "el fallback no creó la factura split de consumos"
+    assert round(float(split["extras_total"]), 2) == 25.0
+    assert round(float(split["subtotal"]), 2) == 25.0
+    assert round(float(split["total"]), 2) == 29.0  # 25 * 1.16
+    split_charge_ids = {item["charge_id"] for item in split.get("line_items", [])}
+    assert split_charge_ids == {str(cid) for cid in charge_ids}
+    # La factura principal se enlaza a la split (metadata), no se reescribe.
+    assert main["split_type"] == "room_only"
+    assert main["split_charges_invoice_id"] == str(split["_id"])
+
+    # (3) El booking proyecta los cargos adicionales en total_charges.
+    booking = db.booking_orders.find_one({"booking_id": booking_id})
+    assert round(float(booking["total_charges"]), 2) == 25.0
+
+
 def test_stuck_update_requires_reversal_and_replacement_before_recovery(db):
     """Recovery must not confirm a revision when the old posting was not reversed."""
     from src.app.modules.billing.service.lifecycle.invoices import update_invoice_additional_charges

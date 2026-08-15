@@ -3,6 +3,7 @@ import type { ClientNotification, MyNotifications } from '../models/notification
 
 function mapNotification(dto: ClientNotificationDto): ClientNotification {
   return {
+    id: dto._id || '',
     notificationType: dto.notification_type,
     typeLabel: dto.type_label,
     recipientEmail: dto.recipient_email,
@@ -14,6 +15,7 @@ function mapNotification(dto: ClientNotificationDto): ClientNotification {
     statusTone: (dto.status_tone as ClientNotification['statusTone']) || 'neutral',
     errorMessage: dto.error_message || '',
     message: dto.message || '',
+    title: dto.title || '',
     createdAt: dto.created_at_iso || '',
     isUnread: dto.is_unread ?? false,
   };

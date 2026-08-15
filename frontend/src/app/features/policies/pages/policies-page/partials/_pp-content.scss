@@ -136,6 +136,13 @@ textarea {
   resize: vertical;
 }
 
+.field-help {
+  margin: -0.2rem 0 0;
+  color: var(--muted-text);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
 .btn-primary {
   display: inline-flex;
   align-items: center;

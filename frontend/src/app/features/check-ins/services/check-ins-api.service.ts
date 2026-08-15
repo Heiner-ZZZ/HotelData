@@ -56,13 +56,103 @@ export class CheckInsApiService {
   }
 
   /** Complete check-in with all detail data. */
-  completeCheckInWithDetail(bookingId: string, payload: Partial<CheckInDetailSavePayload> & { payment_method?: string }) {
-    return this.http.post<{ booking_id: string; stay_status: string; folio?: string; invoice_id?: string }>(
+  completeCheckInWithDetail(
+    bookingId: string,
+    payload: Partial<CheckInDetailSavePayload> & EarlyCheckInSavePayload & { payment_method?: string },
+  ) {
+    return this.http.post<{
+      booking_id: string;
+      stay_status: string;
+      folio?: string;
+      invoice_id?: string;
+      check_in_mode?: string;
+      early_check_in_fee?: number;
+    }>(
       `/management/check-ins/${bookingId}/complete`,
       payload,
     ).pipe(catchAuthError());
   }
 
+  /**
+   * Recepción declara (o retira) una llegada tardía para una reserva.
+   * El flag protege la reserva del auto no-show; no modifica fechas.
+   */
+  declareLateArrival(
+    bookingId: string,
+    payload: { declared_late_arrival: boolean; estimated_arrival_time?: string },
+  ) {
+    return this.http.post<{
+      booking_id: string;
+      declared_late_arrival: boolean;
+      estimated_arrival_time: string;
+    }>(
+      `/management/check-ins/${bookingId}/declare-late-arrival`,
+      payload,
+    ).pipe(catchAuthError());
+  }
+
+  /**
+   * Reabre una reserva cerrada como no-show (autorización de gerente).
+   * La reserva vuelve a pending y el folio de penalización se retira:
+   * si solo contenía la penalización se elimina (``folio_deleted``); si
+   * arrastra pagos u otros cargos, la penalización se revierte y el folio
+   * se conserva para gestionarlo en Facturación (``reversal_amount``).
+   */
+  reopenNoShow(bookingId: string, reason: string) {
+    return this.http.post<{
+      ok: boolean;
+      booking_id: string;
+      stay_status: string;
+      penalty_amount: number;
+      folio_number: string | null;
+      /** True cuando la penalización fue retirada (folio eliminado o cargo revertido). */
+      penalty_removed: boolean;
+      /** True solo cuando el folio penalty-only fue eliminado por completo. */
+      folio_deleted?: boolean;
+      /** Monto revertido cuando el folio se conservó (crédito a favor del huésped). */
+      reversal_amount?: number;
+    }>(
+      `/management/bookings/${bookingId}/reopen-no-show`,
+      { reason },
+    ).pipe(catchAuthError());
+  }
+
+}
+
+export interface EarlyCheckInDto {
+  enabled: boolean;
+  is_early: boolean;
+  minutes_before: number;
+  courtesy_minutes: number;
+  requires_approval: boolean;
+  check_in_time: string;
+  default_fee: number;
+  recorded_mode?: string;
+  recorded_minutes?: number;
+  recorded_fee?: number;
+  approved_by?: string;
+  reason?: string;
+  /** Hora local persistida cuando se completó el early check-in. */
+  actual_date?: string | null;
+  actual_time?: string | null;
+}
+
+export interface EarlyCheckInSavePayload {
+  early_check_in_mode?: 'early_courtesy' | 'early_approved';
+  early_check_in_approved?: boolean;
+  early_check_in_reason?: string;
+  early_check_in_fee?: number;
+}
+
+export interface LateArrivalDto {
+  guaranteed_reservation: boolean;
+  late_arrival_cutoff: string;
+  no_show_execution: 'next_day' | 'same_day_cutoff' | 'manual';
+  declared_late_arrival: boolean;
+  protected_from_auto_no_show: boolean;
+  is_late_arrival_window: boolean;
+  check_in_days_ago: number | null;
+  blocked_reason: 'no_show' | 'stay_ended' | 'too_late' | null;
 }
 
 export interface CheckInDetailDto {
@@ -80,6 +170,9 @@ export interface CheckInDetailDto {
   estimated_arrival_time: string;
   /** Marcador de late check-in (llegada tarde). */
   late_checkin: boolean;
+  early_check_in?: EarlyCheckInDto;
+  /** Contexto de llegada tardía / no-show (política hotel + ventana). */
+  late_arrival?: LateArrivalDto;
   check_out_date: string;
   total_price: number | null;
   currency: string;
@@ -92,6 +185,12 @@ export interface CheckInDetailDto {
   room_type_id: string;
   room_type_name: string;
   folio: string | null;
+  no_show_penalty_amount: number | null;
+  /** Marca de reapertura de no-show: el gerente reabrió porque el huésped llegó. */
+  no_show_reopened_at: string | null;
+  no_show_reopened_by: string;
+  no_show_reopen_reason: string;
+  no_show_penalty_removed: boolean;
   check_in_by: string | null;
   payment_method: string;
   booking_source: string;

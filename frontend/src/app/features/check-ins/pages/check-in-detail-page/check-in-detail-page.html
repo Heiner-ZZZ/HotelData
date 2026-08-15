@@ -38,6 +38,30 @@
           }
         </div>
 
+        @if (reopenedNotice(); as notice) {
+          <div class="ciw-reopen-banner" role="note">
+            <span class="material-symbols-outlined" aria-hidden="true">replay</span>
+            <div>
+              <strong>Reserva reabierta tras no-show</strong>
+              <p>
+                El huésped no llegó a tiempo y el gerente reabrió la reserva
+                ({{ formatReopenDate(notice.date) }}).
+                @if (notice.by) {
+                  Reabierta por {{ notice.by }}.
+                }
+                La ventana de reapertura sigue abierta (hoy o ayer con estadía vigente):
+                podés registrarlo como check-in de llegada tardía.
+                @if (notice.reason) {
+                  Motivo: “{{ notice.reason }}”.
+                }
+                @if (notice.penaltyRemoved) {
+                  La penalización del no-show fue retirada.
+                }
+              </p>
+            </div>
+          </div>
+        }
+
         @if (noShow()) {
           <div class="ciw-noshow-block">
             <span class="material-symbols-outlined">event_busy</span>
@@ -50,6 +74,7 @@
                 } @else {
                   Esta reserva venció como <strong>no-show</strong> (fecha de check-out pasada) y no puede registrarse como check-in.
                 }
+                Pedile al gerente que reabra la reserva (solo hoy o ayer con estadía vigente), o ajustá las fechas y creá una reserva nueva.
               </p>
             </div>
             @if (canMarkNoShow()) {
@@ -64,8 +89,31 @@
                 }
               </button>
             }
+            @if (canReopenNoShow()) {
+              <button type="button" class="ciw-btn ciw-btn-outline ciw-noshow-action"
+                (click)="openReopenDialog()"
+                aria-describedby="ciw-noshow-reopen-help">
+                <span class="material-symbols-outlined" aria-hidden="true">replay</span>
+                Reabrir no-show
+              </button>
+              <span id="ciw-noshow-reopen-help" class="visually-hidden">
+                Solo un gerente de hotel puede reabrir la reserva cuando el huésped llega después de que el no-show fue cerrado. Al reabrir, la penalización se retira: el folio de penalización se elimina si solo contenía ese cargo.
+              </span>
+            } @else if (reopenWindowBlockedReason(); as reason) {
+              <div class="ciw-noshow-window-block" role="note">
+                <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+                <div>
+                  <strong>Ventana de reapertura cerrada</strong>
+                  @if (reason === 'too_late') {
+                    <p>La reserva tiene más de un día de retraso: la ventana de llegada tardía cerró. Ajustá las fechas o creá una reserva nueva.</p>
+                  } @else {
+                    <p>La estadía ya terminó y no puede reactivarse. Ajustá las fechas o creá una reserva nueva.</p>
+                  }
+                </div>
+              </div>
+            }
           </div>
-          @if (noShowResult(); as ns) {
+          @if (noShowFolio(); as ns) {
             <div class="ciw-noshow-folio">
               <span class="material-symbols-outlined">receipt_long</span>
               <div>
@@ -94,6 +142,73 @@
               </span>
             </div>
           </div>
+        }
+
+        @if (!checkinDone() && !noShow() && (isLateArrivalWindow() || declaredLateArrival())) {
+          <section class="ciw-latearrival" aria-labelledby="ciw-latearrival-title">
+            <div class="ciw-latearrival-head">
+              <span class="material-symbols-outlined" aria-hidden="true">nights_stay</span>
+              <div>
+                <h2 id="ciw-latearrival-title">Llegada tardía</h2>
+                <p id="ciw-latearrival-desc">
+                  @if (isLateArrivalWindow()) {
+                    El check-in era <strong>{{ vm.check_in_date }}</strong> y la ventana de llegada tardía sigue abierta: podés registrarlo hoy como <strong>llegada tardía</strong>, sin mover las fechas de la reserva ni agregar noches.
+                    @if (lateArrival().no_show_execution !== 'manual') {
+                      Declará la llegada para proteger la reserva del auto no-show.
+                    }
+                  } @else {
+                    El huésped tiene una llegada tardía declarada. La reserva queda protegida del auto no-show y conserva sus fechas originales.
+                  }
+                </p>
+              </div>
+            </div>
+
+            @if (declaredLateArrival()) {
+              <p class="ciw-latearrival-status" role="status">
+                <span class="material-symbols-outlined" aria-hidden="true">verified</span>
+                Llegada tardía declarada
+                @if (vm.estimated_arrival_time) {
+                  — hora estimada {{ vm.estimated_arrival_time }}
+                }
+              </p>
+            }
+
+            @if (canDeclareLateArrival()) {
+              @if (lateArrivalDeclareOpen()) {
+                <form class="ciw-latearrival-form" (ngSubmit)="saveLateArrivalDeclaration()">
+                  <label class="ciw-latearrival-toggle">
+                    <input type="checkbox" [checked]="lateArrivalDeclareValue()"
+                      (change)="lateArrivalDeclareValue.set($any($event.target).checked)" />
+                    <span>{{ lateArrivalDeclareValue() ? 'Llegada tardía declarada' : 'Declarar llegada tardía' }}</span>
+                  </label>
+                  <label class="ciw-latearrival-field">
+                    <span class="ciw-label">Hora estimada de llegada (opcional)</span>
+                    <input type="time" class="ciw-input ciw-input-mono" [value]="lateArrivalEta()"
+                      (input)="lateArrivalEta.set($any($event.target).value)" />
+                  </label>
+                  @if (lateArrivalError()) {
+                    <p class="ciw-latearrival-error" role="alert">{{ lateArrivalError() }}</p>
+                  }
+                  <div class="ciw-latearrival-actions">
+                    <button type="button" class="ciw-btn ciw-btn-outline" (click)="lateArrivalDeclareOpen.set(false)">
+                      Cancelar
+                    </button>
+                    <button type="submit" class="ciw-btn ciw-btn-primary" [disabled]="lateArrivalPending()">
+                      <span class="material-symbols-outlined" aria-hidden="true">save</span>
+                      Guardar declaración
+                    </button>
+                  </div>
+                </form>
+              } @else {
+                <button type="button" class="ciw-btn ciw-btn-outline ciw-latearrival-action"
+                  (click)="openLateArrivalDeclare()"
+                  aria-describedby="ciw-latearrival-desc">
+                  <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
+                  {{ declaredLateArrival() ? 'Editar declaración' : 'Declarar llegada tardía' }}
+                </button>
+              }
+            }
+          </section>
         }
 
         @if (successMessage()) {
@@ -404,6 +519,98 @@
             </div>
           }
 
+          @if (currentStep() === 5 && isFutureDate()) {
+            <div id="ciw-future-date-help" class="ciw-future-date-block" role="status" aria-live="polite">
+              <span class="material-symbols-outlined" aria-hidden="true">event_upcoming</span>
+              <div>
+                <strong>Check-in aún no disponible</strong>
+                <p>Disponible desde el <strong>{{ vm.check_in_date }}</strong>. La fecha de la reserva todavía es futura — esperá a esa fecha o ajustá las fechas de la reserva.</p>
+              </div>
+            </div>
+          }
+
+          @if (currentStep() === 5 && earlyCheckIn().is_early && !isFutureDate()) {
+            <div id="ciw-early-check-in-help" class="ciw-early-check-in-block" role="status" aria-live="polite">
+              <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+              <div>
+                @if (earlyCheckIn().requires_approval) {
+                  <strong>Early check-in requiere aprobación</strong>
+                  <p>La llegada es {{ earlyCheckIn().minutes_before }} minutos antes de las {{ earlyCheckIn().check_in_time }}. Verifica disponibilidad y registra el motivo de la autorización.</p>
+                  @if (earlyApprovalBlocked()) {
+                    <p id="ciw-early-approval-help" role="status" aria-live="polite">
+                      Solo un gerente de hotel o super_admin puede aprobar llegadas fuera de la cortesía configurada — contactá a gerencia para autorizar la llegada anticipada.
+                    </p>
+                  }
+                } @else {
+                  <strong>Ventana de cortesía disponible</strong>
+                  <p>La llegada es {{ earlyCheckIn().minutes_before }} minutos antes de las {{ earlyCheckIn().check_in_time }}. Se registrará como cortesía, sin mover las fechas de la reserva.</p>
+                }
+              </div>
+            </div>
+          }
+
+          @if (earlyDialogOpen()) {
+            <div class="ciw-early-dialog-backdrop" (click)="cancelEarlyCheckIn()">
+              <section id="ciw-early-dialog" class="ciw-early-dialog" role="dialog" aria-modal="true"
+                aria-labelledby="ciw-early-dialog-title" aria-describedby="ciw-early-dialog-description" tabindex="-1"
+                (click)="$event.stopPropagation()">
+                <div class="ciw-early-dialog-header">
+                  <span class="material-symbols-outlined ciw-early-dialog-icon" aria-hidden="true">schedule</span>
+                  <div>
+                    <h2 id="ciw-early-dialog-title">
+                      {{ earlyDialogMode() === 'early_approved' ? 'Autorizar early check-in' : 'Registrar cortesía de early check-in' }}
+                    </h2>
+                    <p id="ciw-early-dialog-description">
+                      La reserva conserva {{ vm.check_in_date }} → {{ vm.check_out_date }}. Solo se registra la forma de llegada.
+                    </p>
+                  </div>
+                  <button type="button" class="ciw-early-dialog-close" aria-label="Cerrar autorización de early check-in"
+                    (click)="cancelEarlyCheckIn()">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                  </button>
+                </div>
+
+                <div class="ciw-early-dialog-summary">
+                  <span class="material-symbols-outlined" aria-hidden="true">event</span>
+                  <span>{{ earlyCheckIn().minutes_before }} minutos antes del horario de check-in ({{ earlyCheckIn().check_in_time }})</span>
+                </div>
+
+                @if (earlyDialogMode() === 'early_approved') {
+                  <label class="ciw-early-dialog-field">
+                    <span>Motivo de aprobación <strong aria-hidden="true">*</strong></span>
+                    <textarea rows="3" [value]="earlyCheckInReason()"
+                      (input)="earlyCheckInReason.set($any($event.target).value)"
+                      placeholder="Ej. Habitación lista; gerente autorizó la entrega." autofocus></textarea>
+                  </label>
+                } @else {
+                  <p class="ciw-early-dialog-courtesy">
+                    Esta llegada está dentro de la cortesía configurada de {{ earlyCheckIn().courtesy_minutes }} minutos.
+                  </p>
+                }
+
+                <label class="ciw-early-dialog-field">
+                  <span>Cargo opcional</span>
+                  <input type="number" min="0" step="0.01" [value]="earlyCheckInFee()"
+                    (input)="earlyCheckInFee.set(Number($any($event.target).value) || 0)"
+                    aria-describedby="ciw-early-fee-help" />
+                  <small id="ciw-early-fee-help">Se agrega al folio, no modifica las noches ni las fechas.</small>
+                </label>
+
+                @if (earlyDialogError()) {
+                  <p class="ciw-early-dialog-error" role="alert" aria-live="assertive">{{ earlyDialogError() }}</p>
+                }
+
+                <div class="ciw-early-dialog-actions">
+                  <button type="button" class="ciw-btn ciw-btn-outline" (click)="cancelEarlyCheckIn()">Cancelar</button>
+                  <button type="button" class="ciw-btn ciw-btn-success" (click)="confirmEarlyCheckIn()">
+                    <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                    {{ earlyDialogMode() === 'early_approved' ? 'Autorizar y hacer check-in' : 'Registrar cortesía y hacer check-in' }}
+                  </button>
+                </div>
+              </section>
+            </div>
+          }
+
           <!-- ═══ Bottom Navigation ═══ -->
           <div class="ciw-bottom">
             <div class="ciw-bottom-left">
@@ -434,18 +641,24 @@
                     <span class="material-symbols-outlined">event_busy</span>
                     <div>
                       <strong>Fecha de check-in ya pasó</strong>
-                      <p>No se puede realizar check-in porque la fecha de llegada ({{ data()?.check_in_date }}) es anterior a hoy. Contacta al administrador del hotel para ajustar la fecha.</p>
+                      @if (lateArrivalBlockedReason() === 'too_late') {
+                        <p>La reserva ({{ data()?.check_in_date }}) tiene más de un día de retraso: la ventana de llegada tardía cerró. No es un check-in normal — ajustá las fechas o creá una reserva nueva.</p>
+                      } @else {
+                        <p>No se puede realizar check-in porque la fecha de llegada ({{ data()?.check_in_date }}) es anterior a hoy. Contacta al administrador del hotel para ajustar la fecha.</p>
+                      }
                     </div>
                   </div>
                 } @else {
                   <button type="button" class="ciw-btn ciw-btn-success"
-                    (click)="completeCheckIn()" [disabled]="completing() || !allRoomsAvailable()">
+                    (click)="completeCheckIn()"
+                    [disabled]="completing() || !allRoomsAvailable() || isFutureDate() || earlyApprovalBlocked()"
+                    [attr.aria-describedby]="isFutureDate() ? 'ciw-future-date-help' : (earlyApprovalBlocked() ? 'ciw-early-approval-help' : (earlyCheckIn().is_early ? 'ciw-early-check-in-help' : null))">
                     @if (completing()) {
                       <span class="material-symbols-outlined spinning">sync</span>
                       Procesando...
                     } @else {
-                      <span class="material-symbols-outlined">check_circle</span>
-                      Realizar Check-In
+                      <span class="material-symbols-outlined">{{ earlyCheckIn().is_early ? 'schedule' : 'check_circle' }}</span>
+                      {{ earlyCheckIn().is_early ? (earlyCheckIn().requires_approval ? 'Autorizar early check-in' : 'Registrar cortesía') : 'Realizar Check-In' }}
                     }
                   </button>
                 }
@@ -490,6 +703,17 @@
                 <span class="ciw-label">Fecha</span>
                 <span>{{ vm.check_in_date }} → {{ vm.check_out_date }}</span>
               </div>
+              @if (earlyCheckIn().recorded_mode === 'early_approved' || earlyCheckIn().recorded_mode === 'early_courtesy') {
+                <div class="ciw-completed-detail">
+                  <span class="ciw-label">Hora real de llegada anticipada</span>
+                  <span>
+                    {{ earlyCheckIn().actual_time || vm.check_in_time_actual || 'N/D' }} hrs
+                    @if (earlyCheckIn().actual_date || vm.check_in_date_actual) {
+                      · {{ earlyCheckIn().actual_date || vm.check_in_date_actual }}
+                    }
+                  </span>
+                </div>
+              }
               <div class="ciw-completed-detail">
                 <span class="ciw-label">Total</span>
                 <span class="ciw-price">{{ currency() }} {{ totalPrice().toFixed(2) }}</span>
@@ -502,6 +726,51 @@
                 Volver a Check-Ins
               </a>
             </div>
+          </div>
+        }
+
+        @if (reopenDialogOpen()) {
+          <div class="ciw-early-dialog-backdrop" (click)="cancelReopenDialog()">
+            <section id="ciw-reopen-dialog" class="ciw-early-dialog" role="dialog" aria-modal="true"
+              aria-labelledby="ciw-reopen-dialog-title" aria-describedby="ciw-reopen-dialog-description" tabindex="-1"
+              (click)="$event.stopPropagation()">
+              <div class="ciw-early-dialog-header">
+                <span class="material-symbols-outlined ciw-early-dialog-icon" aria-hidden="true">replay</span>
+                <div>
+                  <h2 id="ciw-reopen-dialog-title">Reabrir reserva no-show</h2>
+                  <p id="ciw-reopen-dialog-description">
+                    El huésped llegó después de que el no-show fue cerrado. La reserva vuelve a estar pendiente para hacer el check-in.
+                  </p>
+                </div>
+                <button type="button" class="ciw-early-dialog-close" aria-label="Cerrar reapertura de no-show"
+                  (click)="cancelReopenDialog()">
+                  <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+              </div>
+
+              <p class="ciw-early-dialog-courtesy">
+                Al reabrir, la penalización de la primera noche se retira: el folio de penalización se elimina si solo contenía ese cargo; si tiene pagos u otros cargos, la penalización se revierte y el folio se conserva para que la gestiones en Facturación.
+              </p>
+
+              <label class="ciw-early-dialog-field">
+                <span>Motivo de la reapertura <strong aria-hidden="true">*</strong></span>
+                <textarea id="ciw-reopen-reason" rows="3" [value]="reopenReason()"
+                  (input)="reopenReason.set($any($event.target).value)"
+                  placeholder="Ej. El huésped llegó a las 02:00; gerente autorizó reabrir la reserva." autofocus></textarea>
+              </label>
+
+              @if (reopenError()) {
+                <p class="ciw-early-dialog-error" role="alert" aria-live="assertive">{{ reopenError() }}</p>
+              }
+
+              <div class="ciw-early-dialog-actions">
+                <button type="button" class="ciw-btn ciw-btn-outline" (click)="cancelReopenDialog()">Cancelar</button>
+                <button type="button" class="ciw-btn ciw-btn-primary" (click)="confirmReopenNoShow()" [disabled]="reopenPending()">
+                  <span class="material-symbols-outlined" aria-hidden="true">replay</span>
+                  {{ reopenPending() ? 'Reabriendo...' : 'Reabrir reserva' }}
+                </button>
+              </div>
+            </section>
           </div>
         }
 

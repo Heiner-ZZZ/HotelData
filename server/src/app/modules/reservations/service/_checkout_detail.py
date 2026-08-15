@@ -13,12 +13,12 @@ before finalizing the check-out.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any
 
-
 from src.database.connection import get_database
-from datetime import datetime
 
+from ._checkinout._checkout import get_late_checkout_context
 from ._helpers import utc_now
 from .queries import hotel_booking_context
 
@@ -38,20 +38,43 @@ def get_check_out_detail(booking_id: str) -> dict[str, Any]:
             "check_in_date_actual": 1, "check_in_time_actual": 1,
             "total_price": 1, "currency": 1, "total_nights": 1,
             "rooms": 1, "room_type_id": 1,
-            "assigned_rooms": 1, "folio": 1, "check_in_by": 1, "shift_id": 1,
+            "assigned_rooms": 1, "folio": 1, "no_show_penalty_amount": 1,
+            "no_show_penalty_percent": 1, "check_in_by": 1, "shift_id": 1,
             "payment_method": 1, "booking_source": 1, "status": 1, "stay_status": 1,
             "total_charges": 1,
             "check_out_date_actual": 1, "check_out_time_actual": 1, "check_out_by": 1,
             "check_out_room_inspected": 1, "check_out_keys_returned": 1,
+            "check_out_damages_found": 1, "check_out_late_checkout_fee": 1,
+            "check_out_mode": 1, "late_checkout_fee": 1, "late_checkout_minutes": 1,
+            "late_checkout_approved_by": 1, "late_checkout_reason": 1,
+            "late_checkout_policy_time": 1,
             "check_out_payment_method": 1, "check_out_payment_ref": 1,
             "check_out_observations": 1,
         },
     )
     if not booking:
-        raise ValueError("Booking not found")
+        raise ValueError("No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.")
 
     prop_id = int(booking.get("prop_id", 0))
     hotel_label = hotel_booking_context(prop_id).get("hotel_label", "") or f"Hotel {prop_id}"
+
+    # Late check-out window (server-authoritative): the front desk needs the
+    # governed context (courtesy vs approval, fee default, policy hour) before
+    # completing a same-day departure past the check-out hour.
+    late_checkout_context = get_late_checkout_context(
+        prop_id,
+        str(booking.get("check_out_date", "") or ""),
+        db=db,
+    )
+
+    # ``booking_orders.folio`` is a denormalized display field. Historical
+    # rows and migrated no-shows may have the authoritative number only in
+    # ``guest_folios``; read it here so a fresh checkout page can rebuild its
+    # billing link without depending on transient UI state.
+    folio_doc = db.guest_folios.find_one(
+        {"booking_id": booking_id},
+        {"_id": 0, "folio_number": 1},
+    )
 
     # Room type name
     room_type_name = ""
@@ -100,10 +123,22 @@ def get_check_out_detail(booking_id: str) -> dict[str, Any]:
          "issued_at": 1, "paid_at": 1, "line_items": 1, "notes": 1},
     )
     if inv:
+        # Lo que la facturación ya cubre: suma de subtotales de TODAS las
+        # facturas no canceladas del booking (principal + complementarias).
+        # La nota de reconciliación compara el subtotal vivo contra este total,
+        # así una factura complementaria del gap la despeja al recargar.
+        covered_subtotal = round(sum(
+            float(i.get("subtotal", 0) or 0)
+            for i in db.reservation_invoices.find(
+                {"booking_id": booking_id, "status": {"$ne": "cancelled"}},
+                {"subtotal": 1},
+            )
+        ), 2)
         invoice = {
             "id": str(inv["_id"]),
             "invoice_number": inv.get("invoice_number", ""),
             "subtotal": inv.get("subtotal", 0),
+            "covered_subtotal": covered_subtotal,
             "room_subtotal": inv.get("room_subtotal", 0),
             "extras_total": inv.get("extras_total", 0),
             "taxes": inv.get("taxes", 0),
@@ -164,6 +199,14 @@ def get_check_out_detail(booking_id: str) -> dict[str, Any]:
         "check_out_keys_returned": booking.get("check_out_keys_returned", False),
         "check_out_damages_found": booking.get("check_out_damages_found", False),
         "check_out_late_checkout_fee": booking.get("check_out_late_checkout_fee", 0),
+        "check_out_mode": booking.get("check_out_mode"),
+        "late_checkout_fee": booking.get("late_checkout_fee", 0),
+        "late_checkout_minutes": booking.get("late_checkout_minutes", 0),
+        "late_checkout_approved_by": booking.get("late_checkout_approved_by"),
+        "late_checkout_reason": booking.get("late_checkout_reason", ""),
+        # Hora de política estampada al completar (fuente de verdad del detalle,
+        # vs el contexto en vivo que se resuelve al abrir la página).
+        "late_checkout_policy_time": booking.get("late_checkout_policy_time", ""),
         "check_out_discount": booking.get("check_out_discount", 0),
         "check_out_discount_reason": booking.get("check_out_discount_reason", ""),
         "check_out_payment_method": booking.get("check_out_payment_method", ""),
@@ -180,7 +223,9 @@ def get_check_out_detail(booking_id: str) -> dict[str, Any]:
         "booking_id": booking_id,
         "prop_id": prop_id,
         "hotel_label": hotel_label,
-        "folio": booking.get("folio"),
+        "folio": booking.get("folio") or (folio_doc or {}).get("folio_number"),
+        "no_show_penalty_amount": booking.get("no_show_penalty_amount"),
+        "no_show_penalty_percent": booking.get("no_show_penalty_percent"),
         "guest_name": booking.get("guest_name", ""),
         "guest_email": booking.get("guest_email", ""),
         "guest_phone": booking.get("guest_phone", ""),
@@ -210,6 +255,8 @@ def get_check_out_detail(booking_id: str) -> dict[str, Any]:
         "charges_total": charges_total,
         "charges_by_category": charges_by_category,
         "category_totals": category_totals,
+        # Late check-out window (governed by hotel policy)
+        "late_checkout_context": late_checkout_context,
         # Check-out fields
         **check_out_fields,
     }
@@ -237,9 +284,12 @@ def save_check_out_detail(
         {"_id": 0, "status": 1, "is_test": 1},
     )
     if not booking:
-        raise ValueError("Booking not found")
+        raise ValueError("No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.")
     if booking.get("status") in ("cancelled", "rejected"):
-        raise ValueError("Cannot modify check-out detail for a cancelled or rejected booking")
+        raise ValueError(
+            "No se puede modificar el detalle de check-out de una reserva cancelada o rechazada. "
+            "Creá una reserva nueva o contactá al equipo."
+        )
 
     set_fields: dict[str, Any] = {}
     for key, val in [

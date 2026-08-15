@@ -1,11 +1,13 @@
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+
+import type { CheckOutInvoiceDto } from '../../../services/check-outs-api.service';
 
 @Component({
   selector: 'app-co-completed-view',
   standalone: true,
-  imports: [CurrencyPipe, RouterLink],
+  imports: [CurrencyPipe, DatePipe, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="co-checked-out-banner">
@@ -40,6 +42,17 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
             <div class="co-stay-row"><span class="co-stay-label"><span class="material-symbols-outlined">bed</span> Noches</span><span class="co-stay-val">{{ totalNights() }}</span></div>
             @if (checkOutTimeActual()) {
               <div class="co-stay-row"><span class="co-stay-label"><span class="material-symbols-outlined">schedule</span> Hora salida</span><span class="co-stay-val">{{ checkOutTimeActual() }} hrs</span></div>
+              @if (isLateMode()) {
+                <div class="co-stay-row">
+                  <span class="co-stay-label"><span class="material-symbols-outlined">event_available</span> Salida extendida</span>
+                  <span class="co-stay-val">
+                    {{ lateModeLabel() }}
+                    @if (lateCheckoutMinutes() > 0) {
+                      &middot; {{ lateCheckoutMinutes() }} min tras las {{ lateCheckoutPolicyTime() || 'hora de pol&iacute;tica' }}
+                    }
+                  </span>
+                </div>
+              }
             }
             @if (checkOutBy()) {
               <div class="co-stay-row"><span class="co-stay-label"><span class="material-symbols-outlined">badge</span> Atendi&oacute;</span><span class="co-stay-val">{{ checkOutBy() }}</span></div>
@@ -116,6 +129,26 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
                 {{ balanceDue() <= 0 ? 'CANCELADO' : (balanceDue() | currency:currency()) }}
               </span>
             </div>
+
+            @if (reconcileNote(); as note) {
+              <div class="co-liq-reconcile" role="note" aria-live="polite">
+                <span class="material-symbols-outlined">fact_check</span>
+                <div>
+                  <strong>La factura no cubre los cargos adicionales</strong>
+                  <span>
+                    La factura {{ note.invoice_number }} se emiti&oacute; antes de los &uacute;ltimos cargos:
+                    faltan <strong>{{ note.gap | currency:currency() }}</strong> &mdash; el TOTAL incluye los cargos nuevos.
+                  </span>
+                  @if (invoice(); as inv) {
+                    <div class="co-liq-reconcile-invoice" role="group" aria-label="Datos de la factura">
+                      <span>Factura: <strong>{{ inv.invoice_number }}</strong></span>
+                      <span>Estado: <strong>{{ invoiceStatusLabel(inv.status) }}</strong></span>
+                      <span>Emitida: <strong>{{ inv.issued_at | date:'dd/MM/yyyy HH:mm' }}</strong></span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
           </div>
         </div>
 
@@ -160,6 +193,17 @@ export class CoCompletedViewComponent {
   readonly checkOutDate = input('');
   readonly totalNights = input(0);
   readonly checkOutTimeActual = input('');
+  /** Modo gobernado estampado al completar (``late_approved``/``late_courtesy``/``normal``). */
+  readonly checkOutMode = input<string | null>(null);
+  readonly lateCheckoutMinutes = input(0);
+  readonly lateCheckoutPolicyTime = input('');
+  readonly isLateMode = computed(() => {
+    const mode = this.checkOutMode();
+    return mode === 'late_approved' || mode === 'late_courtesy';
+  });
+  readonly lateModeLabel = computed(() =>
+    this.checkOutMode() === 'late_approved' ? 'Aprobado' : 'Cortes&iacute;a'
+  );
   readonly checkOutBy = input('');
   /** Responsible shift + cashier of the check-out (from the booking's shift_id). */
   readonly checkOutShift = input<{
@@ -180,7 +224,23 @@ export class CoCompletedViewComponent {
   readonly hasPayments = input(false);
   readonly totalPaid = input(0);
   readonly balanceDue = input(0);
+  /** Nota de reconciliación: la factura emitida no cubre los cargos
+   *  adicionales actuales (se registraron cargos después de facturar). El
+   *  folio final también advierte el gap sin facturar. */
+  readonly reconcileNote = input<{ invoice_number: string; gap: number } | null>(null);
+  readonly invoice = input<CheckOutInvoiceDto | null>(null);
   readonly currency = input('USD');
+
+  invoiceStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      issued: 'Emitida',
+      paid: 'Pagada',
+      partially_paid: 'Parcialmente pagada',
+      cancelled: 'Cancelada',
+      refunded: 'Reembolsada',
+    };
+    return labels[status] || status || 'Sin estado';
+  }
   readonly paymentMethod = input('');
   readonly paymentRef = input('');
   readonly paymentMethodLabel = input('');

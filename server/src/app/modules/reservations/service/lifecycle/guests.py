@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..collections import ensure_reservation_collections
-from .._helpers import utc_now
 from src.database.connection import get_database
+
+from .._helpers import utc_now
+from ..collections import ensure_reservation_collections
 
 ROOM_GUESTS = "booking_room_guests"
 
@@ -53,15 +54,21 @@ def save_room_guests(booking_id: str, room_guests: list[dict[str, Any]]) -> list
 
     booking = db.booking_orders.find_one({"booking_id": booking_id})
     if not booking:
-        raise ValueError("Booking not found")
+        raise ValueError("No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.")
     if booking.get("status") in ("cancelled", "rejected"):
-        raise ValueError("Cannot modify room guests for cancelled/rejected booking")
+        raise ValueError(
+            "No se pueden modificar los huéspedes de una reserva cancelada o rechazada. "
+            "Creá una reserva nueva para registrar a los huéspedes."
+        )
 
     max_rooms = int(booking.get("rooms", 1))
     for entry in room_guests:
         ri = int(entry.get("room_index", 0))
         if ri < 0 or ri >= max_rooms:
-            raise ValueError(f"room_index {ri} out of range (0-{max_rooms - 1})")
+            raise ValueError(
+                f"El índice de habitación {ri} está fuera de rango (0-{max_rooms - 1}). "
+                "Verificá que la habitación pertenezca a esta reserva."
+            )
 
     db[ROOM_GUESTS].delete_many({"booking_id": booking_id})
     docs = []
@@ -94,7 +101,7 @@ def get_check_in_status(booking_id: str) -> dict[str, Any]:
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": booking_id})
     if not booking:
-        return {"status": "unknown", "message": "Booking not found"}
+        return {"status": "unknown", "message": "No se encontró la reserva."}
 
     total_rooms = int(booking.get("rooms", 1))
     room_guests = list(db[ROOM_GUESTS].find({"booking_id": booking_id}).sort("room_index", 1))

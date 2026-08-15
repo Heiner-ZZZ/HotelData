@@ -26,35 +26,33 @@ import { ProfileSecurityComponent } from '../components/profile-security';
             <span class="material-symbols-outlined toggle-icon">mail</span>
             <div>
               <strong>Notificaciones por correo</strong>
-              <p>Recibe confirmaciones, alertas de check-in y ofertas.</p>
+              <p>Recibe confirmaciones y alertas de check-in.</p>
             </div>
           </div>
           <input type="checkbox" [formControl]="form()?.controls?.notificationEmailEnabled" class="toggle-input" />
           <span class="toggle-track"></span>
         </label>
-        <label class="toggle-row">
-          <div class="toggle-info">
-            <span class="material-symbols-outlined toggle-icon">sms</span>
-            <div>
-              <strong>Notificaciones por SMS</strong>
-              <p>Alertas importantes en tu teléfono móvil.</p>
-            </div>
-          </div>
-          <input type="checkbox" [formControl]="form()?.controls?.notificationSmsEnabled" class="toggle-input" />
-          <span class="toggle-track"></span>
-        </label>
-        <label class="toggle-row">
-          <div class="toggle-info">
-            <span class="material-symbols-outlined toggle-icon">campaign</span>
-            <div>
-              <strong>Comunicaciones comerciales</strong>
-              <p>Ofertas, promociones y novedades de hoteles asociados.</p>
-            </div>
-          </div>
-          <input type="checkbox" [formControl]="form()?.controls?.marketingOptIn" class="toggle-input" />
-          <span class="toggle-track"></span>
-        </label>
       </div>
+
+      @if (isGuest()) {
+        <div class="toggle-group">
+          <h3>Publicidad y promociones</h3>
+          <label class="toggle-row">
+            <div class="toggle-info">
+              <span class="material-symbols-outlined toggle-icon">campaign</span>
+              <div>
+                <strong>Envío de publicidad, promociones, novedades y ofertas</strong>
+                <p>
+                  Recibirás publicidad, promociones, novedades y ofertas de los hoteles asociados.
+                  Se enviarán a tu correo y a la interfaz principal del huésped, o como notificación.
+                </p>
+              </div>
+            </div>
+            <input type="checkbox" [formControl]="form()?.controls?.marketingOptIn" class="toggle-input" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      }
     </section>
 
     <app-profile-security />
@@ -64,4 +62,6 @@ import { ProfileSecurityComponent } from '../components/profile-security';
 })
 export class PpPreferencesFormComponent {
   readonly form = input<any>(null);
+  /** Solo los huéspedes (cliente) ven el consentimiento de marketing. */
+  readonly isGuest = input(false);
 }

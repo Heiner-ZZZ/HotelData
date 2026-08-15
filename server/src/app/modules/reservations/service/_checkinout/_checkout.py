@@ -7,16 +7,197 @@ from typing import Any
 
 from bson import ObjectId
 
-from src.database.connection import get_database
-from .._helpers import utc_now
+from src.app.core.timezone import local_now, local_today
+from src.app.modules.partner.services.audit import register_action
 from src.app.modules.reservations.service._checkinout._helpers import (
     _notify_guest_check_out,
     _notify_staff_check_out,
+    _notify_staff_window_extension,
 )
+from src.database.connection import get_database
+
+from .._helpers import utc_now
 from .._transitions import _restore_inventory
-from src.app.modules.partner.services.audit import register_action
+from ._checkin import _parse_time_minutes, _policy_bool
 
 logger = logging.getLogger(__name__)
+
+
+_LATE_CHECK_OUT_MODES = {"late_courtesy", "late_approved"}
+
+
+def _invoice_is_immutable(db, booking_id: str) -> bool:
+    """¿La factura del huésped es una snapshot fiscal inmutable?
+
+    Espejo de la condición del módulo billing (``update_invoice_additional_charges``):
+    pagada / parcialmente pagada / refunded / cancelled, o con pagos confirmados.
+    Una factura inmutable no puede reescribirse — el plegado de cargos fallaría.
+    """
+    inv = db.reservation_invoices.find_one(
+        {"booking_id": booking_id}, {"_id": 1, "status": 1}
+    )
+    if not inv:
+        return False
+    if inv.get("status") in {"paid", "partially_paid", "refunded", "cancelled"}:
+        return True
+    return (
+        db.reservation_payments.count_documents(
+            {"invoice_id": inv["_id"], "status": {"$in": ["confirmed", "refunded"]}}
+        )
+        > 0
+    )
+
+
+def _has_active_additional_charges(db, booking_id: str) -> bool:
+    """¿Quedan cargos adicionales activos sin facturar? (los reversados no cuentan)."""
+    from src.app.modules.housekeeping.service.collections import CHARGES_COLLECTION
+
+    return (
+        db[CHARGES_COLLECTION].count_documents(
+            {"booking_id": booking_id, "status": {"$ne": "reversed"}}
+        )
+        > 0
+    )
+
+
+def get_late_checkout_context(
+    prop_id: int,
+    check_out_date: str,
+    *,
+    now: Any | None = None,
+    db: Any | None = None,
+) -> dict[str, Any]:
+    """Resolve the server-authoritative late check-out state for a booking.
+
+    Deliberately read-only, mirror of ``get_early_check_in_context``: it
+    compares the hotel's configured check-out time with the current local time
+    only when the stay ends today (``check_out_date == today``). A departure
+    before the scheduled hour is normal; on the scheduled day after the hour it
+    is late. Early departure (before ``check_out_date``) and overstay (after)
+    are different scenarios, not late check-out, so the same-day guard keeps
+    them out of this window. It never changes reservation dates or inventory.
+    """
+    database = db if db is not None else get_database()
+    policy = database.hotel_policies.find_one(
+        {
+            "prop_id": prop_id,
+            "room_type_id": {"$in": ["", None]},
+            "rate_plan_id": {"$in": ["", None]},
+            "season_id": {"$in": ["", None]},
+        },
+        {
+            "_id": 0,
+            "check_out_time": 1,
+            "late_checkout_enabled": 1,
+            "late_checkout_courtesy_minutes": 1,
+            "late_checkout_default_fee": 1,
+        },
+    ) or {}
+
+    check_out_time = str(policy.get("check_out_time") or "").strip()
+    schedule_minutes = _parse_time_minutes(check_out_time)
+    try:
+        courtesy_minutes = max(0, min(int(policy.get("late_checkout_courtesy_minutes", 60) or 60), 240))
+    except (TypeError, ValueError):
+        courtesy_minutes = 60
+    try:
+        default_fee = max(0.0, round(float(policy.get("late_checkout_default_fee", 0) or 0), 2))
+    except (TypeError, ValueError):
+        default_fee = 0.0
+
+    enabled = _policy_bool(policy.get("late_checkout_enabled"), True)
+    current = now or local_now()
+    context: dict[str, Any] = {
+        "enabled": enabled,
+        "is_late": False,
+        "minutes_after": 0,
+        "courtesy_minutes": courtesy_minutes,
+        "requires_approval": False,
+        "check_out_time": check_out_time,
+        "default_fee": default_fee,
+        # Hora real de la salida (reloj local del servidor): campo legible para
+        # recepción — cuándo está ocurriendo/ocurrió la salida extendida.
+        "real_time": "",
+    }
+    # Sin política habilitada no existe ventana late: la salida es normal
+    # (a diferencia del early check-in, la salida no se puede bloquear — el
+    # huésped se va; la ventana solo gobierna cargo/aprobación).
+    if (
+        not enabled
+        or schedule_minutes is None
+        or not check_out_date
+        or check_out_date != local_today()
+    ):
+        return context
+
+    current_minutes = current.hour * 60 + current.minute
+    minutes_after = current_minutes - schedule_minutes
+    if minutes_after <= 0:
+        return context
+
+    context["is_late"] = True
+    context["minutes_after"] = minutes_after
+    context["requires_approval"] = minutes_after > courtesy_minutes
+    context["real_time"] = current.strftime("%H:%M")
+    return context
+
+
+def validate_late_checkout(
+    context: dict[str, Any],
+    *,
+    mode: str | None,
+    approved: bool,
+    reason: str,
+    fee: Any,
+) -> tuple[str | None, float, str]:
+    """Validate an explicit late-departure decision before any state write."""
+    normalized_mode = str(mode or "").strip().lower() or None
+    normalized_reason = str(reason or "").strip()
+    # Mensajes con acción (criterio compartido con el flujo de no-show): además
+    # de describir el estado, dicen QUÉ hacer — derivar al gerente, marcar la
+    # aprobación, escribir el motivo o corregir el cargo.
+    if not context["enabled"] and normalized_mode in _LATE_CHECK_OUT_MODES:
+        raise ValueError(
+            "El late check-out está deshabilitado para este hotel. "
+            "Procedé con el check-out normal en el horario de salida, o pedile al gerente "
+            "que lo habilite en Políticas si necesita extenderse."
+        )
+    if not context["is_late"]:
+        if normalized_mode in _LATE_CHECK_OUT_MODES:
+            raise ValueError(
+                "La reserva ya está dentro del horario normal de check-out. "
+                "Procedé con el check-out normal sin cargo extra."
+            )
+        return None, 0.0, ""
+    if normalized_mode not in _LATE_CHECK_OUT_MODES or not approved:
+        raise ValueError(
+            "El late check-out requiere una autorización explícita. "
+            "Marcá la aprobación del late check-out antes de continuar con el check-out."
+        )
+    if context["requires_approval"] and normalized_mode != "late_approved":
+        raise ValueError(
+            "Este late check-out supera la cortesía y requiere aprobación del gerente. "
+            "Derivalo a gerencia, o registrá el modo aprobado con motivo y cargo antes de completar."
+        )
+    if normalized_mode == "late_approved" and context["requires_approval"] and not normalized_reason:
+        raise ValueError(
+            "La aprobación de late check-out requiere un motivo. "
+            "Escribí el motivo de la autorización antes de continuar."
+        )
+
+    try:
+        normalized_fee = round(float(fee or 0), 2)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "El cargo de late check-out no es válido. "
+            "Ingresá un monto numérico mayor o igual a cero."
+        ) from exc
+    if normalized_fee < 0:
+        raise ValueError(
+            "El cargo de late check-out no puede ser negativo. "
+            "Ingresá un monto mayor o igual a cero."
+        )
+    return normalized_mode, normalized_fee, normalized_reason
 
 
 def complete_check_out(
@@ -29,6 +210,10 @@ def complete_check_out(
     payment_method: str = "",
     payment_ref: str = "",
     late_checkout_fee: float = 0,
+    late_checkout_mode: str | None = None,
+    late_checkout_approved: bool = False,
+    late_checkout_reason: str = "",
+    late_checkout_authorized: bool = False,
     discount: float = 0,
     discount_reason: str = "",
     damages_found: bool = False,
@@ -69,7 +254,7 @@ def complete_check_out(
          "check_out_room_inspected": 1, "check_out_keys_returned": 1, "stay_status": 1},
     )
     if booking is None:
-        raise ValueError("booking not found")
+        raise ValueError("Reserva no encontrada. Verificá el identificador de la reserva.")
 
     # ── Validate the stay is active: check-out only applies to checked-in stays ──
     # Una reserva que nunca registró check-in no tiene estancia que cerrar
@@ -80,16 +265,49 @@ def complete_check_out(
         raise ValueError(
             f"No se puede completar el check-out: la reserva {booking_id} no tiene una estancia activa "
             f"(nunca registró check-in; estado actual: {stay_status_co or 'sin check-in'}). "
-            "Un check-out solo aplica a huéspedes con check-in completado."
+            "Hacé primero el check-in de la reserva o, si el huésped nunca llegó, "
+            "marcala como no-show para cerrarla sin liquidación."
         )
 
+    # ── Late check-out: ventana gobernada por la política (espejo de early) ──
+    # La salida el día del check-out tras la hora se resuelve contra la política
+    # del hotel. Dentro de la cortesía → ``late_courtesy`` sin cargo. Fuera de
+    # ella → ``late_approved``: exige autorización gerencial
+    # (``check-ins.late_checkout_approve``), motivo y cargo derivado del reloj.
+    late_context = get_late_checkout_context(
+        int(booking.get("prop_id", 0) or 0),
+        str(booking.get("check_out_date", "") or ""),
+        db=db,
+    )
+    if (
+        str(late_checkout_mode or "").strip().lower() == "late_approved"
+        and not late_checkout_authorized
+    ):
+        raise ValueError(
+            "Permiso requerido: check-ins.late_checkout_approve. "
+            "Solo un gerente de hotel o super_admin puede aprobar este late check-out: "
+            "derivalo a gerencia para que lo autorice y complete la salida."
+        )
+    late_mode, late_fee, late_reason = validate_late_checkout(
+        late_context,
+        mode=late_checkout_mode,
+        approved=late_checkout_approved,
+        reason=late_checkout_reason,
+        fee=late_checkout_fee,
+    )
+
     changed_at = utc_now()
+    # La hora/día REAL de salida se estampa en hora LOCAL del hotel (mismo
+    # reloj que la política, la notificación ``actual_time`` y el check-in
+    # ``check_in_time_actual``) — es el campo legible para recepción; guardarla
+    # en UTC mezclaría relojes en el detalle de un late check-out.
+    local_departure = local_now()
 
     checkout_set = {
         "stay_status": "checked_out",
         "updated_at": changed_at,
-        "check_out_date_actual": changed_at.strftime("%Y-%m-%d"),
-        "check_out_time_actual": changed_at.strftime("%H:%M"),
+        "check_out_date_actual": local_departure.strftime("%Y-%m-%d"),
+        "check_out_time_actual": local_departure.strftime("%H:%M"),
         "check_out_by": changed_by,
         "check_out_keys_returned": True,
     }
@@ -97,7 +315,23 @@ def complete_check_out(
         checkout_set["check_out_payment_method"] = payment_method
     if payment_ref:
         checkout_set["check_out_payment_ref"] = payment_ref
-    if late_checkout_fee:
+    if late_mode:
+        # El modo gobernado manda: el cargo derivado del reloj (o aprobado) es
+        # el fee real del late check-out. ``check_out_late_checkout_fee`` es el
+        # alias legacy que el detalle/UI ya leen.
+        checkout_set.update({
+            "check_out_mode": late_mode,
+            "late_checkout_minutes": late_context["minutes_after"],
+            "late_checkout_fee": late_fee,
+            "check_out_late_checkout_fee": late_fee,
+            "late_checkout_approved": True,
+            "late_checkout_approved_by": changed_by,
+            "late_checkout_approved_at": changed_at,
+            "late_checkout_reason": late_reason,
+            "late_checkout_policy_time": late_context["check_out_time"],
+        })
+    elif late_checkout_fee:
+        # Ruta legacy: fee tipeado manualmente por recepción (sin ventana late).
         checkout_set["check_out_late_checkout_fee"] = round(late_checkout_fee, 2)
     if discount:
         checkout_set["check_out_discount"] = round(discount, 2)
@@ -119,10 +353,17 @@ def complete_check_out(
     if result is None:
         existing = db.booking_orders.find_one({"booking_id": booking_id}, {"_id": 0, "status": 1, "stay_status": 1})
         if existing is None:
-            raise ValueError("booking not found")
+            raise ValueError("Reserva no encontrada. Verificá el identificador de la reserva.")
         if existing.get("stay_status") == "checked_out":
-            raise ValueError("booking already checked out")
-        raise ValueError("booking cannot be checked out from current reservation status")
+            raise ValueError(
+                "La reserva ya fue cerrada con check-out. "
+                "No se puede repetir la operación: la estancia ya está liquidada."
+            )
+        raise ValueError(
+            "No se puede completar el check-out desde el estado actual de la reserva "
+            "(cancelada, rechazada o sin estancia activa). "
+            "Hacé el check-in primero o contactá a gerencia."
+        )
 
     audit_entry: dict[str, Any] = {
         "booking_id": booking_id, "status": "checked_out",
@@ -138,7 +379,13 @@ def complete_check_out(
         audit_entry["payment_method"] = payment_method
     if payment_ref:
         audit_entry["payment_ref"] = payment_ref
-    if late_checkout_fee:
+    if late_mode:
+        audit_entry["check_out_mode"] = late_mode
+        audit_entry["late_checkout_fee"] = round(late_fee, 2)
+        audit_entry["late_checkout_minutes"] = late_context["minutes_after"]
+        if late_reason:
+            audit_entry["late_checkout_reason"] = late_reason
+    elif late_checkout_fee:
         audit_entry["late_checkout_fee"] = round(late_checkout_fee, 2)
     if discount:
         audit_entry["discount"] = round(discount, 2)
@@ -171,6 +418,24 @@ def complete_check_out(
         _notify_guest_check_out(booking_id, booking)
         if not booking.get("is_test"):
             _notify_staff_check_out(booking_id, booking)
+            if late_mode in ("late_approved", "late_courtesy"):
+                # El equipo (recepción/housekeeping) debe saber que la salida se
+                # extendió y a qué hora real ocurrió (patrón notification_log
+                # del check-in) — la habitación seguirá ocupada tras la hora de
+                # política y la limpieza debe ajustarse. Aplica también a la
+                # cortesía (sin cargo): la salida extendida afecta igual a la
+                # limpieza aunque no haya fee.
+                _notify_staff_window_extension(
+                    booking_id,
+                    booking,
+                    window="late_checkout",
+                    minutes=int(late_context.get("minutes_after", 0) or 0),
+                    policy_time=str(late_context.get("check_out_time") or ""),
+                    actual_time=local_now().strftime("%H:%M"),
+                    fee=late_fee,
+                    reason=late_reason,
+                    mode=late_mode,
+                )
 
     # ── Restore inventory ──
     if booking:
@@ -186,7 +451,37 @@ def complete_check_out(
         except Exception:
             logger.exception("Failed to restore inventory on check-out for booking %s", booking_id)
 
+    # ── Post the clock-derived late check-out fee to the folio ──
+    # El cargo se deriva de la política (gracia) + aprobación gerencial, nunca
+    # del reloj del navegador; se publica en el folio como evento inmutable
+    # (mismo patrón del early check-in) antes de liquidar y cerrar el folio.
+    if booking and not booking.get("is_test") and late_fee > 0:
+        try:
+            from src.app.modules.billing.service import post_to_folio
+            posted = post_to_folio(
+                booking_id,
+                category_id="late_checkout",
+                concept=(
+                    f"Late check-out autorizado — {late_context['minutes_after']} min "
+                    f"después de las {late_context['check_out_time'] or 'hora de política'}"
+                ),
+                amount=late_fee,
+                reference_id=f"{booking_id}:late_checkout",
+                reference_type="late_checkout",
+                shift_id=shift_id,
+            )
+            if posted is None:
+                logger.error("Could not post late check-out fee for booking %s", booking_id)
+        except Exception:
+            logger.exception("Failed to post late check-out fee for booking %s", booking_id)
+
     # ── Settle additional charges ──
+    # El plegado de cargos a la factura principal (``update_invoice_additional_charges``)
+    # reescribe la snapshot fiscal. Si la factura ya tiene pagos confirmados
+    # (inmutable) y quedan cargos activos, NO se puede reescribir: en vez de
+    # loguear y abandonar los cargos sin facturar, el fallback automático crea
+    # la factura split de consumos (``create_split_charges_invoice``) para que
+    # la conciliación cubra los cargos de todas formas.
     if booking and not booking.get("is_test"):
         try:
             if split_invoice:
@@ -197,12 +492,41 @@ def complete_check_out(
                 else:
                     logger.info("No additional charges to split-invoice for booking %s", booking_id)
             else:
-                from src.app.modules.billing.service import update_invoice_additional_charges
-                settled = update_invoice_additional_charges(booking_id, changed_by=changed_by)
-                if settled:
-                    logger.info("Liquidated charges for booking %s", booking_id)
-                else:
-                    logger.info("No invoice found to settle charges for booking %s", booking_id)
+                from src.app.modules.billing.service import (
+                    update_invoice_additional_charges,
+                )
+                try:
+                    settled = update_invoice_additional_charges(booking_id, changed_by=changed_by)
+                    if settled:
+                        logger.info("Liquidated charges for booking %s", booking_id)
+                    else:
+                        logger.info("No invoice found to settle charges for booking %s", booking_id)
+                except ValueError as exc:
+                    # El módulo billing solo lanza ValueError por factura inmutable.
+                    # Fallback automático SOLO cuando quedan cargos activos: si
+                    # no hay nada que plegar, no se crea una split innecesaria.
+                    immutable = _invoice_is_immutable(db, booking_id)
+                    if immutable and _has_active_additional_charges(db, booking_id):
+                        logger.warning(
+                            "Invoice immutable for booking %s (%s) — falling back to split charges invoice",
+                            booking_id,
+                            exc,
+                        )
+                        from src.app.modules.billing.service import (
+                            create_split_charges_invoice,
+                        )
+                        charges_inv = create_split_charges_invoice(booking_id, changed_by=changed_by)
+                        if charges_inv:
+                            logger.info("Split charges invoice created via fallback for booking %s", booking_id)
+                        else:
+                            logger.warning("Fallback split invoice returned nothing for booking %s", booking_id)
+                    elif immutable:
+                        logger.info(
+                            "Invoice immutable and no active charges to settle for booking %s",
+                            booking_id,
+                        )
+                    else:
+                        raise
         except Exception:
             logger.exception("Failed to settle additional charges on check-out for booking %s", booking_id)
 
@@ -221,8 +545,10 @@ def complete_check_out(
                     label = r.get("room_label", "")
                     if not label:
                         continue
-                    from src.app.modules.housekeeping.service.lifecycle.status import upsert_room_status
                     from src.app.modules.housekeeping.schemas import RoomStatusLogCreate
+                    from src.app.modules.housekeeping.service.lifecycle.status import (
+                        upsert_room_status,
+                    )
                     upsert_room_status(RoomStatusLogCreate(
                         prop_id=booking["prop_id"],
                         room_type_id=r.get("room_type_id", ""),
@@ -253,9 +579,14 @@ def complete_check_out(
     if booking and not booking.get("is_test"):
         try:
             from src.app.modules.reception import register_transaction
-            # Use folio total_due (room + charges - discounts - payments) instead of
+            # Re-read the folio AFTER the late fee (and any additional-charge
+            # settlement) was posted: the fetch at the top of the flow happened
+            # BEFORE ``post_to_folio``, so its ``total_due`` would miss the late
+            # fee and the shift report would under-collect. Use the fresh
+            # total_due (room + charges - discounts - payments) instead of
             # booking.total_price which only reflects the original room rate.
-            total_due = round(float(folio.get("total_due", 0) or 0), 2) if folio else float(booking.get("total_price", 0) or 0)
+            fresh_folio = db.guest_folios.find_one({"booking_id": booking_id})
+            total_due = round(float(fresh_folio.get("total_due", 0) or 0), 2) if fresh_folio else float(booking.get("total_price", 0) or 0)
             register_transaction(
                 prop_id=int(booking.get("prop_id", 0)),
                 txn_type="check_out", booking_id=booking_id,
@@ -284,7 +615,9 @@ def complete_check_out(
         try:
             guest_email = (booking.get("guest_email") or "").strip()
             if guest_email:
-                from src.app.modules.reservations.notifications import notify_guest_invoice
+                from src.app.modules.reservations.notifications import (
+                    notify_guest_invoice,
+                )
                 inv = db.reservation_invoices.find_one(
                     {"booking_id": booking_id},
                     {"_id": 1, "invoice_number": 1, "total": 1},
@@ -314,4 +647,10 @@ def complete_check_out(
         except Exception:
             logger.exception("Failed to deactivate stay session for booking %s", booking_id)
 
-    return {"booking_id": booking_id, "stay_status": "checked_out"}
+    return {
+        "booking_id": booking_id,
+        "stay_status": "checked_out",
+        "check_out_mode": late_mode or "normal",
+        "late_checkout_fee": late_fee,
+        "late_checkout_minutes": late_context["minutes_after"] if late_mode else 0,
+    }

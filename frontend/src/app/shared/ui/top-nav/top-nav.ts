@@ -27,6 +27,20 @@ interface TopNavItem {
   allowedRoles?: string[];
 }
 
+interface TopNavNotification {
+  id: number;
+  /** Id Mongo real de la fila en notification_log (para marcar como leída). */
+  rawId: string;
+  /** notification_type (guest_promotional, guest_confirmed, …). */
+  type: string;
+  title: string;
+  description: string;
+  time: string;
+  unread: boolean;
+  bookingId: string;
+  propId: number;
+}
+
 interface TopNavGroup {
   id: string;
   label: string;
@@ -64,7 +78,7 @@ export class TopNavComponent implements OnInit {
   readonly roleLabel = roleLabel;
   readonly activeMenu = signal<string | null>(null);
   readonly showNotifications = signal(false);
-  readonly notifications = signal<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }[]>([]);
+  readonly notifications = signal<TopNavNotification[]>([]);
   /** La campana se muestra para todo usuario autenticado — huéspedes incluidos. */
   readonly showNotificationBell = computed(() => this.authState().authenticated && !!this.currentUser());
   /** Roles de sistema leen de la API de notificaciones del admin; el resto (huésped, staff) de /notifications/my. */
@@ -179,6 +193,8 @@ export class TopNavComponent implements OnInit {
             );
             const mapped = filteredItems.map((item, idx) => ({
               id: idx + 1,
+              rawId: (item as { id?: string }).id ? String((item as { id?: string }).id) : '',
+              type: item.notificationType || '',
               title: item.typeLabel,
               description: `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
               time: this._timeAgo(item.createdAt),
@@ -205,6 +221,8 @@ export class TopNavComponent implements OnInit {
         next: (result) => {
           const mapped = result.items.map((item, idx) => ({
             id: idx + 1,
+            rawId: item.id || '',
+            type: item.notificationType || '',
             title: item.typeLabel,
             description: item.message || `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
             time: this._timeAgo(item.createdAt),
@@ -243,6 +261,31 @@ export class TopNavComponent implements OnInit {
 
   closeNotifications() {
     this.showNotifications.set(false);
+  }
+
+  /** Deep link Fase 1: la promo lleva a la página pública del hotel;
+   *  las transaccionales conservan el link a la reserva. */
+  notifHref(n: TopNavNotification): string | null {
+    if (n.type === 'guest_promotional' && n.propId > 0) return `/hotels/${n.propId}`;
+    if (n.bookingId) return `/account/bookings/${n.bookingId}`;
+    return null;
+  }
+
+  /** Clic en una notificación de la campanita: navega y, si es una promo
+   *  sin leer, la marca como leída (el badge baja sin refetch). */
+  onNotifClick(n: TopNavNotification): void {
+    this.closeNotifications();
+    if (n.type === 'guest_promotional' && n.propId > 0 && n.unread && n.rawId) {
+      this.clientNotifications.markAsRead(n.rawId).subscribe({
+        next: () => {
+          this.notifications.update(prev =>
+            prev.map(it => (it.rawId === n.rawId ? { ...it, unread: false } : it)),
+          );
+        },
+        // Error silencioso: el dot persiste y se puede reintentar.
+        error: () => undefined,
+      });
+    }
   }
 
   constructor() {

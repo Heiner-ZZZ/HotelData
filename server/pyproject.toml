@@ -13,6 +13,21 @@ dependencies = []
 [tool.ruff]
 cache-dir = "../.cache/ruff"
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI evaluates these callables as dependency/default descriptors; they are
+# intentionally safe in route signatures and are not mutable default values.
+extend-immutable-calls = [
+    "fastapi.Body",
+    "fastapi.Depends",
+    "fastapi.Query",
+    "src.app.security.dependencies.require_permission",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Docker source mounts can preserve host executable bits; EXE002 is not
+# actionable for Python files in this checkout and must not require chmod.
+"**/*.py" = ["EXE002"]
+
 [tool.mypy]
 cache_dir = "../.cache/mypy"
 

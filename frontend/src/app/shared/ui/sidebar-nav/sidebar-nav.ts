@@ -83,6 +83,12 @@ export class SidebarNavComponent {
   readonly currentUser = this.authService.currentUser;
   readonly sidebarCollapsed = signal(false);
 
+  /** Ruta actual sin query params ni fragment, para el estado activo del nav.
+   *  Signal: al ser OnPush, el resaltado de grupos horizontales (que se
+   *  computa por método, no con routerLinkActive) necesita un disparador
+   *  reactivo que se actualice en cada navegación SPA. */
+  readonly activePath = signal(this.router.url.split('?')[0].split('#')[0]);
+
   /** Slugs of expanded containers (roots + nested groups). */
   readonly openNodes = signal<Set<string>>(new Set());
 
@@ -123,7 +129,10 @@ export class SidebarNavComponent {
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe(() => this._autoExpandActiveSection());
+      .subscribe((e) => {
+        this.activePath.set(e.urlAfterRedirects.split('?')[0].split('#')[0]);
+        this._autoExpandActiveSection();
+      });
   }
 
   isOpen(slug: string): boolean {
@@ -223,6 +232,25 @@ export class SidebarNavComponent {
    *  El grupo no lleva ``href`` propio para no duplicar el href de su hoja. */
   firstChildHref(node: NavNode): string | null {
     return node.children[0]?.href ?? null;
+  }
+
+  /**
+   * ¿El grupo horizontal (menú de Informes) debe marcarse activo?
+   *
+   * El link del grupo apunta al PRIMER hijo (``firstChildHref``), pero la
+   * página activa puede ser cualquiera de sus hijos — p.ej. ``Informes`` de
+   * Facturación (Dashboard + Dashboard Pagos) debe resaltarse también en
+   * ``/management/billing/payments-dashboard``, no solo en ``/dashboard``.
+   */
+  isHorizontalActive(node: NavNode): boolean {
+    const url = this.activePath();
+    const stack = [...node.children];
+    while (stack.length > 0) {
+      const child = stack.pop()!;
+      if (child.href && this._urlCovers(url, child)) return true;
+      stack.push(...child.children);
+    }
+    return false;
   }
 
   trackBySlug(_index: number, node: NavNode): string {

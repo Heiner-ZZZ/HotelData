@@ -158,9 +158,101 @@ select option {
   }
 }
 
+/* ── Conflicto de código estructurado (COUPON_CODE_EXISTS) ──
+   Banner destacado que reemplaza el inline genérico: muestra la campaña
+   dueña del código y ofrece «Usar otro código» (en Tarifas el cupón extra
+   es opcional — quitar el código también resuelve). */
+.coupon-conflict-banner {
+  .reduction-warning-body {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.coupon-conflict-hint {
+  font-size: 0.76rem;
+}
+
+.coupon-conflict-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.coupon-conflict-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.1rem;
+  padding: 0 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--app-border));
+  border-radius: 8px;
+  background: var(--danger);
+  color: var(--on-danger);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms ease;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+
+  &:hover {
+    background: var(--danger-strong);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
+  }
+}
+
+.coupon-conflict-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--app-border));
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--danger);
+  cursor: pointer;
+  transition: all 150ms ease;
+
+  .material-symbols-outlined {
+    font-size: 1.05rem;
+  }
+
+  &:hover {
+    background: var(--danger-light);
+    border-color: var(--danger);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent);
+  }
+}
+
 /* ── Editing banner ── .editing-banner y .cancel-edit-btn viven en styles/_scss-forms.scss (global). */
 
 @media (max-width: 600px) {
+  .coupon-conflict-banner {
+    flex-direction: column;
+
+    .coupon-conflict-actions {
+      width: 100%;
+
+      .coupon-conflict-clear {
+        flex: 1;
+      }
+    }
+  }
+
   .field-row {
     grid-template-columns: 1fr;
   }

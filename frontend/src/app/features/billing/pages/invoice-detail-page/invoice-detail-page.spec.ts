@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { of, Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -262,5 +262,60 @@ describe('InvoiceDetailPageComponent', () => {
 
     void ctx.component.canExport();
     expect(ctx.auth.hasPermission).toHaveBeenCalledWith('reports.download');
+  });
+
+  it('muestra el mensaje con acción si falla agregar un cargo', async () => {
+    const ctx = setup();
+    await seedInvoice(ctx);
+    (ctx.api.addLineItem as jest.Mock).mockReturnValueOnce(throwError(() => ({ message: '' })));
+    ctx.component.openAddForm();
+    ctx.component.addForm.set({ name: 'Minibar', category: 'otros', quantity: 1, unit_price: 5 });
+
+    ctx.component.submitAddItem();
+
+    expect(ctx.component.actionError()).toContain('Verificá que la factura esté emitida');
+    expect(ctx.component.actionError()).toContain('e intentá de nuevo');
+  });
+
+  it('muestra el mensaje con acción si falla procesar el pago', async () => {
+    const ctx = setup();
+    await seedInvoice(ctx);
+    (ctx.api.payInvoice as jest.Mock).mockReturnValueOnce(throwError(() => ({ message: '' })));
+
+    await ctx.component.payInvoice();
+
+    expect(ctx.component.actionError()).toContain('Verificá que la factura esté emitida');
+    expect(ctx.component.actionError()).toContain('turno de caja activo');
+  });
+
+  it('muestra el mensaje con acción si falla anular la factura', async () => {
+    const ctx = setup();
+    await seedInvoice(ctx);
+    (ctx.api.cancelInvoice as jest.Mock).mockReturnValueOnce(throwError(() => ({ message: '' })));
+
+    await ctx.component.cancelInvoice();
+
+    expect(ctx.component.actionError()).toContain('sin pagos confirmados');
+    expect(ctx.component.actionError()).toContain('e intentá de nuevo');
+  });
+
+  it('muestra el mensaje con acción si falla emitir el documento compensatorio', async () => {
+    const ctx = setup();
+    ctx.http.expectOne('/api/billing/invoices/INV-1?prop_id=1')
+      .flush({ ...invoiceDto, status: 'cancelled', creditNoteNumber: undefined });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    ctx.fixture.detectChanges();
+    const services = ctx.http.match('/api/billing/services?prop_id=1&booking_id=BK-1');
+    if (services.length) {
+      services.forEach((req) => req.flush({ categories: [], chargeable: [], all_items: [] }));
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      ctx.fixture.detectChanges();
+    }
+    (ctx.api.createCreditNote as jest.Mock).mockReturnValueOnce(throwError(() => ({ message: '' })));
+
+    ctx.component.issueCreditNote();
+
+    expect(ctx.component.actionError()).toContain('Verificá que la factura esté anulada o reembolsada');
+    expect(ctx.component.actionError()).toContain('turno de caja activo');
   });
 });

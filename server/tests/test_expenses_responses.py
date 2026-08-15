@@ -17,7 +17,6 @@ Mirrors ``tests/test_billing_responses.py`` and the
 """
 from __future__ import annotations
 
-import pytest
 from bson import ObjectId
 
 from src.app.modules.expenses.routes import (
@@ -26,6 +25,20 @@ from src.app.modules.expenses.routes import (
     InvoiceResponse,
     TrialBalanceResponse,
 )
+from src.app.modules.expenses.service.collections import LEDGER_INDEXES
+
+
+class TestLedgerIndexes:
+    def test_source_index_uses_mongodb_supported_non_empty_filter(self):
+        """The unique source index must use a Mongo-supported partial filter."""
+        source_index = next(
+            index for index in LEDGER_INDEXES
+            if index.document["name"] == "idx_ledger_source_account"
+        )
+
+        assert source_index.document["partialFilterExpression"] == {
+            "source_id": {"$gt": ""},
+        }
 
 
 # ──────────────────────────── Tests ────────────────────────────

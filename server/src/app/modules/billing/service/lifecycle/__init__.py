@@ -31,6 +31,7 @@ from src.app.modules.billing.service.lifecycle.invoices import (
     repair_cancelled_or_refunded_invoice,
     update_invoice_additional_charges,
     create_split_charges_invoice,
+    create_complement_invoice,
 )
 from src.app.modules.billing.service.lifecycle.payments import (
     create_payment,
@@ -69,6 +70,7 @@ __all__ = [
     "repair_cancelled_or_refunded_invoice",
     "update_invoice_additional_charges",
     "create_split_charges_invoice",
+    "create_complement_invoice",
     "get_invoice_dashboard",
     "get_payments_dashboard",
     "create_credit_note_for_invoice",

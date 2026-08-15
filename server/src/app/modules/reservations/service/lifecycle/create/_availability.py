@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from src.database.connection import get_database
@@ -155,10 +155,10 @@ def _check_availability(
     rate_plan_id: str = "",
 ) -> str | None:
     try:
-        check_in = datetime.strptime(check_in_date, "%Y-%m-%d")
-        check_out = datetime.strptime(check_out_date, "%Y-%m-%d")
+        check_in = date.fromisoformat(check_in_date)
+        check_out = date.fromisoformat(check_out_date)
     except (ValueError, TypeError):
-        return "Invalid date format; expected YYYY-MM-DD"
+        return "El formato de fecha no es válido. Usá AAAA-MM-DD (ej. 2026-08-10)."
 
     db = get_database()
     dates = [(check_in + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((check_out - check_in).days)]
@@ -265,6 +265,12 @@ def _check_availability(
         avail = found_dates.get(d, 0)
         if avail < rooms:
             if d not in found_dates:
-                return f"No inventory data for date {d}"
-            return f"Only {avail} room(s) available on {d}, requested {rooms}"
+                return (
+                    f"No hay disponibilidad registrada para el {d}. Cargá el inventario "
+                    "de esa fecha o elegí otras fechas."
+                )
+            return (
+                f"Solo hay {avail} habitación(es) disponible(s) el {d} y solicitaste {rooms}. "
+                "Reducí la cantidad de habitaciones o cambiá las fechas."
+            )
     return None

@@ -76,6 +76,9 @@ PERMISSION_CATALOG = [
     ("reservations.delete", "Cancelar o eliminar reservas"),
     ("check-ins.manage", "Administrar check-ins — acceso total"),
     ("check-ins.read", "Ver lista de check-ins"),
+    ("check-ins.early_approve", "Autorizar early check-in fuera de la cortesía (solo gerente de hotel)"),
+    ("check-ins.no_show_reopen", "Reabrir una reserva marcada como no-show (solo gerente de hotel)"),
+    ("check-ins.late_checkout_approve", "Autorizar late check-out fuera de la cortesía (solo gerente de hotel)"),
     ("check-outs.manage", "Administrar check-outs — acceso total"),
     ("check-outs.read", "Ver lista de check-outs"),
     # Properties
@@ -145,6 +148,7 @@ PERMISSION_CATALOG = [
     # Billing
     ("billing.manage", "Administrar facturación — acceso total"),
     ("billing.read", "Ver facturas e historial"),
+    ("billing.write_off.approve", "Aprobar cierre de folio con saldo (write-off, cortesía o settlement externo) — supervisor"),
     ("payments.manage", "Administrar pagos — acceso total"),
     ("payments.read", "Ver historial de pagos"),
     # Shifts / Cash register
@@ -217,6 +221,7 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "hr.portal.read", "hr.directory.read", "hr.directory.manage",
         "hr.onboarding.create", "hr.shifts.read", "hr.shifts.manage",
         "properties.approve",
+        "billing.write_off.approve",
         # Informes estratégicos (BSC) + descarga
         "reports.strategic.read", "reports.download",
     ],
@@ -251,6 +256,11 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "dashboard.read",
         "hotels.manage", "properties.read", "rooms.read",
         "reservations.manage",
+        "check-ins.manage",
+        "check-ins.early_approve",
+        "check-ins.no_show_reopen",
+        "check-ins.late_checkout_approve",
+        "check-outs.manage",
         "revenue.read", "rates.read",
         "inventory.read",
         "inventory.products.cost.read",
@@ -271,6 +281,7 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "reports.housekeeping.matrix.read",
         # Ancestros de dominio para ver los informes anidados
         "billing.read", "housekeeping.read",
+        "billing.write_off.approve",
     ],
     "revenue_manager": [
         "dashboard.read",
@@ -481,6 +492,7 @@ NAVIGATION_CATALOG: list[dict[str, Any]] = [
     {"slug": "gestion.pms.habitaciones", "label": "Habitaciones", "icon": "bed", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 20, "permission_code": "rooms.read", "href": "/management/rooms"},
     {"slug": "gestion.pms.productos", "label": "Productos", "icon": "inventory_2", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 30, "permission_code": "properties.read", "href": "/management/products"},
     {"slug": "gestion.pms.amenities", "label": "Amenities", "icon": "spa", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 40, "permission_code": "amenities.read", "href": "/management/amenities"},
+    {"slug": "gestion.pms.promociones", "label": "Promociones", "icon": "campaign", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 45, "permission_code": "promotions.manage", "href": "/management/promotions"},
     {"slug": "gestion.pms.recepcion", "label": "Recepción", "icon": "calendar_month", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 50, "permission_code": "reservations.read", "href": "/management/recepcion"},
     {"slug": "gestion.pms.cajas-turnos", "label": "Cajas y Turnos", "icon": "point_of_sale", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 60, "permission_code": "shifts.read", "href": "/management/shifts"},
     {"slug": "gestion.pms.resenas", "label": "Reseñas", "icon": "reviews", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 70, "permission_code": "reviews.read", "href": "/management/reviews"},

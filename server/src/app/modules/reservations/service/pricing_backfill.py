@@ -25,7 +25,7 @@ sin tarifa calculable → ``skipped=unpricable`` (no escribe). Nunca
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from src.app.modules.reservations.service import resolve_penalty_percent
@@ -99,7 +99,7 @@ def backfill_single_booking(
     ``scripts/migrate_backfill_booking_prices.py``; el script delega aquí
     para tener UNA sola implementación del cálculo + folio + penalizaciones.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     booking = db.booking_orders.find_one(
         {"booking_id": booking_id},
         {
@@ -339,7 +339,7 @@ def recompute_pending_invoices(
         _update_both,
     )
 
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     exclude = exclude_booking_ids or set()
     pending = list(
         db[INVOICES].find(

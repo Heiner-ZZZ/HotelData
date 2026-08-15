@@ -1,5 +1,5 @@
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -7,6 +7,7 @@ import { getErrorStatus, getErrorMessage } from '../../../../shared/utils/http-e
 import { catchAndToastWarning } from '../../../../shared/utils/catch-and-toast';
 
 import { AuthService } from '../../../../core/auth/auth.service';
+import { CHECK_INS_EARLY_APPROVE, CHECK_INS_NO_SHOW_REOPEN } from '../../../../core/auth/permission.constants';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -14,7 +15,12 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { NoShowService } from '../../../../shared/services/no-show.service';
-import { CheckInsApiService, type CheckInDetailDto } from '../../services/check-ins-api.service';
+import {
+  CheckInsApiService,
+  type CheckInDetailDto,
+  type EarlyCheckInDto,
+  type LateArrivalDto,
+} from '../../services/check-ins-api.service';
 import { STAY_CHECKED_IN, STAY_NO_SHOW } from '../../../reservations/utils/reservation-status.util';
 
 interface StepConfig {
@@ -30,6 +36,37 @@ const STEPS: StepConfig[] = [
   { num: 4, label: 'Notas', icon: 'edit_note' },
   { num: 5, label: 'Completar', icon: 'check_circle' },
 ];
+
+const EMPTY_EARLY_CHECK_IN: EarlyCheckInDto = {
+  enabled: true,
+  is_early: false,
+  minutes_before: 0,
+  courtesy_minutes: 60,
+  requires_approval: false,
+  check_in_time: '',
+  default_fee: 0,
+};
+
+/** Clave de fecha local YYYY-MM-DD desplazada `offsetDays` desde hoy. */
+function localDateKey(offsetDays = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+const EMPTY_LATE_ARRIVAL: LateArrivalDto = {
+  guaranteed_reservation: false,
+  late_arrival_cutoff: '23:59',
+  no_show_execution: 'next_day',
+  declared_late_arrival: false,
+  protected_from_auto_no_show: false,
+  is_late_arrival_window: false,
+  check_in_days_ago: null,
+  blocked_reason: null,
+};
 
 @Component({
   selector: 'app-check-in-detail-page',
@@ -118,15 +155,74 @@ export class CheckInDetailPageComponent {
       : { mode: 'read', detail: '' };
   });
 
-  // ── Past-date validation ──
+  // ── Late arrival (post-midnight window) ──
+  /** Contexto servidor-autoritativo de llegada tardía / no-show. */
+  readonly lateArrival = computed<LateArrivalDto>(() => this.data()?.late_arrival ?? EMPTY_LATE_ARRIVAL);
+  /** Ventana abierta: el check-in era AYER y la reserva sigue checkeable como llegada tardía. */
+  readonly isLateArrivalWindow = computed(() => this.lateArrival().is_late_arrival_window);
+  /** Motivo de bloqueo del backend (no_show | stay_ended | too_late | null). */
+  readonly lateArrivalBlockedReason = computed(() => this.lateArrival().blocked_reason);
+  /** La llegada fue declarada (o el huésped marcó late_checkin) → protegida del auto no-show. */
+  readonly declaredLateArrival = computed(() => this.lateArrival().declared_late_arrival);
+
+  /**
+   * Past-date validation refinada por la política de llegada tardía:
+   * - AYER (ventana abierta) → se permite el check-in como ``late_arrival``,
+   *   fechas intactas, sin recargos.
+   * - 2+ días → no es check-in normal: no-show/gerente (bloqueado con motivo).
+   */
   readonly isPastDate = computed(() => {
     const d = this.data();
     if (!d?.check_in_date) return false;
     const checkIn = new Date(d.check_in_date + 'T00:00:00');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return checkIn < today;
+    if (checkIn >= today) return false;
+    // Ayer = ventana de llegada tardía post-medianoche (permitido).
+    if (this.isLateArrivalWindow()) return false;
+    return true;
   });
+
+  // ── Declarar llegada tardía (recepción) ──
+  readonly lateArrivalDeclareOpen = signal(false);
+  readonly lateArrivalDeclareValue = signal(false);
+  readonly lateArrivalEta = signal('');
+  readonly lateArrivalPending = signal(false);
+  readonly lateArrivalError = signal('');
+  /** Recepción puede declarar/retirar la llegada tardía con permiso de reservas. */
+  readonly canDeclareLateArrival = computed(() => {
+    const d = this.data();
+    if (!d || this.checkinDone() || this.noShow()) return false;
+    if (d.stay_status === STAY_NO_SHOW) return false;
+    return this.auth.hasPermission('reservations.update');
+  });
+
+  /** Sprint 1: a future calendar date cannot be checked in yet.
+   * Time-window and early-check-in authorization belong to the next sprint;
+   * this gate intentionally compares only the hotel's current local day.
+   */
+  readonly isFutureDate = computed(() => {
+    const d = this.data();
+    if (!d?.check_in_date) return false;
+    const checkIn = new Date(d.check_in_date + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return checkIn > today;
+  });
+
+  // ── Same-day early check-in ──
+  /** Server-authoritative context; the frontend never decides the policy. */
+  readonly earlyCheckIn = computed(() => this.data()?.early_check_in ?? EMPTY_EARLY_CHECK_IN);
+  readonly canApproveEarlyCheckIn = computed(() => this.auth.hasPermission(CHECK_INS_EARLY_APPROVE));
+  readonly earlyApprovalBlocked = computed(() =>
+    this.earlyCheckIn().is_early && this.earlyCheckIn().requires_approval && !this.canApproveEarlyCheckIn()
+  );
+  readonly earlyDialogOpen = signal(false);
+  readonly earlyDialogMode = signal<'early_courtesy' | 'early_approved'>('early_courtesy');
+  readonly earlyCheckInReason = signal('');
+  readonly earlyCheckInFee = signal(0);
+  readonly earlyDialogError = signal('');
+  private earlyDialogTrigger: HTMLElement | null = null;
 
   // ── No-show: guest never arrived and stay already ended ──
   // Una reserva marcada como no_show (estado terminal) o cuya fecha de
@@ -147,6 +243,52 @@ export class CheckInDetailPageComponent {
   readonly completeError = signal('');
   readonly checkinDone = computed(() => this.data()?.stay_status === STAY_CHECKED_IN);
 
+  // ── Marca de reapertura: el huésped llegó tras el no-show ──
+  /**
+   * Aviso para recepción cuando el gerente reabrió la reserva: el huésped NO
+   * llegó a tiempo, se marcó no-show y luego llegó — por eso el gerente la
+   * reabrió. Se muestra mientras la ventana de reapertura siga abierta
+   * (check-in de hoy o ayer + estadía vigente, misma regla que el botón de
+   * reapertura): fuera de la ventana el panel de llegada tardía ya explica el
+   * bloqueo y un aviso de "reabierta" sería engañoso.
+   */
+  readonly reopenedNotice = computed<{
+    date: string;
+    by: string;
+    reason: string;
+    penaltyRemoved: boolean;
+  } | null>(() => {
+    const d = this.data();
+    if (!d?.no_show_reopened_at) return null;
+    if (d.stay_status === STAY_NO_SHOW) return null;
+    const today = localDateKey();
+    if (d.check_in_date && d.check_in_date < today && d.check_in_date !== localDateKey(-1)) {
+      return null;
+    }
+    if (d.check_out_date && d.check_out_date < today) {
+      return null;
+    }
+    return {
+      date: d.no_show_reopened_at,
+      by: d.no_show_reopened_by || '',
+      reason: d.no_show_reopen_reason || '',
+      penaltyRemoved: !!d.no_show_penalty_removed,
+    };
+  });
+
+  /** Fecha legible (es-MX) de la reapertura; passthrough si el valor no parsea. */
+  formatReopenDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat('es-MX', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  }
+
   // ── No-show manual (cierre desde recepción) ──
   readonly noShowPending = signal(false);
   /**
@@ -155,6 +297,19 @@ export class CheckInDetailPageComponent {
    * de reserva (no al recargar el detalle, para que persista tras el reload).
    */
   readonly noShowResult = signal<{ folio_number: string | null; penalty_amount: number } | null>(null);
+  /** Server-backed fallback so the folio link survives a page reload or navigation.
+   * The transient result is still preferred immediately after marking no-show.
+   */
+  readonly noShowFolio = computed(() => {
+    const result = this.noShowResult();
+    if (result) return result;
+    const d = this.data();
+    if (!d || d.stay_status !== STAY_NO_SHOW) return null;
+    return {
+      folio_number: d.folio,
+      penalty_amount: d.no_show_penalty_amount ?? 0,
+    };
+  });
 
   /**
    * El botón solo aplica a reservas que VENCIERON como no-show pero aún no
@@ -168,6 +323,131 @@ export class CheckInDetailPageComponent {
     if (d.stay_status === STAY_NO_SHOW) return false;
     return this.auth.hasPermission('reservations.update');
   });
+
+  openLateArrivalDeclare(): void {
+    this.lateArrivalDeclareValue.set(this.declaredLateArrival());
+    this.lateArrivalEta.set(this.data()?.estimated_arrival_time || '');
+    this.lateArrivalError.set('');
+    this.lateArrivalDeclareOpen.set(true);
+  }
+
+  saveLateArrivalDeclaration(): void {
+    const d = this.data();
+    if (!d || this.lateArrivalPending() || !this.canDeclareLateArrival()) return;
+    const declared = this.lateArrivalDeclareValue();
+    const eta = this.lateArrivalEta().trim();
+    this.lateArrivalPending.set(true);
+    this.lateArrivalError.set('');
+    this.api
+      .declareLateArrival(d.booking_id, {
+        declared_late_arrival: declared,
+        estimated_arrival_time: eta || undefined,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.lateArrivalPending.set(false);
+          this.lateArrivalDeclareOpen.set(false);
+          this.successMessage.set(
+            declared
+              ? 'Llegada tardía declarada — la reserva queda protegida del auto no-show.'
+              : 'Llegada tardía retirada.',
+          );
+          this.detailResource.reload();
+        },
+        error: (err: ApiError) => {
+          this.lateArrivalPending.set(false);
+          this.lateArrivalError.set(err.message || 'No fue posible guardar la declaración de llegada tardía.');
+        },
+      });
+  }
+
+  // ── No-show reopen (gerente): el huésped llegó tras el cierre del no-show ──
+  /**
+   * Reapertura = gerente + reserva no_show + DENTRO de la ventana (check-in de
+   * hoy o ayer con estadía vigente). Reabrir un no-show antiguo colapsaría la
+   * estancia con las de otras fechas (inventario, folios, facturación).
+   */
+  readonly canReopenNoShow = computed(() => {
+    const d = this.data();
+    if (!d || d.stay_status !== STAY_NO_SHOW) return false;
+    if (!this.auth.hasPermission(CHECK_INS_NO_SHOW_REOPEN)) return false;
+    return this.reopenWindowBlockedReason() === null;
+  });
+  /** `too_late` | `stay_ended` cuando el no-show está FUERA de la ventana de
+   *  reapertura (con permiso gerencial); null si reabrir está disponible. */
+  readonly reopenWindowBlockedReason = computed<string | null>(() => {
+    const d = this.data();
+    if (!d || d.stay_status !== STAY_NO_SHOW) return null;
+    if (!this.auth.hasPermission(CHECK_INS_NO_SHOW_REOPEN)) return null;
+    const today = localDateKey();
+    if (d.check_in_date && d.check_in_date < today && d.check_in_date !== localDateKey(-1)) {
+      return 'too_late';
+    }
+    if (d.check_out_date && d.check_out_date < today) {
+      return 'stay_ended';
+    }
+    return null;
+  });
+  readonly reopenDialogOpen = signal(false);
+  readonly reopenReason = signal('');
+  readonly reopenPending = signal(false);
+  readonly reopenError = signal('');
+  private reopenDialogTrigger: HTMLElement | null = null;
+
+  openReopenDialog(): void {
+    if (!this.canReopenNoShow()) return;
+    this.reopenDialogTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.reopenReason.set('');
+    this.reopenError.set('');
+    this.reopenDialogOpen.set(true);
+    setTimeout(() => {
+      if (this.reopenDialogOpen()) document.getElementById('ciw-reopen-reason')?.focus();
+    }, 0);
+  }
+
+  cancelReopenDialog(): void {
+    this.reopenDialogOpen.set(false);
+    this.reopenError.set('');
+    queueMicrotask(() => this.reopenDialogTrigger?.focus());
+    this.reopenDialogTrigger = null;
+  }
+
+  confirmReopenNoShow(): void {
+    const d = this.data();
+    if (!d || this.reopenPending() || !this.canReopenNoShow()) return;
+    const reason = this.reopenReason().trim();
+    if (!reason) {
+      this.reopenError.set('Escribe el motivo de la reapertura antes de continuar.');
+      return;
+    }
+    this.reopenPending.set(true);
+    this.reopenError.set('');
+    this.api
+      .reopenNoShow(d.booking_id, reason)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.reopenPending.set(false);
+          this.reopenDialogOpen.set(false);
+          const penaltyNote = result.penalty_removed
+            ? result.folio_deleted
+              ? 'La penalización fue retirada: el folio de penalización se eliminó.'
+              : result.reversal_amount && result.reversal_amount > 0
+                ? `La penalización de $${Number(result.reversal_amount).toFixed(2)} fue revertida en el folio${result.folio_number ? ` (${result.folio_number})` : ''}: quedó un crédito a favor del huésped para gestionar en Facturación.`
+                : 'La penalización fue retirada del folio.'
+            : result.penalty_amount > 0
+              ? `La penalización de $${Number(result.penalty_amount).toFixed(2)} quedó registrada en Facturación para su gestión.`
+              : '';
+          this.successMessage.set('Reserva reabierta — el huésped puede hacer check-in. ' + penaltyNote);
+          this.detailResource.reload();
+        },
+        error: (err: ApiError) => {
+          this.reopenPending.set(false);
+          this.reopenError.set(err.message || 'No fue posible reabrir la reserva.');
+        },
+      });
+  }
 
   async markNoShow() {
     const d = this.data();
@@ -276,11 +556,13 @@ export class CheckInDetailPageComponent {
       this.observations.set(detail.check_in_observations || '');
       // Nueva reserva → limpiar el folio de un no-show anterior
       this.noShowResult.set(null);
+      this.reopenDialogOpen.set(false);
+      this.reopenError.set('');
       // Then overlay localStorage draft (if newer)
       this._restoreDraft();
       if (detail.stay_status === STAY_CHECKED_IN) this.currentStep.set(5);
       this.viewState.set('success');
-    }, { allowSignalWrites: true });
+    });
 
     // Modo CRUD reactivo: editar campos del wizard → UPDATE en el nav.
     // El cleanup es importante: el efecto se re-ejecuta con cada cambio de
@@ -289,7 +571,7 @@ export class CheckInDetailPageComponent {
       const m = this._opMode();
       if (m.mode === 'read') return;
       onCleanup(this.opMode.setTransientMode(m.mode, m.detail));
-    }, { allowSignalWrites: true });
+    });
 
     // Persist wizard fields to localStorage on every change
     effect(() => {
@@ -378,13 +660,93 @@ export class CheckInDetailPageComponent {
 
   completeCheckIn(): void {
     const d = this.data();
-    if (!d || this.completing() || !this.keysDelivered()) return;
+    if (!d || this.completing() || !this.keysDelivered() || this.isFutureDate()) return;
     if (!this.allRoomsAvailable()) {
       this.completeError.set('No se puede completar el check-in: hay habitaciones asignadas que no están disponibles (ocupadas, en mantenimiento, etc.). Asigna otras habitaciones antes de continuar.');
       return;
     }
+    if (this.earlyCheckIn().is_early) {
+      this.openEarlyCheckInDialog();
+      return;
+    }
+    this.submitCheckIn();
+  }
+
+  openEarlyCheckInDialog(): void {
+    const policy = this.earlyCheckIn();
+    if (!policy.enabled) {
+      this.completeError.set('El early check-in está deshabilitado para este hotel.');
+      return;
+    }
+    if (policy.requires_approval && !this.canApproveEarlyCheckIn()) {
+      this.completeError.set('Solo un gerente de hotel o super_admin puede aprobar este early check-in.');
+      return;
+    }
+    this.earlyDialogTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.earlyDialogMode.set(policy.requires_approval ? 'early_approved' : 'early_courtesy');
+    this.earlyCheckInReason.set('');
+    this.earlyCheckInFee.set(policy.default_fee || 0);
+    this.earlyDialogError.set('');
+    this.earlyDialogOpen.set(true);
+    // Angular renders the dialog after the signal update. A macrotask keeps
+    // focus handoff after that render (a microtask could run while the node
+    // is still absent, leaving keyboard users on the trigger).
+    setTimeout(() => {
+      if (this.earlyDialogOpen()) document.getElementById('ciw-early-dialog')?.focus();
+    }, 0);
+  }
+
+  cancelEarlyCheckIn(): void {
+    this.earlyDialogOpen.set(false);
+    this.earlyDialogError.set('');
+    queueMicrotask(() => this.earlyDialogTrigger?.focus());
+    this.earlyDialogTrigger = null;
+  }
+
+  confirmEarlyCheckIn(): void {
+    const mode = this.earlyDialogMode();
+    const reason = this.earlyCheckInReason().trim();
+    if (mode === 'early_approved' && !this.canApproveEarlyCheckIn()) {
+      this.earlyDialogError.set('Solo un gerente de hotel o super_admin puede aprobar este early check-in.');
+      return;
+    }
+    if (mode === 'early_approved' && !reason) {
+      this.earlyDialogError.set('Escribe el motivo de la aprobación antes de continuar.');
+      return;
+    }
+    this.earlyDialogOpen.set(false);
+    this.earlyDialogError.set('');
+    this.submitCheckIn({
+      mode,
+      reason,
+      fee: Math.max(0, Number(this.earlyCheckInFee()) || 0),
+    });
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeEarlyDialog(): void {
+    if (this.earlyDialogOpen()) this.cancelEarlyCheckIn();
+    if (this.reopenDialogOpen()) this.cancelReopenDialog();
+  }
+
+  private submitCheckIn(early?: {
+    mode: 'early_courtesy' | 'early_approved';
+    reason: string;
+    fee: number;
+  }): void {
+    const d = this.data();
+    if (!d || this.completing() || !this.keysDelivered() || this.isFutureDate()) return;
+
     this.completing.set(true);
     this.completeError.set('');
+    const earlyPayload = early
+      ? {
+          early_check_in_mode: early.mode,
+          early_check_in_approved: true,
+          early_check_in_reason: early.reason,
+          early_check_in_fee: early.fee,
+        }
+      : {};
 
     this.api
       .completeCheckInWithDetail(d.booking_id, {
@@ -397,6 +759,7 @@ export class CheckInDetailPageComponent {
         check_in_deposit_received: this.depositReceived(),
         check_in_privacy_signed: this.privacySigned(),
         check_in_observations: this.observations(),
+        ...earlyPayload,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

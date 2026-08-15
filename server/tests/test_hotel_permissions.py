@@ -8,6 +8,9 @@ Cubre:
 - Sin asignación para el hotel → fallback al rol global (backward compat).
 - Asignación existente → el rol del hotel es autoritativo (deny-by-default si está inactivo).
 - Dependency ``require_prop_permission``: prop_id explícito o resuelto desde el request; 403 si no.
+- Contrato de casos límite de la dependency: inactivo denegado aunque tenga rol de hotel
+  + asignación, inactivo super_admin denegado (sin bypass), y la capa de sesión rechaza
+  al inactivo (303) antes del gate por HTTP.
 - Migración ``migrate_hotel_roles``: roles → plantillas (is_template), clones por (prop_id, rol),
   backfill de asignaciones, idempotente, ``--dry-run`` y ``--only-prop-id``.
 
@@ -16,7 +19,7 @@ Todos los asserts se hacen contra MongoDB real en ``hoteldata_hub_test`` (fixtur
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from bson import ObjectId
@@ -40,7 +43,7 @@ pytestmark = pytest.mark.asyncio
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _create_hotel_role(
@@ -307,6 +310,44 @@ async def test_inactive_hotel_role_denies_instead_of_fallback(db, hotel_staff_us
     assert user_has_permission(db, hotel_staff_user, "payments.read") is False
 
 
+# ── 3b. Contrato user_has_permission: casos límite (inactivo) ──
+# Mismos edge cases que los gates gerenciales (test_late_checkout_permissions.py,
+# test_folio_write_off_approval.py): la inactividad ANTECEDE a todo — a los
+# grants de rol, a las asignaciones por hotel y al bypass *.* de super_admin.
+
+
+async def test_inactive_user_denied_even_with_permission_and_assignment(
+    db, hotel_staff_user, hotel_staff_role
+):
+    """Un usuario deshabilitado pierde el permiso aunque su rol global lo tenga
+    Y su asignación por hotel se lo conceda (inactivo + hotel-scoped juntos)."""
+    role_id = _create_hotel_role(
+        db,
+        prop_id=1,
+        permissions=["dashboard.read", "reservations.read", "payments.read"],
+        based_on_role_id=hotel_staff_role["_id"],
+    )
+    _assign(db, hotel_staff_user["_id"], 1, role_id)
+    db.users.update_one({"_id": hotel_staff_user["_id"]}, {"$set": {"is_active": False}})
+    inactive = db.users.find_one({"_id": hotel_staff_user["_id"]})
+
+    # Rol global + asignación por hotel: aún así, inactivo → deny en ambos ejes.
+    assert user_has_permission(db, inactive, "reservations.read") is False
+    assert user_has_permission(db, inactive, "payments.read", prop_id=1) is False
+
+
+async def test_inactive_super_admin_denied_even_in_hotel_context(db, admin_user):
+    """La inactividad ANTECEDE al bypass *.*: un super_admin deshabilitado no
+    pasa nada, ni siquiera con contexto de hotel (mismo contrato que los gates)."""
+    user = db.users.find_one({"_id": ObjectId(admin_user["user_id"])})
+    assert user_has_permission(db, user, "anything.at.all", prop_id=7) is True
+
+    db.users.update_one({"_id": user["_id"]}, {"$set": {"is_active": False}})
+    inactive = db.users.find_one({"_id": user["_id"]})
+    assert user_has_permission(db, inactive, "anything.at.all") is False
+    assert user_has_permission(db, inactive, "anything.at.all", prop_id=7) is False
+
+
 # ── 4. Dependency require_prop_permission ──
 
 
@@ -388,6 +429,80 @@ async def test_require_prop_permission_denies_hotel_outside_scope(db, hotel_staf
     with pytest.raises(HTTPException) as excinfo:
         dep_out(_make_request(token))
     assert excinfo.value.status_code == 403
+
+
+# ── 4b. Contrato require_prop_permission: casos límite (inactivo + hotel-scoped) ──
+# Mismo contrato que los gates gerenciales y que user_has_permission: la
+# inactividad ANTECEDE al grant hotel-scoped, a la asignación por hotel y al
+# bypass *.* de super_admin. Los tests con ``monkeypatch`` inyectan el user
+# inactivo directo en la dependency (nivel de servicio, como el resto de la
+# suite); el test de capa de sesión cubre la superficie completa por HTTP.
+
+
+async def test_require_prop_permission_inactive_user_denied(db, hotel_staff_user, hotel_staff_role, monkeypatch):
+    """Un usuario desactivado no pasa la dependency aunque su rol de hotel +
+    asignación le concedan el permiso (inactivo + hotel-scoped juntos)."""
+    role_id = _create_hotel_role(
+        db,
+        prop_id=1,
+        permissions=["dashboard.read", "reservations.read", "payments.read"],
+        based_on_role_id=hotel_staff_role["_id"],
+    )
+    _assign(db, hotel_staff_user["_id"], 1, role_id)
+    token = _seed_session(db, hotel_staff_user)
+
+    dependency = require_prop_permission("payments.read", prop_id=1)
+    # Activo → el grant hotel-scoped existe y funciona (sanity).
+    assert dependency(_make_request(token))["username"] == "staff1"
+
+    db.users.update_one({"_id": hotel_staff_user["_id"]}, {"$set": {"is_active": False}})
+    inactive = db.users.find_one({"_id": hotel_staff_user["_id"]})
+    # Inyectar el user inactivo directo en la dependency (nivel de servicio).
+    monkeypatch.setattr("src.app.security.dependencies.require_login", lambda _req: inactive)
+    with pytest.raises(HTTPException) as excinfo:
+        dependency(_make_request(token))
+    assert excinfo.value.status_code == 403
+    assert "payments.read" in excinfo.value.detail
+
+
+async def test_require_prop_permission_inactive_super_admin_denied(db, admin_user, monkeypatch):
+    """La inactividad ANTECEDE al bypass *.* y al alcance sin filtro: un
+    super_admin deshabilitado no pasa la dependency ni con contexto de hotel."""
+    active = db.users.find_one({"_id": ObjectId(admin_user["user_id"])})
+    token = _seed_session(db, active)
+
+    dependency = require_prop_permission("anything.at.all", prop_id=1)
+    # Activo → bypass super_admin.
+    assert dependency(_make_request(token))["username"] == active["username"]
+
+    db.users.update_one({"_id": active["_id"]}, {"$set": {"is_active": False}})
+    inactive = db.users.find_one({"_id": active["_id"]})
+    monkeypatch.setattr("src.app.security.dependencies.require_login", lambda _req: inactive)
+    with pytest.raises(HTTPException) as excinfo:
+        dependency(_make_request(token))
+    assert excinfo.value.status_code == 403
+    assert "anything.at.all" in excinfo.value.detail
+
+
+async def test_require_prop_permission_inactive_rejected_at_session_layer(db, hotel_staff_user, hotel_staff_role):
+    """Superficie completa por HTTP: con sesión REAL, la capa de sesión ya
+    niega al inactivo (require_login → 303) antes de que corra el gate — el
+    contrato inactivo se cumple en ambas capas."""
+    role_id = _create_hotel_role(
+        db,
+        prop_id=1,
+        permissions=["dashboard.read"],
+        based_on_role_id=hotel_staff_role["_id"],
+    )
+    _assign(db, hotel_staff_user["_id"], 1, role_id)
+    token = _seed_session(db, hotel_staff_user)
+    db.users.update_one({"_id": hotel_staff_user["_id"]}, {"$set": {"is_active": False}})
+
+    dependency = require_prop_permission("dashboard.read", prop_id=1)
+    with pytest.raises(HTTPException) as excinfo:
+        dependency(_make_request(token))
+    # La sesión de un usuario desactivado no resuelve user → 303 (Debe iniciar sesión).
+    assert excinfo.value.status_code == 303
 
 
 # ── 5. Migración migrate_hotel_roles ──

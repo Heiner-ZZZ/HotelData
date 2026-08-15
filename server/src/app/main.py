@@ -119,6 +119,11 @@ from src.app.modules.lost_and_found.routes import (
 from src.app.modules.lost_and_found.routes import router as lost_and_found_module_router
 from src.app.modules.lost_and_found.service import ensure_lost_and_found_collections
 from src.app.modules.map.routes import router as map_api_router
+from src.app.modules.notifications.promotions import (
+    ensure_promotions_collection,
+    ensure_scheduled_promotions_collection,
+    process_due_scheduled_promotions_forever,
+)
 from src.app.modules.notifications.routes import router as notifications_router
 from src.app.modules.partner.routes import api_router as partner_api_router
 from src.app.modules.partner.routes import (
@@ -287,12 +292,21 @@ async def lifespan(app: FastAPI):
     ensure_hotels_collections()
     ensure_audit_indexes()
     ensure_outbox_collection()
+    ensure_promotions_collection()
+    ensure_scheduled_promotions_collection()
     process_pending_outbox(get_database())
     # Periodic outbox drainer: catches up on ``audit_log`` writes that failed
     # inline (rare; e.g. transient mongo blip). Daemon thread so uvicorn
     # shutdown tears down naturally without hanging.
     threading.Thread(
         target=process_pending_outbox_forever,
+        args=(get_database(),),
+        daemon=True,
+    ).start()
+    # Scheduled promotions queue: sends queued campaigns once ``send_at``
+    # arrives. Daemon thread (same pattern as the outbox drainer).
+    threading.Thread(
+        target=process_due_scheduled_promotions_forever,
         args=(get_database(),),
         daemon=True,
     ).start()

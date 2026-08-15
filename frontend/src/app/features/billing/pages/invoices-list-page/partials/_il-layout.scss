@@ -6,19 +6,10 @@
   max-width: 1160px;
   margin: 0 auto;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--app-text);
-}
-
-// ── Nav tabs (mismo diseño de píldoras que los dashboards de facturación) ──
-
-.invl-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--app-border);
-  padding-bottom: 0.5rem;
 }
 
 // ── Property Selector Bar ──
@@ -28,38 +19,15 @@
   align-items: center;
 }
 
-.invl-nav-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  text-decoration: none;
-  color: var(--muted-text);
-  font-size: 0.83rem;
-  font-weight: 600;
-  transition: background 0.15s ease, color 0.15s ease;
-
-  &.active {
-    background: var(--accent-light);
-    color: var(--accent-strong);
-  }
-
-  &:hover:not(.active) {
-    background: var(--surface-hover);
-    color: var(--app-text);
-  }
-}
-
 // ── Stats Cards ──
 
 .invl-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem;
 
   @media (max-width: 700px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -72,6 +40,8 @@
   border: 1px solid var(--app-border);
   background: var(--surface);
   transition: box-shadow 150ms;
+  min-width: 0;
+  overflow: hidden;
 
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);

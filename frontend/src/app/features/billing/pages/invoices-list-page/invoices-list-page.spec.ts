@@ -3,7 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { of, Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
@@ -183,5 +183,27 @@ describe('InvoicesListPageComponent', () => {
     expect(ctx.router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
       queryParams: expect.objectContaining({ turno: null, cajero: null, status: null, q: null }),
     }));
+  });
+
+  it('muestra el mensaje con acción si falla anular la factura', async () => {
+    const ctx = setup('Factura duplicada');
+    (ctx.api.cancelInvoice as jest.Mock).mockReturnValueOnce(throwError(() => ({ message: '' })));
+
+    await ctx.component.cancelInvoice(invoice);
+
+    expect(ctx.toast.toasts().some((t) => t.type === 'error'
+      && t.message.includes('sin pagos confirmados')
+      && t.message.includes('e intentá de nuevo'))).toBe(true);
+  });
+
+  it('ubica el sub-nav de facturación ARRIBA del page-header (mismo orden que los dashboards)', () => {
+    const ctx = setup();
+    const el = ctx.fixture.nativeElement as HTMLElement;
+    const page = el.querySelector('.invl-page')!;
+    const nav = page.querySelector('app-billing-sub-nav')!;
+    const header = page.querySelector('app-page-header')!;
+    expect(nav).toBeTruthy();
+    expect(header).toBeTruthy();
+    expect(nav.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

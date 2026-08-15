@@ -45,6 +45,10 @@ export interface ReservationListItemDto {
   currency?: string;
   total_nights?: number;
   stay_status?: string;
+  /** Ventana de reapertura de no-show (server-authoritative): 'open' | 'too_late' | 'stay_ended' | null. */
+  reopen_window?: string | null;
+  /** Marca de reapertura: el gerente reabrió el no-show porque el huésped llegó tras el no-show. */
+  no_show_reopened_at?: string | null;
   folio?: string;
   hotel?: ReservationHotelContextDto | null;
   check_in_time_actual?: string;
@@ -173,6 +177,12 @@ export interface ReservationDetailDto {
     special_requests?: string[];
     selected_amenities?: string[];
     stay_status?: string;
+    /** Server-stamped late check-out outcome; never inferred by the client. */
+    check_out_mode?: 'normal' | 'late_courtesy' | 'late_approved' | string | null;
+    late_checkout_minutes?: number | null;
+    late_checkout_policy_time?: string | null;
+    check_out_date_actual?: string | null;
+    check_out_time_actual?: string | null;
     estimated_arrival_time?: string;
     late_checkin?: boolean;
     transaction_id?: string;

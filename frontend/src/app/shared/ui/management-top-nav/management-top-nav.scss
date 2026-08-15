@@ -237,6 +237,13 @@
   }
 }
 
+.notif-type-icon {
+  font-size: 1.15rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
 .notif-dot {
   width: 0.5rem;
   height: 0.5rem;

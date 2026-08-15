@@ -109,3 +109,27 @@ export interface SimilarHotelDto {
 export interface SimilarHotelsResponseDto {
   items: SimilarHotelDto[];
 }
+
+/** Oferta pública de un hotel. Sin ``message``: el backend nunca expone el
+ *  texto crudo (PII — puede incluir el nombre del huésped). Cuando viene de
+ *  la entidad ``promotions`` (Fase 2) trae la descripción pública, el código
+ *  promocional, la ventana de validez y a qué tarifas aplica; el fallback
+ *  legacy (Fase 1) solo trae título + fecha. */
+export interface HotelOfferDto {
+  campaign_id: string;
+  title: string;
+  sent_at_iso: string;
+  // ── Entidad promotions (Fase 2) ──
+  public_message?: string;
+  promo_code?: string | null;
+  discount_percent?: number | null;
+  validity?: { start_date?: string; end_date?: string } | null;
+  applies_to_label?: string;
+  segment_label?: string;
+}
+
+export interface HotelOffersDto {
+  prop_id: number;
+  hotel_name: string;
+  items: HotelOfferDto[];
+}

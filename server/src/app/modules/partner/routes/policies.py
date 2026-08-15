@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from fastapi import Body, Form, HTTPException, Query, Request, status
+from fastapi import Body, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
-
-from fastapi import Depends
 
 from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     list_partner_hotels,
-    partner_hotel_policies,
     partner_hotel_per_room_policies,
+    partner_hotel_policies,
     save_partner_hotel_policies,
 )
 from src.app.modules.partner.services.rooms import _room_types_for_prop
@@ -69,7 +67,7 @@ def policies_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
-    current_user: dict = Depends(require_permission("properties.read")),
+    current_user: dict = Depends(require_permission("properties.read")),  # noqa: B008
 ):
     results = list_partner_hotels(q, page=page, page_size=page_size, user=current_user)
     return {
@@ -89,8 +87,8 @@ def policies_options_api(
 
 @api_router.put("/policies")
 def policies_update_api(
-    payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("properties.update")),
+    payload: dict = Body(...),  # noqa: B008
+    current_user: dict = Depends(require_permission("properties.update")),  # noqa: B008
 ):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
@@ -118,6 +116,15 @@ def policies_update_api(
             deposit_percent=payload.get("deposit_percent"),
             deposit_required=payload.get("deposit_required"),
             cancellation_penalty_percent=payload.get("cancellation_penalty_percent"),
+            early_check_in_enabled=payload.get("early_check_in_enabled"),
+            early_check_in_courtesy_minutes=payload.get("early_check_in_courtesy_minutes"),
+            early_check_in_default_fee=payload.get("early_check_in_default_fee"),
+            late_checkout_enabled=payload.get("late_checkout_enabled"),
+            late_checkout_courtesy_minutes=payload.get("late_checkout_courtesy_minutes"),
+            late_checkout_default_fee=payload.get("late_checkout_default_fee"),
+            guaranteed_reservation=payload.get("guaranteed_reservation"),
+            late_arrival_cutoff=payload.get("late_arrival_cutoff"),
+            no_show_execution=payload.get("no_show_execution"),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:

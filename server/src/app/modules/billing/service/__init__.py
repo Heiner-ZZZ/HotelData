@@ -22,6 +22,7 @@ from src.app.modules.billing.service.lifecycle import (
     classify_failed_payment_informational,
     update_invoice_additional_charges,
     create_split_charges_invoice,
+    create_complement_invoice,
     get_invoice_dashboard,
 )
 from src.app.modules.billing.service.folio import (
@@ -60,6 +61,7 @@ __all__ = [
     "classify_failed_payment_informational",
     "update_invoice_additional_charges",
     "create_split_charges_invoice",
+    "create_complement_invoice",
     "get_invoice_dashboard",
     "get_payments_dashboard",
     "create_folio",

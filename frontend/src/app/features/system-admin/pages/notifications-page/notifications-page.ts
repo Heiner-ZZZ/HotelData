@@ -98,6 +98,12 @@ export class NotificationsPageComponent {
       guest_checked_out: 'Cliente — Check-out',
       guest_invoice_issued: 'Cliente — Factura emitida',
       guest_other: 'Cliente — Otro',
+      housekeeping_check_in: 'Check-in — habitación ocupada',
+      no_show_reopen: 'No-show reabierto',
+      late_checkout_approved: 'Late check-out aprobado',
+      late_checkout_courtesy: 'Late check-out en cortesía',
+      early_checkin_approved: 'Early check-in aprobado',
+      early_checkin_courtesy: 'Early check-in en cortesía',
     };
     return labels[type] || type;
   }

@@ -28,6 +28,19 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
         </table>
       </div>
 
+      @if (reconcileNote(); as note) {
+        <div class="co-liq-reconcile" role="note" aria-live="polite">
+          <span class="material-symbols-outlined">fact_check</span>
+          <div>
+            <strong>La factura no cubre los cargos adicionales</strong>
+            <span>
+              La factura {{ note.invoice_number }} se emiti&oacute; antes de los &uacute;ltimos cargos:
+              faltan <strong>{{ note.gap | currency:currency() }}</strong> &mdash; el TOTAL incluye los cargos nuevos.
+            </span>
+          </div>
+        </div>
+      }
+
       <div class="co-liq-summary">
         <div class="co-liq-row"><span>Subtotal</span><span class="co-liq-val">{{ subtotal() | currency:currency() }}</span></div>
         <div class="co-liq-row co-liq-tax"><span>IVA (16%)</span><span class="co-liq-val">{{ taxes() | currency:currency() }}</span></div>
@@ -37,6 +50,52 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
         <div class="co-liq-divider"></div>
         <div class="co-liq-row co-liq-balance"><span>SALDO</span><span class="co-liq-val">{{ balanceDue() | currency:currency() }}</span></div>
       </div>
+
+      <!-- Late check-out: ventana gobernada por la política del hotel -->
+      @if (lateContext(); as lc) {
+        @if (lc.is_late) {
+          <div class="co-late-panel" [class.co-late-panel--blocked]="lateBlocked()">
+            <div class="co-late-head">
+              <span class="material-symbols-outlined">schedule</span>
+              <strong>Late check-out</strong>
+              <span class="co-late-minutes">+{{ lc.minutes_after }} min tras las {{ lc.check_out_time }}</span>
+            </div>
+            @if (lc.real_time) {
+              <div class="co-late-real">
+                <span class="material-symbols-outlined">schedule</span>
+                Salida real: <strong>{{ lc.real_time }} hrs</strong>
+                <span class="co-late-real-note">(hora actual del hotel)</span>
+              </div>
+            }
+            @if (!lc.requires_approval) {
+              <div class="co-late-courtesy">
+                <span class="material-symbols-outlined">verified</span>
+                Dentro de la cortes&iacute;a ({{ lc.courtesy_minutes }} min) &mdash; salida tard&iacute;a sin cargo
+              </div>
+            } @else if (canApproveLate()) {
+              <div class="co-late-approve">
+                <label class="co-label">Autorizar salida tard&iacute;a</label>
+                <select class="co-select" [ngModel]="lateMode()" (ngModelChange)="lateModeChange.emit($event)">
+                  <option value="">Sin autorizar</option>
+                  <option value="late_approved">Aprobar con cargo</option>
+                </select>
+                @if (lateMode() === 'late_approved') {
+                  <label class="co-label">Motivo (requerido)</label>
+                  <textarea class="co-textarea" rows="2" [ngModel]="lateReason()" (ngModelChange)="lateReasonChange.emit($event)" placeholder="Motivo de la aprobaci&oacute;n..."></textarea>
+                  <label class="co-label">Cargo por late check-out ($)</label>
+                  <input type="number" class="co-input" min="0" step="0.01" [ngModel]="lateFee()" (ngModelChange)="lateFeeChange.emit($event)" />
+                }
+              </div>
+            } @else {
+              <div class="co-late-alert" role="alert" aria-live="polite">
+                <span class="material-symbols-outlined">lock</span>
+                Esta salida supera la cortes&iacute;a ({{ lc.courtesy_minutes }} min) y requiere aprobaci&oacute;n del gerente (permiso <code>check-ins.late_checkout_approve</code>).
+                Derivalo al gerente para que autorice la salida extendida antes de completar.
+              </div>
+            }
+          </div>
+        }
+      }
 
       <!-- Payment method inline -->
       <div class="co-liq-payment">
@@ -67,6 +126,8 @@ export class CoStepSettlementComponent {
   readonly lateFee = input(0);
   readonly discountVal = input(0);
   readonly discountReason = input('');
+  /** Nota de reconciliación cuando la factura emitida no cubre los cargos adicionales. */
+  readonly reconcileNote = input<{ invoice_number: string; gap: number } | null>(null);
   readonly subtotal = input(0);
   readonly taxes = input(0);
   readonly grandTotal = input(0);
@@ -75,9 +136,26 @@ export class CoStepSettlementComponent {
   readonly currency = input('USD');
   readonly paymentMethod = input('credit_card');
   readonly paymentRef = input('');
+  readonly lateContext = input<{
+    enabled: boolean;
+    is_late: boolean;
+    minutes_after: number;
+    courtesy_minutes: number;
+    requires_approval: boolean;
+    check_out_time: string;
+    default_fee: number;
+    real_time: string;
+  } | null>(null);
+  readonly canApproveLate = input(false);
+  readonly lateMode = input<string>('');
+  readonly lateReason = input<string>('');
+  readonly lateBlocked = input(false);
 
   readonly prev = output<void>();
   readonly next = output<void>();
   readonly paymentMethodChange = output<string>();
   readonly paymentRefChange = output<string>();
+  readonly lateModeChange = output<string>();
+  readonly lateReasonChange = output<string>();
+  readonly lateFeeChange = output<number>();
 }

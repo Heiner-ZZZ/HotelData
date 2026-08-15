@@ -176,6 +176,8 @@ TEST_COLLECTIONS = [
     # --- Account / notificaciones / tracking ----------------------------
     "user_favorites",
     "notification_log",
+    "scheduled_promotions",  # cola de envíos programados (marketing)
+    "promotions",  # entidad de ofertas de marketing (Fase 2)
     "click_events",
 ]
 

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import date
 from typing import Any
 
 from bson import ObjectId
 
 from ._helpers import ReservationInput, _clean_text, _safe_int
-
 
 PHONE_RE = re.compile(r"^[\d\s\-\+\(\)\.]+$")
 TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
@@ -28,48 +27,48 @@ def validate_booking_form_requirements(payload: ReservationInput) -> list[str]:
     """
     errors: list[str] = []
     if not payload.guest_phone:
-        errors.append("guest_phone is required")
+        errors.append("El teléfono del huésped es obligatorio. Ingresalo para continuar.")
     if payload.guest_phone and not _valid_phone(payload.guest_phone):
-        errors.append("guest_phone contains invalid characters")
+        errors.append("El teléfono del huésped contiene caracteres inválidos. Usá solo números, espacios, guiones o paréntesis.")
     if not payload.cedula:
-        errors.append("cedula is required")
+        errors.append("La cédula o documento del huésped es obligatorio. Ingresalo para continuar.")
     if not payload.check_in_time:
-        errors.append("check_in_time is required")
+        errors.append("La hora de check-in es obligatoria. Elegí una hora de ingreso.")
     elif not TIME_RE.fullmatch(payload.check_in_time):
-        errors.append("check_in_time must use HH:MM format")
+        errors.append("La hora de check-in debe usar formato HH:MM (ej. 15:00).")
     if not payload.check_out_time:
-        errors.append("check_out_time is required")
+        errors.append("La hora de check-out es obligatoria. Elegí una hora de salida.")
     elif not TIME_RE.fullmatch(payload.check_out_time):
-        errors.append("check_out_time must use HH:MM format")
+        errors.append("La hora de check-out debe usar formato HH:MM (ej. 12:00).")
     if payload.estimated_arrival_time and not TIME_RE.fullmatch(payload.estimated_arrival_time):
-        errors.append("estimated_arrival_time must use HH:MM format")
+        errors.append("La hora estimada de llegada debe usar formato HH:MM (ej. 20:00).")
     if payload.check_in_date and payload.check_out_date and payload.check_out_date <= payload.check_in_date:
-        errors.append("check_out_date must be after check_in_date for an overnight booking")
+        errors.append("La fecha de check-out debe ser posterior al check-in. Ajustá las fechas para una estancia de al menos una noche.")
     return errors
 
 
 def validate_reservation_input(payload: ReservationInput) -> list[str]:
     errors: list[str] = []
     if payload.prop_id <= 0:
-        errors.append("prop_id must be a positive integer")
+        errors.append("El hotel seleccionado no es válido. Elegí un hotel de la lista.")
     if not payload.guest_name:
-        errors.append("guest_name is required")
+        errors.append("El nombre del huésped es obligatorio. Ingresalo para continuar.")
     if not payload.guest_email or "@" not in payload.guest_email:
-        errors.append("guest_email must be valid")
+        errors.append("El correo del huésped no es válido. Verificá el formato (ej. nombre@dominio.com).")
     if not payload.check_in_date:
-        errors.append("check_in_date is required")
+        errors.append("La fecha de check-in es obligatoria. Elegí el día de ingreso.")
     if not payload.check_out_date:
-        errors.append("check_out_date is required")
+        errors.append("La fecha de check-out es obligatoria. Elegí el día de salida.")
     if payload.adults <= 0:
-        errors.append("adults must be greater than zero")
+        errors.append("Debe haber al menos un adulto. Indicá la cantidad de adultos.")
     if payload.children < 0:
-        errors.append("children cannot be negative")
+        errors.append("La cantidad de niños no puede ser negativa. Corregí el valor.")
     if payload.rooms <= 0:
-        errors.append("rooms must be greater than zero")
+        errors.append("Debe haber al menos una habitación. Indicá la cantidad de habitaciones.")
     if payload.check_in_date and payload.check_out_date and payload.check_out_date < payload.check_in_date:
-        errors.append("check_out_date must be greater than or equal to check_in_date")
+        errors.append("La fecha de check-out debe ser posterior o igual al check-in. Ajustá las fechas.")
     if not _valid_phone(payload.guest_phone):
-        errors.append("guest_phone contains invalid characters")
+        errors.append("El teléfono del huésped contiene caracteres inválidos. Usá solo números, espacios, guiones o paréntesis.")
     return errors
 
 
@@ -80,20 +79,19 @@ def validate_date_format(check_in_date: str, check_out_date: str) -> list[str]:
     """
     errors: list[str] = []
     try:
-        cin = datetime.strptime(check_in_date, "%Y-%m-%d").date()
+        cin = date.fromisoformat(check_in_date)
     except (ValueError, TypeError):
-        errors.append(f"Invalid check_in_date format: '{check_in_date}' (expected YYYY-MM-DD)")
+        errors.append(f"La fecha de check-in '{check_in_date}' no es válida. Usá el formato AAAA-MM-DD (ej. 2026-08-10).")
         cin = None
 
     try:
-        cout = datetime.strptime(check_out_date, "%Y-%m-%d").date()
+        cout = date.fromisoformat(check_out_date)
     except (ValueError, TypeError):
-        errors.append(f"Invalid check_out_date format: '{check_out_date}' (expected YYYY-MM-DD)")
+        errors.append(f"La fecha de check-out '{check_out_date}' no es válida. Usá el formato AAAA-MM-DD (ej. 2026-08-10).")
         cout = None
 
-    if cin and cout:
-        if cout < cin:
-            errors.append("check_out_date must be greater than or equal to check_in_date")
+    if cin and cout and cout < cin:
+        errors.append("La fecha de check-out debe ser posterior o igual al check-in. Ajustá las fechas.")
 
     return errors
 
@@ -113,12 +111,10 @@ def _validate_policy_times(prop_id: int, check_in_time: str, check_out_time: str
         return errors
     policy_ci = policy.get("check_in_time", "")
     policy_co = policy.get("check_out_time", "")
-    if check_in_time and policy_ci:
-        if check_in_time < policy_ci:
-            errors.append(f"Check-in antes de lo permitido. El check-in es desde las {policy_ci}")
-    if check_out_time and policy_co:
-        if check_out_time > policy_co:
-            errors.append(f"Check-out después de lo permitido. El check-out es hasta las {policy_co}")
+    if check_in_time and policy_ci and check_in_time < policy_ci:
+        errors.append(f"Check-in antes de lo permitido. El check-in es desde las {policy_ci}")
+    if check_out_time and policy_co and check_out_time > policy_co:
+        errors.append(f"Check-out después de lo permitido. El check-out es hasta las {policy_co}")
     return errors
 
 

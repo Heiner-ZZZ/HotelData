@@ -15,7 +15,7 @@
         class="section-link"
         [class.sub-link]="depth > 0"
         routerLinkActive="is-active"
-        [routerLinkActiveOptions]="{ exact: true }"
+        [routerLinkActiveOptions]="{ exact: false }"
         [routerLink]="node.href"
         [queryParams]="getLinkParams(node.href ?? '')"
       >
@@ -26,8 +26,7 @@
       <a
         class="section-link"
         [class.sub-link]="depth > 0"
-        routerLinkActive="is-active"
-        [routerLinkActiveOptions]="{ exact: false }"
+        [class.is-active]="isHorizontalActive(node)"
         [routerLink]="firstChildHref(node)"
         [queryParams]="getLinkParams(firstChildHref(node) ?? '')"
       >

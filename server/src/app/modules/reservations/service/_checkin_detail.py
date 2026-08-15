@@ -17,13 +17,27 @@ Saved directly on the booking_orders document.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any
 
+from src.app.modules.reservations.service._checkinout._checkin import (
+    get_early_check_in_context,
+)
+from src.app.modules.reservations.service._helpers import utc_now
+from src.app.modules.reservations.service.late_arrival import get_late_arrival_context
+from src.app.modules.reservations.service.queries import hotel_booking_context
 from src.database.connection import get_database
-from ._helpers import utc_now
-from .queries import hotel_booking_context
 
 logger = logging.getLogger(__name__)
+
+
+def _iso(value: Any) -> str | None:
+    """Serialize a stored timestamp to ISO; passthrough for legacy strings."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, str) and value:
+        return value
+    return None
 
 
 def get_check_in_detail(booking_id: str) -> dict[str, Any]:
@@ -37,9 +51,14 @@ def get_check_in_detail(booking_id: str) -> dict[str, Any]:
             "guest_email": 1, "guest_phone": 1, "cedula": 1,
             "check_in_date": 1, "check_in_date_actual": 1, "check_in_time_actual": 1,
             "estimated_arrival_time": 1, "late_checkin": 1,
+            "no_show_penalty_amount": 1,
             "check_out_date": 1, "total_price": 1, "currency": 1,
             "total_nights": 1, "rooms": 1, "adults": 1, "children": 1,
             "status": 1, "stay_status": 1, "room_type_id": 1,
+            "declared_late_arrival": 1,
+            "check_in_mode": 1, "early_check_in_minutes": 1,
+            "early_check_in_fee": 1, "early_check_in_approved_by": 1,
+            "early_check_in_reason": 1,
             "assigned_rooms": 1, "folio": 1, "check_in_by": 1,
             "payment_method": 1, "booking_source": 1, "comment": 1,
             "check_in_arrival_time": 1, "check_in_has_companions": 1,
@@ -47,10 +66,19 @@ def get_check_in_detail(booking_id: str) -> dict[str, Any]:
             "check_in_keys_delivered": 1,
             "check_in_payment_pending": 1, "check_in_deposit_received": 1,
             "check_in_privacy_signed": 1, "check_in_observations": 1,
+            # Marca de reapertura de no-show (``reopen_no_show``): el gerente
+            # reabrió la reserva porque el huésped llegó tras el no-show.
+            "no_show_reopened_at": 1, "no_show_reopened_by": 1,
+            "no_show_reopen_reason": 1, "no_show_penalty_removed": 1,
         },
     )
     if not booking:
-        raise ValueError("Booking not found")
+        raise ValueError("No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.")
+
+    folio_doc = db.guest_folios.find_one(
+        {"booking_id": booking_id},
+        {"_id": 0, "folio_number": 1},
+    )
 
     # Room type name
     room_type_name = ""
@@ -63,6 +91,20 @@ def get_check_in_detail(booking_id: str) -> dict[str, Any]:
         room_type_name = rt.get("name", room_type_id) if rt else room_type_id
 
     hotel_label = hotel_booking_context(int(booking.get("prop_id", 0))).get("hotel_label", "") or f"Hotel {booking.get('prop_id', '')}"
+    early_context = get_early_check_in_context(
+        int(booking.get("prop_id", 0) or 0),
+        str(booking.get("check_in_date") or ""),
+    )
+    early_context.update({
+        "recorded_mode": booking.get("check_in_mode") or "",
+        "recorded_minutes": booking.get("early_check_in_minutes") or 0,
+        "recorded_fee": booking.get("early_check_in_fee") or 0,
+        "approved_by": booking.get("early_check_in_approved_by") or "",
+        "reason": booking.get("early_check_in_reason") or "",
+        # Persisted local clock, not a fresh calculation when the detail opens.
+        "actual_date": booking.get("check_in_date_actual"),
+        "actual_time": booking.get("check_in_time_actual"),
+    })
 
     # Resolve assigned rooms
     assigned_rooms: list[dict[str, Any]] = []
@@ -105,6 +147,8 @@ def get_check_in_detail(booking_id: str) -> dict[str, Any]:
         "check_in_time_actual": booking.get("check_in_time_actual"),
         "estimated_arrival_time": booking.get("estimated_arrival_time", ""),
         "late_checkin": bool(booking.get("late_checkin", False)),
+        "early_check_in": early_context,
+        "late_arrival": get_late_arrival_context(db, booking),
         "check_out_date": booking.get("check_out_date", ""),
         "total_price": booking.get("total_price"),
         "currency": booking.get("currency", "USD"),
@@ -116,7 +160,16 @@ def get_check_in_detail(booking_id: str) -> dict[str, Any]:
         "stay_status": booking.get("stay_status", ""),
         "room_type_id": room_type_id,
         "room_type_name": room_type_name,
-        "folio": booking.get("folio"),
+        "folio": booking.get("folio") or (folio_doc or {}).get("folio_number"),
+        "no_show_penalty_amount": booking.get("no_show_penalty_amount"),
+        # Marca de reapertura: el gerente reabrió la reserva porque el huésped
+        # llegó tras el no-show. La UI la muestra como aviso mientras la
+        # ventana de reapertura siga abierta (check-in de hoy o ayer + estadía
+        # vigente) para que recepción sepa que NO es un check-in normal.
+        "no_show_reopened_at": _iso(booking.get("no_show_reopened_at")),
+        "no_show_reopened_by": booking.get("no_show_reopened_by") or "",
+        "no_show_reopen_reason": booking.get("no_show_reopen_reason") or "",
+        "no_show_penalty_removed": bool(booking.get("no_show_penalty_removed", False)),
         "check_in_by": booking.get("check_in_by"),
         "payment_method": booking.get("payment_method", ""),
         "booking_source": booking.get("booking_source", ""),
@@ -157,9 +210,12 @@ def save_check_in_detail(
         {"_id": 0, "status": 1, "is_test": 1},
     )
     if not booking:
-        raise ValueError("Booking not found")
+        raise ValueError("No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.")
     if booking.get("status") in ("cancelled", "rejected"):
-        raise ValueError("Cannot modify check-in detail for a cancelled or rejected booking")
+        raise ValueError(
+            "No se puede modificar el detalle de check-in de una reserva cancelada o rechazada. "
+            "Creá una reserva nueva o contactá al equipo."
+        )
 
     set_fields: dict[str, Any] = {}
     for key, val in [

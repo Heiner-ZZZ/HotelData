@@ -56,7 +56,7 @@ def _validate_deposit(
     return (
         f"Esta propiedad requiere un depósito mínimo del {deposit_percent}% "
         f"(${min_deposit:.2f}) para confirmar la reserva. "
-        "Por favor, proporcione la garantía correspondiente."
+        "Ingresá la garantía correspondiente o contactá a recepción para completarla."
     )
 
 
@@ -77,14 +77,23 @@ def validate_coupon_code(coupon_code: str, prop_id: int) -> tuple[str | None, in
     if not coupon:
         coupon = db.coupon_codes.find_one({"coupon_code": code, "is_active": True, "is_deleted": {"$ne": True}})
         if not coupon:
-            return f"Código promocional '{coupon_code}' no válido.", None, None
+            return (
+                f"El código promocional '{coupon_code}' no es válido. "
+                "Revisá el código e intentá de nuevo, o continuá sin promoción."
+            ), None, None
         campaign = db.promotion_campaigns.find_one({"campaign_id": coupon.get("campaign_id")})
         if campaign:
             campaign_prop = campaign.get("prop_id")
             if campaign_prop and int(campaign_prop) != prop_id:
-                return "Este código no aplica para este hotel.", None, None
+                return (
+                    "Este código no aplica para este hotel. Usá un código válido para "
+                    "este hotel o continuá sin promoción."
+                ), None, None
 
     discount_percent = coupon.get("discount_percent", 0)
     if not discount_percent or discount_percent <= 0:
-        return "El código promocional no tiene un descuento válido.", None, None
+        return (
+            "El código promocional no tiene un descuento válido. "
+            "Probá con otro código o continuá sin promoción."
+        ), None, None
     return None, int(discount_percent), coupon["_id"]

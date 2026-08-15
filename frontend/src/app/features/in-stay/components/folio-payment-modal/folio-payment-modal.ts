@@ -84,7 +84,9 @@ export class FolioPaymentModalComponent {
 
     const folioBalance = this.folio()?.balance ?? 0;
     if (this.mode() === 'payment' && amt > folioBalance) {
-      this.localError.set(`El monto excede el saldo pendiente (${folioBalance})`);
+      this.localError.set(
+        `El monto excede el saldo pendiente (${folioBalance}): ingresá un monto menor o igual al saldo.`
+      );
       return;
     }
 

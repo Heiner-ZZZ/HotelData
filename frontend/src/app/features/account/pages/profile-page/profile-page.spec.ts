@@ -174,6 +174,67 @@ describe('ProfilePageComponent — modo CRUD del nav', () => {
     expect(pageEl(ctx).querySelector('.form-status')).toBeNull();
   });
 
+  function toggleHeadings(ctx: { fixture: { nativeElement: HTMLElement } }): string[] {
+    return [...pageEl(ctx).querySelectorAll('.toggle-group h3')].map((h) => h.textContent?.trim() ?? '');
+  }
+
+  it('oculta la sección de Publicidad y promociones para staff (el consentimiento de marketing es del huésped)', async () => {
+    const ctx = setup();
+    await seedProfile(ctx, makeDto()); // primary_role: gerente_hotel
+    ctx.component.handleSetTab('preferences');
+    ctx.fixture.detectChanges();
+
+    const headings = toggleHeadings(ctx);
+    expect(headings).toContain('Notificaciones');
+    expect(headings).not.toContain('Publicidad y promociones');
+  });
+
+  it('muestra la sección de Publicidad y promociones solo para huéspedes (cliente)', async () => {
+    const ctx = setup();
+    await seedProfile(ctx, makeDto({ primary_role: 'cliente' }));
+    ctx.component.handleSetTab('preferences');
+    ctx.fixture.detectChanges();
+
+    const headings = toggleHeadings(ctx);
+    expect(headings).toContain('Notificaciones');
+    expect(headings).toContain('Publicidad y promociones');
+  });
+
+  it('agrega la pestaña Promociones para huéspedes (cliente)', async () => {
+    const ctx = setup();
+    await seedProfile(ctx, makeDto({ primary_role: 'cliente' }));
+    const tabs = ctx.component.tabs().map(t => t.key);
+    expect(tabs).toContain('promotions');
+    expect(tabs).toContain('preferences');
+  });
+
+  it('no muestra la pestaña Promociones para staff', async () => {
+    const ctx = setup();
+    await seedProfile(ctx, makeDto()); // gerente_hotel
+    expect(ctx.component.tabs().map(t => t.key)).not.toContain('promotions');
+  });
+
+  it('renderiza la pestaña Promociones fuera del form de perfil (lista read-only)', async () => {
+    const ctx = setup();
+    await seedProfile(ctx, makeDto({ primary_role: 'cliente' }));
+
+    ctx.component.handleSetTab('promotions');
+    ctx.fixture.detectChanges();
+    // La pestaña lanza su httpResource al montar: resolverlo (filtrado por tipo).
+    ctx.http
+      .expectOne('/api/notifications/my?notification_type=guest_promotional&page=1&page_size=10')
+      .flush({
+        items: [], total: 0, unread_count: 0, page: 1, page_size: 10, total_pages: 1,
+      });
+    await flush();
+    ctx.fixture.detectChanges();
+
+    // La lista de promociones vive FUERA del form (sin botón Guardar cambios).
+    expect(pageEl(ctx).querySelector('form.profile-form')).toBeNull();
+    expect(pageEl(ctx).querySelector('app-pp-promotions-tab')).not.toBeNull();
+    expect(ctx.component.activeTab()).toBe('promotions');
+  });
+
   it('mantiene el modo Editando al cambiar de pestaña (contact/preferences)', async () => {
     const ctx = setup();
     await seedProfile(ctx, makeDto());

@@ -79,9 +79,11 @@ def _generate_amenity_charges(
     if page and page.get("amenity_prices"):
         stored_prices = {k.lower(): float(v) for k, v in page["amenity_prices"].items()}
 
-    from src.app.modules.partner.services.content.amenities import _amenity_unit_price
     from src.app.modules.housekeeping.schemas import AdditionalChargeCreate
-    from src.app.modules.housekeeping.service.lifecycle.charges import create_additional_charge
+    from src.app.modules.housekeeping.service.lifecycle.charges import (
+        create_additional_charge,
+    )
+    from src.app.modules.partner.services.content.amenities import _amenity_unit_price
 
     created: list[dict[str, Any]] = []
     for amenity_label in amenities:

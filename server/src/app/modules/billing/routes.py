@@ -18,6 +18,7 @@ from src.app.modules.billing.service import (
     is_historical_cash_shift_eligible,
     cleanup_expired_folios,
     create_invoice,
+    create_complement_invoice,
     create_payment,
     classify_failed_payment_informational,
     get_folio,
@@ -50,6 +51,11 @@ from src.app.modules.reception import (
     list_shifts,
 )
 from src.app.security.dependencies import require_any_permission, require_permission
+from src.app.security.permissions import (
+    FOLIO_ADJUST_APPROVAL_PERMISSION,
+    require_supervisor_authorization,
+    user_has_permission,
+)
 from src.database.connection import get_database
 
 router = APIRouter(prefix="/modules/billing", tags=["modules-billing"])
@@ -107,10 +113,19 @@ def _scoped_invoice(invoice_id: str, prop_id: int | None) -> dict[str, Any]:
     try:
         oid = ObjectId(invoice_id)
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la factura. Verificá el identificador de la factura e intentá de nuevo.",
+        ) from exc
     invoice = get_database().reservation_invoices.find_one({"_id": oid, "prop_id": prop_id})
     if not invoice:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada en este hotel")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "No se encontró la factura en este hotel. Verificá que la factura pertenezca al hotel "
+                "seleccionado e intentá de nuevo."
+            ),
+        )
     return invoice
 
 
@@ -119,7 +134,13 @@ def _scoped_payment(payment_id: str, prop_id: int | None) -> dict[str, Any]:
     prop_id = _require_billing_scope(prop_id)
     payment = get_payment(payment_id)
     if not payment or int(payment.get("prop_id", 0) or 0) != prop_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago no encontrado en este hotel")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "No se encontró el pago en este hotel. Verificá que el pago pertenezca al hotel "
+                "seleccionado e intentá de nuevo."
+            ),
+        )
     return payment
 
 
@@ -276,9 +297,15 @@ class FolioResponse(BaseModel):
     folio_number: str | None = None
     status: str | None = None
     currency: str | None = None
+    total_room: float | None = None
     total_charges: float | None = None
+    total_discounts: float | None = None
     total_payments: float | None = None
     total_due: float | None = None
+    invoice_number: str | None = None
+    invoice_status: str | None = None
+    invoice_subtotal: float | None = None
+    invoice_covered_subtotal: float | None = None
     reopened_at: str | None = None
     reopened_by: str | None = None
     posting_count: int | None = None
@@ -397,7 +424,10 @@ def create_invoice_api(
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se pudo crear la factura (reserva inválida o sin importe que facturar)",
+            detail=(
+                "No se pudo crear la factura: la reserva es inválida o no tiene importe que facturar. "
+                "Verificá que la reserva esté confirmada y tenga cargos pendientes, e intentá de nuevo."
+            ),
         )
     diff = {
         k: {"old": None, "new": v}
@@ -416,6 +446,62 @@ def create_invoice_api(
     # Belt-and-suspenders (same rationale as close_folio_api): create_invoice
     # returns raw datetimes (issued_at/created_at); to_json_safe normalizes
     # them to ISO before the *Response wire validation.
+    return InvoiceResponse.model_validate(to_json_safe(result))
+
+
+@api_router.post("/invoices/complement", status_code=201, response_model=InvoiceResponse)
+def create_complement_invoice_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_any_permission("billing.manage", "check-outs.manage")),
+):
+    """Emit a complementary invoice for the un-invoiced gap ("factura corta").
+
+    Cuando una factura emitida no cubre los cargos adicionales actuales
+    (cargos registrados después de facturar), esta acción emite una factura
+    complementaria de consumos por EXACTAMENTE el gap: los cargos activos que
+    no figuran en la factura principal. Idempotente por snapshot: una segunda
+    llamada con la misma snapshot devuelve la complementaria existente.
+    """
+    booking_id = str(payload.get("booking_id") or "").strip()
+    if not booking_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="booking_id es obligatorio: indicá el identificador de la reserva e intentá de nuevo.",
+        )
+    db = get_database()
+    booking = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1})
+    if booking is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.",
+        )
+    # Misma política fiscal que create_invoice_api: emitir un documento de
+    # dinero exige un turno de caja activo para atribuir la operación.
+    _require_active_shift_for_money(int(booking.get("prop_id") or 0))
+
+    result = create_complement_invoice(
+        booking_id,
+        changed_by=current_user.get("username", "system"),
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "No hay cargos sin facturar: la factura cubre la liquidación actual. "
+                "Si la factura quedó corta, registrá primero los cargos adicionales."
+            ),
+        )
+    register_action(
+        prop_id=int(booking.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=result.get("id", ""),
+        action="create",
+        summary=(
+            f"Factura complementaria {result.get('invoice_number', '')} — "
+            f"{booking_id} (gap de cargos sin facturar)"
+        ),
+        changed_by=current_user.get("username", "system"),
+    )
     return InvoiceResponse.model_validate(to_json_safe(result))
 
 
@@ -599,7 +685,13 @@ def get_invoice_api(
     if result is not None:
         result = to_json_safe(result)
     if result is None or int(result.get("prop_id", 0) or 0) != prop_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada en este hotel")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "No se encontró la factura en este hotel. Verificá que la factura pertenezca al hotel "
+                "seleccionado e intentá de nuevo."
+            ),
+        )
     register_action(
         prop_id=prop_id,
         entity_type="billing_invoice",
@@ -645,7 +737,10 @@ def add_line_item_api(
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se pudo agregar el concepto. La factura puede no existir o no estar en estado 'issued'.",
+            detail=(
+                "No se pudo agregar el concepto. Verificá que la factura esté emitida y sin pagos "
+                "confirmados, e intentá de nuevo."
+            ),
         )
     diff = {
         "line_items_count": {"old": len(before_raw.get("line_items", [])) if before_raw else 0, "new": len(result.get("line_items", []))},
@@ -686,7 +781,10 @@ def remove_line_item_api(
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se pudo eliminar el concepto. Puede ser el cargo de habitación (no removible).",
+            detail=(
+                "No se pudo eliminar el concepto: el cargo de habitación no se puede remover. "
+                "Elegí un concepto adicional e intentá de nuevo."
+            ),
         )
     diff = {
         "line_items_count": {"old": len(before_raw.get("line_items", [])) if before_raw else 0, "new": len(result.get("line_items", []))},
@@ -719,7 +817,13 @@ def repair_invoice_settlement_api(
         changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
     )
     if result is None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La factura no es reparable o no tiene importe positivo")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No se pudo reparar la factura: no es reparable o no tiene importe positivo. "
+                "Verificá que esté anulada o reembolsada y que su total sea mayor a cero, e intentá de nuevo."
+            ),
+        )
     result = to_json_safe(result)
     register_action(
         prop_id=(result.get("prop_id") or 0),
@@ -753,10 +857,20 @@ def create_credit_note_api(
         shift_attribution=get_shift_attribution(shift_id) if shift_id else None,
     )
     if result is None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La factura no tiene un reverso contable válido")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No se pudo emitir el documento compensatorio: la factura no tiene un reverso contable "
+                "válido. Verificá que esté anulada o reembolsada y que haya un turno de caja activo, "
+                "e intentá de nuevo."
+            ),
+        )
     invoice = get_invoice(invoice_id)
     if invoice is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la factura. Verificá el identificador de la factura e intentá de nuevo.",
+        )
     invoice = to_json_safe(invoice)
     register_action(
         prop_id=invoice.get("prop_id") or 0,
@@ -793,7 +907,13 @@ def cancel_invoice_api(
         shift_attribution=get_shift_attribution(cancel_shift_id) if cancel_shift_id else None,
     )
     if result is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo cancelar la factura")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "No se pudo cancelar la factura. Verificá que esté pendiente de pago y sin pagos "
+                "confirmados, e intentá de nuevo."
+            ),
+        )
     diff = {
         "status": {"old": before_raw.get("status") if before_raw else None, "new": "cancelled"},
         "cancel_reason": {"old": before_raw.get("cancel_reason") if before_raw else None, "new": cancel_reason},
@@ -828,7 +948,13 @@ def pay_invoice_api(
     inv = _scoped_invoice(invoice_id, prop_id)
 
     if inv.get("status") != "issued":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La factura no está pendiente de pago")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La factura no está pendiente de pago. Solo se pueden pagar facturas emitidas sin pagos "
+                "confirmados; verificá el estado de la factura e intentá de nuevo."
+            ),
+        )
 
     # Staff invoice payment is a money operation: attribute it to the shift.
     shift_id = _require_active_shift_for_money(int((inv.get("prop_id") or 0)))
@@ -845,7 +971,13 @@ def pay_invoice_api(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "No se pudo procesar el pago. Verificá el importe, el método de pago y que haya un "
+                "turno de caja activo, e intentá de nuevo."
+            ),
+        )
     result = to_json_safe(result)
 
     after = get_invoice(invoice_id)
@@ -948,7 +1080,10 @@ def create_payment_api(
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se encontró la reserva indicada (booking_id inválido). Verifica el ID de la reserva.",
+            detail=(
+                "No se encontró la reserva indicada (booking_id inválido). Verificá el número de reserva "
+                "e intentá de nuevo."
+            ),
         )
     # JSON-safe wrap (ObjectId → str, datetime → isoformat): same rationale as
     # list/get routes. PaymentResponse declares created_at/paid_at as strings.
@@ -1018,7 +1153,13 @@ def classify_failed_payment_informational_api(
         changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
     )
     if result is None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El pago no es un intento fallido sin factura")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No se pudo clasificar el pago como informativo: solo los intentos fallidos sin factura "
+                "pueden marcarse así. Verificá el estado del pago e intentá de nuevo."
+            ),
+        )
     result = to_json_safe(result)
     register_action(
         prop_id=result.get("prop_id") or 0,
@@ -1058,7 +1199,10 @@ def link_payment_shift_api(
     _scoped_payment(payment_id, prop_id)
     shift_id = (payload or {}).get("shift_id")
     if not shift_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Se requiere shift_id")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="shift_id es obligatorio: indicá el turno de caja e intentá de nuevo.",
+        )
     try:
         result = link_payment_to_shift(
             payment_id,
@@ -1070,14 +1214,20 @@ def link_payment_shift_api(
         if code == "payment_already_linked":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="El pago ya está vinculado a un turno",
+                detail="El pago ya está vinculado a un turno: no hace falta volver a vincularlo.",
             ) from exc
         if code == "shift_prop_mismatch":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El turno pertenece a otro hotel",
+                detail=(
+                    "El turno pertenece a otro hotel. Elegí un turno abierto del hotel del pago e intentá "
+                    "de nuevo."
+                ),
             ) from exc
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago o turno no encontrado") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró el pago o el turno. Verificá los identificadores e intentá de nuevo.",
+        ) from exc
     result = to_json_safe(result)
     register_action(
         prop_id=int(result.get("prop_id") or 0),
@@ -1139,7 +1289,13 @@ def refund_payment_api(
         shift_id=shift_id,
     )
     if result is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo reembolsar el pago")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "No se pudo reembolsar el pago. Verificá que el pago esté confirmado y que haya un turno "
+                "de caja activo, e intentá de nuevo."
+            ),
+        )
     result = to_json_safe(result)
     diff = {
         "status": {"old": before.get("status") if before else None, "new": "refunded"},
@@ -1305,7 +1461,10 @@ def get_folio_api(
     if result is not None:
         result = to_json_safe(result)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado para esta reserva")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró un folio para esta reserva. Verificá el número de reserva e intentá de nuevo.",
+        )
     register_action(
         prop_id=(result.get("prop_id") or 0),
         entity_type="billing_folio",
@@ -1368,7 +1527,10 @@ def post_to_folio_api(
         shift_attribution=shift_attribution,
     )
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró el folio. Verificá el número de reserva e intentá de nuevo.",
+        )
     # Belt-and-suspenders (same rationale as close_folio_api): post_to_folio
     # returns the raw Mongo doc; _enrich_folio ISO-formats the top-level
     # timestamps but nested postings still carry raw datetimes/ObjectIds.
@@ -1400,7 +1562,13 @@ def reopen_folio_api(
         changed_by=str(current_user.get("_id", current_user.get("username", "system"))),
     )
     if result is None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El folio no tiene un saldo positivo cobrable o no existe")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "El folio no tiene un saldo positivo cobrable o no existe. Verificá que el folio esté "
+                "cerrado con saldo pendiente e intentá de nuevo."
+            ),
+        )
     result = to_json_safe(result)
     register_action(
         prop_id=(result.get("prop_id") or 0),
@@ -1418,11 +1586,35 @@ def reopen_folio_api(
 def settle_folio_api(
     booking_id: str,
     payload: FolioSettlementRequest = Body(...),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(
+        require_any_permission("billing.manage", FOLIO_ADJUST_APPROVAL_PERMISSION)
+    ),
 ):
     """Resolve a folio balance with a payment or an approved exception."""
+    settlement_type = payload.settlement_type.strip().lower()
+    if settlement_type in {"write_off", "external_settlement"}:
+        if not require_supervisor_authorization(
+            get_database(),
+            current_user,
+            permission_code=FOLIO_ADJUST_APPROVAL_PERMISSION,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Permiso requerido: {FOLIO_ADJUST_APPROVAL_PERMISSION}. "
+                    "Solo un supervisor puede aprobar un write-off o una liquidación externa."
+                ),
+            )
+    elif settlement_type == "payment" and not user_has_permission(
+        get_database(), current_user, "billing.manage"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permiso requerido: billing.manage",
+        )
+
     settlement_shift_id: str | None = None
-    if payload.settlement_type.strip().lower() == "payment":
+    if settlement_type == "payment":
         db = get_database()
         booking = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1, "shift_id": 1})
         prop_id = int((booking or {}).get("prop_id", 0) or 0)
@@ -1437,7 +1629,10 @@ def settle_folio_api(
             if not is_historical_cash_shift_eligible(historical_shift or {}, booking_id):
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="El pago histórico requiere el turno reconstruido del checkout.",
+                    detail=(
+                        "El pago histórico requiere el turno reconstruido del checkout. Reconstruí el "
+                        "turno del checkout o contactá a un supervisor e intentá de nuevo."
+                    ),
                 )
             settlement_shift_id = str(historical_shift["_id"])
         else:
@@ -1455,7 +1650,13 @@ def settle_folio_api(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El folio no está abierto con saldo cobrable")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "El folio no está abierto con saldo cobrable. Verificá que el folio esté abierto y tenga "
+                "saldo pendiente, e intentá de nuevo."
+            ),
+        )
     result = to_json_safe(result)
     register_action(
         prop_id=(result.get("prop_id") or 0),
@@ -1482,12 +1683,35 @@ def settle_folio_api(
 def close_folio_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(
+        require_any_permission("billing.manage", FOLIO_ADJUST_APPROVAL_PERMISSION)
+    ),
 ):
     """Close a folio at check-out."""
     before = get_folio(booking_id)
     invoice_id = payload.get("invoice_id")
     close_reason = payload.get("close_reason")
+    # Cerrar un folio CON SALDO mediante una excepción (write-off, cortesía o
+    # settlement externo) es un ajuste financiero: la recepción tiene
+    # ``billing.manage`` pero NO puede condonar saldos sin aprobación de
+    # supervisor (mismo patrón del gate gerencial unificado, allow-list
+    # ``SUPERVISOR_AUTHORIZATION_ROLES``).
+    exception_reasons = {"approved_write_off", "complimentary_stay", "approved_external_settlement"}
+    reason_code = str(close_reason or "").strip().split(":", 1)[0].strip().lower()
+    if reason_code in exception_reasons and not require_supervisor_authorization(
+        get_database(),
+        current_user,
+        permission_code=FOLIO_ADJUST_APPROVAL_PERMISSION,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Permiso requerido: {FOLIO_ADJUST_APPROVAL_PERMISSION}. "
+                "Solo un supervisor (gerente de hotel, admin de sistema o super_admin) "
+                "puede cerrar un folio con saldo mediante write-off, cortesía o settlement externo: "
+                "pedile a un supervisor que autorice el cierre."
+            ),
+        )
     result = close_folio(
         booking_id,
         invoice_id=invoice_id,
@@ -1497,7 +1721,11 @@ def close_folio_api(
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No se puede cerrar un folio con saldo sin close_reason aprobado",
+            detail=(
+                "No se puede cerrar un folio con saldo sin un close_reason de excepción aprobado. "
+                "Registrá el pago del saldo o, si aplica un write-off / cortesía / settlement externo, "
+                "pedile a un supervisor que autorice el cierre."
+            ),
         )
     # Belt-and-suspenders: defensive JSON-safe wrap (ObjectId → str, datetime →
     # ISO) before the wire model — close_folio returns the raw Mongo doc whose
@@ -1579,7 +1807,10 @@ def my_invoice_pay_api(
 
     inv = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
     if not inv:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la factura. Verificá el identificador de la factura e intentá de nuevo.",
+        )
 
     # Verify the invoice belongs to a booking owned by this user. The
     # ownership check joins by the BUSINESS ``booking_id`` (``BK-…``, fecha +
@@ -1592,10 +1823,22 @@ def my_invoice_pay_api(
         user_id = ObjectId(user_id)
     booking = db.booking_orders.find_one({"booking_id": inv["booking_id"], "user_id": user_id})
     if not booking:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Esta factura no pertenece al usuario actual")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Esta factura no pertenece al usuario actual. Verificá que estés iniciando sesión con "
+                "la cuenta que hizo la reserva e intentá de nuevo."
+            ),
+        )
 
     if inv.get("status") != "issued":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La factura no está pendiente de pago")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La factura no está pendiente de pago. Solo se pueden pagar facturas emitidas sin pagos "
+                "confirmados; verificá el estado de la factura e intentá de nuevo."
+            ),
+        )
 
     before = get_invoice(invoice_id)
     # Create the payment
@@ -1610,7 +1853,13 @@ def my_invoice_pay_api(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "No se pudo procesar el pago. Verificá el importe, el método de pago y que haya un "
+                "turno de caja activo, e intentá de nuevo."
+            ),
+        )
     result = to_json_safe(result)
 
     after = get_invoice(invoice_id)

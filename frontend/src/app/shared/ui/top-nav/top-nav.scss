@@ -22,6 +22,22 @@
   transition: transform 60ms linear, opacity 60ms linear;
 }
 
+/* El nav del huésped ocupa todo el ancho del shell, pero conserva la silueta
+   redondeada y el fondo separado del contenido. */
+.top-nav--guest {
+  width: calc(100% + 2rem);
+  margin-left: -1rem;
+  margin-right: -1rem;
+  border-radius: 18px;
+}
+
+/* Ajuste visual fino para alinear la línea inferior con el nav superior.
+   Usa la propiedad translate para no interferir con el transform inline que
+   oculta el nav al hacer scroll. */
+.top-nav--guest-lowered {
+  translate: 0 3px;
+}
+
 .nav-leading,
 .primary-nav,
 .nav-actions {
@@ -48,6 +64,11 @@
   display: block;
   object-fit: contain;
   filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--accent) 10%, transparent));
+}
+
+.brand-logo--guest {
+  width: 88px;
+  max-width: min(20vw, 88px);
 }
 
 .back-btn {
@@ -376,6 +397,21 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-item-chevron-sm {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  color: var(--accent);
+  opacity: 0.85;
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 1.05rem;
+  }
 }
 
 .notif-item-title-sm {
@@ -414,10 +450,25 @@
 }
 
 
+/* La envolvente pública/account tiene 0.75rem de padding en tablet y móvil. */
+@media (max-width: 900px) {
+  .top-nav.top-nav--guest {
+    width: calc(100% + 1.5rem);
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+  }
+}
+
 /* Responsive */
 @media (max-width: 1040px) {
   .top-nav {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nav-leading,
+  .primary-nav,
+  .nav-actions {
+    min-width: 0;
   }
 
   .nav-leading,
@@ -441,6 +492,48 @@
   .brand-logo {
     width: 96px;
     max-width: 34vw;
+  }
+
+  .top-nav.top-nav--guest {
+    width: calc(100% + 1.5rem);
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+  }
+
+  .top-nav--guest .nav-actions {
+    gap: 0.35rem;
+  }
+
+  /* El estado CRUD no aporta información al huésped y ocupa espacio crítico
+     en la fila de acciones estrecha. */
+  .top-nav--guest app-operation-mode-indicator {
+    display: none;
+  }
+
+  .top-nav--guest .nav-link {
+    gap: 0.35rem;
+    padding: 0.35rem 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .top-nav--guest .nav-link .nav-icon {
+    font-size: 1.05rem;
+  }
+
+  .top-nav--guest .session-info {
+    min-width: 0;
+  }
+
+  .top-nav--guest .session-name,
+  .top-nav--guest .session-role {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .brand-logo.brand-logo--guest {
+    width: 104px;
+    max-width: 38vw;
   }
 
   .dropdown {

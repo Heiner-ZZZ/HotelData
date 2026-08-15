@@ -219,7 +219,14 @@ booking_sm = StateMachine(
 )
 
 # Stay-status sub-machine (orthogonal to booking.status)
-#   pending (not checked in) → checked_in → checked_out → (done)
+#   pending ──► checked_in ──► checked_out (terminal)
+#      │
+#      └──► no_show ──► pending   # reapertura gerencial (no-show reabrible)
+#
+# Desde la feature de reapertura de no-show, ``no_show`` ya NO es terminal:
+# la reapertura (``check-ins.no_show_reopen``, gerente) devuelve la reserva a
+# ``pending`` para que recepción haga el check-in normal. Es la única salida
+# del no-show; el guard del servicio (no_show.py) delega en esta máquina.
 
 STAY_STATES: dict[str, str] = {
     "pending": "Sin Registrar",
@@ -232,7 +239,10 @@ STAY_TRANSITIONS: dict[str, list[str]] = {
     "pending": ["checked_in", "no_show"],
     "checked_in": ["checked_out"],
     "checked_out": [],
-    "no_show": [],
+    # Reapertura gerencial: el huésped llegó después de que el no-show fue
+    # cerrado (política de llegadas). La única salida de no_show, autorizada
+    # exclusivamente con el permiso ``check-ins.no_show_reopen`` (gerente).
+    "no_show": ["pending"],
 }
 
 STAY_COLORS: dict[str, str] = {

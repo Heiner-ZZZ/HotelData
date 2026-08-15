@@ -15,6 +15,10 @@
 .management-scroll {
   flex: 1;
   overflow-y: auto;
+  /* Gutter estable: el scrollbar nunca cambia el ancho del contenido al
+     navegar entre rutas (páginas largas vs cortas), evitando que los
+     sub-navs horizontales y el layout salten de lado. */
+  scrollbar-gutter: stable;
 }
 
 .management-content {

@@ -8,9 +8,10 @@ Resumen: 17 entidades con estado, 6 en el StateMachine, 11 fuera
 │ 1   │ Reserva  │ booking_or │ statu │ pending → confirmed → checked_in → │ 6 estados, 6   │
 │     │ (Booking │ ders       │ s     │ checked_out / rejected / cancelled │ transiciones   │
 │     │ )        │            │       │                                    │                │
-│ 2   │ Estancia │ booking_or │ stay_ │ pending → checked_in → checked_out │ 4 estados, 3   │
-│     │ (Stay)   │ ders       │ statu │ / no_show                          │ transiciones   │
-│     │          │            │ s     │                                    │                │
+│ 2   │ Estancia │ booking_or │ stay_ │ pending → checked_in → checked_out │ 4 estados, 4   │
+│     │ (Stay)   │ ders       │ statu │ / no_show → pending (reapertura    │ transiciones   │
+│     │          │            │ s     │ gerencial con check-ins.no_show_  │                │
+│     │          │            │       │ reopen)                            │                │
 │ 3   │ Habitaci │ room_statu │ statu │ Ciclo completo housekeeping (10    │ 10 estados,    │
 │     │ ón       │ s_log      │ s     │ estados)                           │ ~20            │
 │     │ (Room)   │            │       │                                    │ transiciones   │
@@ -71,6 +72,7 @@ flowchart TB
         stay_pending["pending"] --> checked_in
         stay_pending --> no_show
         checked_in --> checked_out
+        no_show -- "reapertura gerencial (check-ins.no_show_reopen)" --> stay_pending
     end
  
     subgraph "Room (room_status_log.status)"

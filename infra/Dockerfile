@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 COPY server/requirements.txt /app/requirements.txt
+COPY server/pyproject.toml /app/pyproject.toml
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

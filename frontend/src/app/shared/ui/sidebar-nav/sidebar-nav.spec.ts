@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, NavigationEnd, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, Subject } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
@@ -131,5 +131,106 @@ describe('SidebarNavComponent (auto-expand del árbol)', () => {
     const value = header?.getAttribute('aria-expanded');
     expect(['true', 'false']).toContain(value);
     expect(value).not.toBe('isOpen(root.slug)');
+  });
+});
+
+describe('SidebarNavComponent (estado activo en las páginas de facturación)', () => {
+  // Árbol de Facturación tal cual lo arma el backend: el container
+  // ``gestion.billing.informes`` es un grupo horizontal cuyo link apunta al
+  // primer hijo (Dashboard) y sus hijos Dashboard Pagos NO se renderizan
+  // como links separados en el sidebar.
+  const NAV_ITEMS = [
+    { slug: 'gestion', parentSlug: null, position: 10, nodeType: 'container', label: 'Gestión', href: null, icon: 'dashboard', visible: true, permissionId: null, permissionCode: null, horizontalMenu: false },
+    { slug: 'gestion.billing', parentSlug: 'gestion', position: 10, nodeType: 'container', label: 'Facturación', href: '/management/billing', icon: 'receipt', visible: true, permissionId: null, permissionCode: null, horizontalMenu: false },
+    { slug: 'gestion.billing.informes', parentSlug: 'gestion.billing', position: 10, nodeType: 'container', label: 'Informes', href: null, icon: 'monitoring', visible: true, permissionId: null, permissionCode: null, horizontalMenu: true },
+    { slug: 'gestion.billing.informes.facturas', parentSlug: 'gestion.billing.informes', position: 10, nodeType: 'leaf', label: 'Dashboard', href: '/management/billing/dashboard', icon: 'monitoring', visible: true, permissionId: null, permissionCode: null, horizontalMenu: false },
+    { slug: 'gestion.billing.informes.pagos', parentSlug: 'gestion.billing.informes', position: 20, nodeType: 'leaf', label: 'Dashboard Pagos', href: '/management/billing/payments-dashboard', icon: 'payments', visible: true, permissionId: null, permissionCode: null, horizontalMenu: false },
+    { slug: 'gestion.billing.pagos', parentSlug: 'gestion.billing', position: 20, nodeType: 'leaf', label: 'Pagos', href: '/management/billing/payments', icon: 'payments', visible: true, permissionId: null, permissionCode: null, horizontalMenu: false },
+  ];
+
+  // Router real (como en producción): routerLinkActive necesita comparar la
+  // URL navegada con los links del árbol, no basta el mock de `setup()`.
+  function setupWithRealRouter() {
+    const auth = {
+      ensureSessionLoaded: jest.fn(() => of({})),
+      currentUser: signal(null),
+      hasPermission: jest.fn(() => true),
+    } as unknown as AuthService;
+    const propCtx = {
+      currentPropId: jest.fn(() => 1),
+    } as unknown as PropertyContextService;
+
+    TestBed.configureTestingModule({
+      imports: [SidebarNavComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([
+          { path: 'management/billing/payments', component: SidebarNavComponent },
+          { path: 'management/billing/dashboard', component: SidebarNavComponent },
+          { path: 'management/billing/payments-dashboard', component: SidebarNavComponent },
+        ]),
+        { provide: AuthService, useValue: auth },
+        { provide: PropertyContextService, useValue: propCtx },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(SidebarNavComponent);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    return { fixture, http };
+  }
+
+  async function loadNav(http: HttpTestingController, fixture: { detectChanges(): void }) {
+    http.expectOne('/api/admin/navigation').flush({ items: NAV_ITEMS });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+  }
+
+  function linkState(el: HTMLElement, label: string): { active: boolean; cls: string } | null {
+    const link = [...el.querySelectorAll('a')].find((a) => a.textContent?.trim().includes(label));
+    if (!link) return null;
+    return { active: link.classList.contains('is-active'), cls: link.className };
+  }
+
+  it('marca activo el leaf Pagos en su página aunque la URL lleve query params (prop_id/prop_label)', async () => {
+    const { fixture, http } = setupWithRealRouter();
+    await loadNav(http, fixture);
+    const router = TestBed.inject(Router);
+
+    await router.navigateByUrl('/management/billing/payments?prop_id=1&prop_label=Hotel%20Lima%20Centro');
+    fixture.detectChanges();
+
+    const state = linkState(fixture.nativeElement as HTMLElement, 'Pagos');
+    expect(state?.active).toBe(true);
+  });
+
+  it('marca activo el grupo horizontal Informes en el segundo hijo (payments-dashboard) y NO el leaf Pagos', async () => {
+    const { fixture, http } = setupWithRealRouter();
+    await loadNav(http, fixture);
+    const router = TestBed.inject(Router);
+
+    // El link del grupo apunta al PRIMER hijo (dashboard), pero debe
+    // resaltarse también en Dashboard Pagos. "payments" es prefijo de
+    // "payments-dashboard" como cadena, no como segmento: el leaf Pagos NO
+    // debe marcarse aquí (guard contra over-matching).
+    await router.navigateByUrl('/management/billing/payments-dashboard?prop_id=1');
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(linkState(el, 'Informes')?.active).toBe(true);
+    expect(linkState(el, 'Pagos')?.active).toBe(false);
+  });
+
+  it('marca activo el grupo horizontal Informes en el primer hijo (dashboard)', async () => {
+    const { fixture, http } = setupWithRealRouter();
+    await loadNav(http, fixture);
+    const router = TestBed.inject(Router);
+
+    await router.navigateByUrl('/management/billing/dashboard?prop_id=1');
+    fixture.detectChanges();
+
+    const state = linkState(fixture.nativeElement as HTMLElement, 'Informes');
+    expect(state?.active).toBe(true);
   });
 });

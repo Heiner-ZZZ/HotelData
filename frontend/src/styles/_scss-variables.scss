@@ -94,6 +94,20 @@
   --gray-800: #1f2937;             /* Headings principales, texto fuerte */
   --gray-900: #111827;             /* Texto máximo contraste, títulos de página */
 
+  /* ═══ SCROLLBAR — píldora verde de marca (global, ver _scss-scrollbar.scss) ═══
+     - size: ancho/altura de la barra (webkit).
+     - track: carril sutil, un paso sobre el fondo de la app.
+     - thumb: píldora verde con anillo integrador (borde del color del track).
+       Mismo verde de marca que --accent para que la app se sienta coherente.
+     - hover/active: profundidad al pasar el mouse o arrastrar.
+     - corner: esquina donde se cruzan las barras V+H (sin hueco blanco). */
+  --scrollbar-size: 10px;
+  --scrollbar-track: #e8eef4;
+  --scrollbar-thumb: var(--accent);
+  --scrollbar-thumb-hover: var(--accent-hover);
+  --scrollbar-thumb-active: var(--accent-strong);
+  --scrollbar-corner: var(--scrollbar-track);
+
   /* ═══ SHADOWS ═══ */
   --shadow-sm: 0 8px 24px rgba(15, 23, 42, 0.06);  /* Cards, dropdowns */
   --shadow-md: 0 18px 42px rgba(15, 23, 42, 0.08); /* Modales, dialogs */
@@ -208,6 +222,16 @@
   --gray-700: #c9d1d9;
   --gray-800: #e6edf3;
   --gray-900: #f0f6fc;
+
+  /* ── Scrollbar — píldora verde de marca (dark) ──
+     Track un paso sobre el fondo oscuro; thumb verde brillante para
+     contraste sobre paneles oscuros (misma familia que --accent dark). */
+  --scrollbar-size: 10px;
+  --scrollbar-track: #1c2333;
+  --scrollbar-thumb: var(--accent);
+  --scrollbar-thumb-hover: var(--accent-hover);
+  --scrollbar-thumb-active: var(--accent-active);
+  --scrollbar-corner: var(--scrollbar-track);
 
   /* ── Shadows ── */
   --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.24);   /* Sombras más intensas en dark */

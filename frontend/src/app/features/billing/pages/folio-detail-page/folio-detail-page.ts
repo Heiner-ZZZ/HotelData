@@ -9,7 +9,10 @@ import { distinctUntilChanged, map } from 'rxjs';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import { FolioApiService, getFolioCloseState, mapFolio, type FolioCategory, type FolioViewModel, type FolioPosting, type FolioDto, type FolioSettlementType } from '../../services/folio-api.service';
+import type { ApiError } from '../../../../core/api/api-error.model';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { BILLING_WRITE_OFF_APPROVE } from '../../../../core/auth/permission.constants';
+import { FolioApiService, getFolioCloseState, getFolioReconciliationNote, mapFolio, type FolioCategory, type FolioViewModel, type FolioPosting, type FolioDto, type FolioSettlementType } from '../../services/folio-api.service';
 
 @Component({
   selector: 'app-folio-detail-page',
@@ -22,6 +25,14 @@ export class FolioDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+
+  /**
+   * Autorización de supervisor para cierres de excepción (write-off / cortesía /
+   * settlement externo). Lee el permiso del catálogo vía /auth/me — nunca roles
+   * hardcodeados — igual que el gate del backend (billing.write_off.approve).
+   */
+  readonly canApproveWriteOff = computed(() => this.auth.hasPermission(BILLING_WRITE_OFF_APPROVE));
 
   private readonly bookingId = toSignal(
     this.activatedRoute.paramMap.pipe(
@@ -51,6 +62,7 @@ export class FolioDetailPageComponent {
   readonly actionMessage = signal<string | null>(null);
   readonly postingMode = signal<'idle' | 'charge' | 'discount'>('idle');
   readonly postingBusy = signal(false);
+  readonly complementing = signal(false);
   readonly settlementMode = signal<'idle' | FolioSettlementType>('idle');
   readonly settlementForm = signal({
     amount: 0,
@@ -77,6 +89,9 @@ export class FolioDetailPageComponent {
     return f?.status === 'closed' && f.totalDue > 0.005;
   });
   readonly postingCount = computed(() => this.folio()?.postingCount ?? 0);
+  /** Reconciliation note shared with check-out: active folio charges beyond
+   * the subtotal covered by the main + complementary invoices. */
+  readonly reconcileNote = computed(() => getFolioReconciliationNote(this.folio()));
 
   /** Status label: Activo / Vencido / Cerrado s/factura / Facturado */
   readonly statusLabel = computed(() => {
@@ -108,14 +123,18 @@ export class FolioDetailPageComponent {
     return 'closed';
   });
 
-  // Group postings by category for display
+  // Group postings by category for display.
+  // El key es el id canónico del catálogo cuando el posting lo trae (postings
+  // automáticos estandarizados); para postings legados que solo guardan el
+  // label (o el id en ``category``, quirk histórico de los manuales), el key
+  // es ese string — categoryIcon/categoryLabel resuelven por ambos caminos.
   readonly postingsByCategory = computed(() => {
     const p = this.folio()?.postings ?? [];
     const groups = new Map<string, FolioPosting[]>();
     // Order: room first, then charges, then discounts, then payments
     const typeOrder: Record<string, number> = { room: 0, charge: 1, charge_reversal: 2, refund: 3, discount: 4, payment: 5, adjustment: 6 };
     for (const posting of p) {
-      const key = posting.category || 'Otros';
+      const key = posting.categoryId ?? (posting.category || 'otros');
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(posting);
     }
@@ -127,24 +146,42 @@ export class FolioDetailPageComponent {
     });
   });
 
-  categoryIcon(catId: string): string {
-    const map: Record<string, string> = {
-      habitacion: 'bed',
-      restaurante: 'restaurant',
-      bar: 'local_bar',
-      room_service: 'room_service',
-      minibar: 'kitchen',
-      spa: 'spa',
-      lavanderia: 'local_laundry_service',
-      parking: 'local_parking',
-      mascotas: 'pets',
-      llamadas: 'phone',
-      danos: 'warning',
-      late_checkout: 'schedule',
-      descuento: 'sell',
-      otros: 'more_horiz',
-    };
-    return map[catId] ?? 'receipt_long';
+  /** Índices derivados del catálogo servido por el backend. */
+  private readonly categoryById = computed(() =>
+    new Map(this.categories().map((category) => [category.id, category])),
+  );
+  private readonly categoryByLabel = computed(() =>
+    new Map(this.categories().map((category) => [this.normalizeCategoryLabel(category.label), category])),
+  );
+  /** Legacy labels are aliases only; displayed metadata still comes from the API catalog. */
+  private readonly legacyCategoryAliases: Record<string, string> = {
+    penalizacion: 'no_show',
+  };
+
+  /**
+   * Normaliza únicamente para encontrar postings legacy por su label. El label y
+   * el icono mostrados siempre provienen de la entrada remota del catálogo.
+   */
+  private normalizeCategoryLabel(value: string): string {
+    return value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
+  private resolveCategory(value: string): FolioCategory | undefined {
+    const normalized = this.normalizeCategoryLabel(value);
+    const aliasedId = this.legacyCategoryAliases[normalized];
+    return this.categoryById().get(value)
+      ?? this.categoryByLabel().get(normalized)
+      ?? (aliasedId ? this.categoryById().get(aliasedId) : undefined);
+  }
+
+  /** Icono por id canónico o label legacy, resuelto desde el catálogo remoto. */
+  categoryIcon(categoryKey: string): string {
+    return this.resolveCategory(categoryKey)?.icon ?? 'receipt_long';
+  }
+
+  /** Label por id canónico o label legacy, resuelto desde el catálogo remoto. */
+  categoryLabel(categoryKey: string): string {
+    return this.resolveCategory(categoryKey)?.label ?? categoryKey;
   }
 
   postingIcon(type: string): string {
@@ -198,9 +235,42 @@ export class FolioDetailPageComponent {
     this.postingMode.set('idle');
   }
 
+  /** Emit the complementary invoice directly from Billing for the current gap. */
+  emitComplementInvoice(): void {
+    const folio = this.folio();
+    const note = this.reconcileNote();
+    if (!folio || !note || this.complementing()) return;
+
+    this.complementing.set(true);
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+    this.folioApi.emitComplementInvoice(folio.bookingId, folio.propId).subscribe({
+      next: (invoice) => {
+        this.folioResource.reload();
+        this.actionMessage.set(`Factura complementaria ${invoice.invoice_number} emitida para cubrir el gap sin facturar.`);
+        this.complementing.set(false);
+      },
+      error: (err: ApiError) => {
+        this.actionError.set(
+          err?.message ||
+          'No se pudo emitir la factura complementaria. Verificá que haya cargos nuevos sin facturar y un turno de caja activo, e intentá de nuevo.',
+        );
+        this.complementing.set(false);
+      },
+    });
+  }
+
   startSettlement(mode: FolioSettlementType): void {
     const folio = this.folio();
     if (!folio || folio.totalDue <= 0.005) return;
+    // Los cierres de excepción exigen aprobación de supervisor (mismo gate del backend).
+    if (mode !== 'payment' && !this.canApproveWriteOff()) {
+      this.actionError.set(
+        'El cierre por excepción (write-off / cortesía / settlement externo) requiere aprobación del gerente. ' +
+        'Registrá el pago del saldo o derivá el folio al gerente para que lo autorice.',
+      );
+      return;
+    }
     this.settlementMode.set(mode);
     this.actionError.set(null);
     this.actionMessage.set(null);
@@ -224,15 +294,18 @@ export class FolioDetailPageComponent {
     const form = this.settlementForm();
     if (!folio || mode === 'idle') return;
     if (mode === 'payment' && (!form.method || form.amount <= 0 || form.amount > folio.totalDue + 0.005)) {
-      this.actionError.set('El pago debe ser positivo y no exceder el saldo pendiente.');
+      this.actionError.set(
+        'El pago debe ser positivo y no exceder el saldo pendiente. ' +
+        `Ingresá un monto entre $0.01 y $${folio.totalDue.toFixed(2)}.`,
+      );
       return;
     }
     if (mode !== 'payment' && (!form.reason.trim() || !form.approvalReference.trim())) {
-      this.actionError.set('La razón y la referencia de aprobación son obligatorias.');
+      this.actionError.set('La razón y la referencia de aprobación son obligatorias: escribí ambas antes de confirmar la liquidación.');
       return;
     }
     if (mode === 'external_settlement' && !form.externalReference.trim()) {
-      this.actionError.set('La referencia externa es obligatoria.');
+      this.actionError.set('La referencia externa es obligatoria: documentá el identificador del convenio antes de confirmar.');
       return;
     }
 
@@ -259,7 +332,7 @@ export class FolioDetailPageComponent {
         this.postingBusy.set(false);
       },
       error: () => {
-        this.actionError.set('No se pudo registrar la liquidación. El saldo no se cerró ambiguamente.');
+        this.actionError.set('No se pudo registrar la liquidación. Verificá el monto y el método de pago, e intentá de nuevo.');
         this.postingBusy.set(false);
       },
     });
@@ -268,7 +341,7 @@ export class FolioDetailPageComponent {
   submitPosting(): void {
     const form = this.postForm();
     if (!form.concept || form.amount <= 0) {
-      this.actionError.set('El concepto y el monto son obligatorios.');
+      this.actionError.set('El concepto y el monto son obligatorios. Completá ambos campos para registrar la operación.');
       return;
     }
 
@@ -291,7 +364,7 @@ export class FolioDetailPageComponent {
         this.postingBusy.set(false);
       },
       error: () => {
-        this.actionError.set('No se pudo registrar la operación en el folio.');
+        this.actionError.set('No se pudo registrar la operación en el folio. Verificá que haya un turno de caja activo y que el folio esté abierto, e intentá de nuevo.');
         this.postingBusy.set(false);
       },
     });
@@ -310,7 +383,7 @@ export class FolioDetailPageComponent {
         this.postingBusy.set(false);
       },
       error: () => {
-        this.actionError.set('No se pudo reabrir el folio.');
+        this.actionError.set('No se pudo reabrir el folio. Verificá que el folio esté cerrado con saldo pendiente cobrable e intentá de nuevo.');
         this.postingBusy.set(false);
       },
     });
@@ -320,7 +393,10 @@ export class FolioDetailPageComponent {
     const folio = this.folio();
     if (!folio?.bookingId) return;
     if (getFolioCloseState(folio) !== 'ready') {
-      this.actionError.set('No se puede cerrar el folio mientras tenga saldo pendiente.');
+      this.actionError.set(
+        'No se puede cerrar el folio mientras tenga saldo pendiente: ' +
+        'registrá el pago del saldo o resolvelo con un write-off / liquidación externa aprobado antes de cerrar.',
+      );
       return;
     }
     this.actionError.set(null);
@@ -333,8 +409,11 @@ export class FolioDetailPageComponent {
         this.actionMessage.set('Folio cerrado correctamente.');
         this.postingBusy.set(false);
       },
-      error: () => {
-        this.actionError.set('No se pudo cerrar el folio.');
+      error: (err: ApiError) => {
+        this.actionError.set(
+          err?.message ||
+          'No se pudo cerrar el folio: registrá el saldo pendiente o pedile a un supervisor que autorice un cierre de excepción (write-off / cortesía / settlement externo).',
+        );
         this.postingBusy.set(false);
       },
     });

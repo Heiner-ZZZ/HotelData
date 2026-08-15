@@ -15,7 +15,6 @@ from src.app.email.templates import (
     status_badge,
 )
 
-
 # ═══════════════════════════════════════════════════════════════════════
 # Public template functions
 # ═══════════════════════════════════════════════════════════════════════
@@ -212,5 +211,51 @@ def guest_invoice_html(
         footer_note=(
             "Este es un mensaje automatico de HotelData.<br>"
             "Puedes descargar tu factura desde tu panel de huesped."
+        ),
+    )
+
+
+def guest_late_arrival_html(
+    hotel_label: str,
+    booking_id: str,
+    guest_name: str,
+    check_in_date: str,
+    check_out_date: str,
+    nights_label: str,
+    eta_line: str,
+    detail_url: str,
+) -> str:
+    """Email HTML notifying a guest that reception registered their late arrival."""
+    rows = detail_table(
+        "Resumen de tu reserva",
+        detail_row("ID", f'<span style="font-family:monospace">{booking_id}</span>')
+        + detail_row("Hotel", hotel_label)
+        + detail_row("Check-in", check_in_date)
+        + detail_row("Check-out", check_out_date)
+        + detail_row("Estancia", nights_label)
+        + detail_row(
+            "Estado",
+            status_badge("LLEGADA TARDIA", bg_color="#fef9c3", text_color="#854d0e"),
+        ),
+    )
+
+    body = (
+        f'<p style="margin:0 0 12px;font-size:14px;color:#3f484c">'
+        f'Hola <strong>{guest_name}</strong>,</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  El hotel ha registrado tu <strong>llegada tardia</strong> para el check-in del '
+        f'<strong>{check_in_date}</strong>.{eta_line}\n'
+        f'  No necesitas hacer nada; tu reserva queda protegida y el check-in sigue disponible.\n'
+        f'</p>\n'
+        f'{rows}'
+        f'{cta_button(detail_url, "Ver mi reserva")}'
+    )
+
+    return base_layout(
+        "Llegada tardia registrada",
+        body,
+        footer_note=(
+            "Este es un mensaje automatico de HotelData.<br>"
+            "Puedes consultar tu reserva desde tu panel de huesped."
         ),
     )

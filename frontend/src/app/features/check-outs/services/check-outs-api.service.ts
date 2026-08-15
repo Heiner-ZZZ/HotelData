@@ -80,7 +80,7 @@ export class CheckOutsApiService {
   }
 
   completeCheckOutWithDetail(bookingId: string, payload: Partial<CheckOutDetailSavePayload> & { split_invoice?: boolean }) {
-    return this.http.post<{ booking_id: string; stay_status: string }>(
+    return this.http.post<{ booking_id: string; stay_status: string; check_out_mode?: string; late_checkout_fee?: number }>(
       `/management/check-outs/${bookingId}/complete`,
       payload,
     );
@@ -101,12 +101,23 @@ export class CheckOutsApiService {
       {},
     );
   }
+
+  /** Emit a complementary invoice for the un-invoiced gap (factura corta). */
+  emitComplementInvoice(bookingId: string, propId: number) {
+    return this.http.post<{ id: string; invoice_number: string; status: string; total: number }>(
+      '/billing/invoices/complement',
+      { booking_id: bookingId, prop_id: propId },
+    );
+  }
 }
 
 export interface CheckOutInvoiceDto {
   id: string;
   invoice_number: string;
   subtotal: number;
+  /** Subtotal facturado acumulado (principal + complementarias, no canceladas).
+   *  La nota de reconciliación compara el subtotal vivo contra este total. */
+  covered_subtotal?: number;
   room_subtotal: number;
   extras_total: number;
   taxes: number;
@@ -131,6 +142,8 @@ export interface CheckOutDetailDto {
   prop_id: number;
   hotel_label: string;
   folio: string | null;
+  no_show_penalty_amount?: number | null;
+  no_show_penalty_percent?: number | null;
   guest_name: string;
   guest_email: string;
   guest_phone: string;
@@ -176,6 +189,26 @@ export interface CheckOutDetailDto {
   check_out_date_actual: string | null;
   check_out_time_actual: string | null;
   check_out_by: string | null;
+  /** Late check-out window resolved by the server against hotel policy. */
+  late_checkout_context: {
+    enabled: boolean;
+    is_late: boolean;
+    minutes_after: number;
+    courtesy_minutes: number;
+    requires_approval: boolean;
+    check_out_time: string;
+    default_fee: number;
+    /** Hora real de la salida (reloj local del servidor) — campo legible para recepción. */
+    real_time: string;
+  } | null;
+  /** Governed late check-out mode persisted at completion. */
+  check_out_mode: string | null;
+  late_checkout_fee: number;
+  late_checkout_minutes: number;
+  late_checkout_approved_by: string | null;
+  late_checkout_reason: string;
+  /** Hora de política estampada al completar (fuente de verdad del detalle). */
+  late_checkout_policy_time: string | null;
   /** Cash shift that handled the check-out (FK to reception_shifts). */
   check_out_shift_id: string | null;
   /** Responsible cashier + shift label of the check-out, or null. */
@@ -199,4 +232,9 @@ export interface CheckOutDetailSavePayload {
   check_out_payment_ref?: string;
   check_out_observations?: string;
   split_invoice?: boolean;
+  /** Ventana gobernada de late check-out (modo, aprobación, motivo y cargo). */
+  late_checkout_mode?: 'late_courtesy' | 'late_approved' | '';
+  late_checkout_approved?: boolean;
+  late_checkout_reason?: string;
+  late_checkout_fee?: number;
 }

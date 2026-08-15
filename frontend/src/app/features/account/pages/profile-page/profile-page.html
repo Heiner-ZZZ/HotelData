@@ -8,6 +8,10 @@
 
     <app-pp-tab-bar [tabs]="tabs()" [activeTab]="activeTab()" (setTab)="handleSetTab($event)" />
 
+    @if (activeTab() === 'promotions') {
+      <!-- Promociones recibidas: lista read-only, fuera del form de perfil -->
+      <app-pp-promotions-tab />
+    } @else {
     <form class="profile-form" [formGroup]="form" appModeHighlight (ngSubmit)="save()">
       @if (activeTab() === 'personal') {
         <app-pp-avatar-section
@@ -43,7 +47,7 @@
       }
 
       @if (activeTab() === 'preferences') {
-        <app-pp-preferences-form [form]="form" />
+        <app-pp-preferences-form [form]="form" [isGuest]="isGuest()" />
       }
 
       <div class="form-footer">
@@ -67,6 +71,7 @@
         </button>
       </div>
     </form>
+    }
 
     <app-image-lightbox
       [imageUrl]="lightboxImageUrl()"

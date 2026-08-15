@@ -79,7 +79,8 @@ async def test_retired_coupons_do_not_validate_but_active_still_do(db):
 
     error, discount, coupon_id = validate_coupon_code(retired["coupon_code"], 1)
     assert error is not None
-    assert "no válido" in error.lower()
+    assert "no es válido" in error.lower()
+    assert "Revisá el código e intentá de nuevo" in error
     assert discount is None
     assert coupon_id is None
 

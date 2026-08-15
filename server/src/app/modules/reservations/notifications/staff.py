@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from config.settings import get_settings
 from src.app.email.service import send_email
 from src.app.security.role_helpers import build_role_query, get_role_name
 from src.database.connection import get_database
+
 from ..email_templates import staff_check_event_html, staff_new_booking_html
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ def _log_notification(
             "prop_id": prop_id,
             "status": status,
             "error_message": error_message,
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
         })
     except Exception:
         logger.exception("Failed to write notification_log for %s (%s)", notification_type, booking_id)

@@ -3,35 +3,49 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 
-from src.app.modules.reservations.service import (
-    list_check_ins, list_check_outs, list_check_in_dates,
-    list_check_out_dates, complete_check_in, complete_check_out,
-    get_check_in_detail, save_check_in_detail,
-    get_check_out_detail, save_check_out_detail,
-)
-from src.app.modules.reservations.service._checkinout import update_check_in_datetime
 from src.app.modules.partner.services.audit import (
     register_action,
     register_shift_attribution_access,
 )
-from src.app.security.dependencies import require_permission
 from src.app.modules.reception import (
     ShiftExpiredError,
     ensure_shift_not_expired,
     get_active_shift_id,
 )
-from src.database.connection import get_database
-
 from src.app.modules.reservations.routes.management_impl import (
-    extract_ip_address,
-    extract_checkout_ip_address,
     apply_pos_charge,
-    search_users,
-    get_available_rooms,
     assign_rooms_to_booking,
+    extract_checkout_ip_address,
+    extract_ip_address,
+    get_available_rooms,
+    search_users,
 )
+from src.app.modules.reservations.service import (
+    complete_check_in,
+    complete_check_out,
+    get_check_in_detail,
+    get_check_out_detail,
+    list_check_in_dates,
+    list_check_ins,
+    list_check_out_dates,
+    list_check_outs,
+    save_check_in_detail,
+    save_check_out_detail,
+)
+from src.app.modules.reservations.service._checkinout import update_check_in_datetime
+from src.app.modules.reservations.service.late_arrival import declare_late_arrival
+from src.app.security.dependencies import require_permission
+from src.app.security.permissions import (
+    EARLY_CHECK_IN_APPROVAL_PERMISSION,
+    LATE_CHECKOUT_APPROVAL_PERMISSION,
+    NO_SHOW_REOPEN_PERMISSION,
+    require_manager_authorization,
+)
+from src.database.connection import get_database
 
 _logger = logging.getLogger(__name__)
 
@@ -136,6 +150,57 @@ def check_in_update_datetime_api(
     return result
 
 
+@management_api_router.post("/check-ins/{booking_id}/declare-late-arrival")
+def check_in_declare_late_arrival_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_permission("check-ins.manage")),
+):
+    """Recepción declara (o retira) una llegada tardía para una reserva.
+
+    El flag protege la reserva del auto no-show; es señal operativa, no
+    modifica fechas de la reserva. ``estimated_arrival_time`` es opcional
+    (HH:MM).
+    """
+    db = get_database()
+    before = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"prop_id": 1, "declared_late_arrival": 1, "estimated_arrival_time": 1},
+    )
+    if before is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
+    declared = bool(payload.get("declared_late_arrival", False))
+    try:
+        result = declare_late_arrival(
+            db,
+            booking_id,
+            declared=declared,
+            estimated_arrival_time=(
+                str(payload["estimated_arrival_time"]) if payload.get("estimated_arrival_time") is not None else None
+            ),
+            changed_by=current_user.get("username", "web"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    register_action(
+        prop_id=(before.get("prop_id") or 0) if before else 0,
+        entity_type="check_in",
+        entity_id=booking_id,
+        action="update",
+        summary=(
+            f"Llegada tardía {'declarada' if declared else 'retirada'} para reserva {booking_id}"
+        ),
+        changed_by=current_user.get("username", "system"),
+        diff={
+            "declared_late_arrival": {
+                "old": bool(before.get("declared_late_arrival", False)),
+                "new": declared,
+            }
+        },
+    )
+    return result
+
+
 @management_api_router.get("/check-ins/{booking_id}/detail")
 def check_in_detail_api(
     request: Request,
@@ -228,6 +293,25 @@ def check_in_complete_api(
     )
     if before is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
+
+    early_mode_requested = str(payload.get("early_check_in_mode") or "").strip().lower()
+    early_approval_authorized = (
+        early_mode_requested == "early_approved"
+        and require_manager_authorization(
+            db,
+            current_user,
+            permission_code=EARLY_CHECK_IN_APPROVAL_PERMISSION,
+        )
+    )
+    if early_mode_requested == "early_approved" and not early_approval_authorized:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Permiso requerido: {EARLY_CHECK_IN_APPROVAL_PERMISSION}. "
+                "Solo un gerente de hotel o super_admin puede aprobar este early check-in."
+            ),
+        )
+
     try:
         observations = str(payload.get("check_in_observations") or "")
         save_check_in_detail(
@@ -255,6 +339,11 @@ def check_in_complete_api(
             ip_address=ip_address,
             observations=observations,
             shift_id=shift_id,
+            early_check_in_mode=str(payload.get("early_check_in_mode") or "") or None,
+            early_check_in_approved=bool(payload.get("early_check_in_approved", False)),
+            early_check_in_reason=str(payload.get("early_check_in_reason") or ""),
+            early_check_in_fee=payload.get("early_check_in_fee", 0),
+            early_check_in_authorized=early_approval_authorized,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -423,6 +512,28 @@ def check_out_complete_api(
     if before.get("stay_status") == "checked_out":
         return {"booking_id": booking_id, "stay_status": "checked_out"}
 
+    # Late check-out beyond the courtesy window is a manager authorization,
+    # mirror of the early check-in gate: a receptionist keeps normal/courtesy
+    # check-out but cannot approve an extension past the grace window.
+    late_mode_requested = str(payload.get("late_checkout_mode") or "").strip().lower()
+    late_approval_authorized = (
+        late_mode_requested == "late_approved"
+        and require_manager_authorization(
+            db,
+            current_user,
+            permission_code=LATE_CHECKOUT_APPROVAL_PERMISSION,
+        )
+    )
+    if late_mode_requested == "late_approved" and not late_approval_authorized:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Permiso requerido: {LATE_CHECKOUT_APPROVAL_PERMISSION}. "
+                "Solo un gerente de hotel o super_admin puede aprobar este late check-out: "
+                "derivalo a gerencia para que lo autorice y complete la salida."
+            ),
+        )
+
     shift_id = _require_active_shift(before.get("prop_id") or 0)
 
     try:
@@ -451,7 +562,11 @@ def check_out_complete_api(
             observations=observations,
             payment_method=str(payload.get("check_out_payment_method", "")),
             payment_ref=str(payload.get("check_out_payment_ref", "")),
-            late_checkout_fee=float(payload.get("check_out_late_checkout_fee", 0) or 0),
+            late_checkout_fee=float(payload.get("late_checkout_fee", 0) or 0),
+            late_checkout_mode=str(payload.get("late_checkout_mode") or "") or None,
+            late_checkout_approved=bool(payload.get("late_checkout_approved", False)),
+            late_checkout_reason=str(payload.get("late_checkout_reason") or ""),
+            late_checkout_authorized=late_approval_authorized,
             discount=float(payload.get("check_out_discount", 0) or 0),
             discount_reason=str(payload.get("check_out_discount_reason", "") or ""),
             damages_found=bool(payload.get("check_out_damages_found", False)),
@@ -464,6 +579,13 @@ def check_out_complete_api(
         "stay_status": {"old": before.get("stay_status") if before else None, "new": "checked_out"},
         "check_out_by": {"old": before.get("check_out_by") if before else None, "new": current_user.get("username", "web")},
     }
+    metadata: dict[str, Any] = {}
+    if late_mode_requested:
+        metadata["late_checkout_mode"] = late_mode_requested
+    if result.get("late_checkout_fee"):
+        metadata["late_checkout_fee"] = result["late_checkout_fee"]
+    if result.get("late_checkout_minutes"):
+        metadata["late_checkout_minutes"] = result["late_checkout_minutes"]
     register_action(
         prop_id=(before.get("prop_id") or 0) if before else 0,
         entity_type="check_out",
@@ -472,6 +594,7 @@ def check_out_complete_api(
         summary=f"Completado de check-out para reserva {booking_id}",
         changed_by=current_user.get("username", "system"),
         diff=diff,
+        metadata=metadata if metadata else None,
     )
     return result
 
@@ -574,6 +697,74 @@ def booking_no_show_api(
         summary=f"No-show manual — {before.get('guest_name', booking_id) if before else booking_id}",
         changed_by=current_user.get("username", "system"),
         diff=diff,
+    )
+    return result
+
+
+@management_api_router.post("/bookings/{booking_id}/reopen-no-show")
+def booking_reopen_no_show_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_permission("check-ins.manage")),
+):
+    """Reabrir una reserva cerrada como no-show (autorización de gerente).
+
+    Política de llegadas: "Llegada después de que el no-show fue cerrado →
+    reapertura o autorización de gerente; no check-in normal". El gate base es
+    ``check-ins.manage``; la reapertura exige además el permiso gerencial
+    ``check-ins.no_show_reopen`` (gerente_hotel / super_admin).
+
+    La reserva vuelve a ``stay_status=pending`` y el folio de penalización se
+    retira: si solo contiene la penalización se elimina; si arrastra pagos u
+    otros cargos la penalización se revierte y el folio se conserva para
+    gestionarlo en Facturación.
+    """
+    from src.app.modules.reservations.service.no_show import reopen_no_show
+
+    db = get_database()
+    if not require_manager_authorization(
+        db,
+        current_user,
+        permission_code=NO_SHOW_REOPEN_PERMISSION,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Permiso requerido: {NO_SHOW_REOPEN_PERMISSION}. "
+                "Solo un gerente de hotel o super_admin puede reabrir una reserva marcada como no-show."
+            ),
+        )
+    before = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"prop_id": 1, "status": 1, "stay_status": 1, "guest_name": 1},
+    )
+    if before is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
+    try:
+        result = reopen_no_show(
+            booking_id,
+            reason=str(payload.get("reason") or ""),
+            changed_by=current_user.get("username", "web"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    register_action(
+        prop_id=before.get("prop_id") or 0,
+        entity_type="reservation",
+        entity_id=booking_id,
+        action="no_show_reopen",
+        summary=(
+            f"Reapertura de no-show — {before.get('guest_name', booking_id)}: "
+            f"{str(payload.get('reason') or '')[:120]}"
+        ),
+        changed_by=current_user.get("username", "system"),
+        diff={"stay_status": {"old": "no_show", "new": "pending"}},
+        metadata={
+            "penalty_folio_removed": bool(result.get("penalty_removed")),
+            "folio_deleted": bool(result.get("folio_deleted")),
+            "folio_number": result.get("folio_number"),
+            "reversal_amount": result.get("reversal_amount"),
+        },
     )
     return result
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from fastapi import HTTPException
@@ -23,8 +23,8 @@ def list_rate_plans_with_rates(
     """
     db = get_database()
     try:
-        cin = datetime.strptime(check_in, "%Y-%m-%d")
-        cout = datetime.strptime(check_out, "%Y-%m-%d")
+        cin = date.fromisoformat(check_in)
+        cout = date.fromisoformat(check_out)
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid date format")
 
@@ -108,8 +108,8 @@ def validate_rate_plan_eligibility(
         return None
     db = get_database()
     try:
-        cin = datetime.strptime(check_in, "%Y-%m-%d")
-        cout = datetime.strptime(check_out, "%Y-%m-%d")
+        cin = date.fromisoformat(check_in)
+        cout = date.fromisoformat(check_out)
     except (ValueError, TypeError):
         return None
     total_nights = max(1, (cout - cin).days)

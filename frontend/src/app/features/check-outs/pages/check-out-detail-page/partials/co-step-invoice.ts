@@ -58,6 +58,23 @@ import { ConfirmDialogService } from '../../../../../shared/ui/confirm-dialog/co
           <span class="co-inv-btn-sub">Generar CFDI / factura fiscal</span>
         </button>
 
+        @if (reconcileGap() > 0 && invoiceGenerated()) {
+          <button class="co-inv-btn co-inv-complement"
+                  [disabled]="complementing() || generating()"
+                  (click)="emitComplementInvoice()">
+            <span class="material-symbols-outlined">receipt_long</span>
+            <span class="co-inv-btn-label">
+              @if (complementing()) {
+                <span class="material-symbols-outlined rc-spin" style="font-size:16px;vertical-align:middle">progress_activity</span>
+                Emitiendo...
+              } @else {
+                Re-facturar gap
+              }
+            </span>
+            <span class="co-inv-btn-sub">Complementaria por {{ reconcileGap() | currency:currency() }}</span>
+          </button>
+        }
+
         <button class="co-inv-btn"
                 [disabled]="emailing() || !invoiceGenerated()"
                 (click)="sendByEmail()">
@@ -82,6 +99,10 @@ import { ConfirmDialogService } from '../../../../../shared/ui/confirm-dialog/co
           <span class="co-inv-btn-sub">Recibo / comprobante</span>
         </button>
       </div>
+
+      @if (complementMsg()) {
+        <div class="co-invoice-success">{{ complementMsg() }}</div>
+      }
 
       @if (errorMsg()) {
         <div class="co-invoice-error">{{ errorMsg() }}</div>
@@ -115,11 +136,15 @@ export class CoStepInvoiceComponent {
   readonly subtotal = input(0);
   readonly taxes = input(0);
   readonly currency = input('USD');
+  /** Gap de la factura corta (subtotal vivo − covered_subtotal). > 0 muestra
+   *  la acción de re-facturación; 0 la oculta. */
+  readonly reconcileGap = input(0);
 
   readonly prev = output<void>();
   readonly next = output<void>();
   readonly splitInvoiceChange = output<boolean>();
   readonly invoiceEmitted = output<string>();
+  readonly complementEmitted = output<string>();
 
   readonly generating = signal(false);
   readonly emailing = signal(false);
@@ -128,6 +153,8 @@ export class CoStepInvoiceComponent {
   readonly invoiceId = signal('');
   readonly invoiceNumber = signal('');
   readonly errorMsg = signal('');
+  readonly complementing = signal(false);
+  readonly complementMsg = signal('');
 
   constructor() {
     // Keep the action buttons usable after the detail resource reloads. The
@@ -160,7 +187,41 @@ export class CoStepInvoiceComponent {
       },
       error: (err) => {
         this.generating.set(false);
-        this.errorMsg.set(err?.error?.detail || 'Error al emitir la factura');
+        this.errorMsg.set(
+          err?.error?.detail ||
+          'No se pudo emitir la factura. Revisá el subtotal y los impuestos de la liquidación e intentá de nuevo.',
+        );
+        setTimeout(() => this.errorMsg.set(''), 6000);
+      },
+    });
+  }
+
+  /** Emite la factura complementaria por el gap (cargos nuevos no cubiertos
+   *  por la factura principal). Idempotente en backend: tras el reload del
+   *  detalle, covered_subtotal cubre el subtotal vivo y la nota/acción
+   *  desaparecen. */
+  emitComplementInvoice(): void {
+    const bookingId = this.bookingId();
+    const propId = this.propId();
+    if (!bookingId || !propId || this.reconcileGap() <= 0) return;
+
+    this.complementing.set(true);
+    this.errorMsg.set('');
+    this.complementMsg.set('');
+
+    this.api.emitComplementInvoice(bookingId, propId).subscribe({
+      next: (result) => {
+        this.complementing.set(false);
+        this.complementMsg.set(`Factura complementaria ${result.invoice_number} emitida por el gap.`);
+        this.complementEmitted.emit(result.id);
+        setTimeout(() => this.complementMsg.set(''), 8000);
+      },
+      error: (err) => {
+        this.complementing.set(false);
+        this.errorMsg.set(
+          err?.error?.detail ||
+          'No se pudo emitir la factura complementaria. Verificá que el folio esté abierto y que haya cargos nuevos sin facturar, e intentá de nuevo.',
+        );
         setTimeout(() => this.errorMsg.set(''), 6000);
       },
     });
@@ -188,7 +249,10 @@ export class CoStepInvoiceComponent {
       },
       error: (err) => {
         this.emailing.set(false);
-        this.errorMsg.set(err?.error?.detail || 'Error al enviar el correo');
+        this.errorMsg.set(
+          err?.error?.detail ||
+          'No se pudo enviar el correo. Verificá que el huésped tenga un email válido e intentá de nuevo.',
+        );
         setTimeout(() => this.errorMsg.set(''), 6000);
       },
     });

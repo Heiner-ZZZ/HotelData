@@ -48,6 +48,7 @@
                 <a class="notif-item" [class.unread]="n.unread"
                    [routerLink]="n.bookingId ? '/management/reservations/' + n.bookingId : null"
                    (click)="closeNotifications()">
+                  <span class="material-symbols-outlined notif-type-icon">{{ n.icon }}</span>
                   <div class="notif-dot" [class.active]="n.unread"></div>
                   <div class="notif-body">
                     <p class="notif-title">{{ n.title }}</p>

@@ -29,6 +29,7 @@ import { PpTabBarComponent } from './partials/pp-tab-bar';
 import { PpPersonalFormComponent } from './partials/pp-personal-form';
 import { PpContactFormComponent } from './partials/pp-contact-form';
 import { PpPreferencesFormComponent } from './partials/pp-preferences-form';
+import { PpPromotionsTabComponent } from './partials/pp-promotions-tab/pp-promotions-tab';
 import { PpAvatarSectionComponent } from './partials/pp-avatar-section';
 import { PpTravelSectionComponent } from './partials/pp-travel-section';
 import { ImageLightboxComponent } from '../../../../shared/ui/image-lightbox/image-lightbox';
@@ -96,8 +97,8 @@ function formToPayload(formValue: Record<string, unknown>): Record<string, unkno
   selector: 'app-profile-page',
   imports: [ErrorStateComponent, LoadingStateComponent, ReactiveFormsModule,
     PpHeroComponent, PpTabBarComponent, PpPersonalFormComponent, PpContactFormComponent,
-    PpPreferencesFormComponent, PpAvatarSectionComponent, ImageLightboxComponent, PpTravelSectionComponent,
-    ModeHighlightDirective],
+    PpPreferencesFormComponent, PpPromotionsTabComponent, PpAvatarSectionComponent,
+    ImageLightboxComponent, PpTravelSectionComponent, ModeHighlightDirective],
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -125,7 +126,7 @@ export class ProfilePageComponent {
   readonly profile = signal<ProfileViewModel | null>(null);
   readonly previewUrl = signal<string | null>(null);
   readonly dragOver = signal(false);
-  readonly activeTab = signal<'personal' | 'contact' | 'preferences' | 'social'>('personal');
+  readonly activeTab = signal<'personal' | 'contact' | 'preferences' | 'social' | 'promotions'>('personal');
   readonly lightboxOpen = signal(false);
   readonly lightboxImageUrl = signal<string>('');
 
@@ -140,14 +141,22 @@ export class ProfilePageComponent {
       { key: 'contact' as const, label: 'Contacto', icon: 'contact_mail' },
       { key: 'social' as const, label: 'Redes y viajes', icon: 'travel_explore' },
       { key: 'preferences' as const, label: 'Preferencias', icon: 'settings' },
+      // Promociones: solo el huésped recibe envíos promocionales (su consentimiento
+      // de marketing) — el staff/superadmin no tiene pestaña Promociones.
+      { key: 'promotions' as const, label: 'Promociones', icon: 'campaign' },
     ];
-    // Only guests see Redes y viajes; admin/staff tabs are Personal, Contacto, Preferencias
+    // Only guests see Redes y viajes + Promociones; admin/staff tabs are
+    // Personal, Contacto, Preferencias
     const role = this.profile()?.primaryRole;
     if (role && role !== 'cliente') {
-      return allTabs.filter(t => t.key !== 'social');
+      return allTabs.filter(t => t.key !== 'social' && t.key !== 'promotions');
     }
     return allTabs;
   });
+
+  /** El consentimiento de marketing (publicidad/promociones del hotel) es del
+   *  huésped — el staff/superadmin no recibe envíos promocionales como cliente. */
+  readonly isGuest = computed(() => this.profile()?.primaryRole === 'cliente');
 
   readonly documentTypes = DOCUMENT_TYPES;
   readonly travelPurposeOptions = TRAVEL_PURPOSE_OPTIONS;
@@ -312,7 +321,7 @@ export class ProfilePageComponent {
 
     // ── Tab → URL sync (reads query param on load, writes on change) ──
     const tabParam = this.route.snapshot.queryParamMap.get('tab');
-    if (tabParam === 'contact' || tabParam === 'preferences' || tabParam === 'social') {
+    if (tabParam === 'contact' || tabParam === 'preferences' || tabParam === 'social' || tabParam === 'promotions') {
       this.activeTab.set(tabParam);
     }
 
@@ -371,7 +380,7 @@ export class ProfilePageComponent {
 
   /** Wrapper for PpTabBarComponent — casts string to union type */
   handleSetTab(tab: string): void {
-    this.activeTab.set(tab as 'personal' | 'contact' | 'preferences' | 'social');
+    this.activeTab.set(tab as 'personal' | 'contact' | 'preferences' | 'social' | 'promotions');
   }
 
   openAvatarLightbox(): void {

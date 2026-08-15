@@ -243,7 +243,10 @@ def delete_blackout_block(blackout_id: str, *, changed_by: str = "system") -> di
     room_type_id = existing["room_type_id"]
     start_date = existing.get("start_date", "")
     end_date = existing.get("end_date", "")
-    blocked_rooms = existing.get("blocked_rooms", 0) or 0
+    # Legacy blackout documents may have persisted numeric fields as strings.
+    # Normalize before comparing/reversing inventory so DELETE never leaks a
+    # TypeError as an HTTP 500.
+    blocked_rooms = safe_positive_int(existing.get("blocked_rooms", 0), default=0)
 
     if blocked_rooms > 0 and start_date and end_date:
         _apply_blackout_to_calendar(db, prop_id, room_type_id, start_date, end_date, blocked_rooms, increment=-1)

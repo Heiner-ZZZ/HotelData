@@ -11,6 +11,7 @@ import {
   type SelectOption,
 } from '../../settings/models/settings.model';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ThemeService } from '../../../../core/theme/theme.service';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
 import { ModeHighlightDirective } from '../../../../core/directives/mode-highlight.directive';
 import { ToastService } from '../../../../shared/services/toast.service';
@@ -35,6 +36,7 @@ export class SettingsPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly settingsApi = inject(SettingsApiService);
   private readonly authService = inject(AuthService);
+  private readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
   private readonly opMode = inject(OperationModeService);
 
@@ -153,7 +155,9 @@ export class SettingsPageComponent {
             defaultDashboard: s.defaultDashboard,
             theme: s.theme,
           });
-          this.applyTheme(s.theme);
+          // La BD ya es la fuente de verdad (se leyó de /api/settings); solo
+          // aplicamos sin volver a persistir.
+          this.theme.setPreference(s.theme as 'system' | 'light' | 'dark', false);
           this.loading.set(false);
         },
         error: () => {
@@ -185,7 +189,9 @@ export class SettingsPageComponent {
         next: (updated: SettingsViewModel) => {
           this.settings.set(updated);
           localStorage.setItem('hoteldata-default-dashboard', updated.defaultDashboard);
-          this.applyTheme(updated.theme);
+          // Misma fuente de verdad que el icono del nav: ya se persistió en el
+          // PUT de arriba, solo se aplica (persist=false evita el doble PUT).
+          this.theme.setPreference(updated.theme as 'system' | 'light' | 'dark', false);
           this.toast.success('Configuración guardada correctamente.');
           this.saving.set(false);
         },
@@ -194,13 +200,6 @@ export class SettingsPageComponent {
           this.saving.set(false);
         },
       });
-  }
-
-  private applyTheme(theme: string): void {
-    localStorage.setItem('hoteldata-theme-preference', theme);
-    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    localStorage.setItem('hoteldata-theme', isDark ? 'dark' : 'light');
   }
 
   changePassword(): void {

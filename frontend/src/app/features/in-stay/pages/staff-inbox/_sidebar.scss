@@ -65,8 +65,8 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: t.$si-border;
-    border-radius: 2px;
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
   }
 }
 
@@ -112,8 +112,8 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: t.$si-border;
-    border-radius: 4px;
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
   }
 
   &::-webkit-scrollbar-track {

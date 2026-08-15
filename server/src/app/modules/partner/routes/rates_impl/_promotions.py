@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 
-from src.app.modules.revenue.services.promotions import create_promotion_campaign
+from src.app.modules.revenue.services.promotions import (
+    CouponCodeExistsError,
+    create_promotion_campaign,
+)
 
 
 def create_promotion(payload: dict) -> dict:
@@ -20,6 +23,14 @@ def create_promotion(payload: dict) -> dict:
             coupon_code=str(payload.get("coupon_code") or ""),
             is_active=payload.get("is_active", True),
         )
+    except CouponCodeExistsError as exc:
+        # Error ESTRUCTURADO (contrato único en ``exc.detail``, igual que en
+        # marketing): el form de Tarifas detecta ``code == "COUPON_CODE_EXISTS"``
+        # y muestra el conflicto de forma destacada sin parsear el mensaje.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.detail,
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return saved

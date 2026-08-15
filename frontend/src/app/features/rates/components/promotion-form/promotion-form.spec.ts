@@ -358,4 +358,90 @@ describe('PromotionFormComponent', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('No se puede editar una campaña que ya ha vencido.');
   });
+
+  // ── Conflicto de código estructurado (COUPON_CODE_EXISTS) ──
+
+  const CONFLICT_BODY = {
+    detail: {
+      message: 'El código LUNA15 ya existe en la campaña «Luna de miel» de Tarifas. Vincúlala en lugar de crear una nueva.',
+      code: 'COUPON_CODE_EXISTS',
+      campaign_id: 'PC-1-luna-de-miel',
+      campaign_name: 'Luna de miel',
+      coupon_code: 'LUNA15',
+    },
+  };
+
+  /** Llena el form en modo crear con el cupón conflictivo y dispara submit. */
+  function submitConflict(ctx: {
+    component: PromotionFormComponent;
+    http: HttpTestingController;
+  }): void {
+    ctx.component.form.patchValue({
+      name: 'Verano',
+      startDate: '2026-08-01',
+      endDate: '2026-12-31',
+      couponCode: 'LUNA15',
+    });
+    ctx.component.submit();
+    ctx.http
+      .expectOne((req) => req.method === 'POST' && req.url.includes('/management/promotions'))
+      .flush(CONFLICT_BODY, { status: 400, statusText: 'Bad Request' });
+  }
+
+  it('muestra el conflicto de código como banner destacado al crear (campaña dueña + código)', () => {
+    const { fixture, component, http } = setup();
+    fixture.componentRef.setInput('viewModel', viewModel);
+    const errors: string[] = [];
+    component.errorChange.subscribe((m) => errors.push(m));
+
+    submitConflict({ component, http });
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const banner = el.querySelector('.coupon-conflict-banner');
+    expect(banner).not.toBeNull();
+    expect(banner?.textContent).toContain('LUNA15');
+    expect(banner?.textContent).toContain('Luna de miel');
+    expect(component.couponConflict()).not.toBeNull();
+    expect(component.couponConflict()?.campaign_id).toBe('PC-1-luna-de-miel');
+    // El banner reemplaza el inline genérico y NO dispara el toast del padre
+    // (el interceptor global ya avisa) — sin doble notificación.
+    expect(component.inlineError()).toBeNull();
+    expect(errors).toEqual([]);
+  });
+
+  it('limpia el banner de conflicto al cambiar el código de cupón', () => {
+    const { fixture, component, http } = setup();
+    fixture.componentRef.setInput('viewModel', viewModel);
+
+    submitConflict({ component, http });
+    fixture.detectChanges();
+    expect(component.couponConflict()).not.toBeNull();
+
+    component.form.controls.couponCode.setValue('OTRO20');
+    fixture.detectChanges();
+
+    expect(component.couponConflict()).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.coupon-conflict-banner'),
+    ).toBeNull();
+  });
+
+  it('permite quitar el código conflictivo desde el banner', () => {
+    const { fixture, component, http } = setup();
+    fixture.componentRef.setInput('viewModel', viewModel);
+
+    submitConflict({ component, http });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const clearBtn = el.querySelector('.coupon-conflict-clear');
+    expect(clearBtn).not.toBeNull();
+
+    (clearBtn as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(component.form.controls.couponCode.value).toBe('');
+    expect(component.couponConflict()).toBeNull();
+    expect(el.querySelector('.coupon-conflict-banner')).toBeNull();
+  });
 });

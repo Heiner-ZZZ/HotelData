@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pymongo import IndexModel, ASCENDING, DESCENDING
+from pymongo import ASCENDING, DESCENDING, IndexModel
 
 from src.database.collections import ensure_collection
 

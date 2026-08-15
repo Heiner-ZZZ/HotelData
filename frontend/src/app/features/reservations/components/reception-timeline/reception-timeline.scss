@@ -732,6 +732,94 @@
   font-weight: 700;
 }
 
+/*
+ * Syncfusion measures a generic `.e-appointment` before it renders the
+ * individual events. The monthly lane calculation uses that measurement for
+ * every overlapping reservation, so the generic and rendered appointments
+ * must share the same height.
+ */
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment {
+  box-sizing: border-box;
+  height: 4.5rem;
+  min-height: 4.5rem;
+}
+
+/*
+ * En TimelineMonth la barra usa todo el ancho de la celda asignada por
+ * Syncfusion. El contenido se apila: nombre/horarios arriba e indicadores
+ * debajo. Así una reserva de un día no pierde información por falta de ancho
+ * y una reserva de varios días conserva todo el tramo que ya calculó el
+ * Scheduler.
+ */
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(1.35rem, auto) minmax(1rem, auto);
+  align-content: center;
+  box-sizing: border-box;
+  min-height: 4.5rem;
+  height: 4.5rem !important;
+  padding: 0.22rem 0.35rem;
+  overflow: hidden;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked > .e-appointment-details {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked > .e-appointment-details .e-inner-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked > .e-appointment-details .e-subject,
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked > .e-appointment-details .e-time {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked > .timeline-app-meta {
+  position: static;
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+  transform: none;
+  white-space: normal;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked > .timeline-app-meta .timeline-app-meta-item .material-symbols-outlined {
+  font-size: 0.78rem;
+  --icon-opsz: 20;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked > .timeline-app-meta .timeline-late-marker .material-symbols-outlined {
+  font-size: 0.82rem;
+  --icon-opsz: 20;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked > .timeline-late-marker {
+  grid-column: 1;
+  grid-row: 2;
+}
+
 /* Chip resumen de la reserva (personas · noches), flotante a la derecha de
    la barra cuando hay espacio. Sin fondo ni borde: solo icono + número, para
    no añadir sombreado sobre el color intenso de la barra. */
@@ -750,9 +838,6 @@
   z-index: 2;
   pointer-events: none;
 
-  &.timeline-app-meta--hidden {
-    display: none;
-  }
 }
 
 /* Los ítems se crean en runtime (document.createElement), sin el atributo de
@@ -760,6 +845,7 @@
 :host ::ng-deep .timeline-app-meta-item {
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   gap: 0.14rem;
 
   .material-symbols-outlined {
@@ -768,14 +854,11 @@
     --icon-opsz: 18;
   }
 
-  &.timeline-app-meta-item--hidden {
-    display: none;
-  }
 }
 
-/* Marcador de late check-in: luna ámbar flotante a la izquierda del nombre
-   del huésped en la barra de la reserva. Creado en runtime (createElement),
-   por eso necesita ::ng-deep como el chip de meta. */
+/* Marcador de late check-in: reloj ámbar junto a personas/noches en la fila
+   inferior de la barra mensual. Creado en runtime (createElement), por eso
+   necesita ::ng-deep como el chip de meta. */
 :host ::ng-deep .timeline-late-marker {
   display: inline-flex;
   align-items: center;
@@ -791,6 +874,48 @@
     font-size: 0.78rem;
     --icon-wght: 600;
     --icon-opsz: 18;
+  }
+}
+
+/* Marcador de no-show: icono event_busy. La variante ``is-reopenable`` agrega
+   el acento ámbar + chip "Reabrible" (ventana de reapertura abierta: hoy/ayer
+   con estadía vigente). Los no-shows antiguos quedan en gris/danger sin el
+   chip para no invitar a una acción que la API rechazaría. Creado en runtime
+   (createElement), necesita ::ng-deep como el chip de meta. */
+:host ::ng-deep .timeline-noshow-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+  color: color-mix(in srgb, var(--danger) 80%, #fff);
+  filter: brightness(1.15) drop-shadow(0 0 1px rgba(0, 0, 0, 0.45));
+  z-index: 2;
+  pointer-events: none;
+
+  .material-symbols-outlined {
+    font-size: 0.78rem;
+    --icon-wght: 600;
+    --icon-opsz: 18;
+  }
+
+  &.is-reopenable {
+    color: var(--warning);
+    filter: brightness(1.2) drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
+
+    &::after {
+      content: 'Reabrible';
+      font-family: var(--font-family, inherit);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-left: 0.18rem;
+      padding: 0.08rem 0.3rem;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--warning) 22%, transparent);
+      color: var(--warning);
+      white-space: nowrap;
+    }
   }
 }
 
@@ -914,6 +1039,15 @@
 
 @media (max-width: 900px) {
   .timeline-heading { width: 100%; margin-right: 0; }
+
+  :host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked {
+    min-height: 4.5rem;
+    padding-inline: 0.25rem;
+  }
+
+  :host ::ng-deep .hotel-timeline-schedule .e-timeline-month-view .e-appointment.timeline-appointment-stacked > .timeline-app-meta {
+    gap: 0.25rem;
+  }
 }
 
 @media (max-width: 700px) {

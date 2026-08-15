@@ -23,7 +23,7 @@ Guardrails verificados aquí:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -48,7 +48,7 @@ CATALOG_CODES = [
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _seed_catalog(db) -> None:

@@ -18,6 +18,38 @@
     </div>
   }
 
+  @if (couponConflict(); as conflict) {
+    <div class="reduction-warning danger coupon-conflict-banner" role="alert">
+      <span class="material-symbols-outlined">link_off</span>
+      <div class="reduction-warning-body">
+        <strong>El código {{ conflict.code }} ya está en uso</strong>
+        <span>{{ conflict.message }}</span>
+        <span class="coupon-conflict-hint">
+          Elige otro código o edita la campaña «{{ conflict.campaign_name }}» desde la lista de promociones.
+        </span>
+      </div>
+      <div class="coupon-conflict-actions">
+        <button
+          type="button"
+          class="coupon-conflict-clear"
+          (click)="clearConflictCode()"
+        >
+          <span class="material-symbols-outlined">edit_off</span>
+          Usar otro código
+        </button>
+        <button
+          type="button"
+          class="coupon-conflict-dismiss"
+          (click)="dismissCouponConflict()"
+          aria-label="Descartar aviso"
+          title="Descartar aviso"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+    </div>
+  }
+
   <label class="field">
     <span class="field-label">
       <span class="material-symbols-outlined field-icon">badge</span>

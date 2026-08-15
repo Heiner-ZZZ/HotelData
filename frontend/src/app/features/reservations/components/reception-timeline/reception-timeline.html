@@ -106,7 +106,7 @@
         [group]="scheduleGroup"
         [allowMultiCellSelection]="true"
         [allowResizing]="false"
-        [rowAutoHeight]="false"
+        [rowAutoHeight]="currentView() === 'TimelineMonth'"
         [dateHeaderTemplate]="dateHeaderTemplate"
         [eventSettings]="eventSettings()"
         [resources]="resources()"
@@ -222,6 +222,7 @@
       [reservation]="reservation"
       presentation="side-panel"
       (closed)="closeDetail()"
+      (reopened)="reload()"
     />
   }
 

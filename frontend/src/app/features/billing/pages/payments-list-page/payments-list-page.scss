@@ -1,5 +1,6 @@
 .payments-page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
 }
 
@@ -85,40 +86,8 @@
   }
 }
 
-/* ── Sub-nav (Dashboard | Pagos Dashboard | Facturas | Pagos) ────────────────
-   Mismo diseño de píldoras que los dashboards de facturación. */
-.pay-sub-nav {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--app-border);
-  padding-bottom: 0.5rem;
-}
-
-.pay-sub-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  text-decoration: none;
-  color: var(--muted-text);
-  font-size: 0.83rem;
-  font-weight: 600;
-  transition: background 0.15s ease, color 0.15s ease;
-
-  &:hover {
-    background: var(--surface-hover);
-    color: var(--app-text);
-  }
-
-  &.active {
-    background: var(--accent-light);
-    color: var(--accent-strong);
-  }
-}
-
+/* ── Sub-nav actions ─────────────────────────────────────────────────────────
+   Acciones que viven dentro de <app-billing-sub-nav> vía slot="actions". */
 .pay-nav-actions {
   display: flex;
   align-items: center;
@@ -198,23 +167,102 @@
 
 h2, p { margin: 0; }
 
-.table-wrap { overflow-x: auto; }
+/* ── Tabla (mismo lenguaje que .invl-table / .bdb-table) ────────────────────
+   Micro-headers en mayúsculas con banda --surface-raised, celdas compactas
+   alineadas al medio, IDs/montos en mono tabular y hover de fila sutil. */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface);
+}
 
 table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.8rem;
 }
 
-th, td {
-  padding: 0.75rem 0.5rem;
+thead th {
+  padding: 0.5rem 0.65rem;
   text-align: left;
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  background: var(--surface-raised);
   border-bottom: 1px solid var(--app-border);
-  vertical-align: top;
+  white-space: nowrap;
+}
+
+/* Sin text-align aquí: la compilación de Angular eleva la especificidad de
+   ``tbody td`` por encima de una clase, y pisaría el right de .td-amount.
+   El valor por defecto ya es left — igual que .invl-table en Facturas. */
+tbody td {
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+  color: var(--app-text);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr {
+  transition: background 100ms;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 3%, transparent);
+  }
 }
 
 .cell-action {
   text-align: right;
   white-space: nowrap;
+}
+
+/* ── Celdas de identidad: IDs, montos y fechas en mono tabular ──────────── */
+.th-num { text-align: right !important; }
+
+.pay-booking-id {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.72rem;
+  color: var(--muted-text);
+}
+
+.pay-reference {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.72rem;
+  color: var(--muted-text);
+}
+
+.td-amount {
+  text-align: right;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pay-date-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.74rem;
+  color: var(--muted-text);
+  white-space: nowrap;
+
+  .date-cell-icon { font-size: 0.78rem; }
+}
+
+/* Badge de estado compacto dentro de la tabla: el componente compartido
+   app-status-badge es grande (min-height 2rem) — se ajusta solo aquí para
+   igualar la escala del badge de Facturas (0.7rem). */
+.payments-page ::ng-deep .status-badge {
+  min-height: 1.55rem;
+  padding: 0 0.6rem;
+  font-size: 0.72rem;
 }
 
 button {
@@ -252,10 +300,10 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.2rem 0.55rem;
+  padding: 0.15rem 0.55rem;
   border-radius: 100px;
   background: rgba(255, 255, 255, 0.04);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--gray-700);
 }
 

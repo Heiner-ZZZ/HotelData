@@ -1,0 +1,56 @@
+@if (offers().length) {
+  <section class="hotel-offers">
+    <h2 class="offers-title">
+      <span class="material-symbols-outlined offers-title-icon">campaign</span>
+      Ofertas y promociones
+    </h2>
+    <p class="offers-intro">Promociones vigentes de este hotel. Reserva directo y aprovecha la oferta.</p>
+
+    <div class="offers-list">
+      @for (offer of offers(); track offer.campaign_id) {
+        <article class="offer-card">
+          <div class="offer-icon">
+            <span class="material-symbols-outlined">local_offer</span>
+          </div>
+          <div class="offer-body">
+            <div class="offer-titleline">
+              <strong class="offer-title">{{ offer.title }}</strong>
+              @if (offer.discount_percent) {
+                <span class="offer-discount">-{{ offer.discount_percent }}%</span>
+              }
+            </div>
+            @if (offer.public_message) {
+              <p class="offer-desc">{{ offer.public_message }}</p>
+            }
+            <div class="offer-meta">
+              @if (offer.promo_code) {
+                <span class="offer-code" [title]="'Usa el código ' + offer.promo_code + ' al reservar'">
+                  <span class="material-symbols-outlined">confirmation_number</span>
+                  {{ offer.promo_code }}
+                </span>
+              }
+              @if (offer.validity; as validity) {
+                @if (validity.start_date || validity.end_date) {
+                  <span class="offer-validity">
+                    <span class="material-symbols-outlined">event</span>
+                    {{ validity.start_date || '…' }} → {{ validity.end_date || '…' }}
+                  </span>
+                }
+              }
+              @if (offer.applies_to_label) {
+                <span class="offer-applies">
+                  <span class="material-symbols-outlined">price_change</span>
+                  {{ offer.applies_to_label }}
+                </span>
+              }
+              <span class="offer-date">
+                <span class="material-symbols-outlined">schedule</span>
+                {{ offer.sent_at_iso | date: 'd MMM yyyy' }}
+              </span>
+            </div>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+}

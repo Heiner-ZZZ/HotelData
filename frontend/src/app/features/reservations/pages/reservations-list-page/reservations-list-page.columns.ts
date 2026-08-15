@@ -111,7 +111,7 @@ export function buildColumnDefs(
     {
       field: 'stayStatus',
       headerName: 'Estadía',
-      width: 120,
+      width: 150,
       cellRenderer: (p: any) => {
         const wrap = document.createElement('span');
         wrap.style.cssText = 'display:inline-flex;align-items:center;gap:3px;font-size:0.65rem;font-weight:600;white-space:nowrap';
@@ -120,27 +120,71 @@ export function buildColumnDefs(
         icon.style.cssText = 'font-size:0.85rem';
         let iconName = '';
         let label = '';
+        /** Chip "Reabrible" del marcador de no-show (solo ventana abierta). */
+        let chip: HTMLSpanElement | null = null;
+        /** Reabierta tras no-show: el gerente la reabrió porque el huésped llegó
+         * después del no-show. MISMO criterio de ventana que el banner
+         * ``reopenedNotice`` del detalle de check-in (vía ``reopenWindow``
+         * server-authoritative): solo se marca dentro de la ventana abierta. */
+        const reopened = !!p.data?.noShowReopenedAt && p.data?.reopenWindow === 'open';
         if (p.value === 'checked_in') {
           iconName = 'check_circle';
           label = 'Check-in';
           wrap.style.color = '#2563eb';
+          if (reopened) {
+            wrap.title = 'Reabierta tras no-show: el huésped llegó después del no-show (ventana abierta)';
+          }
         } else if (p.value === 'checked_out') {
           iconName = 'logout';
           label = 'Check-out';
           wrap.style.color = '#7c3aed';
         } else if (p.value === 'pending') {
-          iconName = 'schedule';
+          iconName = reopened ? 'replay' : 'schedule';
           label = 'Pendiente';
           wrap.style.color = '#6b7280';
+          if (reopened) {
+            wrap.title = 'Reabierta tras no-show: el huésped llegó después del no-show (ventana abierta) — registralo como check-in de llegada tardía';
+          }
+        } else if (p.value === 'no_show') {
+          // Marcador de no-show — MISMO criterio de ventana que el calendario
+          // de Recepción (server-authoritative vía ``reopenWindow``):
+          // 'open' → reabrible (hoy/ayer con estadía vigente): ámbar + chip;
+          // 'too_late'/'stay_ended' → ventana cerrada: rojo sin chip, para no
+          // invitar a una reapertura que la API rechazaría.
+          const window = p.data?.reopenWindow;
+          const reopenable = window === 'open';
+          iconName = 'event_busy';
+          label = 'No-show';
+          wrap.style.color = reopenable ? '#b45309' : '#b91c1c';
+          wrap.title = reopenable
+            ? 'No-show: reabrible dentro de la ventana (hoy o ayer con estadía vigente)'
+            : window === 'too_late'
+              ? 'No-show: ventana de reapertura cerrada (check-in con más de un día de retraso)'
+              : window === 'stay_ended'
+                ? 'No-show: la estadía ya terminó y la ventana de reapertura cerró'
+                : 'No-show: el huésped no llegó';
+          if (reopenable) {
+            chip = document.createElement('span');
+            chip.style.cssText = 'font-size:0.58rem;font-weight:700;letter-spacing:0.02em;padding:0.08rem 0.3rem;border-radius:999px;background:color-mix(in srgb, var(--warning) 16%, transparent);color:var(--warning);white-space:nowrap';
+            chip.textContent = 'Reabrible';
+          }
         } else {
           label = p.value || '';
           wrap.style.color = '#374151';
+        }
+        // Marca de reapertura: chip púrpura (distinto del ámbar "Reabrible" del
+        // no-show activo) sobre cualquier estado no-no-show con la marca vigente.
+        if (reopened && p.value !== 'no_show') {
+          chip = document.createElement('span');
+          chip.style.cssText = 'font-size:0.58rem;font-weight:700;letter-spacing:0.02em;padding:0.08rem 0.3rem;border-radius:999px;background:color-mix(in srgb, var(--purple) 16%, transparent);color:var(--purple);white-space:nowrap';
+          chip.textContent = 'Reabierta';
         }
         icon.textContent = iconName;
         if (iconName) wrap.appendChild(icon);
         const txt = document.createElement('span');
         txt.textContent = label;
         wrap.appendChild(txt);
+        if (chip) wrap.appendChild(chip);
         return wrap;
       },
     },

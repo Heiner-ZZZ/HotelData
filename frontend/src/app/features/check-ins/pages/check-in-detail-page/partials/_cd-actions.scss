@@ -251,6 +251,225 @@
   }
 }
 
+/* ═══ Future Date Block ═══ */
+
+.ciw-future-date-block {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+
+  > .material-symbols-outlined {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+  }
+
+  strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.15rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--muted-text);
+    line-height: 1.4;
+  }
+}
+
+/* ═══ Early Check-In ═══ */
+
+.ciw-early-check-in-block {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning-strong);
+  font-size: 0.78rem;
+
+  > .material-symbols-outlined {
+    color: var(--warning);
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+  }
+
+  strong {
+    display: block;
+    font-weight: 650;
+    margin-bottom: 0.15rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--muted-text);
+    line-height: 1.4;
+  }
+}
+
+.ciw-early-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--app-bg) 70%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.ciw-early-dialog {
+  width: min(100%, 34rem);
+  max-height: min(90vh, 44rem);
+  overflow: auto;
+  padding: 1.25rem;
+  border: 1px solid var(--app-border);
+  border-radius: 0.85rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  color: var(--app-text);
+}
+
+.ciw-early-dialog:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.ciw-early-dialog-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 0.65rem;
+}
+
+.ciw-early-dialog-icon {
+  color: var(--warning-strong);
+  font-size: 1.45rem;
+}
+
+.ciw-early-dialog h2 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.ciw-early-dialog-header p {
+  margin: 0.25rem 0 0;
+  color: var(--muted-text);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.ciw-early-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+}
+
+.ciw-early-dialog-close:hover {
+  background: var(--surface-hover);
+  color: var(--app-text);
+}
+
+.ciw-early-dialog-close:focus-visible,
+.ciw-early-dialog button:focus-visible,
+.ciw-early-dialog input:focus-visible,
+.ciw-early-dialog textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ciw-early-dialog-summary,
+.ciw-early-dialog-courtesy {
+  margin: 1rem 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--surface-raised);
+  color: var(--muted-text);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.ciw-early-dialog-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.ciw-early-dialog-summary .material-symbols-outlined {
+  color: var(--accent);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.ciw-early-dialog-field {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.85rem;
+  color: var(--app-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.ciw-early-dialog-field input,
+.ciw-early-dialog-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--app-border);
+  border-radius: 0.45rem;
+  background: var(--surface-raised);
+  color: var(--app-text);
+  font: inherit;
+  font-weight: 400;
+}
+
+.ciw-early-dialog-field textarea {
+  resize: vertical;
+}
+
+.ciw-early-dialog-field small {
+  color: var(--muted-text);
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+
+.ciw-early-dialog-error {
+  margin: 0.75rem 0 0;
+  color: var(--danger-strong);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.ciw-early-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+}
+
 /* ═══ Keys Required Block (complete step) ═══ */
 
 .ciw-keys-block {

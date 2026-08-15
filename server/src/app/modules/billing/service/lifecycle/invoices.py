@@ -1449,7 +1449,10 @@ def create_split_charges_invoice(
             # The paid snapshot is immutable. Reversing the source charge is
             # now a credit-note/compensating-document concern, not a silent
             # cancellation of the receivable.
-            raise ValueError("La factura split pagada requiere un documento compensatorio")
+            raise ValueError(
+                "La factura split pagada requiere un documento compensatorio. Emití el documento "
+                "compensatorio antes de cancelarla."
+            )
         if existing_split.get("status") == "issued":
             try:
                 from src.app.modules.expenses.service.ledger_hooks import generate_reversal_from_invoice
@@ -1487,7 +1490,10 @@ def create_split_charges_invoice(
                     raise RuntimeError("no se generó el asiento de reverso")
             except Exception as exc:
                 logger.exception("Failed to reverse empty split invoice %s", existing_split.get("invoice_number"))
-                raise ValueError("No se puede cancelar la factura split sin un reverso contable") from exc
+                raise ValueError(
+                    "No se puede cancelar la factura split sin un reverso contable. Emití primero el "
+                    "documento compensatorio de la factura e intentá de nuevo."
+                ) from exc
             db[INVOICES].update_one({"_id": existing_split["_id"]}, {"$set": {
                 "status": "cancelled",
                 "subtotal": 0.0,
@@ -1540,7 +1546,10 @@ def create_split_charges_invoice(
             "invoice_id": existing_split["_id"],
             "status": {"$in": ["confirmed", "refunded"]},
         }, {"_id": 1}):
-            raise ValueError("La factura split no puede reconstruirse después de pagos confirmados")
+            raise ValueError(
+                "La factura split no puede reconstruirse después de pagos confirmados. Verificá que la "
+                "factura no tenga pagos confirmados antes de reconstruirla."
+            )
 
         # Before payment, an issued split invoice is a projection of the
         # active charge set. Rebuild that projection in place rather than
@@ -1722,6 +1731,209 @@ def create_split_charges_invoice(
         "status": "split_charges_invoice",
         "changed_at": _now(),
         "reason": f"Factura de consumos separada creada: {len(charges)} cargo(s) por ${charges_sum:.2f}",
+        "changed_by": changed_by,
+        "is_test": False,
+    })
+
+    updated = db[INVOICES].find_one({"invoice_number": inv_doc["invoice_number"]})
+    return _enrich_invoice(updated) if updated else None
+
+
+def create_complement_invoice(
+    booking_id: str, *, changed_by: str = "angular_api",
+) -> dict | None:
+    """Emit a complementary (charges-only) invoice for the un-invoiced gap.
+
+    The check-out reconcile note fires when charges are registered AFTER the
+    main invoice was emitted ("factura corta"): the invoice subtotal no longer
+    covers the live liquidation subtotal. This function emits a second fiscal
+    document covering EXACTLY the active charges absent from the main invoice's
+    ``line_items`` — the gap — without double-invoicing charges already folded
+    into the original document.
+
+    - Idempotente: si ya existe una complementaria con la MISMA snapshot de
+      cargos, la devuelve sin emitir otro documento. Si la snapshot cambió y
+      sigue ``issued``, reconstruye la proyección en el lugar (misma semántica
+      que ``create_split_charges_invoice``). Una complementaria con pagos
+      confirmados es inmutable → ``ValueError``.
+    - ``parent_invoice_id`` apunta a la factura principal (la que quedó corta),
+      igual que la split de consumos. No reescribe ``booking.total_charges``:
+      la complementaria es un adendo fiscal, no un cambio del agregado del
+      booking (la principal ya registró su contabilidad).
+    - Devuelve ``None`` cuando no hay gap (sin factura principal o sin cargos
+      nuevos): el llamador traduce a 400.
+    """
+    from src.app.modules.housekeeping.service.collections import CHARGES_COLLECTION
+
+    db = get_database()
+
+    # Factura principal no cancelada (la que quedó corta). Los cargos que ya
+    # figuran en su ``line_items`` están facturados: el gap son los demás.
+    main_inv = db[INVOICES].find_one(
+        {
+            "booking_id": booking_id,
+            "status": {"$ne": "cancelled"},
+            "split_type": {"$ne": "charges_only"},
+        },
+        {"_id": 1, "invoice_number": 1, "line_items": 1},
+    )
+    if main_inv is None:
+        return None
+
+    covered_charge_ids = {
+        str(item.get("charge_id", ""))
+        for item in (main_inv.get("line_items") or [])
+        if isinstance(item, dict)
+        and item.get("type") == "additional_charge"
+        and item.get("charge_id")
+    }
+
+    charges = [
+        c
+        for c in db[CHARGES_COLLECTION].find(
+            {"booking_id": booking_id, "status": {"$ne": "reversed"}},
+        ).sort("_id", 1)
+        if str(c.get("_id", "")) not in covered_charge_ids
+    ]
+    if not charges:
+        return None
+
+    charges_sum = round(sum(float(c.get("total", 0) or 0) for c in charges), 2)
+    booking = _find_booking(booking_id)
+    if not booking:
+        return None
+
+    charge_snapshot = [
+        {
+            "charge_id": str(c.get("_id", "")),
+            "amount": round(float(c.get("amount", 0) or 0), 2),
+            "quantity": int(c.get("quantity", 1) or 1),
+            "total": round(float(c.get("total", 0) or 0), 2),
+        }
+        for c in charges
+    ]
+
+    def _build_projection(invoice_number: str) -> dict:
+        return {
+            "subtotal": charges_sum,
+            "room_subtotal": 0,
+            "extras_total": charges_sum,
+            "taxes": round(charges_sum * 0.16, 2),
+            "total": round(charges_sum * 1.16, 2),
+            "line_items": [
+                {
+                    "type": "additional_charge",
+                    "charge_id": str(c.get("_id", "")),
+                    "concept": c.get("concept", "") or c.get("item_name", ""),
+                    "amount": c.get("amount", 0),
+                    "quantity": c.get("quantity", 1),
+                    "total": c.get("total", 0),
+                    "created_at": c.get("created_at", ""),
+                }
+                for c in charges
+            ],
+            "additional_charges": [
+                {
+                    "charge_id": str(c.get("_id", "")),
+                    "concept": c.get("concept", "") or c.get("item_name", ""),
+                    "amount": c.get("amount", 0),
+                    "quantity": c.get("quantity", 1),
+                    "total": c.get("total", 0),
+                }
+                for c in charges
+            ],
+            "charge_snapshot": charge_snapshot,
+            "notes": (
+                f"Factura complementaria — {len(charges)} cargo(s) sin facturar "
+                f"por ${charges_sum:.2f}"
+            ),
+            "ledger_posting_status": "pending",
+            "ledger_posting_error": None,
+            "updated_at": _now(),
+        }
+
+    # ── Idempotencia / reconstrucción de la proyección existente ──
+    existing = db[INVOICES].find_one(
+        {
+            "booking_id": booking_id,
+            "split_type": "charges_only",
+            "complement_type": "gap",
+            "status": {"$ne": "cancelled"},
+        },
+        {"_id": 1, "charge_snapshot": 1, "status": 1, "invoice_number": 1},
+    )
+    if existing:
+        if existing.get("charge_snapshot") == charge_snapshot:
+            return _enrich_invoice(db[INVOICES].find_one({"_id": existing["_id"]}))
+        if existing.get("status") in {"paid", "partially_paid", "refunded"} or db[PAYMENTS].find_one(
+            {"invoice_id": existing["_id"], "status": {"$in": ["confirmed", "refunded"]}},
+            {"_id": 1},
+        ):
+            raise ValueError("La factura complementaria no puede reconstruirse después de pagos confirmados")
+        # Antes del pago, una complementaria issued es una proyección del set de
+        # cargos sin facturar actual: se reconstruye en el lugar (sin duplicar).
+        projection = _build_projection(existing.get("invoice_number", ""))
+        _update_both(INVOICES, FACT_INVOICES, existing["_id"], {"$set": projection})
+        try:
+            from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_invoice
+            db.ledger_transactions.delete_many({
+                "source": "invoice",
+                "source_id": existing.get("invoice_number", ""),
+            })
+            refreshed = db[INVOICES].find_one({"_id": existing["_id"]}) or {}
+            generate_ledger_from_invoice(refreshed, db=db)
+            ledger_status, ledger_error = "posted", None
+        except Exception as exc:
+            logger.exception("Failed to reconcile complement invoice %s", existing.get("invoice_number"))
+            ledger_status, ledger_error = "failed", str(exc)
+        _update_both(INVOICES, FACT_INVOICES, existing["_id"], {"$set": {
+            "ledger_posting_status": ledger_status, "ledger_posting_error": ledger_error,
+        }})
+        return _enrich_invoice(db[INVOICES].find_one({"_id": existing["_id"]}))
+
+    # ── Nueva complementaria ──
+    inv_doc = {
+        "booking_id": booking.get("booking_id") or booking_id,
+        "prop_id": booking.get("prop_id", 0),
+        "hotel_id": resolve_hotel_id(booking.get("prop_id", 0)),
+        "invoice_number": _generate_invoice_number(),
+        "status": "issued",
+        "split_type": "charges_only",
+        "complement_type": "gap",
+        "parent_invoice_id": str(main_inv["_id"]),
+        **{
+            k: v
+            for k, v in _build_projection("").items()
+            if k not in ("ledger_posting_status", "ledger_posting_error", "updated_at")
+        },
+        "issued_at": _now(),
+        "paid_at": None,
+    }
+    _write_both(INVOICES, FACT_INVOICES, inv_doc)
+
+    ledger_status = "posted"
+    ledger_error = None
+    try:
+        from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_invoice
+        generate_ledger_from_invoice(inv_doc, db=db)
+    except Exception as exc:
+        ledger_status = "failed"
+        ledger_error = str(exc)
+        logger.exception("Failed to generate ledger for complement invoice %s", inv_doc.get("invoice_number"))
+    db[INVOICES].update_one({"invoice_number": inv_doc["invoice_number"]}, {"$set": {
+        "ledger_posting_status": ledger_status, "ledger_posting_error": ledger_error,
+        "updated_at": _now(),
+    }})
+    db[FACT_INVOICES].update_one({"invoice_number": inv_doc["invoice_number"]}, {"$set": {
+        "ledger_posting_status": ledger_status, "ledger_posting_error": ledger_error,
+        "updated_at": _now(),
+    }})
+
+    db.booking_status_history.insert_one({
+        "booking_id": booking_id,
+        "status": "complement_invoice",
+        "changed_at": _now(),
+        "reason": f"Factura complementaria creada: {len(charges)} cargo(s) sin facturar por ${charges_sum:.2f}",
         "changed_by": changed_by,
         "is_test": False,
     })

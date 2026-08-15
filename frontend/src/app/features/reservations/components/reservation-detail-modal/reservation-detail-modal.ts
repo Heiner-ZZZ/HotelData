@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, input, output, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, input, output, signal, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DecimalPipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
@@ -10,6 +10,9 @@ import type { ReservationDetailViewModel } from '../../models/reservations.model
 import { mapReservationDetail } from '../../mappers/reservations.mapper';
 import { InStayApiService } from '../../../in-stay/services/in-stay-api.service';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { CHECK_INS_NO_SHOW_REOPEN } from '../../../../core/auth/permission.constants';
+import { CheckInsApiService } from '../../../check-ins/services/check-ins-api.service';
 
 @Component({
   selector: 'app-reservation-detail-modal',
@@ -22,11 +25,15 @@ export class ReservationDetailModalComponent {
   private readonly router = inject(Router);
   private readonly instayApi = inject(InStayApiService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
+  private readonly checkInsApi = inject(CheckInsApiService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly reservation = input.required<ReceptionCalendarReservation>();
   readonly presentation = input<'modal' | 'side-panel'>('modal');
   readonly closed = output<void>();
+  /** Emitido tras reabrir un no-show: el calendario recarga sus barras. */
+  readonly reopened = output<void>();
 
   readonly detailResource = httpResource<ReservationDetailViewModel>(() => {
     const bookingId = this.reservation().bookingId;
@@ -116,6 +123,31 @@ export class ReservationDetailModalComponent {
       };
     }
     if (stay === 'no_show') {
+      // Ventana de reapertura (hoy/ayer + estadía vigente) reflejada en el
+      // calendario: la acción se ofrece solo dentro de la ventana y el copy
+      // orienta a ajustar fechas / crear reserva cuando cerró.
+      const window = this.reservation().reopenWindow;
+      if (window === 'open') {
+        return {
+          kind: 'warning' as const,
+          icon: 'replay',
+          message: 'No show — el huésped no llegó. Ventana de reapertura abierta (hoy o ayer con estadía vigente): podés reabrir la reserva.',
+        };
+      }
+      if (window === 'too_late') {
+        return {
+          kind: 'danger' as const,
+          icon: 'event_busy',
+          message: 'No show — ventana de reapertura cerrada (check-in con más de un día de retraso). Ajustá las fechas o creá una reserva nueva.',
+        };
+      }
+      if (window === 'stay_ended') {
+        return {
+          kind: 'danger' as const,
+          icon: 'event_busy',
+          message: 'No show — la estadía ya terminó y la ventana de reapertura cerró. Ajustá las fechas o creá una reserva nueva.',
+        };
+      }
       return {
         kind: 'warning' as const,
         icon: 'warning',
@@ -178,6 +210,58 @@ export class ReservationDetailModalComponent {
   readonly canGoToStay = computed(() =>
     this.detailResource.value()?.stayStatus === 'checked_in',
   );
+
+  // ── Reapertura de no-show (autorización de gerente) ──
+  // La acción aparece SOLO dentro de la ventana (hoy/ayer + estadía vigente)
+  // y con el permiso gerencial; en los no-shows antiguos se oculta.
+  readonly canReopenNoShow = computed(() =>
+    this.reservation().stayStatus === 'no_show' &&
+    this.reservation().reopenWindow === 'open' &&
+    this.auth.hasPermission(CHECK_INS_NO_SHOW_REOPEN),
+  );
+
+  readonly reopenDialogOpen = signal(false);
+  readonly reopenReason = signal('');
+  readonly reopenPending = signal(false);
+  readonly reopenError = signal('');
+
+  openReopenDialog(): void {
+    if (!this.canReopenNoShow()) return;
+    this.reopenReason.set('');
+    this.reopenError.set('');
+    this.reopenDialogOpen.set(true);
+    queueMicrotask(() => document.getElementById('rd-reopen-reason')?.focus());
+  }
+
+  cancelReopenDialog(): void {
+    this.reopenDialogOpen.set(false);
+    this.reopenError.set('');
+  }
+
+  confirmReopenNoShow(): void {
+    const reason = this.reopenReason().trim();
+    if (!reason) {
+      this.reopenError.set('Escribe el motivo de la reapertura antes de continuar.');
+      return;
+    }
+    this.reopenPending.set(true);
+    this.reopenError.set('');
+    this.checkInsApi.reopenNoShow(this.reservation().bookingId, reason)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.reopenPending.set(false);
+          this.reopenDialogOpen.set(false);
+          this.toast.success('Reserva reabierta — el huésped puede hacer check-in.');
+          this.detailResource.reload();
+          this.reopened.emit();
+        },
+        error: (err: { message?: string }) => {
+          this.reopenPending.set(false);
+          this.reopenError.set(err.message || 'No fue posible reabrir la reserva.');
+        },
+      });
+  }
 
   reload(): void {
     this.detailResource.reload();

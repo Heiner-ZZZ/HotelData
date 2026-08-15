@@ -7,7 +7,9 @@ import logging
 from fastapi import HTTPException
 
 from src.app.modules.housekeeping.schemas import AdditionalChargeCreate
-from src.app.modules.housekeeping.service.lifecycle.charges import create_additional_charge
+from src.app.modules.housekeeping.service.lifecycle.charges import (
+    create_additional_charge,
+)
 
 _logger = logging.getLogger(__name__)
 

@@ -69,6 +69,8 @@ function mapReservationListItem(item: ReservationListItemDto): ReservationListIt
     currency: item.currency || 'USD',
     totalNights: item.total_nights || 0,
     stayStatus: item.stay_status || '',
+    reopenWindow: item.reopen_window ?? null,
+    noShowReopenedAt: item.no_show_reopened_at ?? null,
     folio: item.folio || '',
     checkInTime: item.check_in_time || '',
     checkOutTime: item.check_out_time || '',
@@ -244,6 +246,11 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     hotel_id?: string;
     rate_plan_id?: string;
     stay_status?: string | null;
+    check_out_mode?: string | null;
+    late_checkout_minutes?: number | null;
+    late_checkout_policy_time?: string | null;
+    check_out_date_actual?: string | null;
+    check_out_time_actual?: string | null;
     coupon_code?: string;
     special_requests?: string[] | string;
     estimated_arrival_time?: string;
@@ -301,6 +308,11 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     selectedAmenities: Array.isArray(booking.selected_amenities) ? booking.selected_amenities : [],
     estimatedArrivalTime: booking.estimated_arrival_time ?? '',
     lateCheckin: Boolean(booking.late_checkin),
+    checkOutMode: booking.check_out_mode ?? null,
+    lateCheckoutMinutes: Number(booking.late_checkout_minutes ?? 0),
+    lateCheckoutPolicyTime: booking.late_checkout_policy_time ?? '',
+    checkOutDateActual: booking.check_out_date_actual ?? null,
+    checkOutTimeActual: booking.check_out_time_actual ?? null,
     specialRequestFulfillment: Array.isArray(dto.special_request_fulfillment)
       ? dto.special_request_fulfillment.map(mapFulfillmentItem)
       : undefined,

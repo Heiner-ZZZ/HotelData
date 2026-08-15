@@ -496,7 +496,7 @@ class TestGuestPhone:
             source="test",
         )
         errors = validate_reservation_input(payload)
-        phone_errors = [e for e in errors if "phone" in e.lower()]
+        phone_errors = [e for e in errors if "phone" in e.lower() or "teléfono" in e.lower()]
         assert len(phone_errors) >= 1, f"Expected phone validation error, got {errors}"
 
 
@@ -694,7 +694,7 @@ class TestAvailabilityCheck:
             source="test",
             is_test=True,
         )
-        with pytest.raises(ValueError, match="availability|Cannot create"):
+        with pytest.raises(ValueError, match="No se pudo crear la reserva|disponible"):
             create_booking(payload)
 
     def test_create_booking_allows_with_availability(self, seeded_hotel):
@@ -718,7 +718,7 @@ class TestAvailabilityCheck:
     def test_check_availability_invalid_dates(self):
         result = _check_availability(999, "not-a-date", "2026-08-13", 1)
         assert result is not None
-        assert "Invalid date" in result
+        assert "formato de fecha" in result
 
     def test_check_availability_without_room_type_finds_any(self, seeded_hotel):
         """Without room_type_id, finds ANY room type with availability."""
@@ -887,6 +887,88 @@ class TestListBookingsFilters:
         result_ci = list_bookings(guest_name="alpha", page_size=50)
         assert result_ci["total"] == 1
 
+    def test_list_exposes_no_show_reopen_window(self, db):
+        """El listado expone la ventana de reapertura de no-show con el MISMO
+        criterio server-authoritative que el calendario de Recepción
+        (``reopen_window_reason``) para que la lista marque los no-shows sin
+        abrir el timeline. Las reservas REABIERTAS (``no_show_reopened_at``:
+        el huésped llegó tras el no-show) llevan la misma ventana, para que
+        recepción las detecte sin abrir el calendario. El resto de reservas
+        serializa ``reopen_window`` en ``None``."""
+        from datetime import date, timedelta
+
+        from src.app.core.timezone import local_today
+        from src.app.modules.reservations.service.queries import list_bookings
+
+        today = date.fromisoformat(local_today())
+        base = {
+            "prop_id": 999,
+            "guest_name": "NoShow List",
+            "status": "confirmed",
+            "total_price": 100.0,
+            "total_nights": 1,
+            "created_at": utc_now(),
+        }
+        db.booking_orders.insert_one({
+            **base,
+            "booking_id": "BK-NS-LIST-OPEN",
+            "stay_status": "no_show",
+            "check_in_date": today.isoformat(),
+            "check_out_date": (today + timedelta(days=1)).isoformat(),
+        })
+        db.booking_orders.insert_one({
+            **base,
+            "booking_id": "BK-NS-LIST-LATE",
+            "guest_name": "NoShow Viejo",
+            "stay_status": "no_show",
+            "check_in_date": (today - timedelta(days=3)).isoformat(),
+            "check_out_date": (today - timedelta(days=1)).isoformat(),
+        })
+        db.booking_orders.insert_one({
+            **base,
+            "booking_id": "BK-NS-LIST-CHECKED",
+            "stay_status": "checked_in",
+            "check_in_date": today.isoformat(),
+            "check_out_date": (today + timedelta(days=1)).isoformat(),
+        })
+        # Reabierta (pending, huésped llegó tras el no-show) dentro de la
+        # ventana → expone la ventana abierta, misma regla que el no-show.
+        db.booking_orders.insert_one({
+            **base,
+            "booking_id": "BK-NS-LIST-REOPENED",
+            "guest_name": "Reabierta List",
+            "stay_status": "pending",
+            "check_in_date": today.isoformat(),
+            "check_out_date": (today + timedelta(days=1)).isoformat(),
+            "no_show_reopened_at": utc_now(),
+        })
+        # Reabierta fuera de la ventana (check-in con retraso) → too_late: la
+        # lista no debe invitar a nada que la API rechazaría.
+        db.booking_orders.insert_one({
+            **base,
+            "booking_id": "BK-NS-LIST-REOPENED-LATE",
+            "guest_name": "Reabierta Vieja",
+            "stay_status": "pending",
+            "check_in_date": (today - timedelta(days=3)).isoformat(),
+            "check_out_date": (today - timedelta(days=1)).isoformat(),
+            "no_show_reopened_at": utc_now(),
+        })
+
+        page = list_bookings(page_size=50)
+        by_id = {item["booking_id"]: item for item in page["items"]}
+
+        # Check-in hoy + estadía vigente → reabrible (ventana abierta).
+        assert by_id["BK-NS-LIST-OPEN"]["reopen_window"] == "open"
+        # Check-in con 2+ días de retraso → ventana cerrada por retraso.
+        assert by_id["BK-NS-LIST-LATE"]["reopen_window"] == "too_late"
+        # No es no-show → sin ventana.
+        assert by_id["BK-NS-LIST-CHECKED"]["reopen_window"] is None
+        # Reabierta dentro de la ventana → ventana abierta (misma regla).
+        assert by_id["BK-NS-LIST-REOPENED"]["reopen_window"] == "open"
+        assert by_id["BK-NS-LIST-REOPENED"]["no_show_reopened_at"] is not None
+        # Reabierta fuera de la ventana → too_late (el marcador no debe mostrar).
+        assert by_id["BK-NS-LIST-REOPENED-LATE"]["reopen_window"] == "too_late"
+
 
 # ---------------------------------------------------------------------------
 # GAP-040: get_reservation_stats
@@ -946,15 +1028,51 @@ class TestReservationStats:
 # ---------------------------------------------------------------------------
 
 class TestAutoInvoiceOnCheckIn:
-    def _create_booking_for_checkin(self) -> str:
-        """Create a real (non-test) booking with the seeded_hotel data."""
+    @staticmethod
+    def _active_dates(days_ago: int = 1, nights: int = 3) -> tuple[str, str]:
+        """Ventana de estadía ACTIVA: check-in de ayer y check-out futuro.
+        El check-in rechaza reservas vencidas (check-out < hoy, no-show) y
+        también las futuras (check-in > hoy), así que la ventana debe
+        contener el día de hoy."""
+        from datetime import date, timedelta
+
+        from src.app.core.timezone import local_today as lt
+        start = date.fromisoformat(lt()) - timedelta(days=days_ago)
+        return start.isoformat(), (start + timedelta(days=nights)).isoformat()
+
+    def _create_booking_for_checkin(self, db=None) -> str:
+        """Create a real (non-test) booking with the seeded_hotel data on an
+        active window (seeding inventario + tarifas para esa ventana)."""
+        from datetime import date, timedelta
+        cin, cout = self._active_dates()
+        if db is not None:
+            day = date.fromisoformat(cin)
+            while day.isoformat() < cout:
+                d = day.isoformat()
+                db.room_inventory_calendar.insert_one({
+                    "prop_id": 999,
+                    "room_type_id": "RT-999-deluxe",
+                    "date": d,
+                    "total_rooms": 10,
+                    "available_rooms": 5,
+                    "is_available": True,
+                })
+                db.hotel_rate_calendar.insert_one({
+                    "prop_id": 999,
+                    "room_type_id": "RT-999-deluxe",
+                    "date": d,
+                    "rate_amount": 150.00,
+                    "currency": "USD",
+                    "is_closed": False,
+                })
+                day += timedelta(days=1)
         payload = ReservationInput(
             prop_id=999,
             guest_name="Checkin Guest",
             guest_email="checkin@test.com",
             room_type_id="RT-999-deluxe",
-            check_in_date="2026-08-10",
-            check_out_date="2026-08-13",
+            check_in_date=cin,
+            check_out_date=cout,
             adults=2,
             children=0,
             rooms=1,
@@ -968,7 +1086,7 @@ class TestAutoInvoiceOnCheckIn:
         """Non-test booking should get an invoice auto-created at check-in."""
         from src.app.modules.reservations.service._checkinout import complete_check_in
 
-        bid = self._create_booking_for_checkin()
+        bid = self._create_booking_for_checkin(db)
         result = complete_check_in(bid, changed_by="test")
 
         assert result["stay_status"] == "checked_in"
@@ -986,7 +1104,7 @@ class TestAutoInvoiceOnCheckIn:
         """Invoice subtotal = total_price ($450), taxes = 10% ($45), total = $495."""
         from src.app.modules.reservations.service._checkinout import complete_check_in
 
-        bid = self._create_booking_for_checkin()
+        bid = self._create_booking_for_checkin(db)
         result = complete_check_in(bid, changed_by="test")
 
         from bson import ObjectId
@@ -999,13 +1117,27 @@ class TestAutoInvoiceOnCheckIn:
         """Test bookings should NOT create an invoice."""
         from src.app.modules.reservations.service._checkinout import complete_check_in
 
+        cin, cout = self._active_dates()
+        from datetime import date, timedelta
+        day = date.fromisoformat(cin)
+        while day.isoformat() < cout:
+            d = day.isoformat()
+            db.room_inventory_calendar.insert_one({
+                "prop_id": 999, "room_type_id": "RT-999-deluxe", "date": d,
+                "total_rooms": 10, "available_rooms": 5, "is_available": True,
+            })
+            db.hotel_rate_calendar.insert_one({
+                "prop_id": 999, "room_type_id": "RT-999-deluxe", "date": d,
+                "rate_amount": 150.00, "currency": "USD", "is_closed": False,
+            })
+            day += timedelta(days=1)
         payload = ReservationInput(
             prop_id=999,
             guest_name="Test Guest",
             guest_email="test@test.com",
             room_type_id="RT-999-deluxe",
-            check_in_date="2026-08-10",
-            check_out_date="2026-08-13",
+            check_in_date=cin,
+            check_out_date=cout,
             adults=1,
             children=0,
             rooms=1,
@@ -1029,6 +1161,7 @@ class TestAutoInvoiceOnCheckIn:
         """
         from src.app.modules.reservations.service._checkinout import complete_check_in
 
+        cin, cout = self._active_dates()
         bid = generate_prefixed_id("BK")
         db.booking_orders.insert_one({
             "booking_id": bid,
@@ -1036,8 +1169,8 @@ class TestAutoInvoiceOnCheckIn:
             "status": "pending",
             "guest_name": "No Price",
             "guest_email": "noprice@test.com",
-            "check_in_date": "2026-08-10",
-            "check_out_date": "2026-08-13",
+            "check_in_date": cin,
+            "check_out_date": cout,
             "adults": 1,
             "children": 0,
             "rooms": 1,
@@ -1062,7 +1195,7 @@ class TestAutoInvoiceOnCheckIn:
         """
         from src.app.modules.reservations.service._checkinout import complete_check_in
 
-        bid = self._create_booking_for_checkin()  # total_price = 450 (3 noches × $150)
+        bid = self._create_booking_for_checkin(db)  # total_price = 450 (3 noches × $150)
         # Crédito que cancela el subtotal + taxes (450 + 45 - 500 = -5).
         db.booking_orders.update_one(
             {"booking_id": bid},
@@ -1084,7 +1217,7 @@ class TestAutoInvoiceOnCheckIn:
         from bson import ObjectId
         from src.app.modules.reservations.service._checkinout import complete_check_in
 
-        bid = self._create_booking_for_checkin()  # total_price = 450
+        bid = self._create_booking_for_checkin(db)  # total_price = 450
         legacy_id = db.reservation_invoices.insert_one({
             "booking_id": bid,
             "invoice_number": "INV-LEGACY-0",
@@ -1222,34 +1355,361 @@ class TestNoPriceGuard:
     def test_modify_booking_blocks_without_total_price(self, db, seeded_hotel):
         """Modificar a fechas sin tarifas no puede dejar la reserva sin precio:
         falla y conserva el total_price original."""
+        from datetime import date, timedelta
+
+        from src.app.core.timezone import local_today as lt
         from src.app.modules.reservations.service.lifecycle import modify_booking
 
+        # Fechas futuras (el guard de modificar compara con hoy) + tarifas
+        # e inventario para la ventana de creación.
+        start = date.fromisoformat(lt()) + timedelta(days=10)
+        cin, cout = start.isoformat(), (start + timedelta(days=3)).isoformat()
+        for day_offset in range(3):
+            d = (start + timedelta(days=day_offset)).isoformat()
+            db.hotel_rate_calendar.insert_one({
+                "prop_id": 999,
+                "room_type_id": "RT-999-deluxe",
+                "date": d,
+                "rate_amount": 150.00,
+                "currency": "USD",
+                "is_closed": False,
+            })
+            db.room_inventory_calendar.insert_one({
+                "prop_id": 999,
+                "room_type_id": "RT-999-deluxe",
+                "date": d,
+                "total_rooms": 10,
+                "available_rooms": 5,
+                "is_available": True,
+            })
         bid = create_booking(ReservationInput(
             prop_id=999,
             guest_name="Modify",
             guest_email="modify@test.com",
             room_type_id="RT-999-deluxe",
-            check_in_date="2026-08-10",
-            check_out_date="2026-08-13",
+            check_in_date=cin,
+            check_out_date=cout,
             adults=2, children=0, rooms=1,
             comment="", source="test", is_test=True,
         ))["booking_id"]
-        # Quitar las tarifas y dar inventario en las fechas nuevas (09-20..22)
-        # para que la única razón de fallo sea el precio.
+        # Quitar las tarifas y dar inventario en las fechas nuevas
+        # (today+30..32) para que la única razón de fallo sea el precio.
         db.hotel_rate_calendar.delete_many({"prop_id": 999})
+        new_start = date.fromisoformat(lt()) + timedelta(days=30)
         for day_offset in range(3):
-            date_str = f"2026-09-{20 + day_offset:02d}"
+            d = (new_start + timedelta(days=day_offset)).isoformat()
             db.room_inventory_calendar.insert_one({
                 "prop_id": 999,
                 "room_type_id": "RT-999-deluxe",
-                "date": date_str,
+                "date": d,
                 "total_rooms": 10,
                 "available_rooms": 5,
                 "is_available": True,
             })
 
+        new_cin = new_start.isoformat()
+        new_cout = (new_start + timedelta(days=3)).isoformat()
         with pytest.raises(ValueError, match="precio"):
-            modify_booking(bid, check_in_date="2026-09-20", check_out_date="2026-09-23")
+            modify_booking(bid, check_in_date=new_cin, check_out_date=new_cout)
 
         doc = db.booking_orders.find_one({"booking_id": bid})
         assert doc["total_price"] == 450.00, "El precio original debe conservarse"
+
+
+# ---------------------------------------------------------------------------
+# Contrato de mensajes: errores del flujo de reservas (crear/editar/cancelar)
+# en español y con acción concreta, no solo descripción del estado.
+# ---------------------------------------------------------------------------
+
+class TestReservationErrorMessages:
+    """Cada error del flujo crear/editar/cancelar (create/core.py, guests.py,
+    cleanup.py, validation.py, _availability.py, _validation.py) dice QUÉ HACER
+    además de describir el estado. La superficie de detalle (detail,
+    cancel-preview, recalculate y los servicios de check-in/out detail)
+    cumple el mismo contrato. Si un mensaje deja de cumplirlo, estos tests
+    lo detectan.
+    """
+
+    @staticmethod
+    def _future_dates(days_from: int = 10, nights: int = 3) -> tuple[str, str]:
+        """Fechas futuras (el guard de modificar/cancelar compara con hoy)."""
+        from datetime import date, timedelta
+
+        from src.app.core.timezone import local_today as lt
+        start = date.fromisoformat(lt()) + timedelta(days=days_from)
+        return start.isoformat(), (start + timedelta(days=nights)).isoformat()
+
+    def _booking(self, db, prop_id=999, **overrides) -> str:
+        """Crea una reserva en fechas futuras (el guard de modificar/cancelar
+        compara con hoy), sembrando inventario + tarifas para esa ventana.
+        """
+        from datetime import date, timedelta
+        cin, cout = self._future_dates()
+        day = date.fromisoformat(cin)
+        while day.isoformat() < cout:
+            d = day.isoformat()
+            db.room_inventory_calendar.insert_one({
+                "prop_id": prop_id,
+                "room_type_id": "RT-999-deluxe",
+                "date": d,
+                "total_rooms": 10,
+                "available_rooms": 5,
+                "is_available": True,
+            })
+            db.hotel_rate_calendar.insert_one({
+                "prop_id": prop_id,
+                "room_type_id": "RT-999-deluxe",
+                "date": d,
+                "rate_amount": 150.00,
+                "currency": "USD",
+                "is_closed": False,
+            })
+            day += timedelta(days=1)
+        return create_booking(ReservationInput(
+            prop_id=prop_id,
+            guest_name="Msg",
+            guest_email="msg@test.com",
+            guest_phone="+1234567890",
+            room_type_id="RT-999-deluxe",
+            check_in_date=cin,
+            check_out_date=cout,
+            adults=2,
+            children=0,
+            rooms=1,
+            comment="",
+            source="test",
+            is_test=True,
+            **overrides,
+        ))["booking_id"]
+
+    # ── Crear: validación de entrada ──
+
+    def test_create_validation_messages_spanish_with_action(self, db, seeded_hotel):
+        errors = validate_reservation_input(ReservationInput(
+            prop_id=0,
+            guest_name="",
+            guest_email="malo",
+            check_in_date="",
+            check_out_date="",
+            adults=0,
+            children=-1,
+            rooms=0,
+            guest_phone="abc!!",
+            comment="",
+            source="test",
+        ))
+        text = "; ".join(errors)
+        # Cada rama: mensaje en español con una instrucción (verbo de acción).
+        assert "Elegí un hotel de la lista" in text
+        assert "Ingresalo para continuar" in text
+        assert "Verificá el formato" in text
+        assert "Elegí el día de ingreso" in text
+        assert "Elegí el día de salida" in text
+        assert "Indicá la cantidad de adultos" in text
+        assert "Corregí el valor" in text
+        assert "Indicá la cantidad de habitaciones" in text
+        assert "Usá solo números, espacios, guiones o paréntesis" in text
+
+    def test_booking_form_requirements_spanish_with_action(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.validation import (
+            validate_booking_form_requirements,
+        )
+
+        def _errors(check_in_time: str, check_out_time: str, estimated: str = "") -> str:
+            return "; ".join(validate_booking_form_requirements(ReservationInput(
+                prop_id=999,
+                guest_name="Form",
+                guest_email="form@test.com",
+                guest_phone="",
+                check_in_date="2026-08-10",
+                check_out_date="2026-08-11",
+                check_in_time=check_in_time,
+                check_out_time=check_out_time,
+                estimated_arrival_time=estimated,
+                adults=1,
+                children=0,
+                rooms=1,
+                comment="",
+                source="web",
+            )))
+
+        # Faltan teléfono + cédula + horas → mensajes de obligatorio con acción.
+        text = _errors("", "")
+        assert "El teléfono del huésped es obligatorio. Ingresalo para continuar" in text
+        assert "La cédula o documento del huésped es obligatorio. Ingresalo para continuar" in text
+        assert "Elegí una hora de ingreso" in text
+        assert "Elegí una hora de salida" in text
+
+        # Formato HH:MM inválido → mensajes con el formato esperado.
+        text_fmt = _errors("99:99", "99:99", estimated="25:00")
+        assert "HH:MM (ej. 15:00)" in text_fmt
+        assert "HH:MM (ej. 12:00)" in text_fmt
+        assert "HH:MM (ej. 20:00)" in text_fmt
+
+    def test_create_wraps_availability_error_in_spanish(self, db, seeded_hotel):
+        with pytest.raises(ValueError) as exc:
+            create_booking(self._booking_payload(rooms=6))
+        msg = str(exc.value)
+        assert msg.startswith("No se pudo crear la reserva: ")
+        assert "Solo hay 5 habitación(es)" in msg
+        assert "Reducí la cantidad de habitaciones o cambiá las fechas" in msg
+
+    def test_create_invalid_date_format_message(self, db, seeded_hotel):
+        error = _check_availability(999, "10-08-2026", "2026-08-13", 1, "RT-999-deluxe")
+        assert error is not None
+        assert "El formato de fecha no es válido" in error
+        assert "Usá AAAA-MM-DD" in error
+
+    def _booking_payload(self, **overrides):
+        base = {
+            "prop_id": 999,
+            "guest_name": "Msg",
+            "guest_email": "msg@test.com",
+            "guest_phone": "+1234567890",
+            "room_type_id": "RT-999-deluxe",
+            "check_in_date": "2026-08-10",
+            "check_out_date": "2026-08-13",
+            "adults": 2,
+            "children": 0,
+            "rooms": 1,
+            "comment": "",
+            "source": "test",
+            "is_test": True,
+        }
+        base.update(overrides)
+        return ReservationInput(**base)
+
+    # ── Editar: modify_booking ──
+
+    def test_modify_not_found_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.lifecycle import modify_booking
+        with pytest.raises(ValueError, match=r"No se encontró la reserva. Verificá el número de reserva"):
+            modify_booking("BK-NO-EXISTE", check_in_date="2026-08-11")
+
+    def test_modify_cancelled_booking_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.lifecycle import modify_booking
+        bid = self._booking(db)
+        db.booking_orders.update_one({"booking_id": bid}, {"$set": {"status": "cancelled"}})
+        with pytest.raises(ValueError) as exc:
+            modify_booking(bid, check_in_date="2026-08-11")
+        msg = str(exc.value)
+        assert "No se puede modificar una reserva en estado 'cancelled'" in msg
+        assert "Creá una reserva nueva si necesitás registrar el cambio" in msg
+
+    def test_modify_checked_in_only_datetime_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.lifecycle import modify_booking
+        bid = self._booking(db)
+        db.booking_orders.update_one({"booking_id": bid}, {"$set": {"stay_status": "checked_in"}})
+        with pytest.raises(ValueError) as exc:
+            modify_booking(bid, check_in_date=self._future_dates(days_from=5)[0], rooms=2)
+        msg = str(exc.value)
+        assert "el huésped ya está registrado (check-in)" in msg
+        assert "Solo podés editar la fecha y la hora de check-in/out" in msg
+
+    def test_modify_date_format_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.lifecycle import modify_booking
+        bid = self._booking(db)
+        _, cout = self._future_dates(days_from=5)
+        with pytest.raises(ValueError) as exc:
+            modify_booking(bid, check_in_date="10-08-2026", check_out_date=cout)
+        msg = str(exc.value)
+        assert "no es válida" in msg
+        assert "Usá el formato AAAA-MM-DD" in msg
+
+    # ── Cancelar: cancel_booking ──
+
+    def test_cancel_not_found_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.cleanup import cancel_booking
+        with pytest.raises(ValueError, match=r"No se encontró la reserva. Verificá el número de reserva"):
+            cancel_booking("BK-NO-EXISTE")
+
+    def test_cancel_confirmed_booking_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.cleanup import cancel_booking
+        bid = self._booking(db)
+        db.booking_orders.update_one({"booking_id": bid}, {"$set": {"status": "confirmed"}})
+        with pytest.raises(ValueError) as exc:
+            cancel_booking(bid)
+        msg = str(exc.value)
+        assert "Solo se pueden cancelar reservas pendientes" in msg
+        assert "Contactá a recepción para gestionar la cancelación" in msg
+
+    # ── Huéspedes por habitación: guests.py ──
+
+    def test_room_guests_cancelled_booking_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.lifecycle import save_room_guests
+        bid = self._booking(db)
+        db.booking_orders.update_one({"booking_id": bid}, {"$set": {"status": "cancelled"}})
+        with pytest.raises(ValueError) as exc:
+            save_room_guests(bid, [{"room_index": 0, "guests": []}])
+        msg = str(exc.value)
+        assert "No se pueden modificar los huéspedes de una reserva cancelada o rechazada" in msg
+        assert "Creá una reserva nueva para registrar a los huéspedes" in msg
+
+    def test_room_guests_out_of_range_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.lifecycle import save_room_guests
+        bid = self._booking(db)  # rooms=1 → índices válidos 0-0
+        with pytest.raises(ValueError) as exc:
+            save_room_guests(bid, [{"room_index": 5, "guests": []}])
+        msg = str(exc.value)
+        assert "El índice de habitación 5 está fuera de rango (0-0)" in msg
+        assert "Verificá que la habitación pertenezca a esta reserva" in msg
+
+    # ── Cupón: acciones en vez de solo estado ──
+
+    def test_coupon_invalid_message_with_action(self, db, seeded_hotel):
+        from src.app.modules.reservations.service.lifecycle.create._validation import (
+            validate_coupon_code,
+        )
+        error, _, _ = validate_coupon_code("NOPE-CODE", seeded_hotel)
+        assert error is not None
+        assert "no es válido" in error
+        assert "Revisá el código e intentá de nuevo" in error
+        assert "o continuá sin promoción" in error
+
+    # ── Detalle: rutas de detail / cancel-preview / recalculate ──
+
+    @pytest.mark.asyncio
+    async def test_detail_not_found_message_with_action(self, client, admin_user):
+        from tests.conftest import login
+        assert await login(client, admin_user["username"], admin_user["password"]) == 200
+        resp = await client.get("/api/reservations/BK-NO-EXISTE")
+        assert resp.status_code == 404
+        assert "No se encontró la reserva. Verificá el número de reserva e intentá de nuevo." in resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_cancel_preview_not_found_message_with_action(self, client, admin_user):
+        from tests.conftest import login
+        assert await login(client, admin_user["username"], admin_user["password"]) == 200
+        resp = await client.get("/api/reservations/BK-NO-EXISTE/cancel-preview")
+        assert resp.status_code == 404
+        assert "No se encontró la reserva. Verificá el número de reserva e intentá de nuevo." in resp.json()["detail"]
+
+    def test_check_in_detail_not_found_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service._checkin_detail import (
+            get_check_in_detail,
+            save_check_in_detail,
+        )
+        for call in (get_check_in_detail, save_check_in_detail):
+            with pytest.raises(ValueError, match=r"No se encontró la reserva. Verificá el número de reserva"):
+                call("BK-NO-EXISTE")
+
+    def test_check_out_detail_not_found_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service._checkout_detail import (
+            get_check_out_detail,
+            save_check_out_detail,
+        )
+        for call in (get_check_out_detail, save_check_out_detail):
+            with pytest.raises(ValueError, match=r"No se encontró la reserva. Verificá el número de reserva"):
+                call("BK-NO-EXISTE")
+
+    def test_save_check_out_detail_cancelled_message(self, db, seeded_hotel):
+        from src.app.modules.reservations.service._checkout_detail import (
+            save_check_out_detail,
+        )
+        bid = self._booking(db)
+        db.booking_orders.update_one({"booking_id": bid}, {"$set": {"status": "cancelled"}})
+        with pytest.raises(ValueError) as exc:
+            save_check_out_detail(bid)
+        msg = str(exc.value)
+        assert "No se puede modificar el detalle de check-out de una reserva cancelada o rechazada" in msg
+        assert "Creá una reserva nueva o contactá al equipo" in msg

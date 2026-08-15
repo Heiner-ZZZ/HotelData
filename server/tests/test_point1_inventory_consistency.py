@@ -163,7 +163,10 @@ def test_deleted_inventory_calendar_rows_are_not_sellable(db):
         room_type_id="standard",
     )
 
-    assert error == "No inventory data for date 2026-08-10"
+    assert error == (
+        "No hay disponibilidad registrada para el 2026-08-10. Cargá el inventario "
+        "de esa fecha o elegí otras fechas."
+    )
 
 
 def test_inventory_deduction_is_all_or_nothing_when_a_night_is_missing(db):

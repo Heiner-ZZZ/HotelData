@@ -112,22 +112,25 @@ class TestCloseFolioInvoiceIdObjectIdFk:
             "the stored invoice_id must resolve to a real reservation_invoices._id"
         )
 
-    def test_close_folio_keeps_none_when_no_invoice(self, db):
-        """Folios closed without an invoice keep invoice_id None (not '')."""
-        from src.app.modules.billing.service import close_folio
+    def test_get_folio_uses_booking_invoice_when_folio_fk_is_missing(self, db):
+        """The printed folio still exposes coverage for historical missing FKs."""
+        from src.app.modules.billing.service import get_folio
 
-        booking_id = _seed_booking(db, booking_id="BK-TESTFOLIO-NOINV")
+        booking_id = _seed_booking(db, booking_id="BK-TESTFOLIO-COVERAGE")
+        invoice_id = _seed_invoice(db, booking_id)
+        db.reservation_invoices.update_one(
+            {"_id": invoice_id},
+            {"$set": {"subtotal": 100.0}},
+        )
         _seed_folio(db, booking_id, status="open")
 
-        result = close_folio(
-            booking_id,
-            closed_by="tester",
-            close_reason="approved_external_settlement: test",
-        )
+        result = get_folio(booking_id)
 
         assert result is not None
-        doc = db.guest_folios.find_one({"booking_id": booking_id})
-        assert doc.get("invoice_id") is None
+        assert result["has_invoice"] is True
+        assert result["invoice_id"] == invoice_id
+        assert result["invoice_number"].startswith("INV-TEST-")
+        assert result["invoice_covered_subtotal"] == 100.0
 
     @pytest.mark.asyncio
     async def test_close_folio_api_stores_object_id(self, client, db, admin_user):

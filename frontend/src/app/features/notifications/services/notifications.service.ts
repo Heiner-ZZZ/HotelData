@@ -19,4 +19,13 @@ export class ClientNotificationsService {
       .get<MyNotificationsDto>(`${this.apiConfig.baseUrl}/notifications/my`, { params, withCredentials: true })
       .pipe(map(dto => mapMyNotifications(dto)));
   }
+
+  /** Marca una notificación del usuario actual como leída (idempotente). */
+  markAsRead(notificationId: string) {
+    return this.http.post<{ id: string; read: boolean }>(
+      `${this.apiConfig.baseUrl}/notifications/${notificationId}/read`,
+      null,
+      { withCredentials: true },
+    );
+  }
 }
