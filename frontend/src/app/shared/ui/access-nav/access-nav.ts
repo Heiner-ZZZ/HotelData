@@ -198,7 +198,6 @@ export class AccessNavComponent implements AfterViewInit {
         { label: 'Auditoría', href: '/system/audit', icon: 'history' },
         { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' },
         { label: 'Notificaciones', href: '/system/notifications', icon: 'notifications' },
-        { label: 'BSC', href: '/system/bsc', icon: 'monitor_heart', allowedRoles: ['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'] },
         { label: 'Ganancias', href: '/admin/earnings', icon: 'payments', allowedRoles: ['super_admin'] },
         { label: 'Config. Global', href: '/admin/global-settings', icon: 'tune', allowedRoles: ['super_admin', 'admin_sistema'] },
         { label: 'Geográfico', href: '/admin/geo-catalog', icon: 'map', allowedRoles: ['super_admin', 'admin_sistema'] }

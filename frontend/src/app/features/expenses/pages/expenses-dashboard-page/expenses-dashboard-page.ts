@@ -7,6 +7,7 @@ import { BaseChartDirective } from 'ng2-charts';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
+import { HorizontalSubNavComponent } from '../../../../shared/ui/horizontal-sub-nav/horizontal-sub-nav';
 import { ThemeService } from '../../../../core/theme/theme.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ExpensesApiService } from '../../services/expenses-api.service';
@@ -19,11 +20,12 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-expenses-dashboard-page',
   standalone: true,
-  imports: [CurrencyPipe, RouterLink, PageHeaderComponent, LoadingStateComponent, BaseChartDirective],
+  imports: [CurrencyPipe, RouterLink, PageHeaderComponent, LoadingStateComponent, BaseChartDirective, HorizontalSubNavComponent],
   styleUrl: '../../expenses.shared.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-wrap">
+      <app-horizontal-sub-nav [activeSlug]="'gestion.pms.finanzas'" />
       <app-page-header
         eyebrow="Financeiro"
         title="Control de Gastos y Compras"

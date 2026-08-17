@@ -2,6 +2,7 @@
   @for (item of items(); track item.href) {
     <a
       [routerLink]="item.href"
+      [queryParamsHandling]="'preserve'"
       class="hrz-sub-nav-link"
       routerLinkActive="active"
       [routerLinkActiveOptions]="{ exact: false }"

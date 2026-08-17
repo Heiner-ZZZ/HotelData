@@ -5,6 +5,7 @@ from typing import Any, Callable
 
 from fastapi import HTTPException, Request, status
 
+from src.app.modules.hotels.service.operational import non_operational_hotel
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.hotel_filter import user_can_access_hotel
 from src.app.security.permissions import user_has_permission
@@ -179,12 +180,12 @@ def require_prop_permission(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Contexto de hotel requerido (prop_id).",
             )
-        # Gate operativo (Fase A): el hotel existe pero NO está publicado
-        # (onboarding pendiente de aprobación) → 403 con mensaje claro para
-        # el frontend. Si la fila no existe se conserva el comportamiento
-        # actual (los chequeos de alcance/permiso siguientes siguen gateando).
-        hotel = db.dim_hotels.find_one({"prop_id": pid}, {"published": 1})
-        if hotel is not None and hotel.get("published") is False:
+        # Gate operativo (Fase A + Fase 5): el hotel existe pero NO está
+        # operativo (pendiente/rechazado por ``published=false`` O suspendido
+        # por impago por ``is_operational=false``) → 403 con mensaje claro.
+        # Si la fila no existe se conserva el comportamiento actual (los
+        # chequeos de alcance/permiso siguientes siguen gateando).
+        if non_operational_hotel(db, pid):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"El hotel {pid} no está operativo.",

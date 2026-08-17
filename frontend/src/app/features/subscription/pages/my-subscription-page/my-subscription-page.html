@@ -1,0 +1,237 @@
+<div class="sub-page">
+  <app-page-header
+    title="Mi suscripción"
+    description="Estado, plan y pagos de tu suscripción a HotelData."
+    icon="sell"
+  />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Consultando tu suscripción…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No pudimos consultar tu suscripción"
+        description="Intenta nuevamente en unos segundos."
+        (retry)="subscriptionResource.reload()"
+      />
+    }
+    @case ('success') {
+      @if (subscription(); as sub) {
+        <!-- ── Banner de acción (overdue / suspended) ───────────────── -->
+        @if (isOverdueOrSuspended()) {
+          <div class="sub-alert" role="alert">
+            <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+            <p>Regulariza tu pago para reactivar tu hotel.</p>
+          </div>
+        }
+
+        <!-- ── Estado + plan actual ──────────────────────────────────── -->
+        <section class="surface-card sub-hero">
+          <div class="sub-hero__top">
+            <app-status-badge
+              [tone]="statusTone(sub.status)"
+              [label]="statusLabel(sub.status)"
+            />
+            <span class="sub-hero__cycle">
+              <span class="material-symbols-outlined" aria-hidden="true">cycle</span>
+              Ciclo {{ cycleLabel(sub.billingCycle) }}
+            </span>
+          </div>
+          <div class="sub-hero__body">
+            <div class="sub-hero__plan">
+              <p class="sub-hero__eyebrow">Plan actual</p>
+              <p class="sub-hero__band">
+                <span class="material-symbols-outlined" aria-hidden="true">verified</span>
+                {{ sub.bandLabel }} · banda {{ sub.band }}
+              </p>
+              <p class="sub-hero__meta">
+                @if (sub.paymentMethod) {
+                  Método: <strong>{{ methodLabel(sub.paymentMethod) }}</strong> ·
+                }
+                @if (sub.renewsAt) {
+                  Renueva el <strong>{{ formatDate(sub.renewsAt) }}</strong>
+                }
+              </p>
+            </div>
+            <div class="sub-hero__price">
+              <strong>${{ sub.priceUsd | number: '1.2-2' }}</strong>
+              <span>/mes</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Subir comprobante ─────────────────────────────────────── -->
+        <section class="surface-card sub-pay">
+          <header class="sub-card__header">
+            <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
+            <div>
+              <h2>Subir comprobante</h2>
+              <p>
+                No conectamos con bancos: tú realizas el pago y registras el comprobante;
+                un administrador lo concilia.
+              </p>
+            </div>
+          </header>
+
+          @if (canPay()) {
+            @if (unpaidInvoice(); as inv) {
+              <div class="sub-pay__invoice">
+                <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+                <div>
+                  <p class="sub-pay__invoice-number">{{ inv.invoiceNumber }}</p>
+                  <p class="sub-pay__invoice-meta">
+                    Vence {{ formatDate(inv.dueDate) }} ·
+                    <strong>${{ inv.amountUsd | number: '1.2-2' }} {{ inv.currency }}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <form
+                class="sub-pay__form"
+                [formGroup]="payForm"
+                (submit)="$event.preventDefault(); submitPayment()"
+                novalidate
+              >
+                <label class="sub-field">
+                  <span class="sub-field__label">Método de pago</span>
+                  <select formControlName="method">
+                    <option value="" disabled>Selecciona el método…</option>
+                    @for (m of sub.paymentMethods; track m.code) {
+                      <option [value]="m.code">{{ m.label }}</option>
+                    }
+                  </select>
+                  @if (payForm.controls.method.touched && payForm.controls.method.invalid) {
+                    <span class="sub-field__error">Selecciona el método de pago.</span>
+                  }
+                </label>
+
+                @if (selectedMethodDetails().length) {
+                  <div class="sub-pay__details">
+                    @for (line of selectedMethodDetails(); track line.label) {
+                      <p>
+                        <span>{{ line.label }}</span>
+                        <strong>{{ line.value }}</strong>
+                      </p>
+                    }
+                  </div>
+                }
+
+                <label class="sub-field">
+                  <span class="sub-field__label">Referencia del comprobante</span>
+                  <input
+                    type="text"
+                    formControlName="reference"
+                    placeholder="ej: #TRF-20260816-001"
+                    autocomplete="off"
+                  >
+                  @if (payForm.controls.reference.touched && payForm.controls.reference.invalid) {
+                    <span class="sub-field__error">
+                      Indica la referencia del comprobante (mínimo 3 caracteres).
+                    </span>
+                  }
+                </label>
+
+                <label class="sub-field">
+                  <span class="sub-field__label">Monto pagado (USD)</span>
+                  <input
+                    type="number"
+                    formControlName="amount"
+                    min="0.01"
+                    step="0.01"
+                  >
+                  @if (payForm.controls.amount.touched && payForm.controls.amount.invalid) {
+                    <span class="sub-field__error">El monto debe ser mayor a 0.</span>
+                  }
+                </label>
+
+                @if (payError()) {
+                  <div class="sub-pay__error" role="alert">
+                    <span class="material-symbols-outlined" aria-hidden="true">error</span>
+                    {{ payError() }}
+                  </div>
+                }
+
+                <button type="submit" class="sub-pay__submit" [disabled]="paySaving()">
+                  @if (paySaving()) {
+                    <span class="material-symbols-outlined" aria-hidden="true">sync</span>
+                    Enviando comprobante…
+                  } @else {
+                    <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                    Enviar comprobante
+                  }
+                </button>
+              </form>
+            }
+          } @else if (sub.status === 'payment_submitted') {
+            <div class="sub-pay__pending">
+              <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+              <p>Recibimos tu comprobante. Lo verificaremos en un máximo de 24 h hábiles.</p>
+            </div>
+          } @else {
+            <app-empty-state
+              title="Sin pagos pendientes"
+              description="No tienes facturas pendientes. Aquí aparecerán las próximas facturas para registrar tu comprobante."
+              icon="task_alt"
+            />
+          }
+        </section>
+
+        <!-- ── Historial de facturas ─────────────────────────────────── -->
+        <section class="surface-card sub-invoices">
+          <header class="sub-card__header">
+            <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+            <div>
+              <h2>Historial de facturas</h2>
+              <p>Facturas emitidas para tu suscripción.</p>
+            </div>
+          </header>
+
+          @if (invoices().length) {
+            <div class="sub-table-wrap">
+              <table class="sub-table">
+                <thead>
+                  <tr>
+                    <th>Factura</th>
+                    <th>Período</th>
+                    <th class="th-num">Monto</th>
+                    <th>Vence</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (inv of invoices(); track inv.id) {
+                    <tr>
+                      <td class="mono">{{ inv.invoiceNumber }}</td>
+                      <td>{{ formatDate(inv.periodStart) }} → {{ formatDate(inv.periodEnd) }}</td>
+                      <td class="td-num mono">${{ inv.amountUsd | number: '1.2-2' }}</td>
+                      <td>{{ formatDate(inv.dueDate) }}</td>
+                      <td>
+                        <app-status-badge
+                          [tone]="invoiceStatusTone(inv.status)"
+                          [label]="invoiceStatusLabel(inv.status)"
+                        />
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="5" class="sub-table__empty">
+                        Aún no hay facturas emitidas.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              title="Sin facturas"
+              description="Aún no hay facturas emitidas para tu suscripción."
+              icon="receipt_long"
+            />
+          }
+        </section>
+      }
+    }
+  }
+</div>

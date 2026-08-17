@@ -335,6 +335,77 @@
       font-weight: 700;
     }
   }
+
+  // ── Bloque de pago (Fase 3 UI) ─────────────────────────────────────
+  .band-pay {
+    display: flex;
+    flex-direction: column;
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px dashed var(--app-border);
+
+    .band-pay-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0.85rem 0 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--muted-text);
+
+      .material-symbols-outlined {
+        font-size: 16px;
+        color: var(--accent-strong);
+      }
+    }
+
+    .band-pay-due {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--app-text);
+
+      strong {
+        color: var(--accent-strong);
+        font-weight: 800;
+      }
+    }
+
+    .band-pay-methods {
+      list-style: none;
+      margin: 2px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .band-pay-method {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--app-text);
+
+      .material-symbols-outlined {
+        font-size: 18px;
+        color: var(--accent);
+      }
+    }
+
+    .band-pay-note {
+      margin: 0.7rem 0 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--surface-soft) 70%, transparent);
+      border: 1px dashed var(--app-border);
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--muted-text);
+    }
+  }
 }
 
 // ── Timeline ─────────────────────────────────────────────────────────

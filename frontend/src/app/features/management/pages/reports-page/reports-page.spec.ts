@@ -44,4 +44,31 @@ describe('ManagementReportsPageComponent (gate de exportación)', () => {
     void ctx.component.canExport();
     expect(ctx.auth.hasPermission).toHaveBeenCalledWith('reports.download');
   });
+
+  it('incluye page en la URL del recurso', () => {
+    const ctx = setup(true);
+
+    ctx.component.page.set(3);
+    const url = (ctx.component as unknown as { buildUrl(): string }).buildUrl();
+    expect(url).toContain('page=3');
+    expect(url).toContain('page_size=10');
+  });
+
+  it('goToPage cambia la página dentro de los límites', () => {
+    const ctx = setup(true);
+
+    const url = (ctx.component as unknown as { buildUrl(): string }).buildUrl();
+    void url;
+    ctx.component.goToPage(0);
+    expect(ctx.component.page()).toBe(1);
+    ctx.component.goToPage(99);
+    expect(ctx.component.page()).toBe(1); // sin datos → se mantiene en 1
+  });
+
+  it('chartDatasets mapea la serie sin datos a lista vacía', () => {
+    const ctx = setup(true);
+
+    expect(ctx.component.chartDatasets()).toEqual([]);
+    expect(ctx.component.chartLabels()).toEqual([]);
+  });
 });

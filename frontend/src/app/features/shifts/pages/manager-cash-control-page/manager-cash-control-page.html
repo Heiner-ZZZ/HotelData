@@ -160,6 +160,12 @@
                 <span>Transferencias <strong>{{ (s.payment_breakdown?.transfer ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong></span>
                 <span>Otros <strong>{{ (s.payment_breakdown?.other ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong></span>
               </div>
+              @if ((s.stamped_payments_count ?? 0) > 0) {
+                <p class="mcc-stamped-note">
+                  +{{ s.stamped_payments_count }} pago{{ s.stamped_payments_count === 1 ? '' : 's' }} de sistema
+                  (depósitos/facturación) incluidos en este desglose.
+                </p>
+              }
             </div>
             @if (employeeSummary().length) {
               <div class="mcc-detail-breakdown mcc-employee-summary">

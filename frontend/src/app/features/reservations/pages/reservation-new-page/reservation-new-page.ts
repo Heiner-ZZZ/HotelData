@@ -54,20 +54,6 @@ export interface SpecialRequestOption {
   late_arrival: boolean;
 }
 
-/**
- * Fallback catalog used while the per-hotel catalog loads (or on error).
- * Mirrors the backend defaults so prices/flags stay consistent until the
- * real catalog arrives.
- */
-const DEFAULT_SPECIAL_REQUEST_OPTIONS: SpecialRequestOption[] = [
-  { value: 'Cama extra', label: 'Cama extra', unit_price: 15, chargeable: true, pet_related: false, high_floor: false, late_arrival: false },
-  { value: 'Cuna para bebé', label: 'Cuna para bebé', unit_price: 10, chargeable: true, pet_related: false, high_floor: false, late_arrival: false },
-  { value: 'Accesibilidad', label: 'Accesibilidad', unit_price: 0, chargeable: false, pet_related: false, high_floor: false, late_arrival: false },
-  { value: 'Mascotas (Pet friendly)', label: 'Mascotas (Pet friendly)', unit_price: 20, chargeable: true, pet_related: true, high_floor: false, late_arrival: false },
-  { value: 'Piso alto', label: 'Piso alto', unit_price: 0, chargeable: false, pet_related: false, high_floor: true, late_arrival: false },
-  { value: 'Llegada tarde', label: 'Llegada tarde', unit_price: 0, chargeable: false, pet_related: false, high_floor: false, late_arrival: true },
-];
-
 function validateStayDates(control: AbstractControl): ValidationErrors | null {
   const checkIn = String(control.get('checkInDate')?.value || '');
   const checkOut = String(control.get('checkOutDate')?.value || '');
@@ -224,13 +210,15 @@ export class ReservationNewPageComponent {
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly previewing = signal(false);
-  readonly processingPayment = signal(false);
-  readonly paymentError = signal('');
-  readonly paymentResult = signal<{transactionId: string; cardLast4: string; cardBrand: string; authCode: string} | null>(null);
   readonly errorMessage = signal('');
   readonly hotelOptions = signal<ReservationHotelOption[]>([]);
   readonly preview = signal<ReservationPreview | null>(null);
-  readonly step = signal<'details' | 'review' | 'payment'>('details');
+  readonly step = signal<'details' | 'review'>('details');
+
+  /** Depósito real (política de pago por adelantado): método y referencia
+   *  que se registran como pago de billing al confirmar la reserva. */
+  readonly depositMethod = signal('cash');
+  readonly depositReference = signal('');
 
   /** Room type and physical room passed from the reception Timeline. */
   readonly preselectedRoomTypeId = signal('');
@@ -339,25 +327,22 @@ export class ReservationNewPageComponent {
    * Special-request options shown in "Peticiones especiales".
    *
    * Loaded from the per-hotel catalog (``/amenities/guest/catalog/by-prop``
-   * → ``special_requests``) with prices and behavior flags; falls back to the
-   * legacy hardcoded list while the catalog is loading or when it fails, so
-   * the form never loses the section.
+   * → ``special_requests``) with prices and behavior flags. Only the hotel's
+   * ACTIVE requests are offered: the backend already excludes the defaults
+   * the hotel deleted (``removed_requests`` tombstones). No hardcoded
+   * fallback — an empty catalog means no requests are available.
    */
-  readonly specialRequestOptions = computed<SpecialRequestOption[]>(() => {
-    const catalog = this.specialRequestsCatalog();
-    if (catalog.length > 0) {
-      return catalog.map((r) => ({
-        value: r.label,
-        label: r.label,
-        unit_price: r.unit_price,
-        chargeable: r.chargeable,
-        pet_related: r.pet_related,
-        high_floor: r.high_floor,
-        late_arrival: r.late_arrival,
-      }));
-    }
-    return DEFAULT_SPECIAL_REQUEST_OPTIONS;
-  });
+  readonly specialRequestOptions = computed<SpecialRequestOption[]>(() =>
+    this.specialRequestsCatalog().map((r) => ({
+      value: r.label,
+      label: r.label,
+      unit_price: r.unit_price,
+      chargeable: r.chargeable,
+      pet_related: r.pet_related,
+      high_floor: r.high_floor,
+      late_arrival: r.late_arrival,
+    })),
+  );
 
   readonly today = new Date().toISOString().split('T')[0];
 
@@ -543,39 +528,6 @@ export class ReservationNewPageComponent {
     }
   }
 
-  // ─── Payment form fields ───
-  readonly cardNumber = signal('');
-  readonly cardHolder = signal('');
-  readonly cardExpiry = signal('');
-  readonly cardCvv = signal('');
-  readonly cardBrand = signal('');
-
-  /** Detect card brand from first digits for real-time UI feedback */
-  readonly detectedCardBrand = computed(() => {
-    const n = this.cardNumber().replace(/\s/g, '');
-    if (n.startsWith('4')) return 'Visa';
-    if (/^5[1-5]/.test(n) || (n.length >= 4 && /^2[2-7]/.test(n))) return 'Mastercard';
-    if (/^3[47]/.test(n)) return 'American Express';
-    if (/^6011|^65/.test(n) || (n.length >= 3 && n.startsWith('64') && n[2] >= '4' && n[2] <= '9')) return 'Discover';
-    return '';
-  });
-
-  /** Format card number with spaces every 4 digits */
-  formatCardNumber(raw: string) {
-    const digits = raw.replace(/\D/g, '').slice(0, 16);
-    this.cardNumber.set(digits.replace(/(.{4})/g, '$1 ').trim());
-  }
-
-  /** Format expiry as MM/YY */
-  formatExpiry(raw: string) {
-    const digits = raw.replace(/\D/g, '').slice(0, 4);
-    if (digits.length >= 2) {
-      this.cardExpiry.set(digits.slice(0, 2) + '/' + digits.slice(2));
-    } else {
-      this.cardExpiry.set(digits);
-    }
-  }
-
   goToReview() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -584,52 +536,6 @@ export class ReservationNewPageComponent {
     }
     this.step.set('review');
     this.loadPreview();
-  }
-
-  goToPayment() {
-    this.paymentError.set('');
-    this.step.set('payment');
-  }
-
-  processPayment() {
-    const cardNum = this.cardNumber().replace(/\s/g, '');
-    const holder = this.cardHolder().trim();
-    const exp = this.cardExpiry().trim();
-    const cvv = this.cardCvv().trim();
-
-    if (!cardNum || !holder || !exp || !cvv) {
-      this.paymentError.set('Completá el número, titular, vencimiento y CVV de la tarjeta para continuar.');
-      return;
-    }
-
-    const amount = this.preview()?.totalPrice ?? 0;
-
-    this.processingPayment.set(true);
-    this.paymentError.set('');
-
-    this.reservationsApi.processPayment({
-      card_number: cardNum,
-      card_holder: holder,
-      expiry: exp,
-      cvv: cvv,
-      amount: amount,
-    }).subscribe({
-      next: (result) => {
-        this.paymentResult.set({
-          transactionId: result.transaction_id,
-          cardLast4: result.card_last4,
-          cardBrand: result.card_brand,
-          authCode: result.auth_code,
-        });
-        this.processingPayment.set(false);
-        // Auto-submit after successful payment
-        this.submitWithPayment(result.transaction_id, result.card_last4);
-      },
-      error: (err) => {
-        this.paymentError.set(err?.error?.detail || 'Error al procesar el pago. Verifica los datos.');
-        this.processingPayment.set(false);
-      },
-    });
   }
 
   private loadPreview() {
@@ -713,15 +619,10 @@ export class ReservationNewPageComponent {
       this.step.set('details');
       return;
     }
-    // If there's a price > 0 OR deposit is required, go to payment step
-    if ((previewData?.totalPrice ?? 0) > 0 || previewData?.depositRequired) {
-      this.goToPayment();
-      return;
-    }
-    this.submitWithPayment('', '');
+    this.doCreate();
   }
 
-  private submitWithPayment(transactionId: string, cardLast4: string) {
+  private doCreate() {
     const v = this.form.getRawValue();
     this._saveGuestSuggestion(v.guestName, v.guestEmail, v.guestPhone);
 
@@ -729,9 +630,16 @@ export class ReservationNewPageComponent {
     this.errorMessage.set('');
 
     const payload = this.buildPayload();
-    payload.transactionId = transactionId;
-    payload.paymentMethod = transactionId ? 'credit_card' : '';
-    payload.cardLast4 = cardLast4;
+    // Política de pago por adelantado: el depósito mínimo se registra como
+    // pago REAL de billing (con shift_id del turno) en la misma llamada.
+    const previewData = this.preview();
+    if (previewData?.depositRequired) {
+      payload.deposit = {
+        amount: previewData.minDepositAmount ?? 0,
+        method: this.depositMethod(),
+        reference: this.depositReference().trim() || undefined,
+      };
+    }
 
     this.reservationsApi
       .createReservation(payload)

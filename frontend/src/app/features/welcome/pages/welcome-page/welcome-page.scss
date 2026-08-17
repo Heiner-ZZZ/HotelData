@@ -76,3 +76,21 @@ main {
   }
   .welcome-featured__grid { grid-template-columns: 1fr; }
 }
+
+/* ─── Reduced motion (WCAG 2.3.3) ──────────────────── */
+/* Sin animación de entrada del toast, sin hover-lift ni zoom de imagen en
+   las cards: el contenido se ve igual, solo sin movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  .auth-toast { animation: none; }
+  .hotel-card:hover { transform: none; box-shadow: none; }
+  .hotel-card:hover .hotel-card__img img { transform: none; }
+  .skip-link,
+  .welcome-header__brand,
+  .btn,
+  .chip,
+  .header-link,
+  .welcome-tab,
+  .welcome-featured__all {
+    transition: none;
+  }
+}

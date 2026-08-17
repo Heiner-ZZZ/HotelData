@@ -345,4 +345,31 @@ describe('ManagerCashControlPageComponent', () => {
     expect(el.textContent).toContain('Hotel Lima Centro');
     expect(el.textContent).toContain('Teller Demo');
   });
+
+  it('muestra la nota del drawer cuando el cierre tiene pagos estampados', () => {
+    const { fixture, component } = setup([shiftFixture({
+      payment_breakdown: { cash: 45, card: 0, transfer: 0, other: 0, total: 45 },
+      stamped_payments_count: 1,
+    })]);
+
+    component.selectShift(component.shifts()[0]);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('1 pago de sistema');
+    expect(el.textContent).toContain('incluidos en este desglose');
+    expect(el.textContent).toContain('$45.00');
+  });
+
+  it('NO muestra la nota del drawer sin pagos estampados', () => {
+    const { fixture, component } = setup([shiftFixture({
+      payment_breakdown: { cash: 0, card: 0, transfer: 0, other: 0, total: 0 },
+    })]);
+
+    component.selectShift(component.shifts()[0]);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).not.toContain('pago de sistema');
+  });
 });

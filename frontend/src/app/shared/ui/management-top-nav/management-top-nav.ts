@@ -7,8 +7,11 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { roleLabel } from '../../../core/auth/role-labels';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
+import { LogoutConfirmModalComponent } from '../logout-confirm-modal/logout-confirm-modal';
 import { OperationModeIndicatorComponent } from '../operation-mode-indicator/operation-mode-indicator';
+import { LogoutGuardService, type LogoutGuardResponse } from '../../services/logout-guard.service';
 import { PropertyContextService } from '../../services/property-context.service';
+import { TurnoChipComponent } from '../turno-chip/turno-chip';
 
 interface BreadcrumbItem {
   label: string;
@@ -73,7 +76,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   audit: 'Auditoría',
   notifications: 'Notificaciones',
   currencies: 'Monedas',
-  bsc: 'BSC',
   // ── Admin / cuenta ──
   'global-settings': 'Configuración',
   earnings: 'Ganancias',
@@ -98,7 +100,7 @@ function segmentLabel(segment: string): string | null {
 
 @Component({
   selector: 'app-management-top-nav',
-  imports: [RouterLink, OperationModeIndicatorComponent],
+  imports: [RouterLink, OperationModeIndicatorComponent, TurnoChipComponent, LogoutConfirmModalComponent],
   templateUrl: './management-top-nav.html',
   styleUrl: './management-top-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -111,6 +113,7 @@ export class ManagementTopNavComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly elementRef = inject(ElementRef);
   private readonly propertyCtx = inject(PropertyContextService);
+  readonly logoutGuard = inject(LogoutGuardService);
 
   readonly theme = this.themeService;
   readonly currentUser = this.authService.currentUser;
@@ -347,5 +350,37 @@ export class ManagementTopNavComponent implements OnInit {
 
   closeNotifications() {
     this.showNotifications.set(false);
+  }
+
+  // ── Logout guard: warn (with links) when the user still has open
+  //    cash/attendance shifts before killing the session. ──
+  readonly logoutGuardData = signal<LogoutGuardResponse | null>(null);
+  readonly showLogoutGuardModal = signal(false);
+
+  onLogoutClick(): void {
+    if (this.logoutGuard.checking()) return;
+    this.showProfileMenu.set(false);
+    this.logoutGuard.check().subscribe({
+      next: (res) => {
+        if (res.has_open_shifts) {
+          this.logoutGuardData.set(res);
+          this.showLogoutGuardModal.set(true);
+        } else {
+          this.proceedLogout();
+        }
+      },
+    });
+  }
+
+  proceedLogout(): void {
+    this.showLogoutGuardModal.set(false);
+    this.logoutGuardData.set(null);
+    // Server-side session invalidation + redirect to /login.
+    window.location.href = '/auth/logout';
+  }
+
+  cancelLogoutGuard(): void {
+    this.showLogoutGuardModal.set(false);
+    this.logoutGuardData.set(null);
   }
 }

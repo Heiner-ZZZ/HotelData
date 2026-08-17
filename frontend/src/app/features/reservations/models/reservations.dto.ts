@@ -234,6 +234,14 @@ export interface ReservationDetailDto {
   amenities_count?: number;
   amenities_total?: number;
   can_cancel: boolean;
+  /** Depósito real registrado al confirmar (billing, shift-gated). */
+  deposit?: {
+    amount: number;
+    method: string;
+    reference?: string;
+    status: string;
+    paid_at?: string | null;
+  } | null;
 }
 
 export interface ReservationCancelDto {

@@ -20,6 +20,9 @@
   </div>
 
   <div class="topbar-right">
+    <!-- Turno activo (caja / mi turno) -->
+    <app-turno-chip />
+
     <!-- Notifications -->
     <div class="notif-wrapper">
       <button class="notif-btn" [class.has-unread]="unreadCount() > 0" aria-label="Notificaciones" (click)="toggleNotifications()">
@@ -117,12 +120,26 @@
             <span class="material-symbols-outlined profile-menu-icon">tune</span>
             <span>Configuración</span>
           </a>
-          <a class="profile-menu-item profile-menu-logout" href="/auth/logout">
-            <span class="material-symbols-outlined profile-menu-icon">logout</span>
-            <span>Cerrar sesión</span>
-          </a>
+          <button
+            type="button"
+            class="profile-menu-item profile-menu-logout"
+            (click)="onLogoutClick()"
+            [disabled]="logoutGuard.checking()"
+          >
+            <span class="material-symbols-outlined profile-menu-icon" [class.spin]="logoutGuard.checking()" aria-hidden="true">
+              {{ logoutGuard.checking() ? 'sync' : 'logout' }}
+            </span>
+            <span>{{ logoutGuard.checking() ? 'Verificando…' : 'Cerrar sesión' }}</span>
+          </button>
         </div>
       }
     </div>
   </div>
+
+  <!-- Guard de cierre de sesión: avisa si quedan turnos abiertos -->
+  <app-logout-confirm-modal
+    [data]="logoutGuardData()"
+    (proceed)="proceedLogout()"
+    (cancel)="cancelLogoutGuard()"
+  />
 </header>

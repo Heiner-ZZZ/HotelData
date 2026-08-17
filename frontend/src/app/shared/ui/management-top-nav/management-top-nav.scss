@@ -20,38 +20,92 @@
   align-items: center;
   gap: 0.6rem;
   min-width: 0;
+  /* No crece (flex-grow: 0): el espacio libre lo toma el auto-margin del
+     cluster derecho. Sí se encoge y clipea en pantallas extremas — así el
+     cluster derecho nunca se desplaza hacia el breadcrumb. */
+  flex: 0 1 auto;
+  overflow: hidden;
 }
 
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.1rem;
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--muted-text);
+  /* Compacto: el breadcrumb nunca se parte en dos líneas. En pantallas
+     chicas (≤1180px) los eslabones se ocultan — ver media query abajo. */
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .crumb-link {
   color: var(--muted-text);
   text-decoration: none;
-  padding: 0.25rem 0.4rem;
+  /* Casi sin padding horizontal (0.15rem ≈ 2.4px) para que los eslabones
+     queden pegados entre sí; el vertical se mantiene para preservar el
+     target táctil y el focus ring (a11y). */
+  padding: 0.25rem 0.15rem;
   border-radius: 4px;
+  /* Entre 1181-1240px el breadcrumb completo no cabe junto al cluster
+     derecho: los eslabones se encogen con ellipsis en vez de desbordar. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: color 0.15s, background 0.15s;
 
   &:hover {
     color: var(--accent);
     background: var(--accent-light);
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
 }
 
 .crumb-current {
   color: var(--app-text);
   font-weight: 600;
+  /* El eslabón actual nunca se encoge primero; si es muy largo (ej. nombre
+     del hotel en modo multi-propiedad) se trunca con ellipsis. */
+  flex-shrink: 0;
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .crumb-sep {
-  font-size: 1rem;
+  /* Ícono más chico: el glifo chevron trae aire interno propio, reducir el
+     font-size compacta el separador sin tocar su hit-area (no es botón). */
+  font-size: 0.85rem;
   color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* Pantallas compactas: el breadcrumb se reduce al eslabón actual y el
+   perfil a avatar-solo. La navegación intermedia sigue disponible en la
+   barra lateral — así el nav nunca se aprieta hasta pegar el cluster
+   derecho contra el izquierdo (caso real: laptops 1366px con zoom). */
+@media (max-width: 1180px) {
+  .breadcrumb .crumb-link,
+  .breadcrumb .crumb-sep,
+  /* Mayor especificidad que la regla base ``.user-info { display: flex }``
+     definida más abajo (mismo origen → gana la última). */
+  .topbar-right .user-info {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  /* El indicador de modo CRUD aporta poco en compacto y ocupa ~90px de
+     la fila — mismo criterio que ya usa el top-nav de huéspedes. */
+  app-operation-mode-indicator {
+    display: none;
+  }
 }
 
 /* ── Hotel badge (single mode) ── */
@@ -84,6 +138,11 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  /* Anclado SIEMPRE al extremo opuesto al breadcrumb: no se comprime
+     (flex-shrink: 0) y el auto-margin absorbe el espacio sobrante, aunque
+     la columna izquierda cambie de ancho entre páginas. */
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* ── Notifications ── */
@@ -387,10 +446,32 @@
   border-top: 1px solid var(--app-border);
   border-radius: 0;
   color: var(--danger);
+  /* Es un <button> (guard de logout) — reset para que se vea igual que los
+     items <a> del menú. */
+  width: 100%;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: pointer;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--danger-light);
     color: var(--danger);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: -2px;
   }
 }
 

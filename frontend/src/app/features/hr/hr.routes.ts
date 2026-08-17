@@ -37,6 +37,11 @@ export const HR_ROUTES: Routes = [
       import('./pages/shift-schedule-page/shift-schedule-page').then(m => m.ShiftSchedulePageComponent),
   },
   {
+    path: 'dashboard',
+    loadComponent: () =>
+      import('./pages/hr-dashboard-page/hr-dashboard-page').then(m => m.HrDashboardPageComponent),
+  },
+  {
     path: ':employeeId',
     loadComponent: () =>
       import('./pages/employee-detail-page/employee-detail-page').then(m => m.EmployeeDetailPageComponent),

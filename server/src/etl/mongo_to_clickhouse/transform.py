@@ -94,6 +94,26 @@ TABLE_COLUMNS: dict[str, list[str]] = {
         "paid_amount", "refunded_amount", "failed_amount", "invoiced_amount",
         "collected_amount", "outstanding_amount",
     ],
+    # ── Capa estratégica mensual (TAF14) ────────────────────────────────
+    "strat_hotel_monthly": [
+        "month", "prop_id", "hotel_label", "currency", "bookings", "rooms_sold",
+        "room_nights", "revenue", "discount_amount", "adults", "children",
+        "cancelled_rooms", "total_rooms",
+    ],
+    "strat_plan_monthly": [
+        "month", "prop_id", "hotel_label", "room_type_id", "room_type_label", "currency",
+        "bookings", "rooms_sold", "room_nights", "revenue", "discount_amount",
+        "adults", "children", "cancelled_rooms",
+    ],
+    "strat_market_monthly": [
+        "month", "visitor_location_country_id", "visitor_country_label",
+        "srch_destination_id", "destination_label", "searches", "clicks",
+        "reservations", "revenue_usd",
+    ],
+    "strat_reputation_monthly": [
+        "month", "prop_id", "hotel_label", "reviews", "avg_rating", "positive",
+        "neutral", "negative", "responded", "response_rate",
+    ],
 }
 
 
@@ -267,6 +287,72 @@ def _nullable_float(doc: dict[str, Any], key: str) -> float | None:
     return None if doc.get(key) is None else _as_float(doc.get(key))
 
 
+def _strat_hotel_monthly(doc: dict[str, Any]) -> list[Any]:
+    return [
+        _as_date(doc.get("month")),
+        _as_int(doc.get("prop_id")),
+        _as_str(doc.get("hotel_label")),
+        _as_str(doc.get("currency")),
+        _as_int(doc.get("bookings")),
+        _as_int(doc.get("rooms_sold")),
+        _as_int(doc.get("room_nights")),
+        _as_float(doc.get("revenue")),
+        _as_float(doc.get("discount_amount")),
+        _as_int(doc.get("adults")),
+        _as_int(doc.get("children")),
+        _as_int(doc.get("cancelled_rooms")),
+        _as_int(doc.get("total_rooms")),
+    ]
+
+
+def _strat_plan_monthly(doc: dict[str, Any]) -> list[Any]:
+    return [
+        _as_date(doc.get("month")),
+        _as_int(doc.get("prop_id")),
+        _as_str(doc.get("hotel_label")),
+        _as_str(doc.get("room_type_id")),
+        _as_str(doc.get("room_type_label")),
+        _as_str(doc.get("currency")),
+        _as_int(doc.get("bookings")),
+        _as_int(doc.get("rooms_sold")),
+        _as_int(doc.get("room_nights")),
+        _as_float(doc.get("revenue")),
+        _as_float(doc.get("discount_amount")),
+        _as_int(doc.get("adults")),
+        _as_int(doc.get("children")),
+        _as_int(doc.get("cancelled_rooms")),
+    ]
+
+
+def _strat_market_monthly(doc: dict[str, Any]) -> list[Any]:
+    return [
+        _as_date(doc.get("month")),
+        _as_int(doc.get("visitor_location_country_id")),
+        _as_str(doc.get("visitor_country_label")),
+        _as_int(doc.get("srch_destination_id")),
+        _as_str(doc.get("destination_label")),
+        _as_int(doc.get("searches")),
+        _as_int(doc.get("clicks")),
+        _as_int(doc.get("reservations")),
+        _as_float(doc.get("revenue_usd")),
+    ]
+
+
+def _strat_reputation_monthly(doc: dict[str, Any]) -> list[Any]:
+    return [
+        _as_date(doc.get("month")),
+        _as_int(doc.get("prop_id")),
+        _as_str(doc.get("hotel_label")),
+        _as_int(doc.get("reviews")),
+        _as_float(doc.get("avg_rating")),
+        _as_int(doc.get("positive")),
+        _as_int(doc.get("neutral")),
+        _as_int(doc.get("negative")),
+        _as_int(doc.get("responded")),
+        _as_float(doc.get("response_rate")),
+    ]
+
+
 def _kpi_housekeeping_daily(doc: dict[str, Any]) -> list[Any]:
     return [
         _as_date(doc.get("date")), _as_int(doc.get("prop_id")), _as_str(doc.get("hotel_label")),
@@ -328,6 +414,10 @@ _MAPPERS = {
     "kpi_housekeeping_daily": _kpi_housekeeping_daily,
     "kpi_invoice_daily": _kpi_invoice_daily,
     "kpi_payment_daily": _kpi_payment_daily,
+    "strat_hotel_monthly": _strat_hotel_monthly,
+    "strat_plan_monthly": _strat_plan_monthly,
+    "strat_market_monthly": _strat_market_monthly,
+    "strat_reputation_monthly": _strat_reputation_monthly,
 }
 
 
@@ -336,9 +426,10 @@ def transform_rows_with_stats(
 ) -> tuple[list[list[Any]], int]:
     """Mapea documentos y descarta filas sin fecha válida.
 
-    La primera columna de toda tabla KPI es ``date``. Si el mapper devuelve
-    ``None`` en esa posición (fecha vacía o ilegible), la fila se descarta y
-    se cuenta en el segundo valor de retorno para el reporte de calidad
+    La primera columna de toda tabla es su columna de fecha (``date`` en la
+    capa táctica, ``month`` en la estratégica). Si el mapper devuelve ``None``
+    en esa posición (fecha vacía o ilegible), la fila se descarta y se cuenta
+    en el segundo valor de retorno para el reporte de calidad
     (``discarded_reason: invalid_date``).
     """
     mapper = _MAPPERS.get(table_name)

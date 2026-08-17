@@ -10,7 +10,7 @@ import { ToastService } from '../../../../shared/services/toast.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { AmenitiesApiService } from '../../services/amenities-api.service';
 import { AMENITIES_ROUTES } from '../../amenities.routes';
-import { AmenitiesPageComponent } from './amenities-page';
+import { AmenitiesPageComponent, impliesHighFloor, impliesLateArrival, impliesPetRelated } from './amenities-page';
 
 describe('AmenitiesPageComponent', () => {
   function setup(initialPath = 'servicios') {
@@ -30,6 +30,7 @@ describe('AmenitiesPageComponent', () => {
     } as unknown as PropertyContextService;
     const api = {
       saveAmenities: jest.fn(),
+      saveSpecialRequests: jest.fn(),
     } as unknown as AmenitiesApiService;
     const confirmDialog = { open: jest.fn(() => Promise.resolve(true)) } as unknown as ConfirmDialogService;
 
@@ -169,5 +170,126 @@ describe('AmenitiesPageComponent', () => {
     pending.error({ message: 'Error de prueba' });
 
     expect(ctx.toast.toasts().some((t) => t.message === 'Error de prueba' && t.type === 'error')).toBe(true);
+  });
+
+  // ─── Reglas de negocio de peticiones especiales ───
+  type RawRequest = {
+    label: string;
+    unit_price: number;
+    chargeable: boolean;
+    pet_related: boolean;
+    high_floor: boolean;
+    late_arrival: boolean;
+  };
+
+  function raw(over: Partial<RawRequest> = {}): RawRequest {
+    return {
+      label: 'Cama extra', unit_price: 15, chargeable: true,
+      pet_related: false, high_floor: false, late_arrival: false,
+      ...over,
+    };
+  }
+
+  async function seedRequests(
+    ctx: {
+      http: HttpTestingController;
+      fixture: { detectChanges(): void };
+    },
+    requests: RawRequest[],
+  ) {
+    ctx.http.expectOne('/api/management/amenities?prop_id=1&room_type_id=').flush({
+      hotel: { prop_id: 1, display_name: 'Hotel Test', country_display_name: '', review_score_label: '' },
+      performance: { avg_price_label: '', source_collection: '' },
+      amenities: { active_amenities: [], catalog: [] },
+      content_page: { description: '' },
+      images: [],
+      facilities: [],
+      room_types: [],
+      special_requests: requests,
+      high_floor_from: 3,
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    ctx.fixture.detectChanges();
+  }
+
+  it('detecta las reglas implicadas por el nombre de la petición', () => {
+    expect(impliesHighFloor('Piso alto')).toBe(true);
+    expect(impliesHighFloor('Cama extra')).toBe(false);
+    expect(impliesLateArrival('Llegada tarde')).toBe(true);
+    expect(impliesLateArrival('Cama extra')).toBe(false);
+    expect(impliesPetRelated('Mascotas (Pet friendly)')).toBe(true);
+    expect(impliesPetRelated('Cama extra')).toBe(false);
+  });
+
+  it('oculta las reglas de negocio por defecto (modo lectura sin sección)', async () => {
+    const ctx = setup('especialsPeticions');
+    await seedRequests(ctx, [raw()]);
+
+    expect(ctx.fixture.nativeElement.querySelector('.rules-toggle')).toBeNull();
+    expect(ctx.fixture.nativeElement.querySelector('.rules-panel')).toBeNull();
+  });
+
+  it('en modo edición muestra las reglas colapsadas y las expande al hacer click', async () => {
+    const ctx = setup('especialsPeticions');
+    await seedRequests(ctx, [raw()]);
+    ctx.component.startRequestsEditing();
+    ctx.fixture.detectChanges();
+
+    expect(ctx.fixture.nativeElement.querySelector('.rules-toggle')).not.toBeNull();
+    expect(ctx.fixture.nativeElement.querySelector('.rules-panel')).toBeNull();
+
+    ctx.component.toggleRulesExpanded('Cama extra');
+    ctx.fixture.detectChanges();
+    expect(ctx.fixture.nativeElement.querySelector('.rules-panel')).not.toBeNull();
+  });
+
+  it('no renderiza toggle circular para peticiones cuyo nombre ya implica la regla', async () => {
+    const ctx = setup('especialsPeticions');
+    await seedRequests(ctx, [
+      raw({ label: 'Piso alto', unit_price: 0, chargeable: false, high_floor: true }),
+      raw({ label: 'Llegada tarde', unit_price: 0, chargeable: false, late_arrival: true }),
+      raw({ label: 'Mascotas (Pet friendly)', unit_price: 20, pet_related: true }),
+      raw(),
+    ]);
+    ctx.component.startRequestsEditing();
+    ctx.fixture.detectChanges();
+
+    const rows = [...ctx.fixture.nativeElement.querySelectorAll('.request-row')] as HTMLElement[];
+    const checkboxesOf = (label: string) => {
+      const row = rows.find((r) => r.querySelector('.request-row-label')?.textContent?.trim() === label)!;
+      ctx.component.toggleRulesExpanded(label);
+      ctx.fixture.detectChanges();
+      return row.querySelectorAll('.rules-panel input[type="checkbox"]').length;
+    };
+
+    expect(checkboxesOf('Piso alto')).toBe(2); // mascotas + llegada tarde (sin piso alto)
+    expect(checkboxesOf('Llegada tarde')).toBe(2); // mascotas + piso alto (sin llegada tarde)
+    expect(checkboxesOf('Mascotas (Pet friendly)')).toBe(2); // piso alto + llegada tarde (sin mascotas)
+    expect(checkboxesOf('Cama extra')).toBe(3); // las tres reglas aplican
+  });
+
+  it('envía al guardar los flags implícitos por el nombre de la petición', async () => {
+    const ctx = setup('especialsPeticions');
+    await seedRequests(ctx, [
+      raw({ label: 'Piso alto', unit_price: 0, chargeable: false, high_floor: false }),
+      raw({ label: 'Llegada tarde', unit_price: 0, chargeable: false, late_arrival: false }),
+      raw(),
+    ]);
+    const pending = new Subject<{
+      special_requests: RawRequest[];
+      high_floor_from: number;
+    }>();
+    (ctx.api as unknown as { saveSpecialRequests: jest.Mock }).saveSpecialRequests.mockReturnValue(pending);
+
+    ctx.component.saveRequests();
+
+    const payload = (ctx.api as unknown as { saveSpecialRequests: jest.Mock }).saveSpecialRequests.mock.calls[0][0];
+    const flagsByLabel = Object.fromEntries(
+      (payload.special_requests as { label: string; flags: string[] }[]).map((r) => [r.label, r.flags]),
+    );
+    expect(flagsByLabel['Piso alto']).toContain('high_floor');
+    expect(flagsByLabel['Llegada tarde']).toContain('late_arrival');
+    expect(flagsByLabel['Cama extra']).not.toContain('high_floor');
+    pending.complete();
   });
 });

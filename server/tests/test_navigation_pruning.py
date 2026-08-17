@@ -34,6 +34,9 @@ INFORMES_CONTAINERS = (
     "gestion.reservas.informes",
     "gestion.housekeeping.informes",
     "gestion.billing.informes",
+    "gestion.pms.informes",
+    "gestion.rrhh.informes",
+    "gestion.revenue.informes",
 )
 
 INFORMES_LEAVES = (
@@ -45,6 +48,10 @@ INFORMES_LEAVES = (
     "gestion.housekeeping.informes.matriz",
     "gestion.billing.informes.facturas",
     "gestion.billing.informes.pagos",
+    "gestion.pms.finanzas",
+    "gestion.pms.informes.reputacion",
+    "gestion.rrhh.informes.dashboard",
+    "gestion.revenue.reportes",
 )
 
 

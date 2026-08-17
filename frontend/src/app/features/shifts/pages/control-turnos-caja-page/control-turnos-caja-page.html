@@ -185,6 +185,14 @@
                 +{{ paymentBreakdown().transfer | currency:'USD':'symbol':'1.2-2' }}
               </span>
             </div>
+            @if ((shift()?.stamped_payments_count ?? 0) > 0) {
+              <div class="sc-arqueo-row stamped">
+                <span class="sc-ar-label">Pagos registrados en sistema</span>
+                <span class="sc-ar-value mono">
+                  +{{ shift()!.stamped_payments_count }} pagos
+                </span>
+              </div>
+            }
             <div class="sc-arqueo-row total-line">
               <span class="sc-ar-label-bold">Total Esperado (Caja)</span>
               <span class="sc-ar-value-bold mono">{{ shift()!.cash_initial + paymentBreakdown().cash | currency:'USD':'symbol':'1.2-2' }}</span>
@@ -225,7 +233,12 @@
               <span class="material-symbols-outlined sc-card-icon">list_alt</span>
               Auditoría de Transacciones
             </h3>
-            <span class="sc-audit-count">{{ shift()?.transactions?.length || 0 }} transacciones</span>
+            <span class="sc-audit-count">
+              {{ shift()?.transactions?.length || 0 }} transacciones
+              @if ((shift()?.stamped_payments_count ?? 0) > 0) {
+                · {{ shift()!.stamped_payments_count }} pagos de sistema
+              }
+            </span>
           </div>
 
           <div class="sc-audit-table-wrap">

@@ -53,6 +53,40 @@ class TestCatalogInManagementGet:
         assert content["high_floor_from"] == 6
 
 
+class TestDeleteDefaultRequest:
+    def test_deleted_default_does_not_come_back(self, db, prop):
+        """Eliminar un default en el guardado debe persistir: el read no lo re-mergea."""
+        from src.app.modules.partner.services.content.save import save_special_requests
+
+        save_special_requests(prop, special_requests=[
+            {"label": "Cuna para bebé", "unit_price": 10.0, "flags": ["chargeable"]},
+            {"label": "Accesibilidad", "unit_price": 0.0, "flags": []},
+            {"label": "Mascotas (Pet friendly)", "unit_price": 20.0, "flags": ["pet_related", "chargeable"]},
+            {"label": "Piso alto", "unit_price": 0.0, "flags": ["high_floor"]},
+            {"label": "Llegada tarde", "unit_price": 0.0, "flags": ["late_arrival"]},
+        ], high_floor_from=3)
+        labels = {item["label"] for item in partner_hotel_content(prop)["special_requests"]}
+        assert "Cama extra" not in labels
+        assert "Cuna para bebé" in labels
+
+    def test_re_adding_deleted_default_restores_it(self, db, prop):
+        """Re-agregar un default eliminado en un segundo guardado debe restaurarlo."""
+        from src.app.modules.partner.services.content.save import save_special_requests
+
+        save_special_requests(prop, special_requests=[
+            {"label": "Cuna para bebé", "unit_price": 10.0, "flags": ["chargeable"]},
+        ], high_floor_from=3)
+        labels = {item["label"] for item in partner_hotel_content(prop)["special_requests"]}
+        assert "Cama extra" not in labels
+
+        save_special_requests(prop, special_requests=[
+            {"label": "Cama extra", "unit_price": 12.0, "flags": ["chargeable"]},
+            {"label": "Cuna para bebé", "unit_price": 10.0, "flags": ["chargeable"]},
+        ], high_floor_from=3)
+        by_label = {item["label"]: item for item in partner_hotel_content(prop)["special_requests"]}
+        assert by_label["Cama extra"]["unit_price"] == 12.0
+
+
 class TestSaveValidation:
     def test_save_rejects_empty_label(self, db, prop):
         from src.app.modules.partner.services.content.save import save_special_requests

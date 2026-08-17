@@ -310,7 +310,220 @@
           </fieldset>
         </div>
 
-        <button type="submit" class="onboarding-submit" [disabled]="sendingCode()">
+        <!-- ── Elige tu plan (Fase 6, PLAN §14) ──────────────────── -->
+        <section class="plan-card" aria-labelledby="plan-title">
+          <header class="plan-card__header">
+            <p class="plan-eyebrow">Tu suscripción</p>
+            <h2 id="plan-title">Tu plan, según tus {{ totalRooms() }} habitaciones</h2>
+            <p class="plan-card__lead">
+              La tarifa se deriva del tamaño de tu alojamiento. Confírmala, elige
+              el ciclo y cómo pagarás.
+            </p>
+          </header>
+
+          @if (pricingPlansResource.isLoading()) {
+            <p class="plan-loading">
+              <span class="material-symbols-outlined plan-spin" aria-hidden="true">sync</span>
+              Calculando tu plan…
+            </p>
+          } @else if (pricingPlansResource.error()) {
+            <p class="plan-loading plan-loading--error">
+              No pudimos cargar los planes. Reintenta en unos segundos.
+            </p>
+          } @else {
+            <!-- ── 3 tarjetas radio ─────────────────────────────── -->
+            <fieldset class="plan-options">
+              <legend class="plan-options__legend">Tamaño de tu alojamiento</legend>
+              <div class="plan-options__grid">
+                @for (plan of visiblePlans; track plan.key) {
+                  <label
+                    class="plan-option"
+                    [class.plan-option--active]="selectedPlanKey() === plan.key"
+                    [class.plan-option--suggested]="derivedPlanKey() === plan.key"
+                  >
+                    <input
+                      type="radio"
+                      name="plan_size"
+                      [value]="plan.key"
+                      [checked]="selectedPlanKey() === plan.key"
+                      (change)="selectPlan(plan.key)"
+                    >
+                    <span class="plan-option__body">
+                      @if (derivedPlanKey() === plan.key) {
+                        <span class="plan-option__badge">
+                          <span class="material-symbols-outlined" aria-hidden="true">check</span>
+                          Tu plan
+                        </span>
+                      }
+                      <span class="plan-option__top">
+                        <span class="material-symbols-outlined plan-option__icon" aria-hidden="true">
+                          {{ plan.icon }}
+                        </span>
+                        <span class="plan-option__label">{{ plan.label }}</span>
+                      </span>
+                      @if (derivedPlanKey() === plan.key) {
+                        <span class="plan-option__exact">
+                          {{ derivedPlan()?.min_rooms }}–{{ derivedPlan()?.max_rooms }} habitaciones
+                        </span>
+                        <span class="plan-option__price plan-option__price--exact">
+                          <span class="plan-option__amount">${{ currentPlanPrice() }}</span>
+                          <span class="plan-option__period">/mes</span>
+                        </span>
+                        @if (billingCycle() === 'annual') {
+                          <span class="plan-option__annual">${{ currentPlanPrice() * 12 }}/año facturado</span>
+                        }
+                      } @else {
+                        <span class="plan-option__range">{{ plan.rangeLabel }} habitaciones</span>
+                        <span class="plan-option__price">
+                          desde <strong>${{ visiblePlanPrices()[plan.key] }}</strong>/mes
+                        </span>
+                      }
+                    </span>
+                  </label>
+                }
+              </div>
+              @if (planMismatch()) {
+                <p class="plan-mismatch" role="alert">
+                  Tu plan por {{ totalRooms() }} habitaciones es
+                  <strong>{{ derivedVisiblePlan()?.label }}</strong>. Selecciona la tarjeta
+                  sugerida para continuar.
+                </p>
+              }
+            </fieldset>
+
+            <!-- ── Toggle mensual/anual ────────────────────────── -->
+            <fieldset class="plan-cycle">
+              <legend class="plan-options__legend">Ciclo de facturación</legend>
+              <div class="cycle-toggle">
+                <label
+                  class="cycle-option"
+                  [class.cycle-option--active]="billingCycle() === 'monthly'"
+                >
+                  <input type="radio" formControlName="billing_cycle" value="monthly">
+                  <span class="cycle-option__name">Mensual</span>
+                </label>
+                <label
+                  class="cycle-option"
+                  [class.cycle-option--active]="billingCycle() === 'annual'"
+                >
+                  <input type="radio" formControlName="billing_cycle" value="annual">
+                  <span class="cycle-option__name">Anual</span>
+                  @if (planAnnualDiscountPct() > 0) {
+                    <span class="cycle-option__saving">−{{ planAnnualDiscountPct() }}%</span>
+                  }
+                </label>
+              </div>
+              <p class="cycle-hint">
+                @if (billingCycle() === 'annual') {
+                  Pagas el año por adelantado:
+                  <strong>${{ currentPlanPrice() * 12 }}/año</strong> · ahorras
+                  <strong>${{ planAnnualSavings() }}/año</strong>.
+                } @else {
+                  Pagas <strong>${{ currentPlanPrice() }}/mes</strong>. Si eliges anual,
+                  ahorras <strong>${{ planAnnualSavings() }}/año</strong>.
+                }
+              </p>
+            </fieldset>
+
+            <!-- ── Método de pago ──────────────────────────────── -->
+            <fieldset class="plan-payment">
+              <legend class="plan-options__legend">Método de pago</legend>
+              <div class="payment-options">
+                @for (method of paymentMethodOptions; track method.value) {
+                  <label
+                    class="payment-option"
+                    [class.payment-option--active]="
+                      onboardingForm.controls.payment_method.value === method.value
+                    "
+                  >
+                    <input type="radio" formControlName="payment_method" [value]="method.value">
+                    <span class="material-symbols-outlined payment-option__icon" aria-hidden="true">
+                      {{ method.icon }}
+                    </span>
+                    <span>{{ method.label }}</span>
+                  </label>
+                }
+              </div>
+            </fieldset>
+
+            <!-- ── Resumen (total del período) ────────────────── -->
+            <div class="plan-total">
+              <div class="plan-total__info">
+                <span class="plan-chip">
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    {{ derivedVisiblePlan()?.icon }}
+                  </span>
+                  {{ derivedVisiblePlan()?.label }}
+                </span>
+                <span class="plan-total__cycle">
+                  {{ billingCycle() === 'annual' ? 'Facturación anual' : 'Facturación mensual' }}
+                </span>
+              </div>
+              <div class="plan-total__price">
+                <span class="plan-total__amount">${{ currentPlanPrice() }}</span>
+                <span class="plan-total__period">/mes</span>
+                @if (billingCycle() === 'annual' && planAnnualDiscountPct() > 0) {
+                  <span class="plan-total__badge">
+                    <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                    −{{ planAnnualDiscountPct() }}%
+                  </span>
+                }
+              </div>
+            </div>
+
+            <p class="plan-due">
+              <span class="material-symbols-outlined" aria-hidden="true">event</span>
+              La primera factura vence 7 días después de la aprobación de tu alojamiento.
+            </p>
+
+            <!-- ── Confirmación ───────────────────────────────── -->
+            <label class="plan-confirm">
+              <input type="checkbox" formControlName="plan_confirmed">
+              <span>
+                Confirmo que revisé mi plan:
+                <strong>{{ derivedVisiblePlan()?.label }} — ${{ currentPlanPrice() }}/mes</strong>
+                ({{ billingCycle() === 'annual' ? 'anual' : 'mensual' }}, con
+                {{ totalRooms() }} habitaciones).
+              </span>
+            </label>
+            @if (
+              onboardingForm.controls.plan_confirmed.touched &&
+              onboardingForm.controls.plan_confirmed.invalid
+            ) {
+              <span class="field-error">Confirma tu plan para continuar.</span>
+            }
+          }
+        </section>
+
+        <div class="terms-accept">
+          <label class="terms-check">
+            <input type="checkbox" formControlName="terms_accepted" />
+            <span class="terms-text">
+              He leído y acepto los
+              <button
+                type="button"
+                class="terms-link"
+                (click)="openTerms($event)"
+              >Términos y Condiciones para Anfitriones</button>
+              @if (termsLoading()) {
+                <span class="terms-loading">…</span>
+              }
+            </span>
+          </label>
+          @if (termsError()) {
+            <p class="terms-load-error" role="alert">
+              No pudimos cargar los términos vigentes. Revisa tu conexión y reintenta antes de continuar.
+            </p>
+          }
+          @if (
+            onboardingForm.controls.terms_accepted.touched &&
+            onboardingForm.controls.terms_accepted.invalid
+          ) {
+            <span class="field-error">Debes aceptar los términos para continuar.</span>
+          }
+        </div>
+
+        <button type="submit" class="onboarding-submit" [disabled]="sendingCode() || termsError()">
           @if (sendingCode()) {
             <span class="material-symbols-outlined btn-icon">sync</span>
             Enviando código…
@@ -321,11 +534,17 @@
         </button>
 
         <p class="card-footnote">
-          Al continuar aceptas que HotelData verifique tu correo electrónico.
-          Después de confirmar el código, accederás a tu cuenta como anfitrión
-          para completar la información de tu propiedad.
+          Al continuar aceptas que HotelData verifique tu correo electrónico
+          y confirmas que leíste y aceptaste los Términos y Condiciones para
+          Anfitriones en su versión vigente.
         </p>
       </form>
+
+      <app-terms-dialog
+        docType="terms_hotel_partner"
+        [open]="termsOpen()"
+        (close)="closeTerms()"
+      />
     </section>
   } @else {
     <!-- ── Phase 2: Verification code ──────────────────────────────── -->

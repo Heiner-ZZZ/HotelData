@@ -14,6 +14,8 @@ from src.app.modules.reception import (
     ensure_shift_not_expired,
     get_active_shift_id,
 )
+from src.app.modules.billing.schemas import PaymentCreate
+from src.app.modules.billing.service import create_payment
 from src.app.modules.reservations.routes.reservations_impl import (
     check_hotel_availability,
     export_reservations_csv,
@@ -168,7 +170,65 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
             ensure_shift_not_expired(prop_id)
         except ShiftExpiredError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
-        return ReservationCreatedResponse.model_validate(to_json_safe(create_booking(reservation_input, shift_id=shift_id)))
+
+        # ── Depósito real (política de pago por adelantado) ──
+        # El wizard de recepción registra el depósito mínimo en la MISMA
+        # llamada: se valida contra la política del hotel en create_booking
+        # (``deposit_amount``) y se persiste como pago real de billing con el
+        # shift_id del turno activo — nunca un stub que marque "paid" en
+        # falso.
+        deposit = payload.get("deposit") or {}
+        deposit_amount = None
+        deposit_method = None
+        deposit_reference = None
+        if deposit:
+            try:
+                deposit_amount = round(float(deposit.get("amount") or 0), 2)
+                deposit_method = str(deposit.get("method") or "").strip() or None
+                deposit_reference = str(deposit.get("reference") or "").strip() or None
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El depósito debe incluir un monto numérico válido.",
+                )
+            if deposit_amount <= 0 or not deposit_method:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El depósito debe incluir un monto mayor a cero y un método de pago.",
+                )
+
+        booking = create_booking(
+            reservation_input,
+            shift_id=shift_id,
+            deposit_amount=deposit_amount,
+        )
+        if deposit_amount is not None:
+            payment = create_payment(
+                PaymentCreate(
+                    booking_id=booking["booking_id"],
+                    amount=deposit_amount,
+                    method=deposit_method,
+                ),
+                shift_id=shift_id,
+                reference=deposit_reference or f"DEP-{booking['booking_id']}",
+                actor_user_id=current_user.get("_id"),
+                actor_username=current_user.get("username"),
+                payment_source="deposit",
+            )
+            if payment is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No se pudo registrar el depósito: la reserva no existe.",
+                )
+            if payment.get("status") == "failed":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        "El depósito no pudo confirmarse contra el folio. "
+                        "Registralo desde Facturación para completar la reserva."
+                    ),
+                )
+        return ReservationCreatedResponse.model_validate(to_json_safe(booking))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

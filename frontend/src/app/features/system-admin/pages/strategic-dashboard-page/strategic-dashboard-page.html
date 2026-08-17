@@ -1,0 +1,806 @@
+<div class="strd-page">
+  <app-page-header
+    [eyebrow]="headerEyebrow()"
+    [title]="headerTitle()"
+    [description]="headerDescription()"
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
+
+  <!-- Menú horizontal de informes (patrón de los tácticos compuestos): cada
+       informe estratégico es UNA interfaz propia navegable por este sub-nav. -->
+  <app-horizontal-sub-nav [activeSlug]="activeReportSlug()" />
+
+  <!-- ═══ Filtros (siempre en la misma posición) ═══ -->
+  <section class="strd-card strd-filters" aria-label="Filtros de los informes estratégicos">
+    <div class="strd-filter-row">
+      <span class="strd-filter-label">Horizonte</span>
+      @for (h of horizons; track h.id) {
+        <button
+          type="button"
+          class="strd-chip"
+          [class.active]="activeHorizon() === h.id"
+          (click)="setHorizon(h.id)"
+        >
+          {{ h.label }}
+        </button>
+      }
+    </div>
+    <div class="strd-filter-row secondary">
+      <div class="strd-date-group">
+        <span class="material-symbols-outlined strd-date-icon" aria-hidden="true">calendar_month</span>
+        <input type="date" class="strd-date-input" [value]="dateFrom()" (change)="onDateFromChange(($any($event.target)?.value ?? ''))" aria-label="Desde" />
+        <span class="strd-date-sep">→</span>
+        <input type="date" class="strd-date-input" [value]="dateTo()" (change)="onDateToChange(($any($event.target)?.value ?? ''))" aria-label="Hasta" />
+      </div>
+      @if (dateFrom() || dateTo() || selectedPropId()) {
+        <button type="button" class="strd-clear-btn" (click)="clearAllFilters()">
+          <span class="material-symbols-outlined" aria-hidden="true">filter_alt_off</span>
+          Limpiar
+        </button>
+      }
+      @if (canExport()) {
+        <button
+          type="button"
+          class="strd-export-btn"
+          (click)="exportCsv()"
+          [disabled]="exportDisabled() || unavailable()"
+          [title]="report() === 'g05' && canExport()
+            ? 'IE-G05 es un placeholder (TAF14 §9): sin datos que exportar'
+            : 'Descargar ' + reportExportLabel() + ' como CSV (PNG por gráfico)'"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">download</span>
+          Exportar CSV
+        </button>
+      }
+    </div>
+  </section>
+
+  @if (!isPortfolioView()) {
+    <!-- ═══ VISTA A — hotel individual (IE-H01 / IE-H02) ═══ -->
+    @if (!selectedPropId()) {
+      <app-empty-state
+        title="Selecciona tu hotel"
+        description="Usa el selector de propiedad arriba para cargar los informes estratégicos de tu hotel."
+      />
+    } @else {
+      @switch (viewState()) {
+        @case ('loading') {
+          <app-loading-state label="Consultando ClickHouse (strat_hotel_monthly)…" />
+        }
+        @case ('error') {
+          <app-error-state [description]="errorMessage()" (retry)="onRetry()" />
+        }
+        @case ('empty') {
+          <app-empty-state
+            title="Sin datos estratégicos"
+            description="No hay filas de strat_hotel_monthly para tu hotel en el rango. Ejecuta el ETL Mongo → ClickHouse."
+          />
+        }
+        @default {
+          @if (hotel(); as h) {
+            @if (unavailable()) {
+              <div class="strd-unavailable" role="alert">
+                <span class="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+                ClickHouse no está disponible. El panel no consulta Mongo como sustituto.
+              </div>
+            }
+
+            <!-- ═══ IE-H01 · Desempeño económico-comercial y rentabilidad por plan ═══ -->
+            @if (report() === 'h01') {
+
+            <!-- Z-1 · Cabecera de decisión: hotel + período -->
+            <div class="strd-hotel-strip">
+              <span class="material-symbols-outlined" aria-hidden="true">apartment</span>
+              <strong>{{ selectedLabel() || ('Hotel #' + h.propId) }}</strong>
+              <span class="strd-range">{{ formatDate(h.dateFrom) }} → {{ formatDate(h.dateTo) }}</span>
+            </div>
+
+            <!-- Z-2 · KPIs estratégicos del hotel (summary.kpis) -->
+            <section class="strd-kpi-strip" aria-label="KPIs estratégicos del hotel">
+              @for (kpi of h.summary.kpis; track kpi.id) {
+                <article class="strd-card strd-kpi-card">
+                  <div class="strd-kpi-top">
+                    <span class="strd-kpi-dot" [class]="semaforoClass(kpi.semaforo)" [title]="'Estado: ' + kpi.semaforo"></span>
+                    <span class="strd-kpi-label">{{ kpi.label }}</span>
+                  </div>
+                  <strong class="strd-kpi-value">{{ kpi.value | number:'1.0-2' }}<small>{{ kpi.unit }}</small></strong>
+                  <span class="strd-kpi-trend" [class]="'trend-' + kpi.trend">
+                    @if (kpi.trend === 'up') {
+                      <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
+                    } @else if (kpi.trend === 'down') {
+                      <span class="material-symbols-outlined" aria-hidden="true">trending_down</span>
+                    } @else {
+                      <span class="material-symbols-outlined" aria-hidden="true">trending_flat</span>
+                    }
+                    {{ kpi.pctChange > 0 ? '+' : '' }}{{ kpi.pctChange | number:'1.1-1' }}%
+                  </span>
+                  <small class="strd-kpi-detail">{{ kpi.detail }}</small>
+                </article>
+              }
+            </section>
+
+            <!-- Z-3 · Serie mensual del hotel (IE-H01) -->
+            <section class="strd-chart-row">
+              <app-kpi-chart
+                title="Evolución mensual del hotel (IE-H01)"
+                [labels]="h.serie.labels"
+                [datasets]="hotelSerieDatasets()"
+                type="line"
+                [showLegend]="true"
+                [height]="260"
+                [showExport]="canExport()"
+                exportFilename="serie-hotel-{{ h.propId }}"
+                [borderless]="true"
+              />
+            </section>
+
+            <!-- Z-4 · Tabla de registros mensuales (IE-H01) -->
+            <section class="strd-card strd-table-card">
+              <div class="strd-table-head">
+                <div>
+                  <h3>Registros mensuales del hotel (IE-H01)</h3>
+                  <p class="strd-meta">
+                    {{ h.rows.total }} mes(es) · Pág. {{ h.rows.page }} de {{ h.rows.totalPages || 1 }}
+                  </p>
+                </div>
+                <div class="strd-pagination">
+                  <button type="button" class="strd-page-btn" (click)="goToPage(h.rows.page - 1)" [disabled]="!h.rows.hasPrev">
+                    <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span> Anterior
+                  </button>
+                  <button type="button" class="strd-page-btn" (click)="goToPage(h.rows.page + 1)" [disabled]="!h.rows.hasNext">
+                    Siguiente <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+              <div class="strd-table-wrap">
+                <table class="strd-table">
+                  <thead>
+                    <tr>
+                      <th>Mes</th>
+                      <th class="th-num">Reservas</th>
+                      <th class="th-num">Noches</th>
+                      <th class="th-num">Bruto</th>
+                      <th class="th-num">Descuento</th>
+                      <th class="th-num">Neto</th>
+                      <th class="th-num">ADR</th>
+                      <th class="th-num">Ocupación</th>
+                      <th class="th-num">RevPAR</th>
+                      <th class="th-num">Cancelación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of h.rows.rows; track row.month) {
+                      <tr>
+                        <td><strong>{{ formatMonth(row.month) }}</strong></td>
+                        <td class="td-num">{{ num(row.bookings) }}</td>
+                        <td class="td-num">{{ num(row.roomNights) }}</td>
+                        <td class="td-num mono">{{ money(row.revenueBruto) }}</td>
+                        <td class="td-num mono neg">{{ money(row.descuento) }}</td>
+                        <td class="td-num mono strong">{{ money(row.revenueNeto) }}</td>
+                        <td class="td-num mono">{{ money(row.adr) }}</td>
+                        <td class="td-num">{{ pct(row.ocupacionPct) }}</td>
+                        <td class="td-num mono">{{ money(row.revpar) }}</td>
+                        <td class="td-num">{{ pct(row.cancelacionPct) }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="10" class="strd-empty-cell">Sin registros mensuales en el rango.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- Z-5 · Rentabilidad por plan (IE-H01) -->
+            <section class="strd-chart-row">
+              <app-kpi-chart
+                title="Revenue neto por tipo de habitación"
+                [labels]="hotelPlanesLabels()"
+                [datasets]="[{ label: 'Revenue neto (USD)', data: hotelPlanesData() }]"
+                type="bar"
+                [showLegend]="false"
+                [height]="240"
+                [showExport]="canExport()"
+                exportFilename="planes-hotel-{{ h.propId }}"
+                [borderless]="true"
+              />
+              <section class="strd-card strd-table-card planes">
+                <div class="strd-table-head">
+                  <div>
+                    <h3>Rentabilidad por plan (IE-H01)</h3>
+                    <p class="strd-meta">
+                      {{ h.planes.total }} tipo(s) · Pág. {{ h.planes.page }} de {{ h.planes.totalPages || 1 }}
+                    </p>
+                  </div>
+                  <div class="strd-pagination">
+                    <button type="button" class="strd-page-btn" (click)="goToPlanesPage(h.planes.page - 1)" [disabled]="!h.planes.hasPrev">
+                      <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span> Anterior
+                    </button>
+                    <button type="button" class="strd-page-btn" (click)="goToPlanesPage(h.planes.page + 1)" [disabled]="!h.planes.hasNext">
+                      Siguiente <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="strd-table-wrap">
+                  <table class="strd-table">
+                    <thead>
+                      <tr>
+                        <th>Tipo</th>
+                        <th class="th-num">Reservas</th>
+                        <th class="th-num">Noches</th>
+                        <th class="th-num">Bruto</th>
+                        <th class="th-num">Descuento</th>
+                        <th class="th-num">Neto</th>
+                        <th class="th-num">ADR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of h.planes.rows; track row.label) {
+                        <tr>
+                          <td><strong>{{ row.label }}</strong></td>
+                          <td class="td-num">{{ num(row.bookings) }}</td>
+                          <td class="td-num">{{ num(row.roomNights) }}</td>
+                          <td class="td-num mono">{{ money(row.revenueBruto) }}</td>
+                          <td class="td-num mono neg">{{ money(row.descuento) }} <small>({{ pct(row.descuentoPct) }})</small></td>
+                          <td class="td-num mono strong">{{ money(row.revenueNeto) }}</td>
+                          <td class="td-num mono">{{ money(row.adr) }}</td>
+                        </tr>
+                      } @empty {
+                        <tr><td colspan="7" class="strd-empty-cell">Sin tipos de habitación en el rango.</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </section>
+            }
+
+            <!-- ═══ IE-H02 · Posicionamiento competitivo local (patrón Z) ═══ -->
+            @if (report() === 'h02' && !h.summary.posicionamiento) {
+              <app-empty-state
+                title="Sin posicionamiento disponible"
+                description="No hay reseñas para el período. Ejecuta el ETL y vuelve a intentarlo."
+              />
+            }
+            @if (report() === 'h02' && h.summary.posicionamiento; as pos) {
+              <section class="strd-ie-h02" aria-label="Posicionamiento competitivo local (IE-H02)">
+                <div class="strd-report-head">
+                  <span class="strd-report-code">IE-H02</span>
+                  <h2>Posicionamiento competitivo local (~5 km)</h2>
+                  <p class="strd-section-sub">Rating × precio — diferenciación y banda defendible.</p>
+                </div>
+
+                <!-- Z-1 · KPIs de posicionamiento (cajas separadas) -->
+                <section class="strd-kpi-strip" aria-label="KPIs de posicionamiento">
+                  @for (kpi of posicionamientoKpis(); track kpi.id) {
+                    <article class="strd-card strd-kpi-card">
+                      <div class="strd-kpi-top">
+                        <span class="strd-kpi-dot" [class]="semaforoClass(kpi.semaforo)" [title]="'Estado: ' + kpi.semaforo"></span>
+                        <span class="strd-kpi-label">{{ kpi.label }}</span>
+                      </div>
+                      <strong class="strd-kpi-value">{{ kpi.value | number:'1.0-2' }}<small>{{ kpi.unit }}</small></strong>
+                      <span class="strd-kpi-trend" [class]="'trend-' + kpi.trend">
+                        @if (kpi.trend === 'up') {
+                          <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
+                        } @else if (kpi.trend === 'down') {
+                          <span class="material-symbols-outlined" aria-hidden="true">trending_down</span>
+                        } @else {
+                          <span class="material-symbols-outlined" aria-hidden="true">trending_flat</span>
+                        }
+                        {{ kpi.pctChange > 0 ? '+' : '' }}{{ kpi.pctChange | number:'1.1-1' }}%
+                      </span>
+                      <small class="strd-kpi-detail">{{ kpi.detail }}</small>
+                    </article>
+                  }
+                </section>
+
+                <!-- Z-2 · Serie mensual rating × ADR -->
+                <div class="strd-chart-row">
+                  <app-kpi-chart
+                    title="Evolución mensual rating y ADR"
+                    [labels]="h.posicionamientoSerie.labels"
+                    [datasets]="posicionamientoSerieDatasets()"
+                    type="line"
+                    [showLegend]="true"
+                    [height]="240"
+                    [showExport]="canExport()"
+                    exportFilename="posicionamiento-hotel-{{ h.propId }}"
+                    [borderless]="true"
+                  />
+                  <aside class="strd-card strd-pos">
+                    <h3><span class="material-symbols-outlined" aria-hidden="true">stars</span> Diagnosis</h3>
+                    <p class="strd-pos-diagnosis">{{ pos.diagnosis }}</p>
+                    <span class="strd-pos-decision">{{ pos.decision }}</span>
+                  </aside>
+                </div>
+
+                <!-- Z-3 · Tabla de registros mensuales -->
+                <section class="strd-card strd-table-card">
+                  <div class="strd-table-head">
+                    <div>
+                      <h3>Registros de posicionamiento</h3>
+                      <p class="strd-meta">{{ posicionamientoRows().length }} mes(es)</p>
+                    </div>
+                  </div>
+                  <div class="strd-table-wrap">
+                    <table class="strd-table">
+                      <thead>
+                        <tr>
+                          <th>Mes</th>
+                          <th class="th-num">Rating</th>
+                          <th class="th-num">ADR</th>
+                          <th class="th-num">Respuesta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of posicionamientoRows(); track row.month) {
+                          <tr>
+                            <td><strong>{{ formatMonth(row.month) }}</strong></td>
+                            <td class="td-num">{{ row.rating | number:'1.1-1' }} <small>★</small></td>
+                            <td class="td-num mono">{{ money(row.adr) }}</td>
+                            <td class="td-num">{{ pct(row.respuesta) }}</td>
+                          </tr>
+                        } @empty {
+                          <tr><td colspan="4" class="strd-empty-cell">Sin registros de posicionamiento en el rango.</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </section>
+            }
+          }
+        }
+      }
+    }
+  } @else {
+    <!-- ═══ VISTA B — control global de la cartera ═══ -->
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Consultando ClickHouse (tablas strat_*)…" />
+      }
+      @case ('error') {
+        <app-error-state [description]="errorMessage()" (retry)="onRetry()" />
+      }
+      @case ('empty') {
+        <app-empty-state
+          title="Sin datos estratégicos"
+          description="No hay tablas strat_* cargadas para el rango. Ejecuta el ETL Mongo → ClickHouse para publicarlas."
+        />
+      }
+      @default {
+        @if (portfolio(); as p) {
+          @if (unavailable()) {
+            <div class="strd-unavailable" role="alert">
+              <span class="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+              ClickHouse no está disponible. El panel no consulta Mongo como sustituto.
+            </div>
+          }
+
+          <!-- ═══ IE-G01 · KPIs estratégicos de la cartera (patrón Z) ═══ -->
+          @if (report() === 'g01') {
+          <div class="strd-report-head">
+            <span class="strd-report-code">IE-G01</span>
+            <h2>KPIs estratégicos de la cartera</h2>
+            <p class="strd-section-sub">Salud financiera, comercial y reputacional de toda la cartera.</p>
+          </div>
+
+          <!-- Z-1 · KPIs estratégicos de la cartera (summary.kpis) -->
+          <section class="strd-kpi-strip" aria-label="KPIs estratégicos de la cartera">
+            <article class="strd-card strd-score-card">
+              <span class="strd-kpi-eyebrow">Hoteles activos</span>
+              <strong class="strd-score-value">{{ p.summary.hoteles }}</strong>
+              <span class="strd-score-label">Propiedades con actividad en el período</span>
+            </article>
+            @for (kpi of portfolioKpis(); track kpi.id) {
+              <article class="strd-card strd-kpi-card">
+                <div class="strd-kpi-top">
+                  <span class="strd-kpi-dot" [class]="semaforoClass(kpi.semaforo)" [title]="'Estado: ' + kpi.semaforo"></span>
+                  <span class="strd-kpi-label">{{ kpi.label }}</span>
+                </div>
+                <strong class="strd-kpi-value">{{ kpi.value | number:'1.0-2' }}<small>{{ kpi.unit }}</small></strong>
+                <span class="strd-kpi-trend" [class]="'trend-' + kpi.trend">
+                  @if (kpi.trend === 'up') {
+                    <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
+                  } @else if (kpi.trend === 'down') {
+                    <span class="material-symbols-outlined" aria-hidden="true">trending_down</span>
+                  } @else {
+                    <span class="material-symbols-outlined" aria-hidden="true">trending_flat</span>
+                  }
+                  {{ kpi.pctChange > 0 ? '+' : '' }}{{ kpi.pctChange | number:'1.1-1' }}%
+                </span>
+                <small class="strd-kpi-detail">{{ kpi.detail }}</small>
+              </article>
+            }
+          </section>
+
+          <!-- Z-2 · Serie mensual de la cartera -->
+          <section class="strd-chart-row">
+            <app-kpi-chart
+              title="Evolución mensual de la cartera"
+              [labels]="p.series.labels"
+              [datasets]="carteraChartDatasets()"
+              type="line"
+              [showLegend]="true"
+              [height]="260"
+              [showExport]="canExport()"
+              exportFilename="serie-cartera"
+              [borderless]="true"
+            />
+            <aside class="strd-card strd-summary-aside">
+              <h3><span class="material-symbols-outlined" aria-hidden="true">monitoring</span> Salud de la cartera</h3>
+              <p class="strd-summary-desc">
+                KPIs derivados directamente de <code>strat_hotel_monthly</code> y
+                <code>strat_reputation_monthly</code> — sin modelos intermedios.
+              </p>
+              <div class="strd-summary-counts">
+                <div class="strd-summary-count">
+                  <strong>{{ p.summary.hoteles }}</strong>
+                  <small>Hoteles con actividad</small>
+                </div>
+                <div class="strd-summary-count">
+                  <strong>{{ num(p.rows.total) }}</strong>
+                  <small>Filas en la tabla de registros</small>
+                </div>
+              </div>
+            </aside>
+          </section>
+
+          }
+
+          <!-- ═══ IE-G02 · Rankings estratégicos (patrón Z) ═══ -->
+          @if (report() === 'g02') {
+          <section class="strd-ie-g02" aria-label="Rankings estratégicos (IE-G02)">
+            <div class="strd-report-head">
+              <span class="strd-report-code">IE-G02</span>
+              <h2>Rankings estratégicos</h2>
+              <p class="strd-section-sub">Rendimiento, oportunidad y riesgo — cada posición termina en una decisión (TAF14 §5).</p>
+            </div>
+
+            <!-- Z-1 · KPIs por ranking (cajas separadas) -->
+            <section class="strd-kpi-strip" aria-label="KPIs de rankings">
+              @for (kpi of rankingsKpis(); track kpi.id) {
+                <article class="strd-card strd-kpi-card">
+                  <div class="strd-kpi-top">
+                    <span class="strd-kpi-dot" [class]="semaforoClass(kpi.semaforo)" [title]="'Estado: ' + kpi.semaforo"></span>
+                    <span class="strd-kpi-label">{{ kpi.label }}</span>
+                  </div>
+                  <strong class="strd-kpi-value">{{ kpi.value | number:'1.0-0' }}<small>{{ kpi.unit }}</small></strong>
+                  <span class="strd-kpi-trend" [class]="'trend-' + kpi.trend">
+                    @if (kpi.trend === 'up') {
+                      <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
+                    } @else if (kpi.trend === 'down') {
+                      <span class="material-symbols-outlined" aria-hidden="true">trending_down</span>
+                    } @else {
+                      <span class="material-symbols-outlined" aria-hidden="true">trending_flat</span>
+                    }
+                    {{ kpi.pctChange > 0 ? '+' : '' }}{{ kpi.pctChange | number:'1.1-1' }}%
+                  </span>
+                  <small class="strd-kpi-detail">{{ kpi.detail }}</small>
+                </article>
+              }
+            </section>
+
+            <!-- Z-2 · Top hoteles por revenue -->
+            <div class="strd-chart-row markets">
+              <app-kpi-chart
+                title="Top hoteles por revenue neto"
+                [labels]="p.rankings.series.labels ?? []"
+                [datasets]="rankingsChartDatasets()"
+                type="bar"
+                [showLegend]="false"
+                [height]="240"
+                [showExport]="canExport()"
+                exportFilename="rankings-cartera"
+                [borderless]="true"
+              />
+            </div>
+
+            <!-- Z-3 · Tablas de registros por ranking (motivo + decisión) -->
+            <div class="strd-rankings-grid">
+              @for (group of rankingGroups(); track group.codigo) {
+                <section class="strd-card strd-table-card ranking">
+                  <div class="strd-table-head">
+                    <div>
+                      <h3>{{ group.codigo }} · {{ group.titulo }}</h3>
+                      <p class="strd-meta">{{ group.criterio }}</p>
+                    </div>
+                  </div>
+                  <div class="strd-table-wrap">
+                    <table class="strd-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Entidad</th>
+                          <th class="th-num">Valor</th>
+                          <th class="th-num">Variación</th>
+                          <th>Motivo</th>
+                          <th>Decisión</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (entry of group.rows; track entry.entidad; let i = $index) {
+                          <tr>
+                            <td class="td-num">{{ i + 1 }}</td>
+                            <td><strong>{{ entry.entidad }}</strong></td>
+                            <td class="td-num mono">{{ entry.valor | number:'1.0-0' }} <small>{{ entry.unidad }}</small></td>
+                            <td class="td-num" [class.neg]="entry.variacion < 0" [class.pos]="entry.variacion >= 0">{{ pct(entry.variacion) }}</td>
+                            <td class="strd-decision">{{ entry.motivo }}</td>
+                            <td class="strd-decision">{{ entry.decision }}</td>
+                          </tr>
+                        } @empty {
+                          <tr><td colspan="6" class="strd-empty-cell">Sin datos para este ranking.</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              }
+            </div>
+          </section>
+
+          }
+
+          <!-- ═══ IE-G03 · Rentabilidad y composición de la cartera (patrón Z) ═══ -->
+          @if (report() === 'g03') {
+          <div class="strd-report-head">
+            <span class="strd-report-code">IE-G03</span>
+            <h2>Rentabilidad y composición de la cartera</h2>
+            <p class="strd-section-sub">Revenue bruto vs neto, contribución por hotel y por plan — nunca se llama ganancia a un revenue (TAF14 §6).</p>
+          </div>
+
+          <section class="strd-card strd-table-card">
+            <div class="strd-table-head">
+              <div>
+                <h3>Rentabilidad por hotel (IE-G03)</h3>
+                <p class="strd-meta">
+                  {{ p.rows.total }} hotel(es) · Pág. {{ p.rows.page }} de {{ p.rows.totalPages || 1 }}
+                  <span class="strd-range">{{ formatDate(p.dateFrom) }} → {{ formatDate(p.dateTo) }}</span>
+                </p>
+              </div>
+              <div class="strd-pagination">
+                <button type="button" class="strd-page-btn" (click)="goToPage(p.rows.page - 1)" [disabled]="!p.rows.hasPrev">
+                  <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span> Anterior
+                </button>
+                <button type="button" class="strd-page-btn" (click)="goToPage(p.rows.page + 1)" [disabled]="!p.rows.hasNext">
+                  Siguiente <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                </button>
+              </div>
+            </div>
+            <div class="strd-table-wrap">
+              <table class="strd-table">
+                <thead>
+                  <tr>
+                    <th>Hotel</th>
+                    <th class="th-num">Reservas</th>
+                    <th class="th-num">Noches</th>
+                    <th class="th-num">Revenue bruto</th>
+                    <th class="th-num">Descuento</th>
+                    <th class="th-num">Revenue neto</th>
+                    <th class="th-num">ADR</th>
+                    <th class="th-num">Ocupación</th>
+                    <th class="th-num">RevPAR</th>
+                    <th class="th-num">Var.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of p.rows.rows; track row.propId) {
+                    <tr>
+                      <td>
+                        <button type="button" class="strd-hotel-link" (click)="goToHotel(row.propId, row.hotelLabel)" [attr.aria-label]="'Ver detalle estratégico de ' + row.hotelLabel">
+                          {{ row.hotelLabel }} <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                        </button>
+                      </td>
+                      <td class="td-num">{{ num(row.bookings) }}</td>
+                      <td class="td-num">{{ num(row.roomNights) }}</td>
+                      <td class="td-num mono">{{ money(row.revenueBruto) }}</td>
+                      <td class="td-num mono neg">{{ money(row.descuento) }} <small>({{ pct(row.descuentoPct) }})</small></td>
+                      <td class="td-num mono strong">{{ money(row.revenueNeto) }}</td>
+                      <td class="td-num mono">{{ money(row.adr) }}</td>
+                      <td class="td-num">{{ pct(row.ocupacionPct) }}</td>
+                      <td class="td-num mono">{{ money(row.revpar) }}</td>
+                      <td class="td-num" [class.neg]="row.variacion < 0" [class.pos]="row.variacion >= 0">{{ pct(row.variacion) }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="10" class="strd-empty-cell">No hay hoteles para el rango seleccionado.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Z-4 · Rentabilidad por plan -->
+          @if (p.planes.rows.length) {
+            <section class="strd-chart-row">
+              <app-kpi-chart
+                title="Revenue neto por tipo de habitación"
+                [labels]="planesChartLabels()"
+                [datasets]="[{ label: 'Revenue neto (USD)', data: planesChartDatasets() }]"
+                type="bar"
+                [showLegend]="false"
+                [height]="240"
+                [showExport]="canExport()"
+                exportFilename="planes-cartera"
+                [borderless]="true"
+              />
+              <section class="strd-card strd-table-card planes">
+                <div class="strd-table-head">
+                  <div>
+                    <h3>Rentabilidad por plan (IE-G03)</h3>
+                    <p class="strd-meta">Revenue bruto vs neto — nunca se llama ganancia a un revenue.</p>
+                  </div>
+                </div>
+                <div class="strd-table-wrap">
+                  <table class="strd-table">
+                    <thead>
+                      <tr>
+                        <th>Tipo</th>
+                        <th class="th-num">Reservas</th>
+                        <th class="th-num">Bruto</th>
+                        <th class="th-num">Descuento</th>
+                        <th class="th-num">Neto</th>
+                        <th class="th-num">ADR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of p.planes.rows; track row.label) {
+                        <tr>
+                          <td><strong>{{ row.label }}</strong></td>
+                          <td class="td-num">{{ num(row.bookings) }}</td>
+                          <td class="td-num mono">{{ money(row.revenueBruto) }}</td>
+                          <td class="td-num mono neg">{{ money(row.descuento) }} <small>({{ pct(row.descuentoPct) }})</small></td>
+                          <td class="td-num mono strong">{{ money(row.revenueNeto) }}</td>
+                          <td class="td-num mono">{{ money(row.adr) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </section>
+          }
+
+          }
+
+          <!-- ═══ IE-G04 · Mapa de mercados (patrón Z) ═══ -->
+          @if (report() === 'g04' && markets(); as m) {
+            <section class="strd-markets" aria-label="Mapa de mercados (IE-G04)">
+              <div class="strd-report-head">
+                <span class="strd-report-code">IE-G04</span>
+                <h2>Mapa de mercados y destinos</h2>
+                <p class="strd-section-sub">Demanda, crecimiento y posición — dónde invertir o corregir (TAF14 §7).</p>
+              </div>
+
+              <!-- KPIs de demanda -->
+              <section class="strd-kpi-strip" aria-label="KPIs de demanda">
+                @for (kpi of m.summary.kpis; track kpi.id) {
+                  <article class="strd-card strd-kpi-card">
+                    <div class="strd-kpi-top">
+                      <span class="strd-kpi-dot" [class]="semaforoClass(kpi.semaforo)" [title]="'Estado: ' + kpi.semaforo"></span>
+                      <span class="strd-kpi-label">{{ kpi.label }}</span>
+                    </div>
+                    <strong class="strd-kpi-value">{{ kpi.value | number:'1.0-0' }}<small>{{ kpi.unit }}</small></strong>
+                    <span class="strd-kpi-trend" [class]="'trend-' + kpi.trend">
+                      @if (kpi.trend === 'up') {
+                        <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
+                      } @else if (kpi.trend === 'down') {
+                        <span class="material-symbols-outlined" aria-hidden="true">trending_down</span>
+                      } @else {
+                        <span class="material-symbols-outlined" aria-hidden="true">trending_flat</span>
+                      }
+                      {{ kpi.pctChange > 0 ? '+' : '' }}{{ kpi.pctChange | number:'1.1-1' }}%
+                    </span>
+                    <small class="strd-kpi-detail">{{ kpi.detail }}</small>
+                  </article>
+                }
+              </section>
+
+              <!-- Serie de demanda -->
+              <div class="strd-chart-row markets">
+                <app-kpi-chart
+                  title="Demanda mensual por mercado"
+                  [labels]="m.series.labels"
+                  [datasets]="marketsChartDatasets()"
+                  type="line"
+                  [showLegend]="true"
+                  [height]="240"
+                  [showExport]="canExport()"
+                  exportFilename="demanda-mercados"
+                  [borderless]="true"
+                />
+              </div>
+
+              <!-- Tabla por destino (cuadrantes como columna) -->
+              <section class="strd-card strd-table-card">
+                <div class="strd-table-head">
+                  <div>
+                    <h3>Mercados (detalle)</h3>
+                    <p class="strd-meta">{{ m.rows.total }} mercado(s) · Pág. {{ m.rows.page }} de {{ m.rows.totalPages || 1 }}</p>
+                  </div>
+                  <div class="strd-pagination">
+                    <button type="button" class="strd-page-btn" (click)="goToMarketsPage(m.rows.page - 1)" [disabled]="!m.rows.hasPrev">
+                      <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span> Anterior
+                    </button>
+                    <button type="button" class="strd-page-btn" (click)="goToMarketsPage(m.rows.page + 1)" [disabled]="!m.rows.hasNext">
+                      Siguiente <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="strd-table-wrap">
+                  <table class="strd-table">
+                    <thead>
+                      <tr>
+                        <th>Destino</th>
+                        <th class="th-num">Búsquedas</th>
+                        <th class="th-num">Reservas</th>
+                        <th class="th-num">Conversión</th>
+                        <th class="th-num">Crecimiento</th>
+                        <th class="th-num">Posición</th>
+                        <th class="th-num">Revenue</th>
+                        <th>Cuadrante</th>
+                        <th>Decisión</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of m.rows.rows; track row.destination) {
+                        <tr>
+                          <td><strong>{{ row.destination }}</strong></td>
+                          <td class="td-num">{{ num(row.searches) }}</td>
+                          <td class="td-num">{{ num(row.reservations) }}</td>
+                          <td class="td-num">{{ pct(row.conversionPct) }}</td>
+                          <td class="td-num" [class.neg]="row.growthPct < 0" [class.pos]="row.growthPct >= 0">{{ pct(row.growthPct) }}</td>
+                          <td class="td-num">{{ pct(row.positionPct) }}</td>
+                          <td class="td-num mono strong">{{ money(row.revenue) }}</td>
+                          <td>
+                            <span class="strd-quadrant-badge" [class]="quadrantClass(row.quadrant)">
+                              <span class="material-symbols-outlined" aria-hidden="true">{{ QUADRANT_META[row.quadrant].icon }}</span>
+                              {{ QUADRANT_META[row.quadrant].label }}
+                            </span>
+                          </td>
+                          <td class="strd-decision">{{ row.decision }}</td>
+                        </tr>
+                      } @empty {
+                        <tr><td colspan="9" class="strd-empty-cell">No hay mercados para el rango seleccionado.</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </section>
+          }
+
+          <!-- ═══ IE-G05 · Forecasting (patrón Z, placeholder con reglas de confianza) ═══ -->
+          @if (report() === 'g05') {
+          <section class="strd-card strd-forecast" aria-label="Forecasting estratégico (IE-G05)">
+            <div class="strd-forecast-icon" aria-hidden="true">
+              <span class="material-symbols-outlined">query_stats</span>
+            </div>
+            <div class="strd-forecast-body">
+              <div class="strd-forecast-head">
+                <span class="strd-report-code">IE-G05</span>
+                <h2>Forecasting e inteligencia predictiva</h2>
+                <span class="strd-forecast-badge">Próximamente</span>
+              </div>
+              <p class="strd-forecast-desc">
+                Proyección de revenue, ocupación y ADR por hotel para el próximo trimestre,
+                con intervalos de confianza. Sin modelos aún — se habilitará cuando el
+                histórico mensual tenga profundidad suficiente.
+              </p>
+              <ul class="strd-forecast-rules">
+                <li><span class="material-symbols-outlined" aria-hidden="true">rule</span> Mínimo 12 meses de historial por hotel para proyectar.</li>
+                <li><span class="material-symbols-outlined" aria-hidden="true">monitoring</span> Base: serie mensual de las tablas <code>strat_hotel_monthly</code> y <code>strat_reputation_monthly</code>.</li>
+                <li><span class="material-symbols-outlined" aria-hidden="true">shield</span> El pronóstico se muestra solo con datos suficientes; nunca reemplaza a los KPIs actuales.</li>
+              </ul>
+            </div>
+          </section>
+          }
+        }
+      }
+    }
+  }
+</div>

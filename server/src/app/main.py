@@ -86,9 +86,11 @@ from src.app.modules.billing.routes import router as billing_module_router
 from src.app.modules.billing.service import ensure_billing_collections
 from src.app.modules.expenses.routes import api_router as expenses_api_router
 from src.app.modules.expenses.routes import router as expenses_module_router
-from src.app.modules.expenses.vendor_ap_routes import api_router as vendor_ap_api_router
 from src.app.modules.expenses.service.collections import ensure_expenses_collections
-from src.app.modules.financial_reconciliation.domain_events import ensure_domain_event_collections
+from src.app.modules.expenses.vendor_ap_routes import api_router as vendor_ap_api_router
+from src.app.modules.financial_reconciliation.domain_events import (
+    ensure_domain_event_collections,
+)
 from src.app.modules.financial_reconciliation.routes import (
     api_router as financial_reconciliation_api_router,
 )
@@ -113,6 +115,9 @@ from src.app.modules.hr.service.collections import ensure_hr_collections
 from src.app.modules.instay.routes import guest_router as instay_guest_router
 from src.app.modules.instay.routes import staff_router as instay_staff_router
 from src.app.modules.kpi.routes import router as kpi_api_router
+from src.app.modules.legal.routes import admin_router as legal_admin_router
+from src.app.modules.legal.routes import public_router as legal_public_router
+from src.app.modules.legal.service import ensure_legal_collections
 from src.app.modules.lost_and_found.routes import (
     api_router as lost_and_found_api_router,
 )
@@ -140,7 +145,6 @@ from src.app.modules.partner.services.bootstrap import (
     ensure_rate_collections,
     ensure_room_features_collections,
 )
-from src.app.modules.payments.routes import router as payments_api_router
 from src.app.modules.property_approval.routes import (
     api_router as property_approval_api_router,
 )
@@ -167,6 +171,10 @@ from src.app.modules.reviews.routes import public_router as reviews_public_route
 from src.app.modules.reviews.routes import router as reviews_module_router
 from src.app.modules.reviews.service import ensure_reviews_collections
 from src.app.modules.settings.routes import api_router as settings_api_router
+from src.app.modules.strategic.routes import router as strategic_router
+from src.app.modules.subscriptions import ensure_subscription_collections
+from src.app.modules.subscriptions.routes import api_router as subscriptions_api_router
+from src.app.modules.subscriptions.routes_admin import api_router as subscriptions_admin_api_router
 from src.app.modules.tracking.routes import tracking_api_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
@@ -229,6 +237,7 @@ def create_app() -> FastAPI:
     app.include_router(account_api_router)
     app.include_router(system_router)
     app.include_router(analytics_router)
+    app.include_router(strategic_router)
     app.include_router(housekeeping_api_router)
     app.include_router(housekeeping_module_router)
     app.include_router(tracking_api_router)
@@ -238,6 +247,8 @@ def create_app() -> FastAPI:
     app.include_router(kpi_api_router)
     app.include_router(reception_calendar_router)
     app.include_router(self_checkin_public_router)
+    app.include_router(legal_public_router)
+    app.include_router(legal_admin_router)
     app.include_router(map_api_router)
     app.include_router(amenities_guest_router)
     app.include_router(amenities_admin_router)
@@ -254,11 +265,12 @@ def create_app() -> FastAPI:
     app.include_router(financial_reconciliation_api_router)
     app.include_router(instay_guest_router)
     app.include_router(instay_staff_router)
-    app.include_router(payments_api_router)
     app.include_router(crud_router)
     app.include_router(reports_router)
     app.include_router(hotel_permissions_api_router)
     app.include_router(property_approval_api_router)
+    app.include_router(subscriptions_api_router)
+    app.include_router(subscriptions_admin_api_router)
     return app
 
 
@@ -275,12 +287,14 @@ async def lifespan(app: FastAPI):
     ensure_revenue_collections()
     ensure_reviews_collections()
     ensure_billing_collections()
+    ensure_subscription_collections()
     ensure_domain_event_collections()
     ensure_housekeeping_collections()
     ensure_reservation_collections()
     ensure_reception_collections()
     ensure_global_settings_collections()
     ensure_geo_collections()
+    ensure_legal_collections()
     ensure_auth_collections()
     ensure_room_features_collections()
     ensure_lost_and_found_collections()
@@ -313,7 +327,9 @@ async def lifespan(app: FastAPI):
     threading.Thread(target=refresh_kpis_background, daemon=True).start()
     # Periodic internal notifications for forgotten open cash shifts
     # (expired → block active; open_long → manager heads-up).
-    from src.app.modules.reception.notifications import sweep_shift_notifications_forever
+    from src.app.modules.reception.notifications import (
+        sweep_shift_notifications_forever,
+    )
     sweep_shift_notifications_forever()
     yield
 

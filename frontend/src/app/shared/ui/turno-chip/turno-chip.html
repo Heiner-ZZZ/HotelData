@@ -1,0 +1,83 @@
+@if (vm(); as vm) {
+  <div class="turno-chip-wrapper">
+    <button
+      type="button"
+      class="turno-chip"
+      [class.is-open]="isOpen()"
+      [class.is-error]="hasError()"
+      (click)="toggle()"
+      [attr.aria-expanded]="isOpen()"
+      [attr.aria-label]="'Turno actual: ' + vm.chipLabel"
+    >
+      <span class="material-symbols-outlined turno-chip-icon" aria-hidden="true">{{ vm.icon }}</span>
+      <span class="turno-chip-label">{{ vm.chipLabel }}</span>
+    </button>
+
+    @if (hasMultiple()) {
+      <button
+        type="button"
+        class="turno-cycle"
+        (click)="cycleKind(); $event.stopPropagation()"
+        [attr.aria-label]="vm.kind === 'caja' ? 'Ver mi turno de asistencia' : 'Ver turno de caja'"
+        title="Cambiar entre turno de caja y mi turno"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
+    }
+
+    @if (isOpen()) {
+      <div class="turno-popover" role="region" [attr.aria-label]="vm.title">
+        <div class="turno-pop-head">
+          <span class="material-symbols-outlined turno-pop-icon" aria-hidden="true">{{ vm.icon }}</span>
+          <div class="turno-pop-titles">
+            <strong class="turno-pop-title">{{ vm.title }}</strong>
+            @if (vm.hasShift) {
+              <span class="turno-pop-type">{{ vm.typeLabel }}</span>
+            }
+          </div>
+        </div>
+
+        @if (isLoading()) {
+          <p class="turno-pop-note">Cargando turno…</p>
+        } @else if (hasError()) {
+          <p class="turno-pop-note">No se pudo cargar el turno.</p>
+        } @else if (vm.hasShift) {
+          <p class="turno-pop-window">{{ vm.dateLabel }} · {{ vm.windowLabel }}</p>
+
+          <dl class="turno-pop-rows">
+            <div class="turno-row">
+              <dt>Inicio</dt>
+              <dd>{{ vm.startLabel }}</dd>
+            </div>
+            <div class="turno-row">
+              <dt>Fin</dt>
+              <dd>{{ vm.endLabel }}</dd>
+            </div>
+            <div class="turno-row">
+              <dt>Estado</dt>
+              <dd class="turno-status">
+                <span class="turno-dot" [class]="'tone-' + vm.statusTone" aria-hidden="true"></span>
+                {{ vm.statusLabel }}
+              </dd>
+            </div>
+            <div class="turno-row">
+              <dt>Operador</dt>
+              <dd>{{ vm.operatorLabel }}</dd>
+            </div>
+          </dl>
+        } @else {
+          <p class="turno-pop-note">
+            {{ vm.kind === 'caja' ? 'No hay turno de caja abierto para este hotel.' : 'No tenés turno asignado hoy.' }}
+          </p>
+        }
+
+        @if (vm.cta) {
+          <button type="button" class="turno-cta" (click)="onCtaClick(vm.cta!.href)">
+            <span class="material-symbols-outlined" aria-hidden="true">point_of_sale</span>
+            {{ vm.cta.label }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+}

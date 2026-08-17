@@ -3,6 +3,22 @@ export interface ManagementReportsDto {
   total_events: number;
   reservations_detected: number;
   gross_revenue: number;
+  series: {
+    labels: string[];
+    datasets: { label: string; data: number[] }[];
+  };
+  rows: {
+    month: string;
+    events: number;
+    reservations: number;
+    gross_revenue: number;
+  }[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
   top_hotels_by_revenue: {
     prop_id: number;
     display_name: string;

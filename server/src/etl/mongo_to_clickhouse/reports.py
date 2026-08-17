@@ -8,6 +8,7 @@ from typing import Any
 from config.settings import get_settings
 from src.etl.mongo_to_clickhouse._common import elapsed_ms, write_json_file
 from src.etl.mongo_to_clickhouse.config import ALL_TABLES, paths
+from src.etl.mongo_to_clickhouse.load import date_column_for
 
 
 def run_quality_checks(
@@ -73,8 +74,10 @@ def run_date_health_checks(client, database: str, tables) -> dict[str, Any]:
     warned: list[str] = []
     for table in tables:
         try:
+            date_column = date_column_for(table)
             rows = client.query(
-                f"SELECT count(), countIf(date = '1970-01-01'), min(date), max(date) "
+                f"SELECT count(), countIf({date_column} = '1970-01-01'), "
+                f"min({date_column}), max({date_column}) "
                 f"FROM {database}.{table}"
             ).result_rows
             total, epoch_rows, min_date, max_date = rows[0]

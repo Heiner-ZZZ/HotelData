@@ -225,7 +225,8 @@ def get_reputation_analytics(
     from src.app.core.timezone import local_today
     from config.settings import get_settings
 
-    today = local_today()
+    # local_today() devuelve str (YYYY-MM-DD); parsear una sola vez para poder restar timedelta
+    today = _date.fromisoformat(local_today())
     start = _date.fromisoformat(date_from) if date_from else today - timedelta(days=days - 1)
     end = _date.fromisoformat(date_to) if date_to else today
     if end < start:

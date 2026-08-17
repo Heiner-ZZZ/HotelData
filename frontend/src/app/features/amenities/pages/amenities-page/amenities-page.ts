@@ -24,6 +24,23 @@ import { OperationModeService } from '../../../../core/services/operation-mode.s
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { DestroyRef } from '@angular/core';
 
+// ─── Reglas de negocio implícitas por el nombre ───
+// Una petición cuyo label ya nombra la regla no necesita toggle: el flag
+// aplica automáticamente (ej. "Piso alto" → high_floor). Evita los toggles
+// circulares del catálogo y mantiene la consistencia al guardar.
+
+export function impliesPetRelated(label: string): boolean {
+  return /mascota|pet/i.test(label);
+}
+
+export function impliesHighFloor(label: string): boolean {
+  return /piso\s*alt|planta\s*alta|piso\s*elevad|high\s*floor/i.test(label);
+}
+
+export function impliesLateArrival(label: string): boolean {
+  return /llegada\s*tard|llegada\s*noct|late\s*(arrival|check)/i.test(label);
+}
+
 @Component({
   selector: 'app-amenities-page',
   imports: [
@@ -411,6 +428,12 @@ export class AmenitiesPageComponent {
   readonly requestOptions = signal<SpecialRequestOptionView[]>([]);
   readonly highFloorFrom = signal(3);
   readonly requestsEditing = signal(false);
+  /** Helpers de reglas implícitas expuestos para el template. */
+  readonly impliesPetRelated = impliesPetRelated;
+  readonly impliesHighFloor = impliesHighFloor;
+  readonly impliesLateArrival = impliesLateArrival;
+  /** Labels con el panel "Reglas de negocio" expandido (colapsado por defecto). */
+  readonly expandedRules = signal<Set<string>>(new Set());
   readonly requestsSaving = signal(false);
   readonly newRequestLabel = signal('');
   readonly newRequestPrice = signal('');
@@ -475,6 +498,18 @@ export class AmenitiesPageComponent {
     ));
   }
 
+  toggleRulesExpanded(label: string): void {
+    this.expandedRules.update((s) => {
+      const next = new Set(s);
+      if (next.has(label)) { next.delete(label); } else { next.add(label); }
+      return next;
+    });
+  }
+
+  isRulesExpanded(label: string): boolean {
+    return this.expandedRules().has(label);
+  }
+
   removeRequest(label: string): void {
     this.requestOptions.set(this.requestOptions().filter((r) => r.label !== label));
   }
@@ -507,9 +542,9 @@ export class AmenitiesPageComponent {
         label: r.label,
         unit_price: r.unitPrice,
         flags: [
-          ...(r.petRelated ? ['pet_related'] : []),
-          ...(r.highFloor ? ['high_floor'] : []),
-          ...(r.lateArrival ? ['late_arrival'] : []),
+          ...(r.petRelated || impliesPetRelated(r.label) ? ['pet_related'] : []),
+          ...(r.highFloor || impliesHighFloor(r.label) ? ['high_floor'] : []),
+          ...(r.lateArrival || impliesLateArrival(r.label) ? ['late_arrival'] : []),
           ...(r.chargeable ? ['chargeable'] : []),
         ],
       })),

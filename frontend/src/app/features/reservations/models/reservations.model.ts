@@ -67,10 +67,13 @@ export interface ReservationCreateInput {
   /** Optional physical room selected from the reception Timeline. */
   hotelRoomId?: string;
   ratePlanId?: string;
-  /** Payment fields (Phase 1) */
-  transactionId?: string;
-  paymentMethod?: string;
-  cardLast4?: string;
+  /** Depósito real registrado al confirmar (política de pago por adelantado).
+   *  Se persiste como pago de billing con shift_id del turno activo. */
+  deposit?: {
+    amount: number;
+    method: string;
+    reference?: string;
+  };
 }
 
 /** A rate plan option with pricing for a specific date range */
@@ -265,6 +268,14 @@ export interface ReservationDetailViewModel {
   transactionId?: string;
   cardLast4?: string;
   paymentStatus?: string;
+  /** Depósito real registrado al confirmar la reserva (billing, shift-gated). */
+  deposit?: {
+    amount: number;
+    method: string;
+    reference?: string;
+    status: string;
+    paidAt?: string | null;
+  } | null;
   cancellationFree?: boolean;
   cancellationPenaltyPercent?: number;
   cancellationPenaltyAmount?: number;

@@ -42,10 +42,19 @@ def is_operational_gate_bypassed(path: str) -> bool:
 
 def non_operational_hotel(db, prop_id: int) -> dict[str, Any] | None:
     """Devuelve la fila de ``dim_hotels`` si el hotel EXISTE pero NO está
-    publicado (``published=false`` explícito). Fila ausente o sin el campo
-    (legado) → ``None`` (el gate no aplica; backward compat)."""
-    hotel = db.dim_hotels.find_one({"prop_id": int(prop_id)}, {"published": 1})
-    if hotel is not None and hotel.get("published") is False:
+    operativo: ``published=false`` explícito (pendiente/rechazado) O
+    ``is_operational=false`` explícito (suspendido por impago, PLAN §10).
+
+    Fila ausente o sin ambos campos (legado) → ``None`` (el gate no aplica;
+    backward compat). Un hotel suspendido sigue ``published=true`` (presencia
+    pública intacta) pero queda bloqueado por ``is_operational=false``.
+    """
+    hotel = db.dim_hotels.find_one(
+        {"prop_id": int(prop_id)}, {"published": 1, "is_operational": 1}
+    )
+    if hotel is None:
+        return None
+    if hotel.get("published") is False or hotel.get("is_operational") is False:
         return hotel
     return None
 

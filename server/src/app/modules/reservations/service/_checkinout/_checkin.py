@@ -21,11 +21,47 @@ from src.app.modules.reservations.service._checkinout._helpers import (
     _notify_staff_check_in,
     _notify_staff_window_extension,
 )
+from src.app.modules.reservations.service.lifecycle.create._validation import (
+    get_deposit_policy,
+)
 from src.database.connection import get_database
 
 from .._helpers import utc_now
 
 logger = logging.getLogger(__name__)
+
+
+class DepositNotMetError(Exception):
+    """Check-in blocked because the hotel's deposit policy is not covered.
+
+    Mirrors ``ShiftExpiredError``: a domain error the route maps to HTTP 409
+    (CONFLICT) instead of the generic 400 for validation errors — the booking
+    is valid, the property policy is not satisfied.
+
+    Carries structured numbers (percent / min_deposit / paid_total) so the
+    route can return them in the 409 detail and the UI can render an
+    actionable banner with the exact missing amount instead of parsing text.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        deposit_percent: int | None = None,
+        min_deposit: float | None = None,
+        paid_total: float | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.message = message
+        self.deposit_percent = deposit_percent
+        self.min_deposit = min_deposit
+        self.paid_total = paid_total
+
+    @property
+    def missing(self) -> float | None:
+        if self.min_deposit is None or self.paid_total is None:
+            return None
+        return round(max(0.0, self.min_deposit - self.paid_total), 2)
 
 
 _EARLY_CHECK_IN_MODES = {"early_courtesy", "early_approved"}
@@ -239,7 +275,8 @@ def complete_check_in(
         {"_id": 0, "guest_name": 1, "guest_email": 1, "prop_id": 1, "is_test": 1,
          "check_in_date": 1, "check_out_date": 1, "total_price": 1, "currency": 1, "total_nights": 1,
          "assigned_rooms": 1, "stay_status": 1, "no_show_processed_at": 1,
-         "room_type_id": 1, "rooms": 1, "no_show_reopened_at": 1, "inventory_re_deducted_at": 1},
+         "room_type_id": 1, "rate_plan_id": 1, "rooms": 1, "no_show_reopened_at": 1,
+         "inventory_re_deducted_at": 1},
     )
     if not booking:
         raise ValueError("Reserva no encontrada. Verificá el identificador de la reserva.")
@@ -371,6 +408,43 @@ def complete_check_in(
                     }
                 },
             )
+
+    # ── Deposit policy gate ──
+    # El hotel puede exigir un depósito mínimo para hacer efectiva la reserva.
+    # Aquí se defiende con DINERO REAL: la suma de pagos CONFIRMADOS en
+    # ``reservation_payments`` (los que registra billing con turno de caja
+    # activo) debe cubrir el mínimo de la política (jerarquía rate_plan >
+    # room_type > hotel-wide, mismo lookup que creación y preview). El
+    # checkbox informativo ``check_in_deposit_received`` NO satisface el
+    # gate — un check-in sin el mínimo pagado es exactamente el tipo de
+    # "trabajar encima de una falla" que la política existe para impedir.
+    deposit_policy = get_deposit_policy(
+        int(booking.get("prop_id", 0) or 0),
+        rate_plan_id=str(booking.get("rate_plan_id") or ""),
+        room_type_id=str(booking.get("room_type_id") or ""),
+    )
+    if deposit_policy and bool(deposit_policy.get("deposit_required", False)):
+        deposit_percent = int(deposit_policy.get("deposit_percent", 0) or 0)
+        total_price = float(booking.get("total_price", 0) or 0)
+        if deposit_percent > 0 and total_price > 0:
+            min_deposit = round(total_price * deposit_percent / 100, 2)
+            paid_total = 0.0
+            for row in db.reservation_payments.find(
+                {"booking_id": booking_id, "status": "confirmed"},
+                {"amount": 1},
+            ):
+                paid_total += float(row.get("amount", 0) or 0)
+            if paid_total < min_deposit - 0.01:
+                raise DepositNotMetError(
+                    f"Esta propiedad exige un depósito mínimo del {deposit_percent}% "
+                    f"(${min_deposit:.2f}) para el check-in. La reserva {booking_id} tiene "
+                    f"${paid_total:.2f} pagados registrados. Registrá el depósito en "
+                    "Facturación (con turno de caja activo) o gestioná el cobro antes "
+                    "de completar el check-in.",
+                    deposit_percent=deposit_percent,
+                    min_deposit=min_deposit,
+                    paid_total=paid_total,
+                )
 
     # ── Validate room status before check-in ──
     assigned_rooms: list[str] = booking.get("assigned_rooms") or []

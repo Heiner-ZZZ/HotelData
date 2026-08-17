@@ -122,9 +122,13 @@ export function mapReservationCreatePayload(input: ReservationCreateInput) {
     room_type_id: input.roomTypeId || '',
     hotel_room_id: input.hotelRoomId || '',
     rate_plan_id: input.ratePlanId || '',
-    transaction_id: input.transactionId || '',
-    payment_method: input.paymentMethod || '',
-    card_last4: input.cardLast4 || '',
+    deposit: input.deposit
+      ? {
+          amount: input.deposit.amount,
+          method: input.deposit.method,
+          reference: input.deposit.reference || '',
+        }
+      : undefined,
   };
 }
 
@@ -260,6 +264,13 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     transaction_id?: string;
     card_last4?: string;
     payment_status?: string;
+    deposit?: {
+      amount: number;
+      method: string;
+      reference?: string;
+      status: string;
+      paid_at?: string | null;
+    } | null;
     cancellation_free?: boolean;
     cancellation_penalty_percent?: number;
     cancellation_penalty_amount?: number;
@@ -356,6 +367,17 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     transactionId: booking.transaction_id,
     cardLast4: booking.card_last4,
     paymentStatus: booking.payment_status,
+    // Depósito REAL (billing, shift-gated) — reemplaza a la tarjeta ficticia
+    // del stub eliminado. Leído del wire plano del endpoint de detalle.
+    deposit: wire.deposit
+      ? {
+          amount: wire.deposit.amount,
+          method: wire.deposit.method,
+          reference: wire.deposit.reference || '',
+          status: wire.deposit.status,
+          paidAt: wire.deposit.paid_at ?? null,
+        }
+      : null,
     cancellationFree: booking.cancellation_free,
     cancellationPenaltyPercent: booking.cancellation_penalty_percent,
     cancellationPenaltyAmount: booking.cancellation_penalty_amount,

@@ -321,6 +321,106 @@
   }
 }
 
+/* ═══ Deposit gate banner (409: política de depósito no cubierta) ═══ */
+
+.ciw-deposit-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+
+  .ciw-deposit-banner-icon {
+    font-size: 1.2rem;
+    color: var(--danger);
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+    --icon-wght: 300;
+    --icon-opsz: 22;
+  }
+
+  .ciw-deposit-banner-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  strong {
+    font-size: 0.85rem;
+    color: var(--danger-strong);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--muted-text);
+    line-height: 1.45;
+  }
+
+  .ciw-deposit-banner-missing {
+    color: var(--danger-strong);
+    font-weight: 700;
+  }
+
+  .ciw-deposit-banner-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--danger);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    .material-symbols-outlined {
+      font-size: 0.95rem;
+    }
+
+    &:hover {
+      color: var(--danger-strong);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--danger);
+      outline-offset: 2px;
+      border-radius: 0.2rem;
+    }
+  }
+
+  .ciw-deposit-banner-close {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border: none;
+    background: transparent;
+    color: var(--muted-text);
+    border-radius: 0.3rem;
+    cursor: pointer;
+
+    .material-symbols-outlined {
+      font-size: 1rem;
+    }
+
+    &:hover {
+      color: var(--app-text);
+      background: color-mix(in srgb, var(--danger) 12%, transparent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--danger);
+      outline-offset: 1px;
+    }
+  }
+}
+
 /* ═══ Late check-in banner ═══ */
 
 .ciw-late-banner {

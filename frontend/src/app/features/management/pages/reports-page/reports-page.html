@@ -1,4 +1,6 @@
 <div class="reports-page">
+  <app-horizontal-sub-nav [activeSlug]="'gestion.revenue.reportes'" />
+
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando reportes..." />
@@ -14,147 +16,219 @@
     }
     @default {
       @if (reportsResource.value(); as vm) {
-        <div class="report-card">
-          <div class="report-head">
+        <div class="rpt-header">
+          <div>
+            <span class="rpt-eyebrow">Informes tácticos · Vista A</span>
+            <h1 class="rpt-title">Reportes operativos</h1>
+            <p class="rpt-desc">Resumen ejecutivo del hecho principal GA03: KPIs, evolución mensual y registros por hotel y mes.</p>
+          </div>
+          @if (canExport()) {
+            <div class="rpt-actions">
+              <button type="button" class="export-btn excel" (click)="exportExcel()" aria-label="Exportar a Excel">
+                <span class="material-symbols-outlined btn-icon" aria-hidden="true">table_chart</span>
+                Excel
+              </button>
+              <button type="button" class="export-btn pdf" (click)="exportPdf()" aria-label="Exportar a PDF">
+                <span class="material-symbols-outlined btn-icon" aria-hidden="true">picture_as_pdf</span>
+                PDF
+              </button>
+              <button type="button" class="export-btn word" (click)="exportDocx()" aria-label="Exportar a Word">
+                <span class="material-symbols-outlined btn-icon" aria-hidden="true">article</span>
+                Word
+              </button>
+            </div>
+          }
+        </div>
+
+        <!-- Z-1 · KPIs estratégicos del período -->
+        <section class="rpt-card rpt-kpi-strip" aria-label="KPIs de los reportes operativos">
+          <article class="rpt-kpi">
+            <span class="rpt-kpi-icon material-symbols-outlined" aria-hidden="true">database</span>
             <div>
-              <span class="report-eyebrow">Management analytics</span>
-              <h1 class="report-title">Reportes operativos</h1>
-              <p class="report-desc">Resumen ejecutivo del hecho principal GA03 y de las colecciones operativas demo conectadas al management.</p>
+              <strong class="rpt-kpi-value">{{ vm.totalEvents | number }}</strong>
+              <span class="rpt-kpi-label">Eventos totales</span>
+              <small class="rpt-kpi-source">Fuente {{ vm.sourceCollection }}</small>
             </div>
-            @if (canExport()) {
-              <div class="report-actions">
-                <button type="button" class="export-btn excel" (click)="exportExcel()" aria-label="Exportar a Excel">
-                  <span class="material-symbols-outlined btn-icon" aria-hidden="true">table_chart</span>
-                  Excel
-                </button>
-                <button type="button" class="export-btn pdf" (click)="exportPdf()" aria-label="Exportar a PDF">
-                  <span class="material-symbols-outlined btn-icon" aria-hidden="true">picture_as_pdf</span>
-                  PDF
-                </button>
-                <button type="button" class="export-btn word" (click)="exportDocx()" aria-label="Exportar a Word">
-                  <span class="material-symbols-outlined btn-icon" aria-hidden="true">article</span>
-                  Word
-                </button>
-              </div>
-            }
-          </div>
+          </article>
+          <article class="rpt-kpi">
+            <span class="rpt-kpi-icon material-symbols-outlined" aria-hidden="true">bed</span>
+            <div>
+              <strong class="rpt-kpi-value">{{ vm.reservationsDetected | number }}</strong>
+              <span class="rpt-kpi-label">Reservas detectadas</span>
+              <small class="rpt-kpi-source">Sobre el hecho principal</small>
+            </div>
+          </article>
+          <article class="rpt-kpi">
+            <span class="rpt-kpi-icon material-symbols-outlined" aria-hidden="true">payments</span>
+            <div>
+              <strong class="rpt-kpi-value money">{{ vm.grossRevenueLabel }}</strong>
+              <span class="rpt-kpi-label">Revenue bruto</span>
+              <small class="rpt-kpi-source">booking_orders</small>
+            </div>
+          </article>
+          <article class="rpt-kpi">
+            <span class="rpt-kpi-icon material-symbols-outlined" aria-hidden="true">receipt_long</span>
+            <div>
+              <strong class="rpt-kpi-value">{{ vm.total | number }}</strong>
+              <span class="rpt-kpi-label">Meses con actividad</span>
+              <small class="rpt-kpi-source">Filas del detalle</small>
+            </div>
+          </article>
+        </section>
 
-          <div class="kpi-row">
-            <div class="kpi-item">
-              <span class="kpi-icon material-symbols-outlined" aria-hidden="true">database</span>
-              <div>
-                <strong class="kpi-value">{{ vm.totalEvents }}</strong>
-                <span class="kpi-label">Eventos totales</span>
-                <span class="kpi-source">Fuente {{ vm.sourceCollection }}</span>
-              </div>
+        <!-- Z-2 · Gráfico: evolución mensual -->
+        <section class="rpt-chart-row">
+          <app-kpi-chart
+            title="Evolución mensual de eventos, reservas y revenue"
+            [labels]="chartLabels()"
+            [datasets]="chartDatasets()"
+            type="line"
+            [showLegend]="true"
+            [height]="260"
+            [showExport]="canExport()"
+            exportFilename="reportes-operativos-serie"
+            [borderless]="true"
+          />
+        </section>
+
+        <!-- Z-3 · Tabla de registros (patrón compuesto) -->
+        <section class="rpt-card rpt-table-card">
+          <div class="rpt-table-head">
+            <div>
+              <h3>Registros mensuales</h3>
+              <p class="rpt-meta">
+                {{ vm.total }} mes(es) · Pág. {{ vm.page }} de {{ vm.totalPages }}
+                · Fuente {{ vm.sourceCollection }}
+              </p>
             </div>
-            <div class="kpi-divider"></div>
-            <div class="kpi-item">
-              <span class="kpi-icon material-symbols-outlined" aria-hidden="true">bed</span>
-              <div>
-                <strong class="kpi-value">{{ vm.reservationsDetected }}</strong>
-                <span class="kpi-label">Reservas detectadas</span>
-                <span class="kpi-source">Sobre el hecho principal</span>
-              </div>
-            </div>
-            <div class="kpi-divider"></div>
-            <div class="kpi-item">
-              <span class="kpi-icon material-symbols-outlined" aria-hidden="true">payments</span>
-              <div>
-                <strong class="kpi-value kpi-money">{{ vm.grossRevenueLabel }}</strong>
-                <span class="kpi-label">Revenue bruto</span>
-                <span class="kpi-source">fact_hotel_reservations</span>
-              </div>
+            <div class="rpt-pagination">
+              <button type="button" class="rpt-page-btn" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
+                <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span> Anterior
+              </button>
+              <button type="button" class="rpt-page-btn" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">
+                Siguiente <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+              </button>
             </div>
           </div>
+          <div class="rpt-table-wrap">
+            <table class="rpt-table">
+              <thead>
+                <tr>
+                  <th>Mes</th>
+                  <th class="th-num">Eventos</th>
+                  <th class="th-num">Reservas</th>
+                  <th class="th-num">Revenue bruto</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of vm.rows; track row.month) {
+                  <tr>
+                    <td><strong>{{ formatMonth(row.month) }}</strong></td>
+                    <td class="td-num">{{ row.events | number }}</td>
+                    <td class="td-num">{{ row.reservations | number }}</td>
+                    <td class="td-num mono strong">{{ row.grossRevenueLabel }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="4" class="rpt-empty-cell">Sin registros en el período.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-          <div class="report-body">
-            <section class="data-section">
-              <h2 class="data-section-title">
-                <span class="material-symbols-outlined section-icon" aria-hidden="true">hotel</span>
+        <!-- Z-4 · Rankings secundarios -->
+        <div class="rpt-secondary">
+          @if (vm.topHotels.length) {
+            <section class="rpt-card rpt-data-section">
+              <h2 class="rpt-data-title">
+                <span class="material-symbols-outlined" aria-hidden="true">hotel</span>
                 Top hoteles por revenue
               </h2>
-              <table class="data-table">
+              <table class="rpt-table compact">
                 <thead>
-                  <tr><th>Hotel</th><th>Perfil</th><th class="num">Eventos</th><th class="num">Revenue</th></tr>
+                  <tr><th>Hotel</th><th>Perfil</th><th class="th-num">Eventos</th><th class="th-num">Revenue</th></tr>
                 </thead>
                 <tbody>
                   @for (hotel of vm.topHotels; track hotel.propId) {
                     <tr>
                       <td><a [routerLink]="['/management/properties', hotel.propId]">{{ hotel.displayName }}</a></td>
-                      <td><span class="badge">{{ hotel.profileBadge }}</span></td>
-                      <td class="num">{{ hotel.events }}</td>
-                      <td class="num money">{{ hotel.grossRevenueLabel }}</td>
+                      <td><span class="rpt-badge">{{ hotel.profileBadge }}</span></td>
+                      <td class="td-num">{{ hotel.events | number }}</td>
+                      <td class="td-num money">{{ hotel.grossRevenueLabel }}</td>
                     </tr>
                   }
                 </tbody>
               </table>
             </section>
+          }
 
-            <section class="data-section">
-              <h2 class="data-section-title">
-                <span class="material-symbols-outlined section-icon" aria-hidden="true">map</span>
+          @if (vm.topDestinations.length) {
+            <section class="rpt-card rpt-data-section">
+              <h2 class="rpt-data-title">
+                <span class="material-symbols-outlined" aria-hidden="true">map</span>
                 Top destinos
               </h2>
-              <table class="data-table">
+              <table class="rpt-table compact">
                 <thead>
-                  <tr><th>Destino</th><th class="num">Eventos</th><th class="num">Revenue</th></tr>
+                  <tr><th>Destino</th><th class="th-num">Eventos</th><th class="th-num">Revenue</th></tr>
                 </thead>
                 <tbody>
                   @for (dest of vm.topDestinations; track dest.label) {
                     <tr>
                       <td>{{ dest.label }}</td>
-                      <td class="num">{{ dest.events }}</td>
-                      <td class="num money">{{ dest.grossRevenueLabel }}</td>
+                      <td class="td-num">{{ dest.events | number }}</td>
+                      <td class="td-num money">{{ dest.grossRevenueLabel }}</td>
                     </tr>
                   }
                 </tbody>
               </table>
             </section>
+          }
 
-            <section class="data-section">
-              <h2 class="data-section-title">
-                <span class="material-symbols-outlined section-icon" aria-hidden="true">flight</span>
+          @if (vm.topVisitorCountries.length) {
+            <section class="rpt-card rpt-data-section">
+              <h2 class="rpt-data-title">
+                <span class="material-symbols-outlined" aria-hidden="true">flight</span>
                 Top países visitantes
               </h2>
-              <table class="data-table">
+              <table class="rpt-table compact">
                 <thead>
-                  <tr><th>País</th><th class="num">Eventos</th><th class="num">Reservas</th></tr>
+                  <tr><th>País</th><th class="th-num">Eventos</th><th class="th-num">Reservas</th></tr>
                 </thead>
                 <tbody>
                   @for (country of vm.topVisitorCountries; track country.label) {
                     <tr>
                       <td>{{ country.label }}</td>
-                      <td class="num">{{ country.events }}</td>
-                      <td class="num">{{ country.reservations }}</td>
+                      <td class="td-num">{{ country.events | number }}</td>
+                      <td class="td-num">{{ country.reservations | number }}</td>
                     </tr>
                   }
                 </tbody>
               </table>
             </section>
+          }
 
-            @if (vm.operationalCounts.length) {
-              <section class="data-section">
-                <h2 class="data-section-title">
-                  <span class="material-symbols-outlined section-icon" aria-hidden="true">category</span>
-                  Colecciones operativas
-                </h2>
-                <table class="data-table">
-                  <thead>
-                    <tr><th>Colección</th><th class="num">Registros</th></tr>
-                  </thead>
-                  <tbody>
-                    @for (item of vm.operationalCounts; track item.label) {
-                      <tr>
-                        <td>{{ item.label }}</td>
-                        <td class="num">{{ item.value }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </section>
-            }
-          </div>
+          @if (vm.operationalCounts.length) {
+            <section class="rpt-card rpt-data-section">
+              <h2 class="rpt-data-title">
+                <span class="material-symbols-outlined" aria-hidden="true">category</span>
+                Colecciones operativas
+              </h2>
+              <table class="rpt-table compact">
+                <thead>
+                  <tr><th>Colección</th><th class="th-num">Registros</th></tr>
+                </thead>
+                <tbody>
+                  @for (item of vm.operationalCounts; track item.label) {
+                    <tr>
+                      <td>{{ item.label }}</td>
+                      <td class="td-num">{{ item.value | number }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+          }
         </div>
       }
     }

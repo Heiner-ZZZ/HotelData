@@ -1,25 +1,19 @@
 .reports-page {
   max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.report-card {
-  border: 1px solid var(--app-border);
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.report-head {
+/* ── Cabecera ── */
+.rpt-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 1.5rem;
-  padding: 1.5rem 1.75rem 1.25rem;
-  border-bottom: 1px solid var(--app-border);
 }
 
-.report-eyebrow {
+.rpt-eyebrow {
   font-size: 0.78rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -27,22 +21,22 @@
   color: var(--accent);
 }
 
-.report-title {
+.rpt-title {
   margin: 0.15rem 0 0.25rem;
   font-size: 1.35rem;
   font-weight: 700;
   color: var(--app-text);
 }
 
-.report-desc {
+.rpt-desc {
   margin: 0;
   font-size: 0.85rem;
   color: var(--muted-text);
-  max-width: 520px;
+  max-width: 560px;
   line-height: 1.5;
 }
 
-.report-actions {
+.rpt-actions {
   display: flex;
   gap: 0.4rem;
   flex-shrink: 0;
@@ -52,15 +46,15 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--app-border);
-  border-radius: 6px;
-  background: var(--surface);
+  padding: 0.45rem 0.8rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-soft);
   color: var(--app-text);
   font-size: 0.82rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition: background 0.15s, box-shadow 0.15s, color 0.15s;
 }
 
 .export-btn:focus-visible {
@@ -76,212 +70,311 @@
 .export-btn.pdf .btn-icon   { color: var(--danger); }
 .export-btn.word .btn-icon  { color: var(--accent); }
 
+.export-btn:hover {
+  box-shadow: var(--shadow-sm);
+}
+
 .export-btn.excel:hover {
-  border-color: var(--success);
-  background: rgba(15, 138, 96, 0.06);
-  box-shadow: 0 1px 4px rgba(15, 138, 96, 0.12);
+  background: var(--success-light);
+  color: var(--success-strong);
 }
 
 .export-btn.pdf:hover {
-  border-color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 6%, transparent);
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--danger) 12%, transparent);
+  background: var(--danger-light);
+  color: var(--danger-strong);
 }
 
 .export-btn.word:hover {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--accent-light);
+  color: var(--accent-strong);
 }
 
-/* ── KPI row ── */
-.kpi-row {
-  display: flex;
-  align-items: stretch;
-  padding: 1.25rem 1.75rem;
-  gap: 0;
-  background: color-mix(in srgb, var(--surface-soft) 50%, transparent);
+/* ── Card base: sin borde, radio 16px, sombra suave ── */
+.rpt-card {
+  background: var(--surface);
+  border: none;
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem 1.5rem;
 }
 
-.kpi-item {
+/* ── Z-1 · KPIs ── */
+.rpt-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1.25rem;
+}
+
+.rpt-kpi {
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  flex: 1;
   min-width: 0;
 }
 
-.kpi-icon {
-  font-size: 1.75rem;
+.rpt-kpi-icon {
+  font-size: 1.6rem;
   color: var(--accent);
   flex-shrink: 0;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
-.kpi-item div {
+.rpt-kpi div {
   display: grid;
   gap: 0.05rem;
   min-width: 0;
 }
 
-.kpi-value {
-  font-size: 1.45rem;
+.rpt-kpi-value {
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--app-text);
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
-.kpi-money {
+.rpt-kpi-value.money {
   color: var(--success);
 }
 
-.kpi-label {
+.rpt-kpi-label {
   font-size: 0.78rem;
   color: var(--muted-text);
   font-weight: 500;
 }
 
-.kpi-source {
+.rpt-kpi-source {
   font-size: 0.7rem;
   color: color-mix(in srgb, var(--muted-text) 70%, transparent);
 }
 
-.kpi-divider {
-  width: 1px;
-  background: var(--app-border);
-  margin: 0 1.25rem;
-  flex-shrink: 0;
+/* ── Z-2 · Gráfico ── */
+.rpt-chart-row {
+  display: grid;
 }
 
-/* ── Report body ── */
-.report-body {
-  padding: 0.25rem 1.75rem 1.75rem;
+/* ── Z-3 · Tabla de registros ── */
+.rpt-table-card {
+  padding: 0;
+  overflow: hidden;
 }
 
-.data-section {
-  margin-top: 1.5rem;
-}
-
-.data-section:first-child {
-  margin-top: 0;
-}
-
-.data-section-title {
+.rpt-table-head {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.45rem;
+  gap: 1rem;
+  padding: 1.1rem 1.5rem 0.9rem;
+}
+
+.rpt-table-head h3 {
+  margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--app-text);
-  margin: 0 0 0.6rem;
 }
 
-.section-icon {
-  font-size: 1.15rem;
-  color: var(--accent);
+.rpt-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted-text);
 }
 
-/* ── Tables ── */
-.data-table {
+.rpt-pagination {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.rpt-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.7rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--app-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.rpt-page-btn:hover:not(:disabled) {
+  background: var(--accent-light);
+  color: var(--accent-strong);
+}
+
+.rpt-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rpt-page-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.rpt-table-wrap {
+  overflow-x: auto;
+}
+
+.rpt-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
 }
 
-.data-table thead th {
+.rpt-table thead th {
   text-align: left;
-  padding: 0.55rem 0.7rem;
+  padding: 0.55rem 1.5rem;
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted-text);
-  border-bottom: 2px solid var(--app-border);
+  background: color-mix(in srgb, var(--surface-soft) 55%, transparent);
 }
 
-.data-table thead th.num {
+.rpt-table thead th.th-num {
   text-align: right;
 }
 
-.data-table tbody tr {
+.rpt-table tbody tr {
   transition: background 0.1s;
 }
 
-.data-table tbody tr:hover {
+.rpt-table tbody tr:hover {
   background: color-mix(in srgb, var(--accent) 3%, transparent);
 }
 
-.data-table tbody td {
-  padding: 0.6rem 0.7rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 40%, transparent);
+.rpt-table tbody td {
+  padding: 0.6rem 1.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 35%, transparent);
   vertical-align: middle;
 }
 
-.data-table tbody tr:last-child td {
+.rpt-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.data-table tbody td.num {
+.rpt-table tbody td.td-num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.data-table tbody td.money {
+.rpt-table tbody td.money,
+.rpt-table tbody td.mono {
   font-weight: 600;
   color: var(--success);
 }
 
-.data-table a {
+.rpt-table tbody td.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.rpt-table tbody td.strong {
+  color: var(--app-text);
+}
+
+.rpt-table a {
   color: var(--accent);
   text-decoration: none;
   font-weight: 500;
 }
 
-.data-table a:hover {
+.rpt-table a:hover {
   text-decoration: underline;
 }
 
-/* ── Badge ── */
-.badge {
+.rpt-empty-cell {
+  text-align: center;
+  color: var(--muted-text);
+  padding: 1.25rem 1.5rem;
+}
+
+/* ── Z-4 · Rankings secundarios ── */
+.rpt-secondary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.rpt-data-section {
+  padding: 1.1rem 1.25rem;
+}
+
+.rpt-data-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--app-text);
+  margin: 0 0 0.6rem;
+}
+
+.rpt-data-title .material-symbols-outlined {
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.rpt-table.compact {
+  font-size: 0.82rem;
+}
+
+.rpt-table.compact thead th,
+.rpt-table.compact tbody td {
+  padding: 0.45rem 0.5rem;
+}
+
+.rpt-table.compact thead th:first-child,
+.rpt-table.compact tbody td:first-child {
+  padding-left: 0;
+}
+
+.rpt-badge {
   display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
   background: var(--accent-light);
   color: var(--accent);
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.72rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 /* ── Responsive ── */
 @media (max-width: 860px) {
-  .report-head {
+  .rpt-header {
     flex-direction: column;
     gap: 0.75rem;
   }
 
-  .kpi-row {
+  .rpt-kpi-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .rpt-secondary {
+    grid-template-columns: 1fr;
+  }
+
+  .rpt-table-head {
     flex-direction: column;
-    gap: 1rem;
-    padding: 1rem 1.25rem;
+    align-items: flex-start;
   }
 
-  .kpi-divider {
-    width: auto;
-    height: 1px;
-    margin: 0;
+  .rpt-card {
+    padding: 1rem 1.1rem;
   }
 
-  .report-body {
-    padding: 0.25rem 1.25rem 1.25rem;
+  .rpt-table-wrap {
+    padding: 0 1.1rem;
   }
 
-  .data-table {
-    font-size: 0.8rem;
-  }
-
-  .data-table thead th,
-  .data-table tbody td {
-    padding: 0.45rem 0.5rem;
+  .rpt-table thead th,
+  .rpt-table tbody td {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
   }
 }

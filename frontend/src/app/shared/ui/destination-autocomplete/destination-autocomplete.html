@@ -15,6 +15,7 @@
       role="combobox"
       aria-label="Destino"
       [attr.aria-expanded]="dropdownOpen()"
+      [attr.aria-controls]="dropdownOpen() ? 'da-listbox' : null"
       [attr.aria-activedescendant]="highlighted() >= 0 ? 'da-option-' + highlighted() : null"
     />
     @if (loading() && debouncedTermVisible() && dropdownOpen()) {
@@ -23,7 +24,7 @@
   </div>
 
   @if (dropdownOpen() && suggestions().length > 0) {
-    <div class="da-dropdown" role="listbox" aria-label="Sugerencias de destino">
+    <div id="da-listbox" class="da-dropdown" role="listbox" aria-label="Sugerencias de destino">
       @for (item of suggestions(); track item.type + ':' + item.id; let i = $index) {
         <button
           type="button"

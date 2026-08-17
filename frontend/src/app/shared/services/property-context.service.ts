@@ -28,6 +28,22 @@ export function isGlobalManagementPath(path: string): boolean {
   return GLOBAL_MANAGEMENT_PATHS.some((global) => path === global || path.startsWith(`${global}/`));
 }
 
+/**
+ * Routes where the property context is meaningful: the strategic dashboards
+ * (TAF14) live OUTSIDE `/management/*` but their Vista A still needs the
+ * assigned-hotel context (single/multi mode) to auto-select the property.
+ */
+export const PROPERTY_CONTEXT_ROUTES = [
+  '/management',
+  '/admin/subscriptions',
+  '/informes-estrategicos',
+] as const;
+
+/** True when the path is one of the routes that consume the property context. */
+export function isPropertyContextRoute(path: string): boolean {
+  return PROPERTY_CONTEXT_ROUTES.some((base) => path === base || path.startsWith(`${base}/`) || path.startsWith(`${base}?`));
+}
+
 @Injectable({ providedIn: 'root' })
 export class PropertyContextService {
   private readonly http = inject(HttpClient);
@@ -117,19 +133,20 @@ export class PropertyContextService {
 
   private loadContext(): void {
     if (this.loading) return;
-    // Property context is only meaningful on management routes. The DI graph
-    // wires PropertyContextService into the root injector, so any shell that
-    // activates (account, system, ownership, public) would otherwise fire the
-    // same /api/management/properties/context call and produce 401/403 noise on
-    // guest-side paths like /account/bookings. Restrict the call to /management/*.
+    // Property context is only meaningful on management routes (and the admin
+    // subscription reconciliation screen, which reuses the global property
+    // selector). The DI graph wires PropertyContextService into the root
+    // injector, so any shell that activates (account, system, ownership,
+    // public) would otherwise fire the same /api/management/properties/context
+    // call and produce 401/403 noise on guest-side paths like /account/bookings.
+    // Restrict the call to /management/* + /admin/subscriptions.
     const url = this.router.url || '/';
     // Strip query string and hash fragment — `router.url` returns the full URL
     // (e.g. `/management?prop_id=1`), so naïve `startsWith('/management/')` misses
     // bare `/management?prop_id=1` (the next char is `?`, not `/`). Same split
     // pattern as `_ensurePropIdInUrl` further down in this class.
     const pathOnly = url.split('?')[0].split('#')[0];
-    const isManagementRoute = pathOnly === '/management' || pathOnly.startsWith('/management/');
-    if (!isManagementRoute) return;
+    if (!isPropertyContextRoute(pathOnly)) return;
     this.loading = true;
 
     this.http
@@ -272,7 +289,7 @@ export class PropertyContextService {
     try {
       const url = this.router.url;
       const path = url.split('?')[0];
-      if (!path.startsWith('/management') || isGlobalManagementPath(path) || url.includes('prop_id=')) return;
+      if (!isPropertyContextRoute(path) || isGlobalManagementPath(path) || url.includes('prop_id=')) return;
 
       const qs = new URLSearchParams(url.split('?')[1] || '');
       qs.set('prop_id', String(propId));

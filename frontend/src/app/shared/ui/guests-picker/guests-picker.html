@@ -1,9 +1,9 @@
 <div class="guests-picker-wrapper">
   <!-- Trigger button -->
   <button type="button" class="gp-trigger" (click)="toggleOpen()" aria-haspopup="dialog" [attr.aria-expanded]="isOpen()">
-    <span class="material-symbols-outlined gp-trigger-icon">group</span>
+    <span class="material-symbols-outlined gp-trigger-icon" aria-hidden="true">group</span>
     <span class="gp-trigger-label">{{ summaryLabel() }}</span>
-    <span class="material-symbols-outlined gp-chevron">{{ isOpen() ? 'expand_less' : 'expand_more' }}</span>
+    <span class="material-symbols-outlined gp-chevron" aria-hidden="true">{{ isOpen() ? 'expand_less' : 'expand_more' }}</span>
   </button>
 
   <!-- Popover overlay -->
@@ -14,7 +14,7 @@
       <div class="gp-popover-header">
         <span class="gp-popover-title">Huéspedes y habitaciones</span>
         <button type="button" class="gp-close" (click)="close()" aria-label="Cerrar">
-          <span class="material-symbols-outlined">close</span>
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
         </button>
       </div>
 
@@ -30,7 +30,7 @@
                 (click)="adjust(row.key, -1)"
                 [attr.aria-label]="'Quitar ' + row.label"
               >
-                <span class="material-symbols-outlined">remove</span>
+                <span class="material-symbols-outlined" aria-hidden="true">remove</span>
               </button>
               <span class="stepper-value">{{ row.value }}</span>
               <button
@@ -40,7 +40,7 @@
                 (click)="adjust(row.key, 1)"
                 [attr.aria-label]="'Agregar ' + row.label"
               >
-                <span class="material-symbols-outlined">add</span>
+                <span class="material-symbols-outlined" aria-hidden="true">add</span>
               </button>
             </div>
           </div>

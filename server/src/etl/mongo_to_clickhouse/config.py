@@ -49,9 +49,26 @@ FACT_TABLES: tuple[str, ...] = (
     "kpi_payment_daily",
 )
 
-# Contrato activo: únicamente tablas KPI compactas, ya enriquecidas para
+# Capa estratégica (TAF14): agregados MENSUALES (``month`` = primer día del mes)
+# para los dashboards de decisión de Vista A (hotel) y Vista B (cartera). Son
+# pocas tablas y no replican Mongo: cada una publica solo los importes/conteos
+# que el informe estratégico necesita, con labels y denominadores (total_rooms)
+# resueltos durante el ETL. Cubren IE-G01..G05 e IE-H01/IE-H02 sin JOIN ni
+# segunda consulta a Mongo en tiempo de dashboard.
+STRATEGIC_TABLES: tuple[str, ...] = (
+    # Desempeño económico-comercial del hotel por mes (rentabilidad/ADR/RevPAR).
+    "strat_hotel_monthly",
+    # Rentabilidad y contribución por tipo de habitación/plan por mes.
+    "strat_plan_monthly",
+    # Mercado y destino por mes (embudo agregado histórico).
+    "strat_market_monthly",
+    # Reputación del hotel por mes (rating, sentimiento, respuesta).
+    "strat_reputation_monthly",
+)
+
+# Contrato activo: tablas KPI tácticas + estratégicas, ya enriquecidas para
 # consultas de informes sin JOIN ni segunda consulta a MongoDB.
-ALL_TABLES: tuple[str, ...] = FACT_TABLES
+ALL_TABLES: tuple[str, ...] = FACT_TABLES + STRATEGIC_TABLES
 
 # Colección en MongoDB donde se persiste la configuración del horario del DAG.
 ETL_PIPELINE_CONFIG_COLLECTION = "etl_pipeline_config"

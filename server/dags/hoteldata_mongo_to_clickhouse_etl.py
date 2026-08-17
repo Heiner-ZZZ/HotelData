@@ -65,13 +65,13 @@ def _resolve_schedule() -> str | None:
 with DAG(
     dag_id="hoteldata_mongo_to_clickhouse_etl",
     description=(
-        "ETL horario MongoDB (operacional) → ClickHouse (táctico): KPI agregados "
-        "para los informes compuestos de TA12"
+        "ETL horario MongoDB (operacional) → ClickHouse: KPI tácticos (TA12) "
+        "y estratégicos mensuales (TAF14, tablas strat_*)"
     ),
     start_date=datetime(2026, 1, 1),
     schedule=_resolve_schedule(),
     catchup=False,
-    tags=["hoteldata-hub", "m2c", "clickhouse", "kpi", "etl"],
+    tags=["hoteldata-hub", "m2c", "clickhouse", "kpi", "strategic", "etl"],
 ) as dag:
     validate_config_task = PythonOperator(
         task_id="validate_config",

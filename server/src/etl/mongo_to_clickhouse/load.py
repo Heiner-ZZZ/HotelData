@@ -98,16 +98,52 @@ TABLES_DDL: dict[str, tuple[str, str]] = {
         "collected_amount Decimal(18, 2), outstanding_amount Decimal(18, 2)",
         "(date, prop_id, method, status)",
     ),
+    # ── Capa estratégica mensual (TAF14): ``month`` = primer día del mes ─
+    "strat_hotel_monthly": (
+        "month Date, prop_id UInt32, hotel_label LowCardinality(String), currency LowCardinality(String), "
+        "bookings UInt32, rooms_sold UInt32, room_nights UInt32, revenue Decimal(18, 2), "
+        "discount_amount Decimal(18, 2), adults UInt32, children UInt32, cancelled_rooms UInt32, "
+        "total_rooms UInt32",
+        "(month, prop_id, currency)",
+    ),
+    "strat_plan_monthly": (
+        "month Date, prop_id UInt32, hotel_label LowCardinality(String), room_type_id String, "
+        "room_type_label LowCardinality(String), currency LowCardinality(String), "
+        "bookings UInt32, rooms_sold UInt32, room_nights UInt32, revenue Decimal(18, 2), "
+        "discount_amount Decimal(18, 2), adults UInt32, children UInt32, cancelled_rooms UInt32",
+        "(month, prop_id, room_type_id, currency)",
+    ),
+    "strat_market_monthly": (
+        "month Date, visitor_location_country_id UInt32, visitor_country_label LowCardinality(String), "
+        "srch_destination_id UInt32, destination_label LowCardinality(String), "
+        "searches UInt64, clicks UInt64, reservations UInt64, revenue_usd Decimal(18, 2)",
+        "(month, visitor_location_country_id, srch_destination_id)",
+    ),
+    "strat_reputation_monthly": (
+        "month Date, prop_id UInt32, hotel_label LowCardinality(String), reviews UInt32, "
+        "avg_rating Float64, positive UInt32, neutral UInt32, negative UInt32, responded UInt32, "
+        "response_rate Float64",
+        "(month, prop_id)",
+    ),
 }
 
 
-# Tablas KPI sin TTL de retención. Los dos funnel son snapshots históricos
-# estáticos (2012-2013 del dataset GA03): no acumulan datos entre corridas,
-# así que la retención no aplica — y un TTL de meses purgaría todo su historial
-# en cada merge, dejando los informes de funnel sin datos. Las 9 tablas
-# operacionales (2026+) sí quedan bajo retención.
+# Tablas KPI sin TTL de retención. Los dos funnel se alimentan de tablas
+# operativas (click_events + booking_orders) sin acumular historial entre
+# corridas, así que la retención no aplica — y un TTL de meses purgaría su
+# historial en cada merge, dejando los informes de funnel sin datos. Las
+# tablas operacionales acumulativas sí quedan bajo retención.
 TTL_EXEMPT_TABLES: frozenset[str] = frozenset(
-    {"kpi_funnel_daily", "kpi_funnel_property_channel_daily"}
+    {
+        "kpi_funnel_daily",
+        "kpi_funnel_property_channel_daily",
+        # La capa estratégica mensual necesita historial largo (comparaciones
+        # trimestrales/semestrales/anuales); una retención mensual la purgaría.
+        "strat_hotel_monthly",
+        "strat_plan_monthly",
+        "strat_market_monthly",
+        "strat_reputation_monthly",
+    }
 )
 
 
@@ -125,6 +161,10 @@ LABEL_COLUMNS: dict[str, tuple[tuple[str, str], ...]] = {
     "kpi_housekeeping_daily": (("hotel_label", "LowCardinality(String)"),),
     "kpi_invoice_daily": (("hotel_label", "LowCardinality(String)"),),
     "kpi_payment_daily": (("hotel_label", "LowCardinality(String)"),),
+    "strat_hotel_monthly": (("hotel_label", "LowCardinality(String)"),),
+    "strat_plan_monthly": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
+    "strat_market_monthly": (("visitor_country_label", "LowCardinality(String)"), ("destination_label", "LowCardinality(String)")),
+    "strat_reputation_monthly": (("hotel_label", "LowCardinality(String)"),),
 }
 
 
@@ -142,17 +182,34 @@ def clickhouse_client(settings=None):
     )
 
 
+def date_column_for(table_name: str) -> str:
+    """Primera columna del ORDER BY: ``date`` en la capa táctica, ``month`` en la estratégica.
+
+    Es la columna de partición/TTL y la que fechan los reportes de salud. Para
+    tablas fuera del contrato (p.ej. fakes de tests) cae a ``date`` — el
+    comportamiento histórico.
+    """
+    ddl = TABLES_DDL.get(table_name)
+    if ddl is None:
+        return "date"
+    _, order_by = ddl
+    return order_by.lstrip("(").split(",")[0].strip()
+
+
 def _ddl_for(table_name: str, ttl_months: int = 0) -> str:
     columns_sql, order_by = TABLES_DDL[table_name]
+    # La partición y el TTL se anclan a la primera columna del ORDER BY, que es
+    # ``date`` en la capa táctica y ``month`` en la estratégica.
+    date_column = date_column_for(table_name)
     partition_sql = ""
     if table_name in LABEL_COLUMNS:
-        partition_sql = " PARTITION BY toYYYYMM(date)"
-    # Retención histórica: TTL sobre ``date`` (la primera columna). Con 0 no
-    # se emite la cláusula, y las tablas de funnel están exentas (snapshot
-    # estático). La purga ocurre en el merge, así que el rebuild
-    # (TRUNCATE + INSERT del modo full) no se ve afectado.
+        partition_sql = f" PARTITION BY toYYYYMM({date_column})"
+    # Retención histórica: TTL sobre la columna de fecha (``date``/``month``).
+    # Con 0 no se emite la cláusula, y las tablas de funnel + estratégicas
+    # están exentas (necesitan historial largo). La purga ocurre en el merge,
+    # así que el rebuild (TRUNCATE + INSERT del modo full) no se ve afectado.
     has_ttl = bool(ttl_months and ttl_months > 0) and table_name not in TTL_EXEMPT_TABLES
-    ttl_sql = f" TTL date + INTERVAL {ttl_months} MONTH" if has_ttl else ""
+    ttl_sql = f" TTL {date_column} + INTERVAL {ttl_months} MONTH" if has_ttl else ""
     return (
         f"CREATE TABLE IF NOT EXISTS {table_name} "
         f"({columns_sql}, _etl_run_at DateTime DEFAULT now()) "

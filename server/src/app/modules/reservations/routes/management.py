@@ -25,6 +25,7 @@ from src.app.modules.reservations.routes.management_impl import (
     search_users,
 )
 from src.app.modules.reservations.service import (
+    DepositNotMetError,
     complete_check_in,
     complete_check_out,
     get_check_in_detail,
@@ -345,6 +346,22 @@ def check_in_complete_api(
             early_check_in_fee=payload.get("early_check_in_fee", 0),
             early_check_in_authorized=early_approval_authorized,
         )
+    except DepositNotMetError as exc:
+        # La reserva es válida, pero la política de depósito de la propiedad
+        # no está cubierta por pagos reales → 409 CONFLICT, no 400. El detail
+        # lleva los montos estructurados para que la UI renderice el banner
+        # accionable con el monto faltante (no parsear texto).
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "deposit_not_met",
+                "message": exc.message,
+                "deposit_percent": exc.deposit_percent,
+                "min_deposit": exc.min_deposit,
+                "paid_total": exc.paid_total,
+                "missing": exc.missing,
+            },
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     diff = {
@@ -610,9 +627,17 @@ def booking_pos_charge_api(
     payload: dict = Body(...),
     current_user: dict = Depends(require_permission("charges.manage")),
 ):
-    """POS: add a charge to an actively checked-in booking during the stay."""
+    """POS: add a charge to an actively checked-in booking during the stay.
+
+    Cashier action in the OPERA-style model: like invoice item adds, a POS
+    charge posted to the guest folio requires an open (non-expired) cash
+    shift for the booking's property.
+    """
     db = get_database()
     before = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1, "total_charges": 1})
+    if before is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
+    _require_active_shift(int(before.get("prop_id") or 0))
     result = apply_pos_charge(booking_id, payload, current_user, db)
     after = db.booking_orders.find_one({"booking_id": booking_id}, {"total_charges": 1})
     diff = {

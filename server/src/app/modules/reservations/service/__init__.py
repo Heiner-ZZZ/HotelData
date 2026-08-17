@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.app.modules.reservations.schemas import ModuleStatus
 
 from ._checkin_detail import get_check_in_detail, save_check_in_detail
-from ._checkinout import complete_check_in, complete_check_out
+from ._checkinout import DepositNotMetError, complete_check_in, complete_check_out
 from ._checkout_detail import get_check_out_detail, save_check_out_detail
 from ._hotel_options import reservation_hotel_options
 from ._transitions import confirm_booking, reject_booking
@@ -62,6 +62,7 @@ __all__ = [
     "complete_check_out",
     "confirm_booking",
     "create_booking",
+    "DepositNotMetError",
     "ensure_reservation_collections",
     "get_booking_detail",
     "get_check_in_detail",

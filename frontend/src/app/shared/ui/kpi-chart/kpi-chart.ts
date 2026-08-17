@@ -29,7 +29,7 @@ type ChartDatasetLike = ChartConfiguration['data']['datasets'][number] & { _fmt:
   imports: [BaseChartDirective],
   providers: [provideCharts(withDefaultRegisterables())],
   template: `
-    <div class="kpi-chart-wrap">
+    <div class="kpi-chart-wrap" [class.borderless]="borderless()">
       @if (title() || showExport()) {
         <div class="kpi-chart-header">
           @if (title()) {
@@ -67,6 +67,12 @@ type ChartDatasetLike = ChartConfiguration['data']['datasets'][number] & { _fmt:
       border-radius: 12px;
       padding: 1rem 1rem 0.5rem;
       transition: background 0.15s ease, border-color 0.15s ease;
+
+      &.borderless {
+        border: none;
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+      }
     }
     .kpi-chart-header {
       display: flex;
@@ -132,6 +138,9 @@ export class KpiChartComponent {
   readonly showExport = input(false);
   /** Nombre base del archivo PNG descargado (sin extensión). */
   readonly exportFilename = input('chart');
+  /** Variante flotante: sin borde, radio más suave (16px). Por defecto mantiene
+   * el borde y radio 12px para no alterar los usos existentes. */
+  readonly borderless = input(false);
 
   readonly chartType = computed((): ChartType => this.type());
   readonly isDark = this.themeService.isDark;

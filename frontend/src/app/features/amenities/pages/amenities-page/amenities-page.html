@@ -483,38 +483,78 @@
                     <span class="material-symbols-outlined request-row-icon">check_circle</span>
                     <div class="request-row-main">
                       <strong class="request-row-label">{{ req.label }}</strong>
-                      <div class="request-row-flags">
+                      @if (requestsEditing()) {
                         <button
                           type="button"
-                          class="request-flag"
-                          [class.is-on]="req.petRelated"
-                          [disabled]="!requestsEditing()"
-                          (click)="toggleRequestFlag(req.label, 'petRelated')"
-                          [title]="'Valida contra la política de mascotas del hotel y usa su cargo'">
-                          <span class="material-symbols-outlined">pets</span>
-                          Mascotas
+                          class="rules-toggle"
+                          (click)="toggleRulesExpanded(req.label)"
+                          [attr.aria-expanded]="isRulesExpanded(req.label)">
+                          <span class="material-symbols-outlined">rule</span>
+                          Reglas de negocio
+                          <span class="material-symbols-outlined rules-toggle-chevron" [class.is-open]="isRulesExpanded(req.label)">expand_more</span>
                         </button>
-                        <button
-                          type="button"
-                          class="request-flag"
-                          [class.is-on]="req.highFloor"
-                          [disabled]="!requestsEditing()"
-                          (click)="toggleRequestFlag(req.label, 'highFloor')"
-                          [title]="'Exige piso alto: bloquea la reserva si la habitación está por debajo del umbral'">
-                          <span class="material-symbols-outlined">stairs</span>
-                          Piso alto
-                        </button>
-                        <button
-                          type="button"
-                          class="request-flag"
-                          [class.is-on]="req.lateArrival"
-                          [disabled]="!requestsEditing()"
-                          (click)="toggleRequestFlag(req.label, 'lateArrival')"
-                          [title]="'El huésped llegará tarde: alimenta el marcador de late check-in'">
-                          <span class="material-symbols-outlined">schedule</span>
-                          Llegada tarde
-                        </button>
-                      </div>
+                        @if (isRulesExpanded(req.label)) {
+                          <div class="rules-panel">
+                            @if (impliesPetRelated(req.label)) {
+                              <div class="rule-row rule-implied">
+                                <span class="material-symbols-outlined">pets</span>
+                                <span class="rule-copy">
+                                  <strong>Mascotas</strong>
+                                  <small>Aplica automáticamente por el nombre de la petición.</small>
+                                </span>
+                                <span class="rule-badge">Implícita</span>
+                              </div>
+                            } @else {
+                              <label class="rule-row">
+                                <input type="checkbox" [checked]="req.petRelated" (change)="toggleRequestFlag(req.label, 'petRelated')" />
+                                <span class="material-symbols-outlined">pets</span>
+                                <span class="rule-copy">
+                                  <strong>Mascotas</strong>
+                                  <small>Se valida contra la política de mascotas del hotel y usa su cargo.</small>
+                                </span>
+                              </label>
+                            }
+                            @if (impliesHighFloor(req.label)) {
+                              <div class="rule-row rule-implied">
+                                <span class="material-symbols-outlined">stairs</span>
+                                <span class="rule-copy">
+                                  <strong>Piso alto</strong>
+                                  <small>Aplica automáticamente por el nombre de la petición.</small>
+                                </span>
+                                <span class="rule-badge">Implícita</span>
+                              </div>
+                            } @else {
+                              <label class="rule-row">
+                                <input type="checkbox" [checked]="req.highFloor" (change)="toggleRequestFlag(req.label, 'highFloor')" />
+                                <span class="material-symbols-outlined">stairs</span>
+                                <span class="rule-copy">
+                                  <strong>Piso alto</strong>
+                                  <small>Solo se cumple en habitaciones en o por encima del umbral de pisos altos del hotel.</small>
+                                </span>
+                              </label>
+                            }
+                            @if (impliesLateArrival(req.label)) {
+                              <div class="rule-row rule-implied">
+                                <span class="material-symbols-outlined">schedule</span>
+                                <span class="rule-copy">
+                                  <strong>Llegada tarde</strong>
+                                  <small>Aplica automáticamente por el nombre de la petición.</small>
+                                </span>
+                                <span class="rule-badge">Implícita</span>
+                              </div>
+                            } @else {
+                              <label class="rule-row">
+                                <input type="checkbox" [checked]="req.lateArrival" (change)="toggleRequestFlag(req.label, 'lateArrival')" />
+                                <span class="material-symbols-outlined">schedule</span>
+                                <span class="rule-copy">
+                                  <strong>Llegada tarde</strong>
+                                  <small>Marca la reserva como late check-in en recepción.</small>
+                                </span>
+                              </label>
+                            }
+                          </div>
+                        }
+                      }
                     </div>
                     <div class="request-row-price">
                       <span class="field-label">Precio ($)</span>

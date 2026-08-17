@@ -1,0 +1,132 @@
+.hrd-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hrd-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hrd-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.hrd-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.hrd-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.hrd-kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+}
+
+.hrd-kpi-icon {
+  font-size: 26px;
+  color: var(--kpi-color);
+}
+
+.hrd-kpi-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.hrd-kpi-label {
+  font-size: 12px;
+  color: var(--muted-text);
+}
+
+.hrd-kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.hrd-recent {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.hrd-section-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.hrd-hire-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hrd-hire-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--app-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.hrd-hire-icon {
+  font-size: 22px;
+  color: var(--accent);
+}
+
+.hrd-hire-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.hrd-hire-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.hrd-hire-role {
+  font-size: 12px;
+  color: var(--muted-text);
+}
+
+.hrd-hire-date {
+  font-size: 12px;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.hrd-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-text);
+}

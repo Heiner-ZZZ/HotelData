@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  HostListener,
   input,
   output,
   signal,
@@ -52,6 +53,12 @@ export class GuestsPickerComponent {
 
   close(): void {
     this.isOpen.set(false);
+  }
+
+  /** Escape cierra el popover (WCAG 2.1.1 — sin trampa de teclado). */
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isOpen()) this.close();
   }
 
   adjust(key: 'adults' | 'children' | 'rooms', delta: number): void {

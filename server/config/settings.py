@@ -58,6 +58,10 @@ class Settings:
     cors_allowed_origins: tuple[str, ...]
     cors_allowed_methods: tuple[str, ...]
     cors_allowed_headers: tuple[str, ...]
+    # Suscripciones (PLAN_SUSCRIPCION_Y_PAGOS.md §9.4): gracia inicial de la
+    # primera factura y gracia de impago antes de suspender el hotel.
+    subscription_initial_grace_days: int
+    subscription_suspension_grace_days: int
 
 
 def _csv_env(name: str, default: str) -> tuple[str, ...]:
@@ -143,4 +147,6 @@ def get_settings() -> Settings:
             "CORS_ALLOWED_HEADERS",
             "Authorization,Content-Type,X-Requested-With,Cookie",
         ),
+        subscription_initial_grace_days=int(os.getenv("SUBSCRIPTION_INITIAL_GRACE_DAYS", "7")),
+        subscription_suspension_grace_days=int(os.getenv("SUBSCRIPTION_SUSPENSION_GRACE_DAYS", "7")),
     )

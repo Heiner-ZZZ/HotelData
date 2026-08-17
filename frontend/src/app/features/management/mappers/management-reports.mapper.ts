@@ -8,6 +8,20 @@ export function mapManagementReports(dto: ManagementReportsDto): ManagementRepor
     totalEvents: dto.total_events,
     reservationsDetected: dto.reservations_detected,
     grossRevenueLabel: formatCurrency(dto.gross_revenue || 0),
+    series: dto.series,
+    rows: (dto.rows ?? []).map((row) => ({
+      month: row.month,
+      events: row.events,
+      reservations: row.reservations,
+      grossRevenue: row.gross_revenue,
+      grossRevenueLabel: formatCurrency(row.gross_revenue || 0)
+    })),
+    total: dto.total ?? 0,
+    page: dto.page ?? 1,
+    pageSize: dto.page_size ?? 10,
+    totalPages: dto.total_pages ?? 1,
+    hasNext: dto.has_next ?? false,
+    hasPrev: dto.has_prev ?? false,
     topHotels: dto.top_hotels_by_revenue.map((item) => ({
       propId: item.prop_id,
       displayName: item.display_name,

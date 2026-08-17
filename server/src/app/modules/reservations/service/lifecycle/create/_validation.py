@@ -7,24 +7,20 @@ from bson import ObjectId
 from src.database.connection import get_database
 
 
-def _validate_deposit(
+def get_deposit_policy(
     prop_id: int,
-    total_price: float | None,
-    season_id: str = "",
-    room_type_id: str = "",
     rate_plan_id: str = "",
-    manual_reservation: bool = False,
-) -> str | None:
-    """Check if the hotel policy requires a minimum deposit.
+    room_type_id: str = "",
+) -> dict | None:
+    """Resolve the deposit policy for a property.
 
-    Checks rate-plan-specific policies first, then room-type, then hotel-wide.
-    Returns an error message if a deposit is required but not met,
-    or None if the booking passes validation.
+    Hierarchy: rate-plan-specific > room-type-specific > hotel-wide.
+    Returns a dict with ``deposit_required`` and ``deposit_percent`` keys,
+    or None when the property has no deposit policy row. Shared by the
+    booking-creation validation, the reservation preview and the check-in
+    gate so the three never drift apart.
     """
-    if manual_reservation:
-        return None
     db = get_database()
-    # Hierarchy: rate_plan > room_type > hotel-wide
     policy = None
     # 1. Rate-plan-specific
     if rate_plan_id:
@@ -44,6 +40,33 @@ def _validate_deposit(
             {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}, "rate_plan_id": {"$in": ["", None]}},
             {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
         )
+    return policy
+
+
+def _validate_deposit(
+    prop_id: int,
+    total_price: float | None,
+    season_id: str = "",
+    room_type_id: str = "",
+    rate_plan_id: str = "",
+    manual_reservation: bool = False,
+    deposit_amount: float | None = None,
+) -> str | None:
+    """Check if the hotel policy requires a minimum deposit.
+
+    Checks rate-plan-specific policies first, then room-type, then hotel-wide.
+    Returns an error message if a deposit is required but not met,
+    or None if the booking passes validation.
+
+    ``deposit_amount`` is the REAL deposit payment registered in the same
+    call (billing ``create_payment``, shift-gated): a deposit policy is
+    satisfied only by actual money recorded against the booking — never by
+    the legacy fake card-processing stub that marked bookings as "paid"
+    without persisting anything.
+    """
+    if manual_reservation:
+        return None
+    policy = get_deposit_policy(prop_id, rate_plan_id=rate_plan_id, room_type_id=room_type_id)
     if not policy:
         return None
     deposit_required = policy.get("deposit_required", False)
@@ -53,10 +76,18 @@ def _validate_deposit(
     if total_price is None or total_price <= 0:
         return "No se puede calcular el depósito mínimo: precio total no disponible."
     min_deposit = round(total_price * deposit_percent / 100, 2)
+    if deposit_amount is not None and deposit_amount >= min_deposit - 0.01:
+        return None
+    if deposit_amount is not None:
+        return (
+            f"El depósito registrado (${deposit_amount:.2f}) no alcanza el mínimo "
+            f"del {deposit_percent}% (${min_deposit:.2f}) que esta propiedad exige "
+            "para confirmar la reserva."
+        )
     return (
         f"Esta propiedad requiere un depósito mínimo del {deposit_percent}% "
         f"(${min_deposit:.2f}) para confirmar la reserva. "
-        "Ingresá la garantía correspondiente o contactá a recepción para completarla."
+        "Registrá el depósito o contactá a recepción para completarla."
     )
 
 

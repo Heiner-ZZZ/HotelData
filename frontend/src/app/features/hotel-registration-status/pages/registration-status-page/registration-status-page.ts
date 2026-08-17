@@ -155,6 +155,17 @@ export class RegistrationStatusPageComponent {
 
   propertyTypeLabel = propertyTypeLabel;
 
+  /** Icono por método de pago manual (Material Symbols, sin emojis). */
+  private readonly paymentMethodIcons: Record<string, string> = {
+    bank_transfer: 'account_balance',
+    cash_deposit: 'payments',
+    manual_online: 'smartphone',
+  };
+
+  paymentMethodIcon(code: string): string {
+    return this.paymentMethodIcons[code] ?? 'receipt_long';
+  }
+
   /** Label humano de un evento del timeline (fallback al detail del backend). */
   timelineLabel(event: string, detail: string): string {
     return STATUS_LABELS[event] ?? (detail || event);

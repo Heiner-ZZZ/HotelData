@@ -271,6 +271,531 @@
   text-align: center;
 }
 
+/* ── Elige tu plan (PLAN §14) ───────────────────────────────────────── */
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 26px 26px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--app-border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.plan-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.plan-eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.plan-card__header h2 {
+  margin: 0;
+  font-size: 1.28rem;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--app-text);
+}
+
+.plan-card__lead {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--muted-text);
+  max-width: 62ch;
+}
+
+.plan-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted-text);
+
+  &--error {
+    color: var(--danger-strong);
+  }
+}
+
+.plan-spin {
+  animation: onboarding-spin 1s linear infinite;
+}
+
+@keyframes onboarding-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.plan-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--app-text);
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  strong {
+    color: var(--accent-strong);
+    font-weight: 700;
+  }
+}
+
+/* ── Plan: tarjetas radio / toggle ciclo / método de pago ───────────── */
+.plan-options,
+.plan-cycle,
+.plan-payment {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plan-options__legend {
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted-text);
+}
+
+.plan-options__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.plan-option {
+  position: relative;
+  cursor: pointer;
+
+  input[type='radio'] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &__body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-height: 124px;
+    padding: 16px 15px 14px;
+    border: 1px solid var(--app-border);
+    border-radius: 13px;
+    background: var(--surface);
+    overflow: hidden;
+    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease,
+      box-shadow 160ms ease, opacity 160ms ease;
+
+    // Barra superior de marca: la firma visual de "Tu plan".
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 160ms ease;
+    }
+  }
+
+  &__top {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  &__icon {
+    font-size: 1.25rem;
+    color: var(--muted-text);
+    transition: color 160ms ease;
+  }
+
+  &__label {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--app-text);
+  }
+
+  &__badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    background: var(--accent);
+    color: var(--on-accent);
+    white-space: nowrap;
+
+    .material-symbols-outlined {
+      font-size: 0.85rem;
+    }
+  }
+
+  &__range,
+  &__exact {
+    font-size: 0.8rem;
+    color: var(--muted-text);
+  }
+
+  &__price {
+    font-size: 0.86rem;
+    color: var(--app-text);
+
+    strong {
+      font-weight: 800;
+      color: var(--accent-strong);
+    }
+  }
+
+  &__price--exact {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    margin-top: auto;
+  }
+
+  &__amount {
+    font-size: 1.7rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    transition: color 160ms ease;
+  }
+
+  &__period {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted-text);
+  }
+
+  &__annual {
+    font-size: 0.74rem;
+    color: var(--muted-text);
+  }
+
+  // Las tarjetas que no son la derivada se atenúan.
+  &:not(.plan-option--suggested) {
+    .plan-option__body {
+      opacity: 0.72;
+    }
+  }
+
+  // La tarjeta derivada ("Tu plan") va elevada, con borde de marca y barra superior.
+  &.plan-option--suggested {
+    .plan-option__body {
+      border-color: color-mix(in srgb, var(--accent) 55%, var(--app-border));
+      background: var(--surface-raised);
+      box-shadow: var(--shadow-sm);
+
+      &::before {
+        opacity: 1;
+      }
+    }
+  }
+
+  // Seleccionada (radio marcado): anillo de foco + elevación.
+  input[type='radio']:checked + &__body {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-sm), 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+    transform: translateY(-2px);
+
+    .plan-option__icon {
+      color: var(--accent);
+    }
+  }
+
+  input[type='radio']:focus-visible + &__body {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  &:hover &__body {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--app-border));
+  }
+}
+
+.plan-mismatch {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning-strong);
+  font-size: 0.85rem;
+  line-height: 1.45;
+
+  strong {
+    font-weight: 800;
+  }
+}
+
+.cycle-toggle {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  max-width: 340px;
+  border: 1px solid var(--app-border);
+  border-radius: 11px;
+  background: var(--surface);
+}
+
+.cycle-option {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: background 160ms ease, border-color 160ms ease;
+
+  input[type='radio'] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &__name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--muted-text);
+    transition: color 160ms ease;
+  }
+
+  &__saving {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    background: color-mix(in srgb, var(--success) 14%, transparent);
+    color: var(--success-strong);
+    white-space: nowrap;
+  }
+
+  &--active {
+    background: var(--accent);
+    border-color: var(--accent);
+
+    .cycle-option__name {
+      color: var(--on-accent);
+    }
+
+    .cycle-option__saving {
+      background: color-mix(in srgb, var(--on-accent) 20%, transparent);
+      color: var(--on-accent);
+    }
+  }
+
+  &:has(input[type='radio']:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.cycle-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted-text);
+
+  strong {
+    color: var(--accent-strong);
+    font-weight: 800;
+  }
+}
+
+.payment-options {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.payment-option {
+  position: relative;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--app-text);
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+
+  input[type='radio'] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &__icon {
+    font-size: 1.1rem;
+    color: var(--muted-text);
+  }
+
+  &--active {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent-strong);
+
+    .payment-option__icon {
+      color: var(--accent);
+    }
+  }
+
+  &:has(input[type='radio']:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.plan-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--app-border));
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+
+.plan-total__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-chip {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-strong);
+
+  .material-symbols-outlined {
+    font-size: 0.95rem;
+  }
+}
+
+.plan-total__cycle {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted-text);
+}
+
+.plan-total__price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.plan-total__amount {
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-total__period {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted-text);
+}
+
+.plan-total__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success-strong);
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+  }
+}
+
+.plan-due {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-option__body,
+  .cycle-option,
+  .payment-option {
+    transition: none;
+  }
+
+  .plan-option__body {
+    transform: none;
+  }
+}
+
 /* ── Phase-2: 6-digit code ─────────────────────────────────────────── */
 .code-section {
   display: flex;
@@ -365,6 +890,70 @@
   }
 }
 
+/* ── Términos y Condiciones ─────────────────────────────────────────── */
+.terms-accept {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.25rem 0.1rem;
+  max-width: 720px;
+}
+
+.terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted-text);
+
+  input[type='checkbox'] {
+    margin-top: 0.2rem;
+    accent-color: var(--accent);
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+}
+
+.terms-text {
+  display: inline;
+}
+
+.terms-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: inherit;
+  font-family: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+
+  &:hover { color: var(--accent-strong); }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.terms-loading {
+  color: var(--muted-text);
+}
+
+.terms-load-error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--danger);
+  font-weight: 500;
+}
+
 /* ── Responsive: stack the form-grid on narrow screens ──────────────── */
 @media (max-width: 760px) {
   .onboarding-page {
@@ -378,6 +967,10 @@
   .form-grid {
     grid-template-columns: 1fr;
     gap: 18px;
+  }
+
+  .plan-options__grid {
+    grid-template-columns: 1fr;
   }
 
   .onboarding-hero h1 {

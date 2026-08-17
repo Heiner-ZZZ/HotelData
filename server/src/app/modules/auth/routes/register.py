@@ -9,6 +9,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Body, HTTPException, Request
 from pymongo.errors import DuplicateKeyError
 
+from src.app.modules.legal.service import validate_terms_acceptance
 from src.app.security.session import ensure_utc, password_context, log_user_activity
 from src.database.connection import get_database
 
@@ -40,6 +41,11 @@ def send_code(
     if not _is_email_available(db, email):
         raise HTTPException(status_code=400, detail="Este correo ya está registrado como usuario activo.")
 
+    # Aceptación de Términos: si el frontend la envía, debe coincidir con la
+    # versión vigente; queda estampada en el pendiente para confirm-code.
+    accepted_terms_version = payload.get("accepted_terms_version")
+    validate_terms_acceptance(db, "terms_guest", accepted_terms_version)
+
     code = f"{random.randint(0, 999999):06d}"
     now = _now()
     pending = {
@@ -50,6 +56,8 @@ def send_code(
         "created_at": now,
         "expires_at": now + timedelta(minutes=PENDING_TTL_MINUTES),
     }
+    if accepted_terms_version is not None:
+        pending["terms_guest_version"] = int(accepted_terms_version)
     db.pending_registrations.replace_one(
         {"email": email},
         pending,
@@ -86,6 +94,11 @@ def register(
     if not _is_email_available(db, email):
         raise HTTPException(status_code=400, detail="El email ya está registrado como usuario activo.")
 
+    # Aceptación de Términos: si el payload la trae, debe coincidir con la
+    # versión vigente. Sin el campo (back-compat con tests/seeds) no se estampa.
+    accepted_terms_version = payload.get("accepted_terms_version")
+    validate_terms_acceptance(db, "terms_guest", accepted_terms_version)
+
     if not send_verification:
         now = _now()
         user_doc = {
@@ -101,6 +114,9 @@ def register(
             "created_at": now,
             "updated_at": now,
         }
+        if accepted_terms_version is not None:
+            user_doc["terms_guest_version"] = int(accepted_terms_version)
+            user_doc["terms_accepted_at"] = now
         try:
             result = db.users.insert_one(user_doc)
         except DuplicateKeyError:
@@ -121,6 +137,8 @@ def register(
         "created_at": now,
         "expires_at": now + timedelta(minutes=PENDING_TTL_MINUTES),
     }
+    if accepted_terms_version is not None:
+        pending["terms_guest_version"] = int(accepted_terms_version)
     db.pending_registrations.replace_one(
         {"email": email},
         pending,
@@ -201,6 +219,11 @@ def confirm_code(
         "created_at": now,
         "updated_at": now,
     }
+    # La aceptación de términos quedó validada y estampada en el pendiente
+    # (send-code); se copia al usuario al confirmar.
+    if pending.get("terms_guest_version") is not None:
+        user_doc["terms_guest_version"] = int(pending["terms_guest_version"])
+        user_doc["terms_accepted_at"] = now
     try:
         result = db.users.insert_one(user_doc)
     except DuplicateKeyError:

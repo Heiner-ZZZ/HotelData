@@ -38,6 +38,8 @@ from src.app.modules.auth.routes._helpers import (
     _now,
     _send_property_verification_code,
 )
+from src.app.modules.legal.service import validate_terms_acceptance
+from src.app.modules.property_approval.pricing import suggested_band_for
 from src.app.security.role_helpers import resolve_role_id
 from src.app.security.session import log_user_activity, password_context
 from src.database.connection import get_database
@@ -58,6 +60,13 @@ _PROPERTY_TYPES: tuple[str, ...] = (
     "cabaña",
     "boutique",
 )
+
+# Bandas del catálogo pricing_plans (docs/APROBACION_HOTELES_Y_PRICING.md §6).
+_VALID_PLAN_BANDS: tuple[int, ...] = (1, 2, 3, 4, 5, 6)
+
+# Ciclos y métodos de pago de suscripción (PLAN_SUSCRIPCION_Y_PAGOS.md §5/§7).
+_VALID_BILLING_CYCLES: tuple[str, ...] = ("monthly", "annual")
+_VALID_PAYMENT_METHODS: tuple[str, ...] = ("bank_transfer", "cash_deposit", "manual_online")
 
 
 def _ensure_indexes() -> None:
@@ -92,6 +101,10 @@ def _validate_property_payload(payload: dict[str, Any]) -> dict[str, Any]:
     currency = str(payload.get("currency") or "USD").strip().upper()
     total_rooms = payload.get("total_rooms")
     description = str(payload.get("description") or "").strip()
+    plan_band = payload.get("plan_band")
+    billing_cycle = str(payload.get("billing_cycle") or "monthly").strip().lower()
+    payment_method = payload.get("payment_method")
+    accepted_terms_version = payload.get("accepted_terms_version")
 
     # ── Account-level validation ──
     if "@" not in email or " " in email or "." not in email.split("@")[-1]:
@@ -139,11 +152,34 @@ def _validate_property_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if len(description) > 500:
         raise HTTPException(status_code=400, detail="La descripción no puede superar los 500 caracteres.")
 
+    plan_band_int: int | None = None
+    if plan_band is not None:
+        try:
+            plan_band_int = int(plan_band)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="El plan elegido es inválido.")
+        if plan_band_int not in _VALID_PLAN_BANDS:
+            raise HTTPException(status_code=400, detail="El plan elegido es inválido.")
+
+    if billing_cycle not in _VALID_BILLING_CYCLES:
+        raise HTTPException(
+            status_code=400, detail="El ciclo de facturación es inválido (mensual o anual)."
+        )
+    payment_method_clean: str | None = None
+    if payment_method not in (None, ""):
+        payment_method_clean = str(payment_method).strip().lower()
+        if payment_method_clean not in _VALID_PAYMENT_METHODS:
+            raise HTTPException(status_code=400, detail="El método de pago es inválido.")
+
     return {
         "email": email,
         "username": username,
         "password_hash": password_context.hash(password),
         "user_display_name": user_display_name or username,
+        "plan_band": plan_band_int,
+        "billing_cycle": billing_cycle,
+        "payment_method": payment_method_clean,
+        "accepted_terms_version": accepted_terms_version,
         "property": {
             "name": property_name,
             "type": property_type,
@@ -290,6 +326,32 @@ def _next_prop_id(db) -> int:
     return proposed
 
 
+def _validate_plan_band_consistency(
+    db, total_rooms: int, plan_band: int | None
+) -> dict[str, Any]:
+    """Rechaza un plan declarado que no coincide con las habitaciones (§12 #2).
+
+    La banda se deriva de ``total_rooms`` (catálogo ``pricing_plans``). Si el
+    dueño declara una banda distinta → 400 con la acción concreta (su plan
+    correcto). Devuelve la banda resuelta para trazabilidad.
+    """
+    band = suggested_band_for(db, total_rooms)
+    if band is None:
+        raise HTTPException(
+            status_code=400,
+            detail="La cantidad de habitaciones no corresponde a ningún plan disponible.",
+        )
+    if plan_band is not None and int(plan_band) != int(band["band"]):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"El plan elegido (banda {plan_band}) no corresponde a {total_rooms} "
+                f"habitaciones. Tu plan es {band['label']} (banda {band['band']})."
+            ),
+        )
+    return band
+
+
 @api_router.post("/register-property/send-code")
 def send_property_registration_code(
     request: Request,
@@ -305,6 +367,17 @@ def send_property_registration_code(
 
     _validate_country_and_currency(db, clean["property"]["country_id"], clean["property"]["currency"])
 
+    # Aceptación de Términos y Condiciones para Anfitriones: si el wizard la
+    # envía, debe coincidir con la versión vigente (queda estampada en el
+    # pendiente y luego en el usuario + dim_hotels al confirmar).
+    validate_terms_acceptance(db, "terms_hotel_partner", clean["accepted_terms_version"])
+
+    # Fase 2 (PLAN_SUSCRIPCION_Y_PAGOS.md §12): el plan se deriva de las
+    # habitaciones; un plan_band declarado inconsistente se rechaza aquí.
+    band = _validate_plan_band_consistency(
+        db, clean["property"]["total_rooms"], clean["plan_band"]
+    )
+
     code = f"{random.randint(0, 999999):06d}"
     now = _now()
 
@@ -317,7 +390,19 @@ def send_property_registration_code(
         "attempts": 0,
         "created_at": now,
         "expires_at": now + timedelta(minutes=PENDING_TTL_MINUTES),
-        "pending_property": clean["property"],
+    }
+    if clean["accepted_terms_version"] is not None:
+        pending["terms_hotel_partner_version"] = int(clean["accepted_terms_version"])
+    pending["pending_property"] = {
+        **clean["property"],
+        "billing_cycle": clean["billing_cycle"],
+        "payment_method": clean["payment_method"],
+        "suggested_band": {
+            "band": int(band["band"]),
+            "label": band.get("label", ""),
+            "monthly_usd": band.get("monthly_usd"),
+            "annual_monthly_usd": band.get("annual_monthly_usd"),
+        },
     }
     db.pending_registrations.replace_one(
         {"email": clean["email"]},
@@ -432,6 +517,11 @@ def confirm_property_registration_code(
         "created_at": now,
         "updated_at": now,
     }
+    # Aceptación de términos (usuario): se estampa ANTES del insert — mutar el
+    # dict tras insert_one no actualizaría el doc persistido.
+    if pending.get("terms_hotel_partner_version") is not None:
+        user_doc["terms_hotel_partner_version"] = int(pending["terms_hotel_partner_version"])
+        user_doc["terms_accepted_at"] = now
     try:
         user_result = db.users.insert_one(user_doc)
     except DuplicateKeyError:
@@ -454,6 +544,8 @@ def confirm_property_registration_code(
         "geo_catalog_id": geo_catalog_id,
         "currency": pending_property["currency"],
         "accepted_currencies": [pending_property["currency"]],
+        "billing_cycle": pending_property.get("billing_cycle", "monthly"),
+        "payment_method": pending_property.get("payment_method"),
         "manual_override": True,
         "verified_at": now,
         # Fase 1 gate de aprobación: el hotel nace NO operativo (pendiente de
@@ -472,6 +564,12 @@ def confirm_property_registration_code(
         "created_at": now,
         "updated_at": now,
     }
+    # Aceptación de términos (hotel): solo se estampa si la versión fue
+    # validada y registrada en el pendiente (send-code). Sin ella, no se
+    # escriben campos.
+    if pending.get("terms_hotel_partner_version") is not None:
+        hotel_doc["terms_hotel_partner_version"] = int(pending["terms_hotel_partner_version"])
+        hotel_doc["terms_accepted_at"] = now
     try:
         db.dim_hotels.insert_one(hotel_doc)
     except DuplicateKeyError:

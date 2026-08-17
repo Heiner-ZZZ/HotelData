@@ -21,7 +21,7 @@ from __future__ import annotations
 import atexit
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,8 @@ TEST_COLLECTIONS = [
     "role_assignments",
     "navigation",  # seed_navigation() de los tests de invariante (catálogo vs BD)
     "email_verification_tokens",  # register-property verify codes (auth)
+    "pending_registrations",  # registro pendiente (send-code → confirm-code)
+    "legal_documents",  # Términos y Condiciones / Política de Privacidad versionadas
     # --- HR ---------------------------------------------------------------
     "employees",
     "employee_departments",
@@ -164,6 +166,11 @@ TEST_COLLECTIONS = [
     "notification_log",
     # --- Pricing por bandas (APROBACION_HOTELES_Y_PRICING.md §6/§8) ----
     "pricing_plans",
+    # --- Suscripciones y pagos (PLAN_SUSCRIPCION_Y_PAGOS.md §5) -------
+    "subscriptions",
+    "subscription_invoices",
+    "subscription_payments",
+    "payment_methods",
     # --- Instay / guest portal -----------------------------------------
     "stay_sessions",
     "stay_service_requests",
@@ -190,7 +197,7 @@ def _hash_password(password: str) -> str:
 
 
 def _seed_user(db, *, username: str, email: str, password: str, role: str) -> dict[str, Any]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     user_id = db.users.insert_one(
         {
             "username": username,
@@ -260,8 +267,11 @@ def _run_module_ensures_once() -> None:
         ensure_inventory_collections,
         ensure_rate_collections,
     )
-    from src.app.modules.revenue.service import ensure_revenue_collections
     from src.app.modules.reception.collections import ensure_reception_collections
+    from src.app.modules.revenue.service import ensure_revenue_collections
+    from src.app.modules.subscriptions.collections import (
+        ensure_subscription_collections,
+    )
     from src.app.security.collections import ensure_hotel_permission_collections
 
     ensure_hotel_content_collections()
@@ -271,6 +281,7 @@ def _run_module_ensures_once() -> None:
     ensure_hotels_collections()
     ensure_revenue_collections()
     ensure_reception_collections()  # turnos de caja + dedup de notificaciones
+    ensure_subscription_collections()
     ensure_hotel_permission_collections()
 
 

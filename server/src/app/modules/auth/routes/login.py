@@ -352,6 +352,99 @@ def logout(request: Request):
     return response
 
 
+@api_router.get("/logout-guard")
+def logout_guard(request: Request):
+    """Self-scoped check: does this user have open cash / attendance shifts?
+
+    The management top-nav calls this when "Cerrar sesión" is clicked so
+    it can warn (with links to close them) before the session dies. The
+    queries are scoped to the authenticated user — no ``shifts.read`` /
+    ``hr.*`` permission is required — and key off the user's ObjectId FK:
+
+    * Cash: ``reception_shifts.opened_by_id`` (canonical ObjectId FK,
+      ``_resolve_actor_id``) with an ``opened_by`` username fallback for
+      legacy rows that predate the FK migration.
+    * Attendance: ``employees.user_id`` (ObjectId FK, 2026-08 migration)
+      → ``employee_shifts.employee_id`` with ``status=active``.
+
+    Returns ``has_open_shifts`` + the payloads so the frontend can render
+    the confirmation modal with deep links.
+    """
+    db = get_database()
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    user, _ = get_current_user(db, token)
+    if not user:
+        raise HTTPException(status_code=401, detail="No autenticado.")
+
+    user_oid = user["_id"]
+    username = user.get("username") or ""
+
+    # ── Open cash shifts (reception_shifts) ──
+    cash_or: list[dict] = [{"opened_by_id": user_oid}]
+    if username:
+        cash_or.append({"opened_by": username})
+    cash_docs = list(
+        db.reception_shifts.find({"status": "open", "$or": cash_or}).sort("start_time", 1)
+    )
+
+    # Lazy import: auth routes boot early in app startup; keep the coupling
+    # local to this endpoint instead of at module import time.
+    from src.app.modules.reception.shifts import get_shift_labels
+
+    open_cash: list[dict] = []
+    for doc in cash_docs:
+        prop_id = int(doc.get("prop_id") or 0)
+        labels = get_shift_labels(prop_id)
+        hotel = db.dim_hotels.find_one(
+            {"prop_id": prop_id},
+            {"_id": 0, "display_name": 1, "hotel_name": 1},
+        )
+        hotel_label = (
+            (hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel {prop_id}")
+            if hotel
+            else f"Hotel {prop_id}"
+        )
+        open_cash.append(
+            {
+                "id": str(doc["_id"]),
+                "prop_id": prop_id,
+                "hotel_label": hotel_label,
+                "shift_number": doc.get("shift_number"),
+                "shift_type": doc.get("shift_type"),
+                "shift_label": labels.get(doc.get("shift_type") or "morning", ""),
+                "employee": doc.get("employee") or "",
+                "opened_by": doc.get("opened_by"),
+                "start_time": doc.get("start_time"),
+            }
+        )
+
+    # ── Open attendance shift (employee_shifts, status active) ──
+    attendance: dict | None = None
+    emp = db.employees.find_one({"user_id": user_oid}, {"_id": 1, "full_name": 1})
+    if emp:
+        att = db.employee_shifts.find_one(
+            {"employee_id": emp["_id"], "status": "active"},
+            sort=[("date", -1)],
+        )
+        if att:
+            attendance = {
+                "id": str(att["_id"]),
+                "employee_id": str(att["employee_id"]),
+                "employee_name": emp.get("full_name", ""),
+                "date": att.get("date"),
+                "scheduled_start": att.get("scheduled_start"),
+                "scheduled_end": att.get("scheduled_end"),
+                "area": att.get("area"),
+                "status": att.get("status"),
+            }
+
+    return {
+        "has_open_shifts": bool(open_cash) or attendance is not None,
+        "open_cash_shifts": open_cash,
+        "open_attendance_shift": attendance,
+    }
+
+
 # ═══════════════════════════════════════════════
 # ADMIN session management (all users)
 # ═══════════════════════════════════════════════

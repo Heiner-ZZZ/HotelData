@@ -1,0 +1,162 @@
+// ═══════════════════════════════════════════════════════════
+// Deposit (review step) — política de pago por adelantado real
+// + Policies box. El stub de tarjeta (paso de pago) fue
+// eliminado (2026-08): el depósito se registra como pago real
+// de billing contra el turno de caja activo (shift_id).
+// ═══════════════════════════════════════════════════════════
+
+/* ── Deposit section ── */
+.deposit-section {
+  margin-top: 1.25rem;
+  padding: 1rem 1.1rem;
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  border-radius: 10px;
+}
+
+.deposit-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+
+  .material-symbols-outlined {
+    font-size: 1.3rem;
+    color: var(--warning);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  strong {
+    display: block;
+    font-size: 0.84rem;
+    color: var(--app-text);
+    margin-bottom: 0.2rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--muted-text);
+    line-height: 1.45;
+  }
+}
+
+.deposit-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.deposit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+
+  label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted-text);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  select,
+  input {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--app-text);
+    transition: border-color 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+
+    &::placeholder {
+      color: var(--muted-text);
+      opacity: 0.6;
+    }
+  }
+}
+
+// ── Policies Box (Review step) ──
+
+.policies-box {
+  margin-top: 1.25rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.policies-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--app-border);
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    color: var(--accent);
+  }
+
+  h4 {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-text);
+  }
+}
+
+.policies-content {
+  padding: 0.5rem 0;
+}
+
+.policy-item {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.55rem 0.85rem;
+
+  + .policy-item {
+    border-top: 1px solid var(--app-border);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    color: var(--muted-text);
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  strong {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--app-text);
+    margin-bottom: 0.1rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--muted-text);
+    line-height: 1.4;
+  }
+
+  &.policy-cancel .material-symbols-outlined {
+    color: var(--warning);
+  }
+}

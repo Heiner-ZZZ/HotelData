@@ -1,4 +1,4 @@
-import { httpResource } from '@angular/common/http';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -27,6 +27,25 @@ interface StepConfig {
   num: number;
   label: string;
   icon: string;
+}
+
+/** Bloqueo del gate de depósito: montos estructurados del detail 409. */
+interface DepositGateInfo {
+  percent: number;
+  minDeposit: number;
+  paid: number;
+  missing: number;
+  message: string;
+}
+
+/** Forma del ``detail`` estructurado que devuelve el backend en el 409. */
+interface DepositGateDetail {
+  code?: unknown;
+  message?: unknown;
+  deposit_percent?: unknown;
+  min_deposit?: unknown;
+  paid_total?: unknown;
+  missing?: unknown;
 }
 
 const STEPS: StepConfig[] = [
@@ -97,6 +116,8 @@ export class CheckInDetailPageComponent {
   });
   readonly successMessage = signal('');
   readonly errorMessage = signal('');
+  /** Gate de depósito (409 deposit_not_met): banner accionable con el faltante. */
+  readonly depositGate = signal<DepositGateInfo | null>(null);
 
   // ── Reactive route param → httpResource (re-fires on bookingId change) ──
   private readonly paramMap = toSignal(this.activatedRoute.paramMap, {
@@ -558,6 +579,7 @@ export class CheckInDetailPageComponent {
       this.noShowResult.set(null);
       this.reopenDialogOpen.set(false);
       this.reopenError.set('');
+      this.depositGate.set(null);
       // Then overlay localStorage draft (if newer)
       this._restoreDraft();
       if (detail.stay_status === STAY_CHECKED_IN) this.currentStep.set(5);
@@ -739,6 +761,7 @@ export class CheckInDetailPageComponent {
 
     this.completing.set(true);
     this.completeError.set('');
+    this.depositGate.set(null);
     const earlyPayload = early
       ? {
           early_check_in_mode: early.mode,
@@ -774,9 +797,49 @@ export class CheckInDetailPageComponent {
         },
         error: (err: ApiError) => {
           this.completing.set(false);
-          this.completeError.set(err.message || 'Error al completar check-in.');
+          const gate = this.parseDepositGate(err);
+          if (gate) {
+            // 409 del gate de depósito → banner accionable con el monto
+            // faltante, en lugar del toast genérico.
+            this.depositGate.set(gate);
+          } else {
+            this.completeError.set(err.message || 'Error al completar check-in.');
+          }
         },
       });
+  }
+
+  /**
+   * Detecta el 409 ``deposit_not_met`` y extrae los montos estructurados.
+   * Cubre el ``ApiError`` del interceptor (``details`` = body crudo) y el
+   * ``HttpErrorResponse`` directo (specs).
+   */
+  private parseDepositGate(err: unknown): DepositGateInfo | null {
+    if (err instanceof HttpErrorResponse) {
+      if (err.status !== 409) return null;
+      const body = err.error as { detail?: unknown } | null;
+      return this.mapDepositDetail(body?.detail, err.message);
+    }
+    if (err && typeof err === 'object') {
+      const anyErr = err as { status?: unknown; message?: unknown; details?: unknown };
+      if (anyErr.status !== 409) return null;
+      const body = anyErr.details as { detail?: unknown } | null;
+      return this.mapDepositDetail(body?.detail, typeof anyErr.message === 'string' ? anyErr.message : undefined);
+    }
+    return null;
+  }
+
+  private mapDepositDetail(detail: unknown, fallbackMessage?: string): DepositGateInfo | null {
+    if (!detail || typeof detail !== 'object') return null;
+    const d = detail as DepositGateDetail;
+    if (d.code !== 'deposit_not_met') return null;
+    return {
+      percent: Number(d.deposit_percent) || 0,
+      minDeposit: Number(d.min_deposit) || 0,
+      paid: Number(d.paid_total) || 0,
+      missing: Number(d.missing) || 0,
+      message: typeof d.message === 'string' && d.message ? d.message : fallbackMessage ?? '',
+    };
   }
 
   roomLabel(r: CheckInDetailDto['assigned_rooms'][number]): string {

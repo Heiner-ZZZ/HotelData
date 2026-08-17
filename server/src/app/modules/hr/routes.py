@@ -848,6 +848,53 @@ def my_portal(current_user: dict = Depends(require_permission("hr.portal.read"))
     })
 
 
+@api_router.get("/my-shift/today")
+def my_shift_today(
+    current_user: dict = Depends(require_permission("hr.portal.read")),
+):
+    """Return the logged-in employee's shift for today, or null.
+
+    Single-call convenience for the top-nav turno chip (and any other
+    surface that only needs "mi turno de hoy"): resolves user → employee
+    → today's ``employee_shifts`` row in one request, avoiding the
+    two-call ``my-portal`` + ``portal/{id}`` chain. Requires the same
+    self-service permission as ``my-portal``.
+
+    Returns ``{"shift": {...} | None, "employee_name": str}``.
+    """
+    db = get_database()
+    user_id = _to_object_id_ref(current_user.get("_id"))
+    emp = (
+        db[EMPLOYEES_COLLECTION].find_one(
+            {"user_id": user_id, "is_active": True},
+            {"_id": 1, "full_name": 1, "prop_id": 1},
+        )
+        if user_id is not None
+        else None
+    )
+    if not emp:
+        return {"shift": None, "employee_name": ""}
+
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    shift = db[SHIFTS_COLLECTION].find_one(
+        {
+            "employee_id": emp["_id"],
+            "date": today_str,
+            "status": {"$in": ["pending", "active", "completed"]},
+        }
+    )
+    if not shift:
+        return {"shift": None, "employee_name": emp.get("full_name", "")}
+
+    for key in ("created_at", "updated_at", "actual_check_in", "actual_check_out"):
+        value = shift.get(key)
+        if isinstance(value, datetime):
+            shift[key] = value.isoformat()
+    shift["id"] = str(shift.pop("_id"))
+    shift["employee_id"] = str(shift["employee_id"])
+    return {"shift": shift, "employee_name": emp.get("full_name", "")}
+
+
 # ═══════════════════════════════════════════════════════════
 # Replacement Candidates
 # ═══════════════════════════════════════════════════════════

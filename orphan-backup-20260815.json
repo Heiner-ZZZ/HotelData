@@ -1,0 +1,511 @@
+{
+ "booking_orders": [
+  {
+   "_id": {
+    "$oid": "6a78d441cfe8d8a4cf6f860c"
+   },
+   "booking_id": "BK-GATE-930",
+   "prop_id": 930,
+   "status": "confirmed",
+   "guest_name": "G",
+   "guest_email": "g@t.local",
+   "check_in_date": "2026-09-01",
+   "check_out_date": "2026-09-04",
+   "total_price": 200.0,
+   "total_nights": 3,
+   "created_at": {
+    "$date": "2026-08-09T19:25:53.887Z"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6a78d9a3524fecd94dec29f0"
+   },
+   "booking_id": "BK-GATE-LIVE-2",
+   "prop_id": 2,
+   "status": "confirmed",
+   "guest_name": "Gate Live",
+   "guest_email": "gate@live.local",
+   "check_in_date": "2026-09-01",
+   "check_out_date": "2026-09-03",
+   "total_price": 300.0,
+   "total_nights": 2,
+   "created_at": {
+    "$date": "2026-08-09T19:48:51.806Z"
+   }
+  }
+ ],
+ "reservation_payments": [
+  {
+   "_id": {
+    "$oid": "6a78d441cfe8d8a4cf6f860d"
+   },
+   "booking_id": "BK-GATE-930",
+   "prop_id": 930,
+   "hotel_id": null,
+   "shift_id": null,
+   "invoice_id": null,
+   "amount": 50.0,
+   "method": "cash",
+   "status": "refunded",
+   "reference": "PAY-9D01AD904737",
+   "paid_at": {
+    "$date": "2026-08-09T19:25:53.916Z"
+   },
+   "created_at": {
+    "$date": "2026-08-09T19:25:53.922Z"
+   },
+   "updated_at": {
+    "$date": "2026-08-09T19:25:56.849Z"
+   },
+   "refund_document_id": {
+    "$oid": "6a78d444cfe8d8a4cf6f861a"
+   },
+   "refund_document_number": "RF-202608-0003",
+   "refund_id": "PAY-9D01AD904737",
+   "reconciliation_changed_at": {
+    "$date": "2026-08-09T19:25:56.770Z"
+   },
+   "reconciliation_changed_by": "billing_refund",
+   "reconciliation_reason": "refunded_payment_without_invoice_documented_receipt",
+   "reconciliation_status": "unapplied_refund",
+   "refunded_at": {
+    "$date": "2026-08-09T19:25:56.836Z"
+   },
+   "refunded_by": "admin_test"
+  },
+  {
+   "_id": {
+    "$oid": "6a78d9a45c3b9e417efddc9b"
+   },
+   "booking_id": "BK-GATE-LIVE-2",
+   "prop_id": 2,
+   "hotel_id": {
+    "$oid": "6a3b691b498f6a8d101d9dc4"
+   },
+   "shift_id": {
+    "$oid": "6a78d993c9e391c6684414f3"
+   },
+   "invoice_id": null,
+   "amount": 50.0,
+   "method": "credit_card",
+   "status": "confirmed",
+   "reference": "PAY-65534C6A6FF6",
+   "paid_at": {
+    "$date": "2026-08-09T19:48:52.507Z"
+   },
+   "shift_employee": "Teller Lima Demo",
+   "shift_opened_by": "superadmin",
+   "shift_type": "evening",
+   "created_at": {
+    "$date": "2026-08-09T19:48:52.520Z"
+   },
+   "updated_at": {
+    "$date": "2026-08-09T19:48:52.586Z"
+   }
+  }
+ ],
+ "refund_documents": [
+  {
+   "_id": {
+    "$oid": "6a78d444cfe8d8a4cf6f861a"
+   },
+   "payment_id": {
+    "$oid": "6a78d441cfe8d8a4cf6f860d"
+   },
+   "accounting_status": "posted",
+   "amount": 50.0,
+   "booking_id": "BK-GATE-930",
+   "currency": "USD",
+   "document_number": "RF-202608-0003",
+   "document_type": "refund_receipt",
+   "invoice_id": null,
+   "issued_at": {
+    "$date": "2026-08-09T19:25:56.719Z"
+   },
+   "issued_by": "billing_refund",
+   "ledger_source": "payment_refund",
+   "ledger_source_id": "PAY-9D01AD904737",
+   "original_invoice_id": null,
+   "original_invoice_number": null,
+   "prop_id": 930,
+   "reason": "Reembolso de pago sin factura asociada",
+   "refund_id": "PAY-9D01AD904737",
+   "status": "issued",
+   "updated_at": {
+    "$date": "2026-08-09T19:25:56.719Z"
+   }
+  }
+ ],
+ "ledger_transactions": [
+  {
+   "_id": {
+    "$oid": "6a78d442cfe8d8a4cf6f8610"
+   },
+   "journal_entry_id": "JE-20260809-0022",
+   "entry_type": "auto",
+   "tx_date": {
+    "$date": "2026-08-09T19:25:53.916Z"
+   },
+   "account_code": "1010",
+   "account_name": "Caja / Bancos",
+   "description": "Cobro PAY-9D01AD904737 (Efectivo) \u2014 G",
+   "debit": 50.0,
+   "credit": 0,
+   "cost_center": "Recepci\u00f3n",
+   "folio_ref": "",
+   "booking_id": "BK-GATE-930",
+   "prop_id": 930,
+   "guest_name": "G",
+   "accounting_period": "2026-08",
+   "source": "payment",
+   "source_id": "PAY-9D01AD904737",
+   "status": "audited",
+   "notes": "",
+   "created_at": {
+    "$date": "2026-08-09T19:25:53.916Z"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6a78d442cfe8d8a4cf6f8611"
+   },
+   "journal_entry_id": "JE-20260809-0022",
+   "entry_type": "auto",
+   "tx_date": {
+    "$date": "2026-08-09T19:25:53.916Z"
+   },
+   "account_code": "1030",
+   "account_name": "Cuentas por Cobrar Hu\u00e9spedes",
+   "description": "Reducci\u00f3n AR \u2014 Cobro PAY-9D01AD904737 (Efectivo) \u2014 G",
+   "debit": 0,
+   "credit": 50.0,
+   "cost_center": "Recepci\u00f3n",
+   "folio_ref": "",
+   "booking_id": "BK-GATE-930",
+   "prop_id": 930,
+   "guest_name": "G",
+   "accounting_period": "2026-08",
+   "source": "payment",
+   "source_id": "PAY-9D01AD904737",
+   "status": "audited",
+   "notes": "",
+   "created_at": {
+    "$date": "2026-08-09T19:25:53.916Z"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6a78d444cfe8d8a4cf6f8616"
+   },
+   "journal_entry_id": "JE-20260809-0023",
+   "entry_type": "auto",
+   "tx_date": {
+    "$date": "2026-08-09T19:25:56.676Z"
+   },
+   "account_code": "1030",
+   "account_name": "Cuentas por Cobrar Hu\u00e9spedes",
+   "description": "Reembolso PAY-9D01AD904737",
+   "debit": 50.0,
+   "credit": 0,
+   "cost_center": "hotel-930",
+   "folio_ref": "",
+   "booking_id": "BK-GATE-930",
+   "prop_id": 930,
+   "guest_name": "",
+   "accounting_period": "2026-08",
+   "source": "payment_refund",
+   "source_id": "PAY-9D01AD904737",
+   "status": "audited",
+   "notes": "",
+   "created_at": {
+    "$date": "2026-08-09T19:25:56.676Z"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6a78d444cfe8d8a4cf6f8617"
+   },
+   "journal_entry_id": "JE-20260809-0023",
+   "entry_type": "auto",
+   "tx_date": {
+    "$date": "2026-08-09T19:25:56.676Z"
+   },
+   "account_code": "1010",
+   "account_name": "Caja / Bancos",
+   "description": "Reembolso PAY-9D01AD904737",
+   "debit": 0,
+   "credit": 50.0,
+   "cost_center": "hotel-930",
+   "folio_ref": "",
+   "booking_id": "BK-GATE-930",
+   "prop_id": 930,
+   "guest_name": "",
+   "accounting_period": "2026-08",
+   "source": "payment_refund",
+   "source_id": "PAY-9D01AD904737",
+   "status": "audited",
+   "notes": "",
+   "created_at": {
+    "$date": "2026-08-09T19:25:56.676Z"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6a78d9a45c3b9e417efddc9e"
+   },
+   "journal_entry_id": "JE-20260809-0024",
+   "entry_type": "auto",
+   "tx_date": {
+    "$date": "2026-08-09T19:48:52.507Z"
+   },
+   "account_code": "1010",
+   "account_name": "Caja / Bancos",
+   "description": "Cobro PAY-65534C6A6FF6 (Credit_Card) \u2014 Gate Live",
+   "debit": 50.0,
+   "credit": 0,
+   "cost_center": "Recepci\u00f3n",
+   "folio_ref": "",
+   "booking_id": "BK-GATE-LIVE-2",
+   "prop_id": 2,
+   "guest_name": "Gate Live",
+   "accounting_period": "2026-08",
+   "source": "payment",
+   "source_id": "PAY-65534C6A6FF6",
+   "status": "audited",
+   "notes": "",
+   "created_at": {
+    "$date": "2026-08-09T19:48:52.507Z"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6a78d9a45c3b9e417efddc9f"
+   },
+   "journal_entry_id": "JE-20260809-0024",
+   "entry_type": "auto",
+   "tx_date": {
+    "$date": "2026-08-09T19:48:52.507Z"
+   },
+   "account_code": "1030",
+   "account_name": "Cuentas por Cobrar Hu\u00e9spedes",
+   "description": "Reducci\u00f3n AR \u2014 Cobro PAY-65534C6A6FF6 (Credit_Card) \u2014 Gate Live",
+   "debit": 0,
+   "credit": 50.0,
+   "cost_center": "Recepci\u00f3n",
+   "folio_ref": "",
+   "booking_id": "BK-GATE-LIVE-2",
+   "prop_id": 2,
+   "guest_name": "Gate Live",
+   "accounting_period": "2026-08",
+   "source": "payment",
+   "source_id": "PAY-65534C6A6FF6",
+   "status": "audited",
+   "notes": "",
+   "created_at": {
+    "$date": "2026-08-09T19:48:52.507Z"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6a7927201aff37b2277126a4"
+   },
+   "journal_entry_id": "JE-20260810-0026",
+   "entry_type": "auto",
+   "tx_date": {
+    "$date": "2026-08-10T01:19:28.603Z"
+   },
+   "account_code": "4010",
+   "account_name": "Ingresos por Alojamiento",
+   "description": "Reversi\u00f3n habitaci\u00f3n \u2014 REVERSI\u00d3N Factura INV-202608-0004 \u2014 E2E Shift Stamp",
+   "debit": 100.0,
+   "credit": 0,
+   "cost_center": "Recepci\u00f3n",
+   "folio_ref": "",
+   "booking_id": "BK-E2E-SHIFTSTAMP",
+   "prop_id": 2,
+   "guest_name": "E2E Shift Stamp",
+   "accounting_period": "2026-08",
+   "source": "invoice_reversal",
+   "source_id": "INV-202608-0004",
+   "status": "audited",
+   "notes": "",
+   "created_at": {
+    "$date": "2026-08-10T01:19:28.603Z"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6a7927201aff37b2277126a5"
+   },
+   "journal_entry_id": "JE-20260810-0026",
+   "entry_type": "auto",
+   "tx_date": {
+    "$date": "2026-08-10T01:19:28.603Z"
+   },
+   "account_code": "2020",
+   "account_name": "Impuestos por Pagar",
+   "description": "Reversi\u00f3n IVA \u2014 REVERSI\u00d3N Factura INV-202608-0004 \u2014 E2E Shift Stamp",
+   "debit": 10.0,
+   "credit": 0,
+   "cost_center": "Recepci\u00f3n",
+   "folio_ref": "",
+   "booking_id": "BK-E2E-SHIFTSTAMP",
+   "prop_id": 2,
+   "guest_name": "E2E Shift Stamp",
+   "accounting_period": "2026-08",
+   "source": "invoice_reversal",
+   "source_id": "INV-202608-0004",
+   "status": "audited",
+   "notes": "",
+   "created_at": {
+    "$date": "2026-08-10T01:19:28.603Z"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6a7927201aff37b2277126a6"
+   },
+   "journal_entry_id": "JE-20260810-0026",
+   "entry_type": "auto",
+   "tx_date": {
+    "$date": "2026-08-10T01:19:28.603Z"
+   },
+   "account_code": "1030",
+   "account_name": "Cuentas por Cobrar Hu\u00e9spedes",
+   "description": "Reversi\u00f3n AR \u2014 REVERSI\u00d3N Factura INV-202608-0004 \u2014 E2E Shift Stamp",
+   "debit": 0,
+   "credit": 110.0,
+   "cost_center": "Recepci\u00f3n",
+   "folio_ref": "",
+   "booking_id": "BK-E2E-SHIFTSTAMP",
+   "prop_id": 2,
+   "guest_name": "E2E Shift Stamp",
+   "accounting_period": "2026-08",
+   "source": "invoice_reversal",
+   "source_id": "INV-202608-0004",
+   "status": "audited",
+   "notes": "",
+   "created_at": {
+    "$date": "2026-08-10T01:19:28.603Z"
+   }
+  }
+ ],
+ "fact_reservation_payments": [
+  {
+   "_id": {
+    "$oid": "6a78d441cfe8d8a4cf6f860d"
+   },
+   "booking_id": "BK-GATE-930",
+   "prop_id": 930,
+   "hotel_id": null,
+   "shift_id": null,
+   "invoice_id": null,
+   "amount": 50.0,
+   "method": "cash",
+   "status": "refunded",
+   "reference": "PAY-9D01AD904737",
+   "paid_at": {
+    "$date": "2026-08-09T19:25:53.916Z"
+   },
+   "created_at": {
+    "$date": "2026-08-09T19:25:53.922Z"
+   },
+   "updated_at": {
+    "$date": "2026-08-09T19:25:56.849Z"
+   },
+   "refund_document_id": {
+    "$oid": "6a78d444cfe8d8a4cf6f861a"
+   },
+   "refund_document_number": "RF-202608-0003",
+   "refund_id": "PAY-9D01AD904737",
+   "reconciliation_changed_at": {
+    "$date": "2026-08-09T19:25:56.770Z"
+   },
+   "reconciliation_changed_by": "billing_refund",
+   "reconciliation_reason": "refunded_payment_without_invoice_documented_receipt",
+   "reconciliation_status": "unapplied_refund",
+   "refunded_at": {
+    "$date": "2026-08-09T19:25:56.836Z"
+   },
+   "refunded_by": "admin_test"
+  },
+  {
+   "_id": {
+    "$oid": "6a78d9a45c3b9e417efddc9b"
+   },
+   "amount": 50.0,
+   "booking_id": "BK-GATE-LIVE-2",
+   "created_at": {
+    "$date": "2026-08-09T19:48:52.520Z"
+   },
+   "hotel_id": {
+    "$oid": "6a3b691b498f6a8d101d9dc4"
+   },
+   "invoice_id": null,
+   "method": "credit_card",
+   "operational_id": {
+    "$oid": "6a78d9a45c3b9e417efddc9b"
+   },
+   "paid_at": {
+    "$date": "2026-08-09T19:48:52.507Z"
+   },
+   "prop_id": 2,
+   "reference": "PAY-65534C6A6FF6",
+   "shift_employee": "Teller Lima Demo",
+   "shift_id": {
+    "$oid": "6a78d993c9e391c6684414f3"
+   },
+   "shift_opened_by": "superadmin",
+   "shift_type": "evening",
+   "status": "confirmed",
+   "updated_at": {
+    "$date": "2026-08-09T19:48:52.586Z"
+   }
+  }
+ ],
+ "fact_refund_documents": [
+  {
+   "_id": {
+    "$oid": "6a78d444cfe8d8a4cf6f861a"
+   },
+   "payment_id": {
+    "$oid": "6a78d441cfe8d8a4cf6f860d"
+   },
+   "accounting_status": "posted",
+   "amount": 50.0,
+   "booking_id": "BK-GATE-930",
+   "currency": "USD",
+   "document_number": "RF-202608-0003",
+   "document_type": "refund_receipt",
+   "invoice_id": null,
+   "issued_at": {
+    "$date": "2026-08-09T19:25:56.719Z"
+   },
+   "issued_by": "billing_refund",
+   "ledger_source": "payment_refund",
+   "ledger_source_id": "PAY-9D01AD904737",
+   "original_invoice_id": null,
+   "original_invoice_number": null,
+   "prop_id": 930,
+   "reason": "Reembolso de pago sin factura asociada",
+   "refund_id": "PAY-9D01AD904737",
+   "status": "issued",
+   "updated_at": {
+    "$date": "2026-08-09T19:25:56.719Z"
+   }
+  }
+ ],
+ "_meta": {
+  "creado": "2026-08-15",
+  "motivo": "hu\u00e9rfanos QA gateway + E2E Shift Stamp",
+  "colecciones": {
+   "booking_orders": 2,
+   "reservation_payments": 2,
+   "refund_documents": 1,
+   "ledger_transactions": 9,
+   "fact_reservation_payments": 2,
+   "fact_refund_documents": 1
+  }
+ }
+}

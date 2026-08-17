@@ -19,7 +19,18 @@ export interface RegistrationStatusDto {
   status_changed_at: string | null;
   property: RegistrationPropertyDto;
   suggested_band: SuggestedBandDto | null;
+  /** Gracia inicial de la primera factura (días tras la aprobación). */
+  initial_grace_days: number;
+  /** Métodos de pago manuales del catálogo (sin pasarela bancaria). */
+  payment_methods: PaymentMethodDto[];
   timeline: TimelineEventDto[];
+}
+
+export interface PaymentMethodDto {
+  code: string;
+  label: string;
+  sort_order: number;
+  details: Record<string, string>;
 }
 
 export interface RegistrationPropertyDto {

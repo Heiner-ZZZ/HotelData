@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { roleGuard } from '../../core/auth/auth.guard';
+
 export const MANAGEMENT_ROUTES: Routes = [
   {
     path: '',
@@ -82,6 +84,14 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../billing/billing.routes').then((m) => m.BILLING_ROUTES)
   },
   {
+    // Suscripción del dueño a la plataforma (PLAN_SUSCRIPCION_Y_PAGOS.md §14.4).
+    path: 'subscription',
+    loadComponent: () =>
+      import('../subscription/pages/my-subscription-page/my-subscription-page').then(
+        (m) => m.MySubscriptionPageComponent
+      )
+  },
+  {
     path: 'manual-reservations',
     loadChildren: () =>
       import('../manual-reservations/manual-reservations.routes').then((m) => m.MANUAL_RESERVATIONS_ROUTES)
@@ -114,6 +124,31 @@ export const MANAGEMENT_ROUTES: Routes = [
     path: 'reports',
     loadComponent: () =>
       import('./pages/reports-page/reports-page').then((m) => m.ManagementReportsPageComponent)
+  },
+  {
+    // Informes estratégicos TAF14 — VISTA A (hotel individual del dueño).
+    // Separada de la cartera del sistema (/informes-estrategicos, Vista B):
+    // este botón (ítem GESTIÓN) abre SIEMPRE la vista del hotel; el property
+    // context inyecta prop_id en modo single/multi. Gate por permiso, igual
+    // que el backend /api/strategic/* (el sidebar ya filtra el ítem). Cada
+    // informe IE-H0x es una interfaz propia (patrón táctico, menú horizontal).
+    path: 'informes-estrategicos',
+    canActivate: [roleGuard],
+    data: { requiredPermission: 'reports.strategic.read' },
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'h01'
+      },
+      {
+        path: ':report',
+        loadComponent: () =>
+          import('../system-admin/pages/strategic-dashboard-page/strategic-dashboard-page').then(
+            (m) => m.StrategicDashboardPageComponent
+          )
+      }
+    ]
   },
   {
     path: 'audit-log',

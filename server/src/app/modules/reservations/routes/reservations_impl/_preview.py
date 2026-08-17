@@ -20,6 +20,9 @@ from src.app.modules.reservations.service.lifecycle.create import (
 from src.app.modules.reservations.service.lifecycle.create._availability import (
     validate_requested_room,
 )
+from src.app.modules.reservations.service.lifecycle.create._validation import (
+    get_deposit_policy,
+)
 from src.app.modules.reservations.service.lifecycle.create._special_requests import (
     validate_special_requests,
 )
@@ -144,25 +147,11 @@ def preview_reservation(payload: dict) -> dict:
         min_deposit_amount = 0.0
         try:
             db = get_database()
-            dep_policy = None
-            # Hierarchy: rate_plan > room_type > hotel-wide
-            rp_id = reservation_input.rate_plan_id or ""
-            rt_id = reservation_input.room_type_id or ""
-            if rp_id:
-                dep_policy = db.hotel_policies.find_one(
-                    {"prop_id": reservation_input.prop_id, "rate_plan_id": rp_id},
-                    {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
-                )
-            if not dep_policy and rt_id:
-                dep_policy = db.hotel_policies.find_one(
-                    {"prop_id": reservation_input.prop_id, "room_type_id": rt_id, "rate_plan_id": {"$in": ["", None]}},
-                    {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
-                )
-            if not dep_policy:
-                dep_policy = db.hotel_policies.find_one(
-                    {"prop_id": reservation_input.prop_id, "room_type_id": {"$in": ["", None]}, "rate_plan_id": {"$in": ["", None]}},
-                    {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
-                )
+            dep_policy = get_deposit_policy(
+                reservation_input.prop_id,
+                rate_plan_id=reservation_input.rate_plan_id or "",
+                room_type_id=reservation_input.room_type_id or "",
+            )
             if dep_policy:
                 deposit_required = bool(dep_policy.get("deposit_required", False))
                 deposit_percent = int(dep_policy.get("deposit_percent", 0) or 0)
@@ -171,7 +160,7 @@ def preview_reservation(payload: dict) -> dict:
         except Exception:
             logger.warning(
                 "Failed to resolve deposit policy for prop_id=%s rate_plan=%s room_type=%s — assuming deposit required as fail-safe",
-                reservation_input.prop_id, rp_id, rt_id, exc_info=True,
+                reservation_input.prop_id, reservation_input.rate_plan_id or "", reservation_input.room_type_id or "", exc_info=True,
             )
             deposit_required = True
 

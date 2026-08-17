@@ -11,6 +11,7 @@ import { ReportsExportService } from '../../../../shared/services/reports-export
 import { AuthService } from '../../../../core/auth/auth.service';
 import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { HorizontalSubNavComponent } from '../../../../shared/ui/horizontal-sub-nav/horizontal-sub-nav';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import {
   buildReportShell,
@@ -24,10 +25,11 @@ import { ReviewsApiService } from '../../services/reviews-api.service';
 @Component({
   selector: 'app-reputation-dashboard-page',
   standalone: true,
-  imports: [FormsModule, DecimalPipe, PageHeaderComponent, LoadingStateComponent, ErrorStateComponent, EmptyStateComponent, PropertySelectorComponent],
+  imports: [FormsModule, DecimalPipe, PageHeaderComponent, LoadingStateComponent, ErrorStateComponent, EmptyStateComponent, PropertySelectorComponent, HorizontalSubNavComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="reputation-page" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+      <app-horizontal-sub-nav [activeSlug]="'gestion.pms.informes.reputacion'" />
       <app-page-header
         eyebrow="Reputation Intelligence"
         title="Panel de Reputación"

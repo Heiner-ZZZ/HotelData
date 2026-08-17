@@ -10,7 +10,6 @@ import { SystemPermissionsPageComponent } from './pages/system-permissions-page/
 import { PERMISSIONS_INTERNAL_ROUTES } from './pages/system-permissions-page/permissions-routes';
 import { SystemUsersPageComponent } from './pages/system-users-page/system-users-page';
 import { CurrenciesPageComponent } from './pages/currencies-page/currencies-page';
-import { BscPageComponent } from '../admin/pages/bsc-page/bsc-page';
 
 export const SYSTEM_ADMIN_ROUTES: Routes = [
   {
@@ -66,11 +65,5 @@ export const SYSTEM_ADMIN_ROUTES: Routes = [
     component: CurrenciesPageComponent,
     canActivate: [roleGuard],
     data: { requiredPermission: 'settings.read', allowedRoles: ['super_admin', 'admin_sistema'] }
-  },
-  {
-    path: 'bsc',
-    component: BscPageComponent,
-    canActivate: [roleGuard],
-    data: { requiredPermission: 'monitoring.read', allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
   }
 ];

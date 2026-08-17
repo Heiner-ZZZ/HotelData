@@ -9,18 +9,222 @@ from __future__ import annotations
 
 import pytest
 
-from src.etl.mongo_to_clickhouse.config import ALL_TABLES, FACT_TABLES
+from src.etl.mongo_to_clickhouse.config import ALL_TABLES, FACT_TABLES, STRATEGIC_TABLES
 from src.etl.mongo_to_clickhouse.transform import TABLE_COLUMNS, transform_rows
 
 
 def test_all_tables_have_schemas():
-    """Cada tabla del pipeline tiene columnas en transform y DDL en load."""
+    """Cada tabla del pipeline (táctica + estratégica) tiene columnas y DDL."""
     from src.etl.mongo_to_clickhouse.load import TABLES_DDL
 
-    assert set(ALL_TABLES) == set(FACT_TABLES)
+    assert set(ALL_TABLES) == set(FACT_TABLES) | set(STRATEGIC_TABLES)
     for table in ALL_TABLES:
         assert table in TABLE_COLUMNS, f"transform sin columnas para {table}"
         assert table in TABLES_DDL, f"load sin DDL para {table}"
+
+
+def test_strat_hotel_monthly_mapper_positions():
+    rows = transform_rows("strat_hotel_monthly", [{
+        "month": "2026-08-01", "prop_id": 1, "hotel_label": "Hotel Lima", "currency": "PEN",
+        "bookings": 10, "rooms_sold": 12, "room_nights": 30, "revenue": 4500.5,
+        "discount_amount": 200.0, "adults": 18, "children": 2, "cancelled_rooms": 1,
+        "total_rooms": 50,
+    }])
+    assert rows[0][0].strftime("%Y-%m-%d") == "2026-08-01"
+    assert rows[0][1:4] == [1, "Hotel Lima", "PEN"]
+    assert rows[0][4:] == [10, 12, 30, 4500.5, 200.0, 18, 2, 1, 50]
+
+
+def test_strat_plan_monthly_mapper_positions():
+    rows = transform_rows("strat_plan_monthly", [{
+        "month": "2026-08-01", "prop_id": 1, "hotel_label": "Hotel Lima",
+        "room_type_id": "RT-1", "room_type_label": "Estándar", "currency": "USD",
+        "bookings": 5, "rooms_sold": 6, "room_nights": 12, "revenue": 1200.0,
+        "discount_amount": 60.0, "adults": 9, "children": 1, "cancelled_rooms": 0,
+    }])
+    assert rows[0][0].strftime("%Y-%m-%d") == "2026-08-01"
+    assert rows[0][1:6] == [1, "Hotel Lima", "RT-1", "Estándar", "USD"]
+    assert rows[0][6:] == [5, 6, 12, 1200.0, 60.0, 9, 1, 0]
+
+
+def test_strat_market_monthly_mapper_positions():
+    rows = transform_rows("strat_market_monthly", [{
+        "month": "2026-08-01", "visitor_location_country_id": 187,
+        "visitor_country_label": "Perú", "srch_destination_id": 8250,
+        "destination_label": "Lima", "searches": 100, "clicks": 20,
+        "reservations": 4, "revenue_usd": 512.75,
+    }])
+    assert rows[0][0].strftime("%Y-%m-%d") == "2026-08-01"
+    assert rows[0][1:5] == [187, "Perú", 8250, "Lima"]
+    assert rows[0][5:] == [100, 20, 4, 512.75]
+
+
+def test_strat_reputation_monthly_mapper_positions():
+    rows = transform_rows("strat_reputation_monthly", [{
+        "month": "2026-08-01", "prop_id": 1, "hotel_label": "Hotel Lima",
+        "reviews": 20, "avg_rating": 4.4, "positive": 15, "neutral": 4,
+        "negative": 1, "responded": 18, "response_rate": 90.0,
+    }])
+    assert rows[0][0].strftime("%Y-%m-%d") == "2026-08-01"
+    assert rows[0][1:4] == [1, "Hotel Lima", 20]
+    assert rows[0][4:] == [4.4, 15, 4, 1, 18, 90.0]
+
+
+def test_funnel_reanchor_shifts_stale_synthetic_dates_to_recent_window():
+    """El funnel sintético GA03 (2012-2013) se re-ancla a la ventana reciente
+    para que los informes estratégicos/tácticos no muestren años anteriores."""
+    from datetime import date
+
+    from src.etl.mongo_to_clickhouse.extract import _reanchor_funnel_dates
+
+    rows = [
+        {"date": "2012-11-01", "searches": 100},
+        {"date": "2013-06-30", "searches": 200},
+    ]
+    today = date(2026, 8, 16)
+    out = _reanchor_funnel_dates(rows, today=today)
+    # El máximo de la serie cae en la fecha de anclaje (hoy).
+    assert out[1]["date"] == today.isoformat(), out
+    # Se conserva la separación original (2013-06-30 − 2012-11-01 = 241 días).
+    span = (date.fromisoformat(out[1]["date"]) - date.fromisoformat(out[0]["date"])).days
+    assert span == 241, span
+    assert out[0]["searches"] == 100
+    assert out[1]["searches"] == 200
+
+
+def test_funnel_reanchor_leaves_recent_data_untouched():
+    """Datos ya recientes (2026+) no se desplazan: el re-anchor solo aplica
+    a snapshots sintéticos antiguos."""
+    from datetime import date
+
+    from src.etl.mongo_to_clickhouse.extract import _reanchor_funnel_dates
+
+    rows = [{"date": "2026-06-01"}, {"date": "2026-08-01"}]
+    assert _reanchor_funnel_dates(rows, today=date(2026, 8, 16)) == rows
+
+
+def test_extract_kpi_funnel_reads_operational_tables_not_fact(db):
+    """El embudo estratégico se alimenta de tablas OPERATIVAS (click_events +
+    booking_orders + dim_hotels), nunca de la fact sintética GA03 (800K).
+
+    ``_extract_kpi_funnel`` debe derivar searches/clicks de ``click_events``,
+    reservations/revenue de ``booking_orders`` y país/destino del hotel real
+    (``dim_hotels``: display_country_label, city).
+    """
+    from datetime import UTC, datetime
+
+    from src.etl.mongo_to_clickhouse.extract import _extract_kpi_funnel
+
+    # Limpieza defensiva (el conftest ya dropea, pero por si acaso).
+    db.click_events.delete_many({"prop_id": {"$in": [1, 2]}})
+    db.booking_orders.delete_many({"prop_id": {"$in": [1, 2]}})
+    db.dim_hotels.delete_many({"prop_id": {"$in": [1, 2]}})
+
+    db.dim_hotels.insert_many([
+        {"prop_id": 1, "hotel_label": "Hotel Lima Centro", "display_country_label": "Perú",
+         "city": "Lima", "prop_country_id": 169},
+        {"prop_id": 2, "hotel_label": "Resort Cancún Playa", "display_country_label": "México",
+         "city": "Cancún", "prop_country_id": 142},
+    ])
+    db.click_events.insert_many([
+        {"prop_id": 1, "source": "search", "clicked_at": datetime(2026, 7, 3, 10, 0, tzinfo=UTC)},
+        {"prop_id": 1, "source": "search", "clicked_at": datetime(2026, 7, 3, 11, 0, tzinfo=UTC)},
+        {"prop_id": 1, "source": "detail", "clicked_at": datetime(2026, 7, 3, 12, 0, tzinfo=UTC)},
+        {"prop_id": 2, "source": "search", "clicked_at": datetime(2026, 7, 4, 10, 0, tzinfo=UTC)},
+    ])
+    db.booking_orders.insert_many([
+        {"booking_id": "BK-FUNNEL-01", "prop_id": 1, "check_in_date": "2026-07-03", "total_price": 120.0, "status": "confirmed"},
+        {"booking_id": "BK-FUNNEL-02", "prop_id": 1, "check_in_date": "2026-07-03", "total_price": 80.0, "status": "cancelled"},
+        {"booking_id": "BK-FUNNEL-03", "prop_id": 2, "check_in_date": "2026-07-04", "total_price": 200.0, "status": "confirmed"},
+    ])
+
+    try:
+        rows = _extract_kpi_funnel(db)
+    finally:
+        db.click_events.delete_many({"prop_id": {"$in": [1, 2]}})
+        db.booking_orders.delete_many({"prop_id": {"$in": [1, 2]}})
+        db.dim_hotels.delete_many({"prop_id": {"$in": [1, 2]}})
+
+    assert len(rows) == 2, rows
+    by_prop = {int(r["srch_destination_id"]): r for r in rows}
+    lima = by_prop[1]
+    assert lima["date"] == "2026-07-03"
+    assert lima["searches"] == 2        # click_events source='search'
+    assert lima["clicks"] == 1          # click_events source='detail'
+    assert lima["reservations"] == 1    # booking_orders confirmados (ignora cancelled)
+    assert lima["revenue_usd"] == 120.0
+    assert lima["visitor_country_label"] == "Perú"
+    assert lima["visitor_location_country_id"] == 169
+    assert lima["destination_label"] == "Lima"
+    cancun = by_prop[2]
+    assert cancun["searches"] == 1
+    assert cancun["reservations"] == 1
+    assert cancun["revenue_usd"] == 200.0
+    assert cancun["destination_label"] == "Cancún"
+
+
+def test_extract_kpi_funnel_property_channel_reads_operational(db):
+    """El funnel táctico por hotel/canal también se alimenta de tablas
+    operativas (click_events + booking_orders), no de la fact."""
+    from datetime import UTC, datetime
+
+    from src.etl.mongo_to_clickhouse.extract import _extract_kpi_funnel_property_channel
+
+    db.click_events.delete_many({"prop_id": 1})
+    db.booking_orders.delete_many({"prop_id": 1})
+    db.dim_hotels.delete_many({"prop_id": 1})
+    db.dim_hotels.insert_one({"prop_id": 1, "hotel_label": "Hotel Lima Centro",
+                              "display_country_label": "Perú", "city": "Lima", "prop_country_id": 169})
+    db.click_events.insert_many([
+        {"prop_id": 1, "source": "search", "clicked_at": datetime(2026, 7, 3, 10, 0, tzinfo=UTC)},
+        {"prop_id": 1, "source": "detail", "clicked_at": datetime(2026, 7, 3, 11, 0, tzinfo=UTC)},
+    ])
+    db.booking_orders.insert_one(
+        {"booking_id": "BK-FUNNEL-PC-01", "prop_id": 1, "check_in_date": "2026-07-03", "total_price": 120.0,
+         "status": "confirmed", "total_nights": 2, "adults": 2, "children": 1, "rooms": 1}
+    )
+
+    try:
+        rows = _extract_kpi_funnel_property_channel(db)
+    finally:
+        db.click_events.delete_many({"prop_id": 1})
+        db.booking_orders.delete_many({"prop_id": 1})
+        db.dim_hotels.delete_many({"prop_id": 1})
+
+    assert len(rows) == 1, rows
+    row = rows[0]
+    assert row["prop_id"] == 1
+    assert row["date"] == "2026-07-03"
+    assert row["searches"] == 1
+    assert row["clicks"] == 1
+    assert row["reservations"] == 1
+    assert row["revenue_usd"] == 120.0
+    assert row["destination_label"] == "Lima"
+    assert row["avg_length_of_stay"] == 2.0
+
+
+def test_rollup_market_monthly_buckets_and_sums_daily_funnel():
+    from src.etl.mongo_to_clickhouse.extract import rollup_market_monthly
+
+    daily = [
+        {"date": "2026-06-26", "visitor_location_country_id": 187, "srch_destination_id": 8250,
+         "searches": 10, "clicks": 2, "reservations": 1, "revenue_usd": 100.0},
+        {"date": "2026-06-27", "visitor_location_country_id": 187, "srch_destination_id": 8250,
+         "searches": 20, "clicks": 4, "reservations": 2, "revenue_usd": 200.0},
+        {"date": "2026-07-02", "visitor_location_country_id": 187, "srch_destination_id": 8250,
+         "searches": 5, "clicks": 1, "reservations": 0, "revenue_usd": 0.0},
+        {"date": "2026-06-26", "visitor_location_country_id": 99, "srch_destination_id": 8250,
+         "searches": 7, "clicks": 1, "reservations": 1, "revenue_usd": 50.0},
+    ]
+    rows = rollup_market_monthly(daily)
+    assert [r["month"] for r in rows] == ["2026-06-01", "2026-06-01", "2026-07-01"]
+    jun_187 = next(r for r in rows if r["month"] == "2026-06-01" and r["visitor_location_country_id"] == 187)
+    assert jun_187["searches"] == 30
+    assert jun_187["clicks"] == 6
+    assert jun_187["reservations"] == 3
+    assert jun_187["revenue_usd"] == 300.0
+    jun_99 = next(r for r in rows if r["month"] == "2026-06-01" and r["visitor_location_country_id"] == 99)
+    assert jun_99["revenue_usd"] == 50.0
 
 
 def test_kpi_booking_mapper_positions():
@@ -71,7 +275,9 @@ def test_room_performance_mapper_allows_unoccupied_inventory_rows():
         "available_rooms": 4, "blocked_rooms": 1, "total_rooms": 5,
         "published_rate": None, "rate_variance": None,
     }])
-    assert rows[0][6:13] == [0, 0, 0.0, 0, 4, 1, 5]
+    # booking_source (R1.2) ocupa el índice 6; una fila de inventario sin venta lo deja vacío.
+    assert rows[0][6] == ""
+    assert rows[0][7:14] == [0, 0, 0.0, 0, 4, 1, 5]
     assert rows[0][-2:] == [None, None]
 
 
@@ -154,6 +360,46 @@ def test_kpi_invoice_mapper_positions():
     assert rows[0][0].strftime("%Y-%m-%d") == "2026-08-02"
     assert rows[0][1:5] == [1, "Hotel Uno", "paid", 3]
     assert rows[0][5:] == [900.0, 90.0, 990.0, 990.0, 0.0, 0.0]
+
+
+def test_hotel_total_rooms_falls_back_to_inventory_sum(db):
+    """dim_hotels sin total_rooms → la capacidad sale de la suma de
+    room_inventory_calendar (fuente táctica), para que ocupación/RevPAR del
+    estratégico no queden en cero con el catálogo sintético."""
+    from src.etl.mongo_to_clickhouse.extract import _hotel_total_rooms
+
+    db.dim_hotels.delete_many({"prop_id": 99})
+    db.room_inventory_calendar.delete_many({"prop_id": 99})
+    db.dim_hotels.insert_one({"prop_id": 99, "hotel_label": "Hotel 99"})
+    db.room_inventory_calendar.insert_many([
+        {"prop_id": 99, "date": "2026-08-01", "room_type_id": "RT-1", "total_rooms": 5},
+        {"prop_id": 99, "date": "2026-08-01", "room_type_id": "RT-2", "total_rooms": 3},
+        # Misma capacidad en otra fecha: NO debe inflar la suma (tipos distintos).
+        {"prop_id": 99, "date": "2026-08-02", "room_type_id": "RT-1", "total_rooms": 5},
+        {"prop_id": 99, "date": "2026-08-02", "room_type_id": "RT-2", "total_rooms": 3},
+    ])
+    try:
+        assert _hotel_total_rooms(db, [99])["99"] == 8
+    finally:
+        db.dim_hotels.delete_many({"prop_id": 99})
+        db.room_inventory_calendar.delete_many({"prop_id": 99})
+
+
+def test_hotel_total_rooms_prefers_declared_over_inventory(db):
+    """Si dim_hotels declara capacidad, manda sobre el inventario."""
+    from src.etl.mongo_to_clickhouse.extract import _hotel_total_rooms
+
+    db.dim_hotels.delete_many({"prop_id": 98})
+    db.room_inventory_calendar.delete_many({"prop_id": 98})
+    db.dim_hotels.insert_one({"prop_id": 98, "hotel_label": "Hotel 98", "total_rooms_declared": 12})
+    db.room_inventory_calendar.insert_one(
+        {"prop_id": 98, "date": "2026-08-01", "room_type_id": "RT-1", "total_rooms": 4}
+    )
+    try:
+        assert _hotel_total_rooms(db, [98])["98"] == 12
+    finally:
+        db.dim_hotels.delete_many({"prop_id": 98})
+        db.room_inventory_calendar.delete_many({"prop_id": 98})
 
 
 def test_kpi_payment_mapper_positions():
@@ -265,10 +511,47 @@ def test_date_health_check_warns_on_epoch_rows_and_empty_range():
     assert checks["ok"] is False
 
 
+def test_date_column_for_resolves_tactical_vs_strategic():
+    """Táctica particiona por ``date``; estratégica por ``month``; desconocida cae a ``date``."""
+    from src.etl.mongo_to_clickhouse.load import date_column_for
+
+    assert date_column_for("kpi_booking_daily") == "date"
+    assert date_column_for("kpi_invoice_daily") == "date"
+    assert date_column_for("strat_hotel_monthly") == "month"
+    assert date_column_for("strat_plan_monthly") == "month"
+    assert date_column_for("strat_market_monthly") == "month"
+    assert date_column_for("strat_reputation_monthly") == "month"
+    assert date_column_for("tabla_fuera_de_contrato") == "date"
+
+
+def test_date_health_check_queries_month_column_for_strategic_tables():
+    """El chequeo de salud no asume ``date``: pregunta ``month`` en la capa estratégica."""
+    from src.etl.mongo_to_clickhouse.reports import run_date_health_checks
+
+    class _RecordingClient:
+        def __init__(self) -> None:
+            self.sqls: list[str] = []
+
+        def query(self, sql: str):
+            self.sqls.append(sql)
+            return type("R", (), {"result_rows": [[5, 0, "2026-08-01", "2026-08-31"]]})()
+
+    client = _RecordingClient()
+    checks = run_date_health_checks(
+        client, "hoteldata", ("strat_hotel_monthly", "kpi_booking_daily")
+    )
+    assert "min(month)" in client.sqls[0] and "countIf(month =" in client.sqls[0]
+    assert "min(date)" in client.sqls[1] and "countIf(date =" in client.sqls[1]
+    assert checks["ok"] is True
+    assert checks["tables"]["strat_hotel_monthly"]["state"] == "ok"
+
+
 @pytest.mark.integration
 def test_reputation_analytics_filters_by_explicit_date_range():
     """El endpoint de reputación acepta date_from/date_to y filtra por ambos límites."""
-    from src.app.modules.reviews.service.lifecycle.reports import get_reputation_analytics
+    from src.app.modules.reviews.service.lifecycle.reports import (
+        get_reputation_analytics,
+    )
 
     try:
         result = get_reputation_analytics(date_from="2026-07-24", date_to="2026-07-24")
@@ -286,9 +569,33 @@ def test_reputation_analytics_filters_by_explicit_date_range():
     assert empty["rows"] == []
 
 
+def test_reputation_analytics_default_days_does_not_crash():
+    """Sin date_from/date_to, el rango por defecto (últimos N días) debe calcularse sin TypeError.
+
+    Regresión: local_today() devuelve str y se restaba un timedelta sin parsear.
+    """
+    from src.app.modules.reviews.service.lifecycle.reports import (
+        get_reputation_analytics,
+    )
+
+    # Sin date_from → usa `today - timedelta(days=days-1)`; antes reventaba con TypeError.
+    result = get_reputation_analytics(days=30)
+    assert isinstance(result["available"], bool)
+    assert result["days"] == 30
+    assert "date_from" in result and "date_to" in result
+    assert result["date_to"] >= result["date_from"]
+
+    # Con prop_id también (el path que usa el frontend con propiedad seleccionada).
+    result_prop = get_reputation_analytics(days=30, prop_id=1)
+    assert isinstance(result_prop["available"], bool)
+    assert result_prop["date_to"] >= result_prop["date_from"]
+
+
 def test_reputation_analytics_rejects_inverted_date_range():
     """date_to anterior a date_from es un error de contrato (400 en la ruta)."""
-    from src.app.modules.reviews.service.lifecycle.reports import get_reputation_analytics
+    from src.app.modules.reviews.service.lifecycle.reports import (
+        get_reputation_analytics,
+    )
 
     with pytest.raises(ValueError):
         get_reputation_analytics(date_from="2026-07-02", date_to="2026-07-01")
@@ -423,25 +730,26 @@ class _FakeCreateTablesClient:
 
 
 def test_ddl_includes_monthly_partition_and_ttl():
-    """Toda tabla KPI particiona por mes; el TTL aplica salvo funnel exento."""
-    from src.etl.mongo_to_clickhouse.load import TTL_EXEMPT_TABLES, TABLES_DDL, _ddl_for
+    """Toda tabla particiona por su columna de fecha (date/month); TTL salvo exentos."""
+    from src.etl.mongo_to_clickhouse.load import TABLES_DDL, TTL_EXEMPT_TABLES, _ddl_for
 
-    for table in TABLES_DDL:
+    for table, (columns_sql, order_by) in TABLES_DDL.items():
+        date_column = order_by.lstrip("(").split(",")[0].strip()
         ddl = _ddl_for(table, ttl_months=24)
-        assert "PARTITION BY toYYYYMM(date)" in ddl, table
+        assert f"PARTITION BY toYYYYMM({date_column})" in ddl, table
         if table in TTL_EXEMPT_TABLES:
             assert "TTL" not in ddl, table
         else:
-            assert "TTL date + INTERVAL 24 MONTH" in ddl, table
+            assert f"TTL {date_column} + INTERVAL 24 MONTH" in ddl, table
             assert ddl.rstrip().endswith("MONTH"), table
 
 
 def test_funnel_tables_are_exempt_from_ttl():
-    """Los funnel (snapshot estático legacy) no se purgan por retención.
+    """Los funnel no se purgan por retención.
 
-    Un TTL de meses borraría todo su historial 2012-2013 en el primer merge,
-    dejando los informes de funnel sin datos; la retención solo aplica a las
-    tablas operacionales que acumulan.
+    Un TTL de meses borraría su historial en el primer merge, dejando los
+    informes de funnel sin datos; la retención solo aplica a las tablas
+    operacionales que acumulan.
     """
     from src.etl.mongo_to_clickhouse.load import TTL_EXEMPT_TABLES, create_tables
 

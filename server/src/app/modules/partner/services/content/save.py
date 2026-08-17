@@ -14,6 +14,7 @@ from src.app.modules.partner.services._common import (
 from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.content.amenities import _amenity_category
 from src.app.modules.partner.services.content.queries import content_page_for_prop
+from src.app.modules.partner.services.content.special_requests import DEFAULT_SPECIAL_REQUESTS
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
 
@@ -113,6 +114,16 @@ def save_special_requests(
         seen.add(key)
         clean.append({"label": label, "unit_price": price, "flags": sorted(set(flags))})
 
+    # Tombstones: defaults que el hotel eliminó explícitamente. El read
+    # (special_requests_payload_for_prop) mergea los defaults por label; sin
+    # esto, borrar una petición default era ficticio: al guardar volvía.
+    sent_keys = {normalize_label(e["label"]).lower() for e in clean}
+    removed_requests = sorted(
+        normalize_label(d["label"])
+        for d in DEFAULT_SPECIAL_REQUESTS
+        if normalize_label(d["label"]).lower() not in sent_keys
+    )
+
     try:
         threshold = int(high_floor_from) if high_floor_from is not None else 3
     except (ValueError, TypeError):
@@ -123,7 +134,12 @@ def save_special_requests(
     document = db.hotel_content_pages.find_one_and_update(
         {"prop_id": prop_id},
         {
-            "$set": {"special_requests": clean, "high_floor_from": threshold, "updated_at": now_utc()},
+            "$set": {
+                "special_requests": clean,
+                "removed_requests": removed_requests,
+                "high_floor_from": threshold,
+                "updated_at": now_utc(),
+            },
             "$setOnInsert": {"created_at": now_utc()},
         },
         upsert=True,

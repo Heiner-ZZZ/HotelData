@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard, roleGuard } from './core/auth/auth.guard';
+import { BILLING_VERIFY } from './core/auth/permission.constants';
 
 export const routes: Routes = [
   {
@@ -162,6 +163,62 @@ export const routes: Routes = [
     path: 'admin',
     pathMatch: 'full',
     redirectTo: 'admin/global-settings'
+  },
+  {
+    // Informes estratégicos TAF14 — VISTA B (cartera del sistema). Ruta
+    // exclusiva de dirección (permiso reports.strategic.portfolio.read, que
+    // solo super_admin / admin_sistema / auditor_datos tienen); el dueño de
+    // hotel entra por /management/informes-estrategicos (Vista A). Separados
+    // por diseño: antes ambos botones compartían href y permiso, y el clic no
+    // re-navegaba o era rechazado por el roleGuard ("no me abren"). Cada
+    // informe IE-G0x es una interfaz propia (patrón de los tácticos
+    // compuestos, menú horizontal).
+    path: 'informes-estrategicos',
+    loadComponent: () =>
+      import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
+    canActivate: [authGuard, roleGuard],
+    data: {
+      requiredPermission: 'reports.strategic.portfolio.read',
+      allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos']
+    },
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'g01'
+      },
+      {
+        path: ':report',
+        loadComponent: () =>
+          import('./features/system-admin/pages/strategic-dashboard-page/strategic-dashboard-page').then(
+            (m) => m.StrategicDashboardPageComponent
+          )
+      }
+    ]
+  },
+  {
+    // Cola de conciliación de suscripciones — ruta top-level con gate de
+    // supervisor (billing.verify + allow-list), igual que el backend
+    // /api/admin/subscriptions. Vive fuera del shell /admin para que
+    // gerente_hotel pueda conciliar SIN heredar users.read ni el resto de
+    // pantallas admin (earnings, global-settings, geo-catalog, …).
+    path: 'admin/subscriptions',
+    loadComponent: () =>
+      import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
+    canActivate: [authGuard, roleGuard],
+    data: {
+      requiredPermission: BILLING_VERIFY,
+      allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel']
+    },
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/admin/pages/subscription-reconciliation-page/subscription-reconciliation-page').then(
+            (m) => m.SubscriptionReconciliationPageComponent
+          )
+      }
+    ]
   },
   {
     path: 'admin',

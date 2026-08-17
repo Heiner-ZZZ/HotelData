@@ -162,6 +162,35 @@
                 }
                 El precio final lo confirma el administrador al aprobar tu alojamiento.
               </p>
+
+              <div class="band-pay">
+                <p class="band-pay-title">
+                  <span class="material-symbols-outlined" aria-hidden="true">event</span>
+                  Vencimiento
+                </p>
+                <p class="band-pay-due">
+                  Tu primera factura vence
+                  <strong>{{ st.initialGraceDays }} días</strong> después de la aprobación.
+                </p>
+
+                <p class="band-pay-title">
+                  <span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span>
+                  Cómo pagarás
+                </p>
+                <ul class="band-pay-methods">
+                  @for (method of st.paymentMethods; track method.code) {
+                    <li class="band-pay-method">
+                      <span class="material-symbols-outlined" aria-hidden="true">{{ paymentMethodIcon(method.code) }}</span>
+                      <span>{{ method.label }}</span>
+                    </li>
+                  }
+                </ul>
+
+                <p class="band-pay-note">
+                  No conectamos con bancos: tú realizas el pago y subes el comprobante;
+                  un administrador lo concilia.
+                </p>
+              </div>
             </article>
           }
         </section>

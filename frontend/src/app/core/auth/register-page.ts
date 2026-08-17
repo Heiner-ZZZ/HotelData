@@ -2,13 +2,14 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, httpResource } from '@angular/common/http';
 import { getErrorStatus, getErrorMessage } from '../../shared/utils/http-error.util';
+import { TermsDialogComponent } from '../../shared/ui/terms-dialog/terms-dialog';
 import { API_CONFIG } from '../api/api.config';
 
 @Component({
   selector: 'app-register-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, TermsDialogComponent],
   templateUrl: './register-page.html',
   styleUrls: [
     '../../../styles/_auth-shell.scss',
@@ -64,7 +65,36 @@ export class RegisterPageComponent {
     display_name: [''],
     password: ['', [Validators.required, Validators.minLength(6)]],
     confirm_password: ['', [Validators.required]],
+    terms_accepted: [false, [Validators.requiredTrue]],
   });
+
+  // ── Términos y Condiciones (versión activa desde el backend, nunca hardcodeada) ──
+  readonly termsOpen = signal(false);
+  readonly termsResource = httpResource<{ version: number } | null>(
+    () => `${this.apiConfig.baseUrl}/public/legal?doc_type=terms_guest`,
+    {
+      parse: (dto) => {
+        const raw = dto as { version?: number } | null;
+        if (!raw || typeof raw.version !== 'number') return null;
+        return { version: raw.version };
+      },
+    },
+  );
+  readonly termsVersion = (): number | null =>
+    this.termsResource.value()?.version ?? null;
+  readonly termsLoading = (): boolean => this.termsResource.isLoading();
+  readonly termsError = (): boolean => !!this.termsResource.error();
+
+  openTerms(event?: Event): void {
+    // El botón vive dentro del <label> del checkbox: no debe alternarlo.
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.termsOpen.set(true);
+  }
+
+  closeTerms(): void {
+    this.termsOpen.set(false);
+  }
 
   constructor() {
     // Auto-retry when email becomes valid after toggle ON
@@ -160,7 +190,10 @@ export class RegisterPageComponent {
 
     this.http.post<{ ok: boolean; email: string; message: string }>(
       `${this.apiConfig.baseUrl}/auth/send-code`,
-      { email },
+      {
+        email,
+        accepted_terms_version: this.termsVersion() ?? undefined,
+      },
       { withCredentials: true }
     ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (response) => {
@@ -197,6 +230,13 @@ export class RegisterPageComponent {
       return;
     }
 
+    if (!this.registerForm.controls.terms_accepted.value) {
+      this.errorMessage.set(
+        'Debes aceptar los Términos y Condiciones para crear tu cuenta.'
+      );
+      return;
+    }
+
     const { username, email, display_name, password, confirm_password } = this.registerForm.getRawValue();
 
     if (password !== confirm_password) {
@@ -210,7 +250,14 @@ export class RegisterPageComponent {
 
     this.http.post<{ ok: boolean; requires_verification?: boolean; email?: string; message: string }>(
       `${this.apiConfig.baseUrl}/auth/register`,
-      { username, email, display_name, password, send_verification: false },
+      {
+        username,
+        email,
+        display_name,
+        password,
+        send_verification: false,
+        accepted_terms_version: this.termsVersion() ?? undefined,
+      },
       { withCredentials: true }
     ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (response) => {

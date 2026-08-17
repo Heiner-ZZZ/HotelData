@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from urllib.parse import quote
 
 from fastapi import Request
@@ -9,6 +10,7 @@ from src.app.modules.hotels.service.operational import (
     is_operational_gate_bypassed,
     non_operational_hotel,
 )
+from src.app.modules.subscriptions.service import sweep_due_subscriptions
 from src.app.security.approval import (
     approval_gate_code,
     is_approval_allowlisted,
@@ -23,6 +25,8 @@ from src.app.security.role_helpers import get_role_name
 from src.app.security.route_permissions import is_public_path
 from src.app.security.session import SESSION_COOKIE_NAME, get_current_user
 from src.database.connection import get_database
+
+logger = logging.getLogger(__name__)
 
 
 def _login_redirect(request: Request) -> RedirectResponse:
@@ -94,6 +98,17 @@ async def role_access_middleware(request: Request, call_next):
                 },
             )
         return _login_redirect(request)
+
+    # ── Lazy subscription sweep (Fase 5) ────────────────────────────────
+    # Sin cron: en cada request autenticado se evalúan renovaciones y gracia
+    # de impago (renews_at vencido → factura; impago agotado → suspended +
+    # is_operational=false). Best-effort: un fallo de Mongo no bloquea el
+    # request — el siguiente reintenta. Los hoteles suspendidos quedan
+    # bloqueados por el gate operativo de más abajo (is_operational=false).
+    try:
+        sweep_due_subscriptions(db)
+    except Exception:
+        logger.exception("sweep_due_subscriptions falló en middleware")
 
     # ── Approval gate (UX-1): non-approved owner sessions are restricted
     #    to the registration-status allowlist. Everything else → 403. ────

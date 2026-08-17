@@ -13,18 +13,10 @@
         </span>
         <span class="step-label">Detalles</span>
       </div>
-      <div class="step-line" [class.is-done]="step() === 'review' || step() === 'payment'"></div>
-      <div class="step-dot" [class.is-active]="step() === 'review'" [class.is-done]="step() === 'payment'">
-        <span class="step-number">
-          @if (step() === 'payment') { <span class="material-symbols-outlined">check</span> }
-          @else { 2 }
-        </span>
+      <div class="step-line" [class.is-done]="step() === 'review'"></div>
+      <div class="step-dot" [class.is-active]="step() === 'review'">
+        <span class="step-number">2</span>
         <span class="step-label">Revisar</span>
-      </div>
-      <div class="step-line" [class.is-done]="step() === 'payment'"></div>
-      <div class="step-dot" [class.is-active]="step() === 'payment'">
-        <span class="step-number">3</span>
-        <span class="step-label">Pago</span>
       </div>
     </div>
   </div>
@@ -157,6 +149,40 @@
           </div>
         }
 
+        @if (preview()?.depositRequired) {
+          <div class="deposit-section">
+            <div class="deposit-header">
+              <span class="material-symbols-outlined">savings</span>
+              <div>
+                <strong>Depósito mínimo requerido</strong>
+                <p>
+                  Esta propiedad exige un depósito del {{ preview()?.depositPercent }}%
+                  ({{ preview()?.minDepositAmount | currency:preview()?.currency || 'USD' }}) para confirmar la reserva.
+                  Se registra como pago real contra el turno de caja activo.
+                </p>
+              </div>
+            </div>
+            <div class="deposit-fields">
+              <div class="deposit-field">
+                <label for="deposit-method">Método de pago</label>
+                <select id="deposit-method" [value]="depositMethod()" (change)="depositMethod.set($any($event.target).value)">
+                  <option value="cash">Efectivo</option>
+                  <option value="card">Tarjeta</option>
+                  <option value="transfer">Transferencia</option>
+                  <option value="other">Otro</option>
+                </select>
+              </div>
+              <div class="deposit-field">
+                <label for="deposit-reference">Referencia (opcional)</label>
+                <input id="deposit-reference" type="text"
+                  [value]="depositReference()"
+                  (input)="depositReference.set($any($event.target).value)"
+                  placeholder="Nº de comprobante" />
+              </div>
+            </div>
+          </div>
+        }
+
         <div class="form-footer">
           <button type="button" class="btn-secondary" (click)="backToDetails()">
             <span class="material-symbols-outlined">arrow_back</span> Editar datos
@@ -165,98 +191,7 @@
             @if (submitting()) {
               <span class="material-symbols-outlined loading-spin">sync</span> Enviando...
             } @else {
-              <span class="material-symbols-outlined">lock</span> Continuar al pago
-            }
-          </button>
-        </div>
-      </div>
-    }
-
-    @if (step() === 'payment') {
-      <div class="payment-container">
-        <div class="payment-header">
-          <span class="material-symbols-outlined">credit_card</span>
-          <h2>Pago de la reserva</h2>
-        </div>
-
-        @if (preview()?.depositRequired) {
-          <div class="deposit-notice">
-            <span class="material-symbols-outlined">lock</span>
-            <div>
-              <strong>Se requiere garantía con tarjeta</strong>
-              @if (preview()?.minDepositAmount && preview()!.minDepositAmount! > 0) {
-                <p>Para confirmar esta reserva, se requiere un depósito del <strong>{{ preview()?.depositPercent }}%</strong> ({{ preview()?.minDepositAmount | currency:preview()?.currency || 'USD' }}). Se cargará a su tarjeta como garantía.</p>
-              } @else {
-                <p>Este hotel requiere una tarjeta de crédito válida como garantía para confirmar la reserva, aunque no se realice un cargo inmediato.</p>
-              }
-            </div>
-          </div>
-        }
-
-        <div class="payment-summary">
-          <div class="ps-row">
-            <span>{{ selectedHotel()?.label || 'Hotel' }}</span>
-            <span>{{ preview()?.totalPrice | currency:preview()?.currency || 'USD' }}</span>
-          </div>
-        </div>
-
-        <div class="card-form">
-          <div class="card-field card-number-field">
-            <label>Número de tarjeta</label>
-            <div class="card-number-input-wrap">
-              <input type="text" inputmode="numeric" placeholder="0000 0000 0000 0000"
-                [value]="cardNumber()" (input)="formatCardNumber($any($event.target).value)" maxlength="19" />
-              @if (detectedCardBrand()) {
-                <span class="card-brand-badge">{{ detectedCardBrand() }}</span>
-              }
-            </div>
-          </div>
-
-          <div class="card-field">
-            <label>Titular de la tarjeta</label>
-            <input type="text" placeholder="Nombre como aparece en la tarjeta"
-              [value]="cardHolder()" (input)="cardHolder.set($any($event.target).value)" />
-          </div>
-
-          <div class="card-row">
-            <div class="card-field">
-              <label>Expiración</label>
-              <input type="text" inputmode="numeric" placeholder="MM/YY"
-                [value]="cardExpiry()" (input)="formatExpiry($any($event.target).value)" maxlength="5" />
-            </div>
-            <div class="card-field">
-              <label>CVV</label>
-              <input type="text" inputmode="numeric" placeholder="123"
-                [value]="cardCvv()" (input)="cardCvv.set($any($event.target).value.replace(/\D/g,'').slice(0,4))" maxlength="4" />
-            </div>
-          </div>
-
-          @if (paymentError()) {
-            <div class="payment-error">
-              <span class="material-symbols-outlined">error</span>
-              {{ paymentError() }}
-            </div>
-          }
-
-          @if (paymentResult()) {
-            <div class="payment-success">
-              <span class="material-symbols-outlined">check_circle</span>
-              <span>Pago aprobado — {{ paymentResult()?.cardBrand }} terminada en {{ paymentResult()?.cardLast4 }}</span>
-            </div>
-          }
-        </div>
-
-        <div class="form-footer">
-          <button type="button" class="btn-secondary" (click)="step.set('review')" [disabled]="processingPayment()">
-            <span class="material-symbols-outlined">arrow_back</span> Volver
-          </button>
-          <button type="button" class="btn-primary" (click)="processPayment()" [disabled]="processingPayment() || submitting()">
-            @if (processingPayment()) {
-              <span class="material-symbols-outlined loading-spin">sync</span> Procesando...
-            } @else if (submitting()) {
-              <span class="material-symbols-outlined loading-spin">sync</span> Creando reserva...
-            } @else {
-              <span class="material-symbols-outlined">lock</span> Pagar {{ preview()?.totalPrice | currency:preview()?.currency || 'USD' }}
+              <span class="material-symbols-outlined">check</span> Confirmar reserva
             }
           </button>
         </div>

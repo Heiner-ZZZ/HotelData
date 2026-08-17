@@ -35,6 +35,8 @@ def notify_registration_approved(
     hotel_name: str,
     plan_label: str,
     monthly_usd: float,
+    due_date=None,
+    payment_methods=None,
 ) -> None:
     try:
         base_url = (get_settings().app_base_url or "https://hoteldata.app").rstrip("/")
@@ -43,6 +45,8 @@ def notify_registration_approved(
             plan_label=plan_label,
             monthly_usd=monthly_usd,
             base_url=base_url,
+            due_date=due_date,
+            payment_methods=payment_methods,
         )
         send_email(email, SUBJECT_APPROVED, html)
     except Exception:

@@ -235,3 +235,93 @@ strong {
   }
 }
 
+/* ── Depósito registrado (pago real vía billing, shift-gated) ── */
+
+.deposit-confirm-card {
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deposit-confirm-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+
+  > .material-symbols-outlined {
+    font-size: 1.4rem;
+    color: var(--success);
+    flex-shrink: 0;
+  }
+}
+
+.deposit-confirm-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.deposit-confirm-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+}
+
+.deposit-confirm-amount {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.deposit-confirm-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+  }
+
+  &.confirmed {
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+    color: var(--success);
+  }
+
+  &.pending {
+    background: color-mix(in srgb, var(--warning) 15%, transparent);
+    color: var(--warning);
+  }
+}
+
+.deposit-confirm-details {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  border-top: 1px solid color-mix(in srgb, var(--success) 20%, transparent);
+  padding-top: 0.65rem;
+}
+
+.deposit-confirm-method,
+.deposit-confirm-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+}
+

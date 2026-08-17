@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  HostListener,
   input,
   output,
   signal,
@@ -47,6 +48,19 @@ export class DateRangePickerComponent {
   ];
 
   readonly dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  /** Escape cierra el popover (WCAG 2.1.1 — sin trampa de teclado). */
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isOpen()) this.close();
+  }
+
+  /** Nombre accesible completo de un día: "Vie 15 de Agosto de 2026" en vez
+   *  de solo el número (WCAG 4.1.2 — los botones de día deben autodescribirse). */
+  dayLabel(day: CalendarDay): string {
+    const weekday = this.dayNames[(day.date.getDay() + 6) % 7];
+    return `${weekday} ${day.day} de ${this.monthNames[day.month]} de ${day.year}`;
+  }
 
   readonly dateLabel = computed(() => {
     const s = this.startDate();

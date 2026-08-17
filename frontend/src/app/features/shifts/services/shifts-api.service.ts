@@ -32,6 +32,9 @@ export interface ShiftInfo {
   closed_at: string | null;
   transactions: ShiftTransaction[];
   payment_breakdown?: PaymentBreakdown;
+  /** Pagos confirmados estampados con este shift_id (depósitos/billing) que
+   *  el drawer unificado agrega a las transacciones del array. */
+  stamped_payments_count?: number;
   deposit_total?: number;
   deposits?: DepositRecord[];
   cash_difference?: number;

@@ -14,6 +14,14 @@
   border-radius: 6px;
 
   &.income { background: rgba(var(--accent), 0.03); }
+  /* Pagos estampados (depósitos/billing) sumados por el drawer unificado:
+     son del SISTEMA, no transacciones del array — indigo lo distingue. */
+  &.stamped {
+    background: color-mix(in srgb, var(--indigo) 7%, transparent);
+
+    .sc-ar-label { color: var(--indigo-strong); }
+    .sc-ar-value { color: var(--indigo-strong); }
+  }
   &.total-line {
     margin-top: 0.5rem;
     padding: 0.6rem 0.5rem;

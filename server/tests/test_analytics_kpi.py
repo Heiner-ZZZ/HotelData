@@ -195,13 +195,23 @@ def test_booking_dashboard_filters_by_date_range_real_clickhouse():
 
 @pytest.mark.integration
 def test_funnel_dashboard_counts_real_clickhouse():
-    """Integración: kpi_funnel_daily expone las 800K búsquedas del dataset."""
+    """Integración: kpi_funnel_daily se alimenta de tablas OPERATIVAS
+    (click_events + booking_orders), nunca del dataset sintético GA03.
+
+    La tabla ya no contiene las 800K búsquedas de la fact: debe reflejar los
+    clics/reservas reales y no exponer ningún label del funnel 2012-2013.
+    """
     from src.app.modules.analytics.kpi_reports import get_funnel_dashboard
 
     try:
-        result = get_funnel_dashboard(date_from="2012-11-01", date_to="2013-06-30")
+        result = get_funnel_dashboard(date_from="2026-06-25", date_to="2026-08-21")
     except Exception as exc:  # pragma: no cover
         pytest.skip(f"ClickHouse no disponible: {exc}")
     assert result["available"] is True
-    assert result["summary"]["searches"] == 800000
-    assert result["total"] == 31083
+    assert result["summary"]["searches"] < 1000  # datos reales, no las 800K sintéticas
+    assert result["total"] > 0
+    # Ninguna fila puede venir del funnel sintético 2012-2013.
+    assert not any(
+        str(row.get("date") or "").startswith(("2012", "2013"))
+        for row in result["rows"]
+    )

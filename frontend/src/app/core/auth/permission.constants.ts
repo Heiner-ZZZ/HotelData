@@ -32,6 +32,8 @@ export const SHIFTS_MANAGE = 'shifts.manage';
 export const SHIFTS_CREATE = 'shifts.create';
 /** Cerrar turno + realizar depósito / arqueo de caja. */
 export const SHIFTS_UPDATE = 'shifts.update';
+/** Ver estado y detalles de turnos de caja (gate del chip del top-nav). */
+export const SHIFTS_READ = 'shifts.read';
 
 // ── Lost & Found (server: server/src/app/modules/lost_and_found/routes.py) ──
 /** Administrar objetos perdidos — acceso total. */
@@ -52,6 +54,10 @@ export const HOTEL_MANAGE_ROLES = 'hotel.manage_roles';
 // ── Facturación (server: server/src/app/modules/billing/routes.py) ──
 /** Autorizar cierre de folio con saldo por excepción (write-off / cortesía / settlement externo) — supervisor. */
 export const BILLING_WRITE_OFF_APPROVE = 'billing.write_off.approve';
+
+// ── Suscripciones (server: server/src/app/modules/subscriptions/routes_admin.py) ──
+/** Conciliar comprobantes de suscripción (verify/reject) y gestionar suscripciones (override/cancel) — supervisor. */
+export const BILLING_VERIFY = 'billing.verify';
 
 // ── Informes (server: server/src/app/modules/reports/routes.py + reports.* codes) ──
 /** Descargar/exportar informes (CSV/XLSX/PDF) — global a lo que ya puedes leer. */
@@ -85,6 +91,7 @@ export type PermissionCode =
   | typeof SHIFTS_MANAGE
   | typeof SHIFTS_CREATE
   | typeof SHIFTS_UPDATE
+  | typeof SHIFTS_READ
   | typeof LOST_FOUND_MANAGE
   | typeof LOST_FOUND_CREATE
   | typeof LOST_FOUND_READ
@@ -92,6 +99,7 @@ export type PermissionCode =
   | typeof LOST_FOUND_DELETE
   | typeof HOTEL_MANAGE_ROLES
   | typeof BILLING_WRITE_OFF_APPROVE
+  | typeof BILLING_VERIFY
   | typeof REPORTS_DOWNLOAD
   | typeof HR_PORTAL_READ
   | typeof HR_DIRECTORY_READ

@@ -11,7 +11,6 @@ Design principles:
 
 from __future__ import annotations
 
-
 # ── Config ──
 
 _BODY_CSS = (
@@ -280,11 +279,23 @@ def registration_approved(
     plan_label: str,
     monthly_usd: float,
     base_url: str = "",
+    due_date=None,
+    payment_methods=None,
 ) -> str:
     """Full HTML for the owner-approval email.
 
     Subject (set by the caller): 'Tu alojamiento fue aprobado — HotelData'.
+    When ``due_date`` is present, a "Primera factura" block is appended with
+    the payment due date and the manual payment methods (no gateway).
     """
+    payment_block = ""
+    if due_date is not None:
+        rows = detail_row("Vence", due_date.strftime("%d %b %Y"))
+        methods = payment_methods or []
+        if methods:
+            rows += detail_row("Cómo pagar", ", ".join(str(m) for m in methods))
+        payment_block = detail_table("Primera factura", rows)
+
     body_content = (
         f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
         f'¡Buenas noticias!</p>\n'
@@ -293,6 +304,7 @@ def registration_approved(
         f'iniciar sesión y gestionar tu hotel desde el panel de HotelData.\n'
         f'</p>\n'
         f'{detail_table("Plan asignado", detail_row("Plan", plan_label) + detail_row("Mensualidad", f"${monthly_usd:,.0f} USD"))}\n'
+        f'{payment_block}'
         f'<p style="margin:0 0 16px;font-size:13px;color:#6f797d;line-height:1.5">'
         f'Accedes como gerente del hotel con todos los permisos de administración.'
         f'</p>\n'
@@ -373,6 +385,168 @@ def registration_changes_requested(
     )
     return base_layout(
         headline="Revisa tu registro",
+        body_content=body_content,
+        footer_note="Este es un mensaje automático de HotelData.",
+        logo_url=base_url,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────
+# Subscription notifications (PLAN_SUSCRIPCION_Y_PAGOS.md §8)
+# ─────────────────────────────────────────────────────────────────
+
+
+def subscription_payment_received(
+    hotel_name: str,
+    amount: float,
+    reference: str = "",
+    base_url: str = "",
+) -> str:
+    """Full HTML for the owner after declaring a payment (pay).
+
+    Subject (set by the caller): 'Recibimos tu comprobante de pago —
+    HotelData'. The money never moves through the system — a human verifies it.
+    """
+    rows = detail_row("Hotel", hotel_name) + detail_row("Monto declarado", f"${amount:,.2f} USD")
+    if reference:
+        rows += detail_row("Referencia", reference)
+    body_content = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola,</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  Recibimos tu comprobante de pago para <strong>{hotel_name}</strong>. '
+        f'Lo verificaremos en un plazo máximo de 24 horas hábiles.\n'
+        f'</p>\n'
+        f'{detail_table("Pago declarado", rows)}\n'
+        f'{cta_button(f"{base_url.rstrip('/')}/management/subscription", "Ver mi suscripción")}'
+    )
+    return base_layout(
+        headline="Comprobante recibido",
+        body_content=body_content,
+        footer_note="Este es un mensaje automático de HotelData.",
+        logo_url=base_url,
+    )
+
+
+def subscription_payment_verified(
+    hotel_name: str,
+    base_url: str = "",
+) -> str:
+    """Full HTML for the owner when an admin verifies the payment.
+
+    Subject (set by the caller): 'Tu pago fue conciliado — HotelData'.
+    """
+    body_content = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola,</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  Tu pago fue conciliado. La suscripción de <strong>{hotel_name}</strong> '
+        f'está activa y tu hotel continúa operando con normalidad.\n'
+        f'</p>\n'
+        f'{cta_button(f"{base_url.rstrip('/')}/management/subscription", "Ver mi suscripción")}'
+    )
+    return base_layout(
+        headline="Pago conciliado",
+        body_content=body_content,
+        footer_note="Este es un mensaje automático de HotelData.",
+        logo_url=base_url,
+    )
+
+
+def subscription_payment_rejected(
+    hotel_name: str,
+    reason: str,
+    base_url: str = "",
+) -> str:
+    """Full HTML for the owner when an admin rejects the proof.
+
+    The admin's reason is never generic — always rendered. Subject (set by the
+    caller): 'Tu comprobante fue rechazado — HotelData'.
+    """
+    reason_box = (
+        f'<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px">\n'
+        f'  <tr><td style="padding:14px 16px;border:1px solid #e0e3e5;background:#fbf7f5;'
+        f'font-size:13px;color:#8a4b2d;line-height:1.5">{reason}</td></tr>\n'
+        f'</table>'
+    )
+    body_content = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola,</p>\n'
+        f'<p style="margin:0 0 16px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  No pudimos conciliar el comprobante de <strong>{hotel_name}</strong>. '
+        f'Motivo:\n'
+        f'</p>\n'
+        f'{reason_box}\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Vuelve a declarar el pago con la referencia correcta para reactivar tu '
+        f'suscripción.'
+        f'</p>\n'
+        f'{cta_button(f"{base_url.rstrip('/')}/management/subscription", "Subir comprobante")}'
+    )
+    return base_layout(
+        headline="Comprobante rechazado",
+        body_content=body_content,
+        footer_note="Este es un mensaje automático de HotelData.",
+        logo_url=base_url,
+    )
+
+
+def subscription_overdue(
+    hotel_name: str,
+    amount: float,
+    due_date=None,
+    base_url: str = "",
+) -> str:
+    """Full HTML for the owner when a subscription invoice is overdue.
+
+    Subject (set by the caller): 'Tu factura de suscripción venció — HotelData'.
+    """
+    rows = detail_row("Hotel", hotel_name) + detail_row("Monto vencido", f"${amount:,.2f} USD")
+    if due_date is not None:
+        rows += detail_row("Venció el", due_date.strftime("%d %b %Y"))
+    body_content = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola,</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  La factura de <strong>{hotel_name}</strong> venció sin pago. '
+        f'Regulariza el pago para evitar la suspensión operativa del hotel.\n'
+        f'</p>\n'
+        f'{detail_table("Factura vencida", rows)}\n'
+        f'{cta_button(f"{base_url.rstrip('/')}/management/subscription", "Regularizar pago")}'
+    )
+    return base_layout(
+        headline="Factura de suscripción vencida",
+        body_content=body_content,
+        footer_note="Este es un mensaje automático de HotelData.",
+        logo_url=base_url,
+    )
+
+
+def subscription_suspended(
+    hotel_name: str,
+    amount: float,
+    base_url: str = "",
+) -> str:
+    """Full HTML for the owner when the hotel is suspended for non-payment.
+
+    Subject (set by the caller): 'Tu hotel fue suspendido por impago —
+    HotelData'.
+    """
+    body_content = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola,</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  El hotel <strong>{hotel_name}</strong> quedó suspendido por impago '
+        f'(adeudo de <strong>${amount:,.2f} USD</strong>). Está fuera de operaciones '
+        f'hasta que regularices el pago.\n'
+        f'</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Regulariza tu pago y quedará reactivado de inmediato tras la conciliación.'
+        f'</p>\n'
+        f'{cta_button(f"{base_url.rstrip('/')}/management/subscription", "Regularizar pago")}'
+    )
+    return base_layout(
+        headline="Hotel suspendido por impago",
         body_content=body_content,
         footer_note="Este es un mensaje automático de HotelData.",
         logo_url=base_url,

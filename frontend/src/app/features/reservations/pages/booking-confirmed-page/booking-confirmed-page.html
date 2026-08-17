@@ -17,27 +17,28 @@
         </div>
       </div>
 
-      @if (vm.transactionId) {
-        <div class="transaction-card">
-          <div class="txn-header">
-            <span class="material-symbols-outlined txn-icon">receipt_long</span>
-            <div>
-              <span class="txn-label">Transacción</span>
-              <code class="txn-id">{{ vm.transactionId }}</code>
+      @if (vm.deposit) {
+        <div class="deposit-confirm-card">
+          <div class="deposit-confirm-header">
+            <span class="material-symbols-outlined">savings</span>
+            <div class="deposit-confirm-main">
+              <span class="deposit-confirm-label">Depósito registrado</span>
+              <strong class="deposit-confirm-amount">{{ vm.deposit.amount | currency:vm.currency }}</strong>
             </div>
+            <span class="deposit-confirm-status" [class.confirmed]="vm.deposit.status === 'confirmed'" [class.pending]="vm.deposit.status !== 'confirmed'">
+              <span class="material-symbols-outlined">{{ vm.deposit.status === 'confirmed' ? 'verified' : 'schedule' }}</span>
+              {{ vm.deposit.status === 'confirmed' ? 'Confirmado' : 'Pendiente' }}
+            </span>
           </div>
-          @if (vm.cardLast4) {
-            <div class="txn-details">
-              <span class="txn-card">
-                <span class="material-symbols-outlined">credit_card</span>
-                Tarjeta ···· {{ vm.cardLast4 }}
-              </span>
-              <span class="txn-status" [class.paid]="vm.paymentStatus === 'paid'" [class.pending]="vm.paymentStatus !== 'paid'">
-                <span class="material-symbols-outlined">{{ vm.paymentStatus === 'paid' ? 'verified' : 'schedule' }}</span>
-                {{ vm.paymentStatus === 'paid' ? 'Pago procesado' : 'Pago pendiente' }}
-              </span>
-            </div>
-          }
+          <div class="deposit-confirm-details">
+            <span class="deposit-confirm-method">
+              <span class="material-symbols-outlined">payments</span>
+              {{ depositMethodLabel(vm.deposit.method) }}
+            </span>
+            @if (vm.deposit.reference) {
+              <span class="deposit-confirm-ref">Ref. {{ vm.deposit.reference }}</span>
+            }
+          </div>
         </div>
       }
 
@@ -112,15 +113,15 @@
             <span class="step-number">3</span>
             <span>Podrás completar los datos de los huéspedes por habitación antes del check-in.</span>
           </li>
-          @if (vm.paymentStatus !== 'paid') {
+          @if (vm.deposit) {
             <li>
               <span class="step-number">4</span>
-              <span>Realiza el pago desde la sección de facturación para garantizar tu estancia.</span>
+              <span>Tu depósito de {{ vm.deposit.amount | currency:vm.currency }} quedó registrado contra el turno de caja activo. Al confirmarse la reserva, se generará tu factura.</span>
             </li>
           } @else {
             <li>
               <span class="step-number">4</span>
-              <span>Tu pago ha sido procesado. Al confirmarse la reserva, se generará tu factura automáticamente.</span>
+              <span>El pago de tu estancia se realiza en el hotel o desde la sección de facturación.</span>
             </li>
           }
         </ul>

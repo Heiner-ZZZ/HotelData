@@ -50,7 +50,6 @@ NAVIGATION_CATALOG = [
     {"label": "Monitoreo",      "href": "/system/monitoring",   "icon": "monitoring",       "required_permission": "monitoring.read", "sort_order": 104},
     {"label": "Notificaciones",  "href": "/system/notifications","icon": "notifications",    "required_permission": "settings.read", "sort_order": 105},
     {"label": "Monedas",        "href": "/system/currencies",   "icon": "payments",         "required_permission": "settings.read", "sort_order": 106},
-    {"label": "BSC",            "href": "/system/bsc",          "icon": "bar_chart",        "required_permission": "dashboard.read","sort_order": 107},
 
     # ── Management / Operations (200) ──
     {"label": "Dashboard",      "href": "/management",           "icon": "dashboard",       "required_permission": "dashboard.read", "sort_order": 201},

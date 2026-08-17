@@ -59,6 +59,7 @@ def create_booking(
     *,
     manual_reservation: bool = False,
     shift_id: str | None = None,
+    deposit_amount: float | None = None,
 ) -> dict[str, Any]:
     ensure_reservation_collections()
     errors = validate_reservation_input(payload)
@@ -150,11 +151,15 @@ def create_booking(
     season_id = payload.season_id or _resolve_season_id(payload.prop_id, payload.check_in_date)
 
     # ── Minimum deposit validation ──
+    # ``deposit_amount`` es el depósito REAL registrado en la misma llamada
+    # (billing ``create_payment`` con shift_id) — la política de pago por
+    # adelantado solo se satisface con dinero efectivamente registrado.
     deposit_error = _validate_deposit(
         payload.prop_id, total_price,
         season_id=season_id, room_type_id=payload.room_type_id,
         rate_plan_id=payload.rate_plan_id,
         manual_reservation=manual_reservation,
+        deposit_amount=deposit_amount,
     )
     if deposit_error:
         raise ValueError(deposit_error)
@@ -164,11 +169,13 @@ def create_booking(
     transaction_id = generate_prefixed_id("TXN")
     created_at = utc_now()
     booking_status = "confirmed" if manual_reservation else "pending"
+    # payment_status nace SIEMPRE "pending": un pago real se registra vía
+    # billing (``create_payment``) y queda en ``reservation_payments`` con su
+    # shift_id. El stub legacy de tarjeta (``/api/payments/process``) marcaba
+    # la reserva como "paid" sin persistir ningún pago — eliminado (2026-08).
     payment_status = "pending"
     payment_method = payload.payment_method
     card_last4 = payload.card_last4
-    if payment_method or card_last4:
-        payment_status = "paid"
     # Immutable sold-price snapshot. Downstream folio/invoice logic must use
     # this evidence rather than re-reading a mutable rate calendar.
     rate_plan_name_snapshot = None

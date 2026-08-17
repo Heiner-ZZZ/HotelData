@@ -511,6 +511,33 @@
             </section>
           }
 
+          <!-- ═══ Deposit gate banner (409: política de depósito no cubierta) ═══ -->
+          @if (depositGate(); as gate) {
+            <div class="ciw-deposit-banner" role="alert" aria-live="assertive">
+              <span class="material-symbols-outlined ciw-deposit-banner-icon" aria-hidden="true">account_balance_wallet</span>
+              <div class="ciw-deposit-banner-body">
+                <strong>Depósito mínimo no cubierto</strong>
+                <p>
+                  La política de esta propiedad exige el {{ gate.percent }}% de la estancia
+                  ({{ currency() }} {{ gate.minDeposit.toFixed(2) }}) como depósito para el check-in.
+                  Llevás {{ currency() }} {{ gate.paid.toFixed(2) }} pagados — faltan
+                  <strong class="ciw-deposit-banner-missing">{{ currency() }} {{ gate.missing.toFixed(2) }}</strong>.
+                  Registrá el cobro en Facturación (con turno de caja activo) y volvé a completar el check-in.
+                </p>
+                <a class="ciw-deposit-banner-link"
+                  [routerLink]="['/management/billing/folios', vm.booking_id]"
+                  [queryParams]="{prop_id: vm.prop_id}">
+                  <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+                  Registrar cobro en Facturación
+                </a>
+              </div>
+              <button type="button" class="ciw-deposit-banner-close" aria-label="Cerrar aviso de depósito"
+                (click)="depositGate.set(null)">
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+              </button>
+            </div>
+          }
+
           <!-- ═══ Error display ═══ -->
           @if (completeError()) {
             <div class="ciw-toast error" (click)="completeError.set('')">

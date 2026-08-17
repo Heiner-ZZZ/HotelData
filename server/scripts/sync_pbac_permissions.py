@@ -160,7 +160,11 @@ def sync_global_roles(
 # ── 3. navigation (árbol de navegación — 4ª superficie) ────────────────
 
 # Campos del nodo que el sync mantiene alineados con NAVIGATION_CATALOG.
-_NAV_FIELDS = ("label", "icon", "node_type", "parent_slug", "position", "permission_code", "href")
+# ``horizontal_menu`` es el flag que convierte un container de informes en un
+# link directo (sin desplegable) en el sidebar — sin él, un container nuevo
+# creado por el sync se renderiza como sub-sección expandible, distinto a los
+# sembrados por ``seed_navigation`` (que copia el item completo).
+_NAV_FIELDS = ("label", "icon", "node_type", "parent_slug", "position", "permission_code", "href", "horizontal_menu")
 
 
 def _nav_changed_fields(existing: dict[str, Any], catalog_item: dict[str, Any]) -> list[str]:

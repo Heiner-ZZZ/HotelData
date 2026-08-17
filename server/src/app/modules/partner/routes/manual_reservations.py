@@ -5,7 +5,11 @@ from fastapi.responses import JSONResponse
 
 from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.services import list_partner_hotels
-from src.app.modules.reception import get_active_shift_id
+from src.app.modules.reception import (
+    ShiftExpiredError,
+    ensure_shift_not_expired,
+    get_active_shift_id,
+)
 from src.app.modules.reservations.service.lifecycle import create_booking
 from src.app.modules.reservations.service.queries import list_bookings
 from src.app.modules.reservations.service.validation import build_reservation_input
@@ -18,10 +22,21 @@ NO_ACTIVE_SHIFT_MSG = (
 
 
 def _require_active_shift(prop_id: int) -> str:
-    """Return the active cash-shift id for ``prop_id`` or raise HTTP 409."""
+    """Return the active cash-shift id for ``prop_id`` or raise HTTP 409.
+
+    Mirrors the front-desk gate (billing / check-in-out / reception
+    reservations): a manual reservation must be attributable to an open
+    NON-expired shift. Without this check, an expired shift still allowed
+    the booking and stamped it with the expired shift id, polluting the
+    close-of-shift reconciliation.
+    """
     shift_id = get_active_shift_id(prop_id)
     if shift_id is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=NO_ACTIVE_SHIFT_MSG)
+    try:
+        ensure_shift_not_expired(prop_id)
+    except ShiftExpiredError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     return shift_id
 
 

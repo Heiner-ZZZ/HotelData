@@ -81,7 +81,13 @@ def _capture_code(monkeypatch) -> dict:
     return captured
 
 
-async def _complete_onboarding(client, db, monkeypatch, *, email: str, username: str) -> dict:
+async def _complete_onboarding(
+    client, db, monkeypatch, *,
+    email: str,
+    username: str,
+    billing_cycle: str = "monthly",
+    payment_method: str | None = None,
+) -> dict:
     """send-code + confirm-code → devuelve el dueño creado y su prop_id."""
     _seed_onboarding_catalogs(db)
     captured = _capture_code(monkeypatch)
@@ -98,7 +104,10 @@ async def _complete_onboarding(client, db, monkeypatch, *, email: str, username:
         "currency": "USD",
         "total_rooms": 20,
         "description": "Hotel de prueba",
+        "billing_cycle": billing_cycle,
     }
+    if payment_method:
+        payload["payment_method"] = payment_method
     resp = await client.post("/api/auth/register-property/send-code", json=payload)
     assert resp.status_code == 200, resp.text
     assert "code" in captured, "el código de verificación no se capturó"
@@ -216,6 +225,31 @@ async def test_queue_detail_returns_full_registration(
 
 
 # ── Approve ─────────────────────────────────────────────────────────────
+
+
+async def test_approve_uses_onboarding_billing_cycle_and_method(
+    client, db, monkeypatch, admin_user
+):
+    """Fase 6 (§14.1): el ciclo y método elegidos en el onboarding llegan a la suscripción."""
+    await _login_super_admin(client)
+    _seed_permission_catalog(db)
+    _seed_gerente_template(db)
+    result = await _complete_onboarding(
+        client, db, monkeypatch,
+        email="ciclo@nuevo.hotel",
+        username="ciclo_dueño",
+        billing_cycle="annual",
+        payment_method="bank_transfer",
+    )
+    prop_id = result["prop_id"]
+
+    resp = await client.post(f"/api/admin/property-registrations/{prop_id}/approve")
+    assert resp.status_code == 200, resp.text
+
+    sub = db.subscriptions.find_one({"prop_id": prop_id})
+    assert sub is not None
+    assert sub["billing_cycle"] == "annual"
+    assert sub["payment_method"] == "bank_transfer"
 
 
 async def test_approve_activates_hotel_and_owner(client, db, monkeypatch, admin_user):

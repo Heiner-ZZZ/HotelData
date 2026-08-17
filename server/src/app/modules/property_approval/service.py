@@ -20,7 +20,8 @@ instead of an approved hotel without a manager.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
 from typing import Any
 
 from src.app.core.outbox import enqueue_audit_log
@@ -36,6 +37,9 @@ from src.app.modules.property_approval.notifications import (
     notify_registration_rejected,
 )
 from src.app.modules.property_approval.pricing import suggested_band_for
+from src.app.modules.subscriptions.payment_methods import available_payment_methods
+
+logger = logging.getLogger(__name__)
 
 PENDING = "pending_approval"
 APPROVED = "approved"
@@ -52,7 +56,7 @@ APPROVAL_ENTITY = "hotel_registration"
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _audit_registration(
@@ -151,6 +155,36 @@ def get_registration(db, prop_id: int) -> dict[str, Any] | None:
             {"username": 1, "email": 1, "display_name": 1},
         )
     return {**_registration_summary(hotel), **_owner_summary(owner)}
+
+
+def _ensure_subscription_on_approve(
+    db,
+    *,
+    hotel: dict[str, Any],
+    owner: dict[str, Any],
+    band: dict[str, Any],
+) -> dict[str, Any]:
+    """Fase 2 (PLAN_SUSCRIPCION_Y_PAGOS.md §9.1): suscripción + 1ª factura.
+
+    Crea la suscripción en ``pending_payment`` (ciclo mensual) y emite la
+    primera factura. Levanta en fallo — el caller de ``approve_registration``
+    lo envuelve en try/except (best-effort: un fallo aquí NO revierte la
+    aprobación; el backfill de Fase 2 lo re-emite).
+    """
+    from src.app.modules.subscriptions.service import create_subscription, emit_invoice
+
+    band_number = int((band or {}).get("band") or 0)
+    sub = create_subscription(
+        db,
+        prop_id=int(hotel.get("prop_id", 0)),
+        owner_user_id=owner["_id"],
+        band=band_number,
+        billing_cycle=hotel.get("billing_cycle") or "monthly",
+        payment_method=hotel.get("payment_method"),
+        currency=hotel.get("currency", "USD"),
+    )
+    inv = emit_invoice(db, subscription_id=sub["_id"])
+    return {"subscription": sub, "invoice": inv}
 
 
 def approve_registration(
@@ -267,6 +301,20 @@ def approve_registration(
         },
     )
 
+    # Fase 2 (PLAN_SUSCRIPCION_Y_PAGOS.md §9.1): suscripción + 1ª factura.
+    # Best-effort POST-activación: un fallo aquí NO revierte la aprobación
+    # (el hotel ya está operativo); se audita y el backfill lo re-emite.
+    subscription_info: dict[str, Any] | None = None
+    try:
+        subscription_info = _ensure_subscription_on_approve(
+            db, hotel=hotel, owner=owner, band=band
+        )
+    except Exception:
+        logger.exception(
+            "Failed to create subscription on approve for prop_id=%s",
+            hotel.get("prop_id"),
+        )
+
     hotel_name = hotel.get("hotel_name") or hotel.get("display_name") or ""
     _audit_registration(
         db,
@@ -279,15 +327,30 @@ def approve_registration(
             "hotel_role_id": {"old": None, "new": str(role["_id"])},
             "assignment_id": {"old": None, "new": str(assignment["_id"])},
             "price_band": {"old": None, "new": band.get("band")},
+            "subscription_id": {
+                "old": None,
+                "new": str(subscription_info["subscription"]["_id"]) if subscription_info else None,
+            },
         },
     )
 
-    # UX-2: notificar al dueño (best-effort; la transición ya quedó auditada).
+    # UX-2 + Fase 2: notificar al dueño con el bloque de pago (best-effort).
+    due_date = None
+    payment_methods: list[str] = []
+    if subscription_info:
+        due_date = subscription_info["invoice"].get("due_date")
+        payment_methods = [
+            m.get("label", "")
+            for m in available_payment_methods(db)
+            if m.get("label")
+        ]
     notify_registration_approved(
         (owner.get("email") or ""),
         hotel_name=hotel_name,
         plan_label=band.get("label", ""),
         monthly_usd=band.get("monthly_usd", 0),
+        due_date=due_date,
+        payment_methods=payment_methods,
     )
 
     return {

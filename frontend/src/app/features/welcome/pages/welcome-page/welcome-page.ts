@@ -14,6 +14,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { ThemeService } from '../../../../core/theme/theme.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { BookingSearchBarComponent, type BookingSearchValues } from '../../../../shared/ui/booking-search-bar/booking-search-bar';
+import { TermsDialogComponent } from '../../../../shared/ui/terms-dialog/terms-dialog';
 import { API_CONFIG } from '../../../../core/api/api.config';
 
 import {
@@ -30,7 +31,7 @@ import {
 
 @Component({
   selector: 'app-welcome-page',
-  imports: [RouterLink, BookingSearchBarComponent],
+  imports: [RouterLink, BookingSearchBarComponent, TermsDialogComponent],
   templateUrl: './welcome-page.html',
   styleUrls: [
     '../../../../../styles/_auth-shell.scss',
@@ -47,6 +48,17 @@ export class WelcomePageComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly year = new Date().getFullYear();
+
+  // ── Documentos legales (footer) — cargados del backend por el TermsDialog ──
+  readonly legalOpen = signal<string | null>(null);
+
+  openLegal(docType: string): void {
+    this.legalOpen.set(docType);
+  }
+
+  closeLegal(): void {
+    this.legalOpen.set(null);
+  }
 
   // ── Search form ─────────────────────────────────────────────────────────
 
@@ -120,21 +132,23 @@ export class WelcomePageComponent {
   // ── Auth toast ──────────────────────────────────────────────────────────
 
   readonly showAuthToast = signal(false);
-  private authToastTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * El toast se mantiene hasta que el usuario lo cierre o use una de sus
+   * acciones: el auto-dismiss a 8s hacía desaparecer una oferta con botones
+   * mientras se leía (WCAG 2.2.1 Timing Adjustable — la información no debe
+   * caducar sin control).
+   */
   handleHotelClick(hotelId: number, event: Event): void {
     event.preventDefault();
     if (this.authService.isAuthenticated()) {
       void this.router.navigateByUrl(`/hotels/${hotelId}`);
       return;
     }
-    if (this.authToastTimer) clearTimeout(this.authToastTimer);
     this.showAuthToast.set(true);
-    this.authToastTimer = setTimeout(() => this.dismissAuthToast(), 8000);
   }
 
   dismissAuthToast(): void {
-    if (this.authToastTimer) { clearTimeout(this.authToastTimer); this.authToastTimer = null; }
     this.showAuthToast.set(false);
   }
 

@@ -422,19 +422,5 @@ export class ReservationsApiService {
       message: string;
     }>('/reservations/availability-check', { params });
   }
-
-  /** Process a card payment */
-  processPayment(data: { card_number: string; card_holder: string; expiry: string; cvv: string; amount: number }) {
-    return this.http.post<{
-      ok: boolean;
-      transaction_id: string;
-      status: string;
-      card_last4: string;
-      card_brand: string;
-      card_holder: string;
-      amount: number;
-      auth_code: string;
-      message: string;
-    }>('/payments/process', data);
-  }
 }
+

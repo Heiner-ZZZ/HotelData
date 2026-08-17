@@ -1,0 +1,265 @@
+<div class="reconciliation-page">
+  <app-page-header
+    title="Conciliación de suscripciones"
+    subtitle="Comprobantes de pago declarados por los dueños. Verifica o rechaza cada pago; el dinero nunca se mueve por el sistema — lo confirma un humano."
+  />
+
+  <!-- Filtro de estado -->
+  <nav class="filter-tabs" aria-label="Filtrar comprobantes por estado">
+    @for (tab of filterTabs; track tab.key) {
+      <button
+        type="button"
+        class="filter-tab"
+        [class.active]="statusFilter() === tab.key"
+        (click)="setFilter(tab.key)"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </nav>
+
+  <!-- Cola de comprobantes -->
+  <section class="surface-card queue-section">
+    <div class="section-head">
+      <span class="material-symbols-outlined section-icon">fact_check</span>
+      <div>
+        <h2>Cola de comprobantes</h2>
+        <p>{{ queue()?.total ?? 0 }} comprobante(s) en este filtro</p>
+      </div>
+    </div>
+
+    @switch (viewState()) {
+      @case ('loading') { <app-loading-state /> }
+      @case ('error') { <app-error-state /> }
+      @case ('empty') {
+        <app-empty-state
+          title="Sin comprobantes"
+          message="No hay comprobantes en este estado. Los pagos declarados por los dueños aparecerán aquí para su conciliación."
+        />
+      }
+      @case ('success') {
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Hotel</th>
+                <th>Dueño</th>
+                <th>Método</th>
+                <th>Referencia</th>
+                <th class="cell-right">Monto</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th class="cell-action">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of payments(); track item.id) {
+                <tr>
+                  <td>
+                    <span class="hotel-name">{{ item.hotelName || '—' }}</span>
+                    <span class="cell-mono">#{{ item.propId }}</span>
+                  </td>
+                  <td>{{ item.ownerUsername || '—' }}</td>
+                  <td>{{ methodLabel(item.method) }}</td>
+                  <td class="cell-mono">{{ item.reference || '—' }}</td>
+                  <td class="cell-right cell-amount">{{ item.amount | currency:'USD' }}</td>
+                  <td class="cell-date">{{ formatDate(item.createdAt) }}</td>
+                  <td>
+                    <app-status-badge
+                      [tone]="paymentStatusTone(item.status)"
+                      [label]="paymentStatusLabel(item.status)"
+                    />
+                  </td>
+                  <td class="cell-action">
+                    @if (item.status === 'pending_verification') {
+                      <div class="row-actions">
+                        <button
+                          type="button"
+                          class="action-btn verify-btn"
+                          [disabled]="busyPaymentId() !== null"
+                          (click)="verify(item)"
+                          title="Verificar pago"
+                        >
+                          <span class="material-symbols-outlined">check_circle</span>
+                          Verificar
+                        </button>
+                        <button
+                          type="button"
+                          class="action-btn reject-btn"
+                          [disabled]="busyPaymentId() !== null"
+                          (click)="reject(item)"
+                          title="Rechazar comprobante"
+                        >
+                          <span class="material-symbols-outlined">cancel</span>
+                          Rechazar
+                        </button>
+                      </div>
+                    } @else {
+                      <span class="cell-muted">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (totalPages() > 1) {
+          <div class="pagination">
+            <button
+              type="button"
+              [disabled]="currentPage() <= 1"
+              (click)="goToPage(currentPage() - 1)"
+              aria-label="Página anterior"
+            >
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            @for (p of pagesArray(); track p) {
+              <button
+                type="button"
+                [class.active]="currentPage() === p"
+                (click)="goToPage(p)"
+              >{{ p }}</button>
+            }
+            <button
+              type="button"
+              [disabled]="currentPage() >= totalPages()"
+              (click)="goToPage(currentPage() + 1)"
+              aria-label="Página siguiente"
+            >
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        }
+      }
+    }
+  </section>
+
+  <!-- Gestionar suscripción (override / cancel) -->
+  <section class="surface-card manage-section">
+    <div class="section-head">
+      <span class="material-symbols-outlined section-icon">tune</span>
+      <div>
+        <h2>Gestionar suscripción</h2>
+        <p>Precio negociado (override) o cancelación de la suscripción de un hotel.</p>
+      </div>
+    </div>
+
+    <div class="manage-hotel-field">
+      <span class="field-label">Hotel</span>
+      @if (propCtx.singleHotelMode()) {
+        <div class="hotel-static">
+          <span class="material-symbols-outlined">hotel</span>
+          <span>{{ targetLabel() || 'Cargando hotel…' }}</span>
+        </div>
+      } @else {
+        <app-property-selector
+          [selectedPropId]="targetPropId()"
+          [selectedLabel]="targetLabel()"
+          (propIdChange)="onTargetPropSelected($event)"
+        />
+      }
+      <span class="field-hint">La selección aplica a override y cancelación.</span>
+    </div>
+
+    <div class="manage-grid">
+      <!-- Override -->
+      <article class="manage-card">
+        <h3>
+          <span class="material-symbols-outlined">sell</span>
+          Precio negociado
+        </h3>
+
+        <label class="field">
+          <span class="field-label">Banda (opcional)</span>
+          <select
+            [value]="overrideBand() ?? ''"
+            (change)="overrideBand.set(parseNumber($any($event.target).value))"
+          >
+            <option value="">Sin cambio de banda</option>
+            @for (b of bands(); track b.band) {
+              <option [value]="b.band">{{ b.band }} — {{ b.label }} ({{ b.monthlyUsd | currency:'USD' }}/mes)</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Precio mensual USD (opcional)</span>
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            placeholder="Ej. 55"
+            [value]="overridePrice() ?? ''"
+            (input)="overridePrice.set(parseNumber($any($event.target).value))"
+          />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Notas de negociación (opcional)</span>
+          <textarea
+            rows="2"
+            placeholder="Ej. Acuerdo comercial con el dueño…"
+            [value]="overrideNotes()"
+            (input)="overrideNotes.set($any($event.target).value ?? '')"
+          ></textarea>
+        </label>
+
+        @if (overrideError()) {
+          <p class="field-error" role="alert">{{ overrideError() }}</p>
+        }
+
+        <button
+          type="button"
+          class="primary-btn"
+          [disabled]="overrideSaving()"
+          (click)="submitOverride()"
+        >
+          <span class="material-symbols-outlined">verified</span>
+          {{ overrideSaving() ? 'Aplicando…' : 'Aplicar override' }}
+        </button>
+      </article>
+
+      <!-- Cancel -->
+      <article class="manage-card">
+        <h3>
+          <span class="material-symbols-outlined">cancel</span>
+          Cancelar suscripción
+        </h3>
+
+        <label class="field">
+          <span class="field-label">Motivo (opcional)</span>
+          <textarea
+            rows="2"
+            placeholder="Ej. Cierre del hotel, baja voluntaria…"
+            [value]="cancelReason()"
+            (input)="cancelReason.set($any($event.target).value ?? '')"
+          ></textarea>
+        </label>
+
+        @if (cancelError()) {
+          <p class="field-error" role="alert">{{ cancelError() }}</p>
+        }
+
+        <button
+          type="button"
+          class="danger-btn"
+          [disabled]="cancelSaving()"
+          (click)="submitCancel()"
+        >
+          <span class="material-symbols-outlined">block</span>
+          {{ cancelSaving() ? 'Cancelando…' : 'Cancelar suscripción' }}
+        </button>
+      </article>
+    </div>
+  </section>
+
+  <!-- Info footer -->
+  <div class="info-footer">
+    <span class="material-symbols-outlined">info</span>
+    <p>
+      La conciliación es manual: verificar activa la suscripción y el hotel; rechazar devuelve al dueño a pago pendiente con el motivo.
+      El override de precio y la cancelación son acciones de supervisor con trazabilidad en auditoría.
+    </p>
+  </div>
+</div>

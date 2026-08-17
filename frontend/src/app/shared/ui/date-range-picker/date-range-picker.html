@@ -1,9 +1,10 @@
 <div class="date-range-picker-wrapper" (mouseup)="onMouseUpGlobal()">
   <!-- Trigger button -->
-  <button type="button" class="dp-trigger" (click)="toggleOpen()">
-    <span class="material-symbols-outlined dp-trigger-icon">calendar_month</span>
+  <button type="button" class="dp-trigger" (click)="toggleOpen()"
+    aria-haspopup="dialog" [attr.aria-expanded]="isOpen()">
+    <span class="material-symbols-outlined dp-trigger-icon" aria-hidden="true">calendar_month</span>
     <span class="dp-trigger-label">{{ dateLabel() }}</span>
-    <span class="material-symbols-outlined dp-chevron">{{ isOpen() ? 'expand_less' : 'expand_more' }}</span>
+    <span class="material-symbols-outlined dp-chevron" aria-hidden="true">{{ isOpen() ? 'expand_less' : 'expand_more' }}</span>
   </button>
 
   <!-- Popover overlay -->
@@ -11,14 +12,14 @@
     <!-- Backdrop for click-outside -->
     <div class="dp-backdrop" (click)="close()" (mouseup)="onMouseUpGlobal()"></div>
 
-    <div class="dp-popover">
+    <div class="dp-popover" role="dialog" aria-label="Seleccionar fechas de entrada y salida">
       <div class="dp-popover-header">
-        <button type="button" class="dp-nav-btn" (click)="prevMonth()">
-          <span class="material-symbols-outlined">chevron_left</span>
+        <button type="button" class="dp-nav-btn" (click)="prevMonth()" aria-label="Mes anterior">
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
         </button>
         <span class="dp-month-label">{{ monthNames[currentMonth()] }} {{ currentYear() }}</span>
-        <button type="button" class="dp-nav-btn" (click)="nextMonth()">
-          <span class="material-symbols-outlined">chevron_right</span>
+        <button type="button" class="dp-nav-btn" (click)="nextMonth()" aria-label="Mes siguiente">
+          <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
         </button>
       </div>
 
@@ -44,6 +45,7 @@
             (mousedown)="onDayMouseDown(day, $event)"
             (mouseenter)="onDayMouseEnter(day)"
             (mouseup)="onDayMouseUp(day)"
+            [attr.aria-label]="dayLabel(day)"
           >
             {{ day.day }}
           </button>
@@ -55,13 +57,13 @@
           <div class="dp-selected">
             @if (startDate()) {
               <span class="dp-badge dp-badge-start">
-                <span class="material-symbols-outlined">login</span>
+                <span class="material-symbols-outlined" aria-hidden="true">login</span>
                 {{ startDate() }}
               </span>
             }
             @if (endDate() && endDate() !== startDate()) {
               <span class="dp-badge dp-badge-end">
-                <span class="material-symbols-outlined">logout</span>
+                <span class="material-symbols-outlined" aria-hidden="true">logout</span>
                 {{ endDate() }}
               </span>
             }

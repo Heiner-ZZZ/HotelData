@@ -79,9 +79,15 @@ def special_requests_payload_for_prop(prop_id: int) -> list[dict[str, Any]]:
     page = content_page_for_prop(prop_id)
     stored = page.get("special_requests") or []
 
+    # Defaults que el hotel eliminó explícitamente (tombstones escritos por
+    # ``save_special_requests``) — no se re-mergean.
+    removed = {normalize_label(r).lower() for r in (page.get("removed_requests") or [])}
+
     merged: dict[str, dict[str, Any]] = {}
     for entry in DEFAULT_SPECIAL_REQUESTS:
         key = normalize_label(entry["label"])
+        if key.lower() in removed:
+            continue
         merged[key] = dict(entry)
     for entry in stored:
         if not isinstance(entry, dict):

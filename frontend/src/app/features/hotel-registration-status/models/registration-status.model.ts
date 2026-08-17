@@ -11,7 +11,18 @@ export interface RegistrationStatus {
   statusChangedAt: string | null;
   property: RegistrationProperty;
   suggestedBand: SuggestedBand | null;
+  /** Gracia inicial de la primera factura (días tras la aprobación). */
+  initialGraceDays: number;
+  /** Métodos de pago manuales del catálogo (sin pasarela bancaria). */
+  paymentMethods: PaymentMethod[];
   timeline: TimelineEvent[];
+}
+
+export interface PaymentMethod {
+  code: string;
+  label: string;
+  sortOrder: number;
+  details: Record<string, string>;
 }
 
 export interface RegistrationProperty {

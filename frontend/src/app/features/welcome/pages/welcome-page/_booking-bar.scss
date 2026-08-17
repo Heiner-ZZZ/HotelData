@@ -20,4 +20,20 @@
     margin: 0 auto;
     padding: 0 clamp(20px, 4vw, 40px);
   }
+
+  /* h1 del hero: la única tesis de la landing. Blanco sobre la foto con una
+     sombra sutil para mantener AA sobre mar/cielo claros; clamp() lo escala
+     en móviles sin ocupar el card de búsqueda. */
+  &__title {
+    margin: 0 0 clamp(14px, 2vw, 22px);
+    max-width: 620px;
+    color: var(--on-brand-navy);
+    font-size: clamp(1.55rem, 3.6vw, 2.35rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-shadow:
+      0 1px 3px color-mix(in srgb, var(--brand-navy) 30%, transparent),
+      0 2px 18px color-mix(in srgb, var(--brand-navy) 45%, transparent);
+  }
 }

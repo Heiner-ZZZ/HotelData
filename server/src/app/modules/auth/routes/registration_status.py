@@ -24,6 +24,8 @@ from src.app.modules.auth.routes.register_property import (
     _validate_property_edit_payload,
 )
 from src.app.modules.property_approval.pricing import suggested_band_for
+from src.app.modules.subscriptions.payment_methods import available_payment_methods
+from src.app.modules.subscriptions.service import INITIAL_GRACE_DAYS
 from src.app.security.dependencies import require_login
 from src.app.security.session import utc_now
 from src.database.connection import get_database
@@ -103,6 +105,14 @@ def registration_status(current_user: dict = Depends(require_login)):
             "contact_phone": hotel.get("contact_phone", ""),
         },
         "suggested_band": suggested_band_for(db, hotel.get("total_rooms_declared", 0)),
+        # Bloque de pago (Fase 3 UI): la pantalla del dueño muestra el
+        # vencimiento informativo (gracia inicial tras la aprobación) y los
+        # métodos de pago manuales del catálogo (sin pasarela bancaria).
+        "initial_grace_days": INITIAL_GRACE_DAYS,
+        "payment_methods": [
+            {k: v for k, v in m.items() if k != "_id"}
+            for m in available_payment_methods(db)
+        ],
         "timeline": _build_timeline(db, hotel.get("prop_id"), hotel),
     }
 

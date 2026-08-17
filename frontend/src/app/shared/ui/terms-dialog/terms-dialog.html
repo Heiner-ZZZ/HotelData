@@ -1,0 +1,67 @@
+@if (open()) {
+  <div class="terms-overlay" (click)="close.emit()">
+    <div
+      class="terms-dialog"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'terms-title-' + docType()"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="terms-head">
+        <span class="material-symbols-outlined terms-head-icon" aria-hidden="true">description</span>
+        <div class="terms-head-copy">
+          <h2 [id]="'terms-title-' + docType()">
+            {{ title()?.title ?? typeLabel() }}
+          </h2>
+          <p class="terms-head-meta">
+            @if (title()?.version) {
+              <span class="terms-version">Versión {{ title()?.version }}</span>
+              <span class="terms-sep" aria-hidden="true">·</span>
+            }
+            <span>Vigente desde {{ effectiveDateLabel() || '—' }}</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          class="terms-close"
+          (click)="close.emit()"
+          aria-label="Cerrar"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </header>
+
+      <div class="terms-body">
+        @if (isLoading()) {
+          <div class="terms-state" role="status">
+            <span class="material-symbols-outlined terms-spin" aria-hidden="true">sync</span>
+            <p>Cargando documento…</p>
+          </div>
+        } @else if (error()) {
+          <div class="terms-state" role="alert">
+            <span class="material-symbols-outlined" aria-hidden="true">error</span>
+            <p>{{ errorMessage() }}</p>
+            <button type="button" class="terms-retry" (click)="retry()">
+              <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+              Reintentar
+            </button>
+          </div>
+        } @else if (title()) {
+          @for (section of title()!.sections; track section.heading) {
+            <section class="terms-section">
+              <h3>{{ section.heading }}</h3>
+              <p>{{ section.body }}</p>
+            </section>
+          }
+        }
+      </div>
+
+      <footer class="terms-foot">
+        <button type="button" class="terms-done" (click)="close.emit()">
+          <span class="material-symbols-outlined" aria-hidden="true">check</span>
+          Entendido
+        </button>
+      </footer>
+    </div>
+  </div>
+}

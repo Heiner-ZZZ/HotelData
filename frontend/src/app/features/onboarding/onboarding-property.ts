@@ -1,16 +1,17 @@
-import { HttpClient } from '@angular/common/http';
-import { httpResource } from '@angular/common/http';
+import { HttpClient, httpResource } from '@angular/common/http';
 
 import { getErrorMessage } from '../../shared/utils/http-error.util';
+import { TermsDialogComponent } from '../../shared/ui/terms-dialog/terms-dialog';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   signal
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
   FormControl,
@@ -84,9 +85,54 @@ interface ConfirmCodeResponseDto {
   readonly message: string;
 }
 
+interface PricingPlanDto {
+  readonly band: number;
+  readonly label: string;
+  readonly min_rooms: number;
+  readonly max_rooms: number;
+  readonly monthly_usd: number;
+  readonly annual_monthly_usd: number;
+}
+
+/** Planes visibles del onboarding (3 tarjetas, PLAN §3.2/§14) que agrupan las 6 bandas. */
+interface VisiblePlanOption {
+  readonly key: 'small' | 'medium' | 'large';
+  readonly label: string;
+  readonly rangeLabel: string;
+  readonly icon: string;
+  readonly fromBand: number;
+  readonly minRooms: number;
+  readonly maxRooms: number;
+}
+
+const VISIBLE_PLANS: readonly VisiblePlanOption[] = [
+  { key: 'small', label: 'Pequeño', rangeLabel: '1–25', icon: 'bed', fromBand: 1, minRooms: 1, maxRooms: 25 },
+  { key: 'medium', label: 'Mediano', rangeLabel: '26–100', icon: 'home_work', fromBand: 3, minRooms: 26, maxRooms: 100 },
+  { key: 'large', label: 'Grande', rangeLabel: '101+', icon: 'business', fromBand: 5, minRooms: 101, maxRooms: 10000 },
+];
+
+type VisiblePlanKey = 'small' | 'medium' | 'large';
+
+/** Tarjeta visible que corresponde a una cantidad de habitaciones. */
+function derivePlanKey(rooms: number): VisiblePlanKey {
+  return VISIBLE_PLANS.find((p) => rooms >= p.minRooms && rooms <= p.maxRooms)?.key ?? 'small';
+}
+
+interface PaymentMethodOption {
+  readonly value: string;
+  readonly label: string;
+  readonly icon: string;
+}
+
+const PAYMENT_METHOD_OPTIONS: readonly PaymentMethodOption[] = [
+  { value: 'bank_transfer', label: 'Transferencia', icon: 'account_balance' },
+  { value: 'cash_deposit', label: 'Depósito', icon: 'payments' },
+  { value: 'manual_online', label: 'Pago en línea', icon: 'currency_exchange' },
+];
+
 @Component({
   selector: 'app-onboarding-property',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, TermsDialogComponent],
   templateUrl: './onboarding-property.html',
   styleUrls: [
     '../../../styles/_auth-shell.scss',
@@ -103,6 +149,8 @@ export class OnboardingPropertyComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly propertyTypes = PROPERTY_TYPES;
+  readonly visiblePlans = VISIBLE_PLANS;
+  readonly paymentMethodOptions = PAYMENT_METHOD_OPTIONS;
 
   // ── Phase state ──
   readonly submitting = signal(false);
@@ -153,8 +201,29 @@ export class OnboardingPropertyComponent {
     () => this.countriesResource.value()?.countries ?? FALLBACK_COUNTRIES
   );
 
+  // ── Pricing plans (catálogo público de bandas) ──────────────────────
+  readonly pricingPlansResource = httpResource<{ plans: PricingPlanDto[] }>(
+    () => `${this.apiConfig.baseUrl}/public/pricing-plans`,
+    {
+      parse: (dto) => {
+        const raw = (dto as { plans?: PricingPlanDto[] })?.plans ?? [];
+        const cleaned = raw.filter(
+          (p) =>
+            typeof p?.band === 'number' &&
+            typeof p?.min_rooms === 'number' &&
+            typeof p?.max_rooms === 'number' &&
+            typeof p?.monthly_usd === 'number'
+        );
+        return { plans: cleaned };
+      }
+    }
+  );
+
   readonly isCatalogsLoading = computed(
-    () => this.currenciesResource.isLoading() || this.countriesResource.isLoading()
+    () =>
+      this.currenciesResource.isLoading() ||
+      this.countriesResource.isLoading() ||
+      this.pricingPlansResource.isLoading()
   );
 
   // ── Combined registration form ──
@@ -174,7 +243,143 @@ export class OnboardingPropertyComponent {
     city: ['', [Validators.required, Validators.minLength(2)]],
     currency: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(3)]],
     total_rooms: [1, [Validators.required, Validators.min(1), Validators.max(10000)]],
-    description: ['', [Validators.maxLength(500)]]
+    description: ['', [Validators.maxLength(500)]],
+    // Ciclo de facturación + método de pago (Fase 6, PLAN §14.1).
+    billing_cycle: ['monthly', [Validators.required]],
+    payment_method: ['bank_transfer', [Validators.required]],
+    // Confirmación explícita del plan derivado (no es de libre elección).
+    plan_confirmed: [false, [Validators.requiredTrue]],
+    // Aceptación de Términos y Condiciones para Anfitriones (versión vigente).
+    terms_accepted: [false, [Validators.requiredTrue]]
+  });
+
+  // ── Términos y Condiciones (versión activa desde el backend, nunca hardcodeada) ──
+  readonly termsOpen = signal(false);
+  readonly termsResource = httpResource<{ version: number } | null>(
+    () => `${this.apiConfig.baseUrl}/public/legal?doc_type=terms_hotel_partner`,
+    {
+      parse: (dto) => {
+        const raw = dto as { version?: number } | null;
+        if (!raw || typeof raw.version !== 'number') return null;
+        return { version: raw.version };
+      },
+    },
+  );
+  readonly termsVersion = (): number | null =>
+    this.termsResource.value()?.version ?? null;
+  readonly termsLoading = (): boolean => this.termsResource.isLoading();
+  readonly termsError = (): boolean => !!this.termsResource.error();
+
+  openTerms(event?: Event): void {
+    // El botón vive dentro del <label> del checkbox: no debe alternarlo.
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.termsOpen.set(true);
+  }
+
+  closeTerms(): void {
+    this.termsOpen.set(false);
+  }
+
+  // ── Plan derivado de total_rooms (banda + precio en vivo) ──────────
+  readonly totalRooms = toSignal(
+    this.onboardingForm.controls.total_rooms.valueChanges,
+    { initialValue: this.onboardingForm.controls.total_rooms.value }
+  );
+
+  readonly derivedPlan = computed<PricingPlanDto | null>(() => {
+    const rooms = this.totalRooms() ?? 0;
+    const plans = this.pricingPlansResource.value()?.plans ?? [];
+    return plans.find((p) => rooms >= p.min_rooms && rooms <= p.max_rooms) ?? null;
+  });
+
+  /** USD ahorrados al año pagando el plan por adelantado: (mensual − anual) × 12. */
+  readonly planAnnualSavings = computed<number>(() => {
+    const plan = this.derivedPlan();
+    if (!plan) return 0;
+    return Math.max(0, Math.round((plan.monthly_usd - plan.annual_monthly_usd) * 12));
+  });
+
+  /** % de descuento del plan anual (~22–27%) — solo para el badge. */
+  readonly planAnnualDiscountPct = computed<number>(() => {
+    const plan = this.derivedPlan();
+    if (!plan || plan.monthly_usd <= 0) return 0;
+    return Math.round((1 - plan.annual_monthly_usd / plan.monthly_usd) * 100);
+  });
+
+  /** Ciclo elegido (mensual/anual) como signal reactivo. */
+  readonly billingCycle = toSignal(
+    this.onboardingForm.controls.billing_cycle.valueChanges,
+    { initialValue: this.onboardingForm.controls.billing_cycle.value }
+  );
+
+  /** Tarjeta derivada de las habitaciones (la que corresponde a total_rooms). */
+  readonly derivedPlanKey = computed<VisiblePlanKey | null>(() => {
+    const rooms = this.totalRooms() ?? 0;
+    return (
+      VISIBLE_PLANS.find((p) => rooms >= p.minRooms && rooms <= p.maxRooms)?.key ?? null
+    );
+  });
+
+  /** Tarjeta elegida por el dueño (radio). Se ancla a la derivada si cambian las habitaciones. */
+  readonly selectedPlanKey = signal<VisiblePlanKey>(
+    derivePlanKey(this.onboardingForm.controls.total_rooms.value)
+  );
+
+  /** True si el dueño marcó una tarjeta que no corresponde a sus habitaciones. */
+  readonly planMismatch = computed<boolean>(() => {
+    const derived = this.derivedPlanKey();
+    return derived !== null && this.selectedPlanKey() !== derived;
+  });
+
+  /** Plan visible correspondiente a las habitaciones (para labels y mensajes). */
+  readonly derivedVisiblePlan = computed<VisiblePlanOption | null>(() => {
+    const key = this.derivedPlanKey();
+    return key ? (VISIBLE_PLANS.find((p) => p.key === key) ?? null) : null;
+  });
+
+  // Si cambian las habitaciones, la tarjeta elegida vuelve a la derivada.
+  private readonly syncPlanSelection = effect(() => {
+    const derived = this.derivedPlanKey();
+    if (derived) this.selectedPlanKey.set(derived);
+  });
+
+  /** Selección manual de tarjeta (radio). Si no coincide con la derivación, desmarca la confirmación. */
+  selectPlan(key: VisiblePlanKey): void {
+    this.selectedPlanKey.set(key);
+    if (key !== this.derivedPlanKey()) {
+      this.onboardingForm.controls.plan_confirmed.setValue(false);
+    }
+  }
+
+  /** Precio "desde" de cada tarjeta (mínimo mensual de su grupo de bandas). */
+  readonly visiblePlanPrices = computed<Record<string, number>>(() => {
+    const plans = this.pricingPlansResource.value()?.plans ?? [];
+    const result: Record<string, number> = {};
+    for (const p of VISIBLE_PLANS) {
+      result[p.key] = plans.find((b) => b.band === p.fromBand)?.monthly_usd ?? 0;
+    }
+    return result;
+  });
+
+  /** Precio del plan derivado según el ciclo elegido (mensual vs anual). */
+  readonly currentPlanPrice = computed<number>(() => {
+    const plan = this.derivedPlan();
+    if (!plan) return 0;
+    return this.billingCycle() === 'annual'
+      ? plan.annual_monthly_usd
+      : plan.monthly_usd;
+  });
+
+  // Si cambia la banda derivada, la confirmación anterior deja de ser válida
+  // (el dueño debe re-confirmar su nuevo plan antes de enviar).
+  private lastConfirmedBand: number | null = null;
+  private readonly resetPlanConfirmation = effect(() => {
+    const band = this.derivedPlan()?.band ?? null;
+    if (band !== this.lastConfirmedBand) {
+      this.lastConfirmedBand = band;
+      this.onboardingForm.controls.plan_confirmed.setValue(false);
+    }
   });
 
   // ── Six-digit verification form (mirrors register-page pattern) ──
@@ -258,8 +463,24 @@ export class OnboardingPropertyComponent {
 
   // ── Phase 1: submit → send verification code ──
   submit(): void {
+    if (this.planMismatch()) {
+      this.onboardingForm.markAllAsTouched();
+      this.errorMessage.set(
+        `Tu plan por ${this.totalRooms() ?? 0} habitaciones es ${this.derivedVisiblePlan()?.label ?? 'el sugerido'}. Selecciona la tarjeta sugerida para continuar.`
+      );
+      return;
+    }
+
     if (this.onboardingForm.invalid || this.submitting()) {
       this.onboardingForm.markAllAsTouched();
+      return;
+    }
+
+    if (!this.onboardingForm.controls.terms_accepted.value) {
+      this.onboardingForm.controls.terms_accepted.markAsTouched();
+      this.errorMessage.set(
+        'Debes aceptar los Términos y Condiciones para anfitriones para continuar.'
+      );
       return;
     }
 
@@ -288,7 +509,11 @@ export class OnboardingPropertyComponent {
           city: raw.city,
           currency: raw.currency,
           total_rooms: raw.total_rooms,
-          description: raw.description || undefined
+          plan_band: this.derivedPlan()?.band,
+          billing_cycle: raw.billing_cycle,
+          payment_method: raw.payment_method,
+          description: raw.description || undefined,
+          accepted_terms_version: this.termsVersion() ?? undefined
         },
         { withCredentials: true }
       )

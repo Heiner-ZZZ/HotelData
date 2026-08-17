@@ -8,6 +8,8 @@ from typing import Any
 from bson import ObjectId
 
 from src.app.core.resolvers import resolve_hotel_id, resolve_employee_id, resolve_user_id
+from src.app.modules.hr.service.collections import SHIFTS_COLLECTION as HR_SHIFTS_COLLECTION
+from src.app.modules.partner.services.audit import register_action
 
 from .collections import (
     RECEPTION_SHIFT_CONFIG_COLLECTION,
@@ -604,6 +606,83 @@ def _generate_txn_id() -> str:
     return f"TXN-{stamp}-{token}"
 
 
+def _next_shift_number(db, prop_id: int, at_dt: datetime) -> int:
+    """Per-hotel per-day sequential shift number (T01, T02, ...).
+
+    The day bucket is the UTC calendar day of the shift's ``start_time``,
+    matching how the backfill script numbers existing shifts. The three
+    canonical windows (00:00-08:00, 08:00-16:00, 16:00-00:00) keep every
+    shift inside a single UTC day, so the counter resets each morning.
+    With at most one open shift per property the count+1 is race-safe:
+    opens are serialized by the active-shift conflict check.
+    """
+    day_start = at_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    next_day = day_start + timedelta(days=1)
+    return db[RECEPTION_SHIFTS_COLLECTION].count_documents(
+        {
+            "prop_id": prop_id,
+            "start_time": {"$gte": day_start.isoformat(), "$lt": next_day.isoformat()},
+        }
+    ) + 1
+
+
+def _auto_checkin_attendance(opened_by: str, at_dt: datetime, *, prop_id: int) -> None:
+    """Best-effort HR attendance check-in when a cashier opens the drawer.
+
+    A recepcionista is also an employee of the hotel: opening the cash
+    shift proves physical presence at the front desk, so today's pending
+    ``employee_shifts`` row flips to ``active`` with ``actual_check_in``
+    set — the same transition the manual check-in endpoint performs.
+
+    Best-effort by design: any failure (no user/employee/shift row, Mongo
+    blip) logs and returns; it never blocks the shift open. Deliberately
+    does NOT auto check-out on close — closing the drawer does not imply
+    the person leaves the shift.
+    """
+    db = get_database()
+    user = db.users.find_one({"username": opened_by}, {"_id": 1})
+    if not user:
+        return
+    emp = db.employees.find_one({"user_id": user["_id"]}, {"_id": 1})
+    if not emp:
+        return
+    today_str = at_dt.date().strftime("%Y-%m-%d")
+    timestamp = at_dt.isoformat()
+    before = db[HR_SHIFTS_COLLECTION].find_one_and_update(
+        {"employee_id": emp["_id"], "date": today_str, "status": "pending"},
+        {
+            "$set": {
+                "status": "active",
+                "actual_check_in": timestamp,
+                "check_in_notes": "Auto check-in: apertura de turno de caja",
+                "updated_at": at_dt,
+            }
+        },
+    )
+    if not before:
+        return
+    logger.info(
+        "Auto check-in de asistencia — employee_id=%s date=%s via cash shift open (prop_id=%s opener=%s)",
+        emp["_id"], today_str, prop_id, opened_by,
+    )
+    register_action(
+        prop_id=prop_id,
+        entity_type="employee_shift",
+        entity_id=str(before["_id"]),
+        action="update",
+        summary=(
+            f"Check-in automático al abrir turno de caja: {opened_by} "
+            f"({at_dt.strftime('%Y-%m-%d %H:%M')})"
+        ),
+        changed_by=opened_by,
+        diff={
+            "status": {"old": "pending", "new": "active"},
+            "actual_check_in": {"old": None, "new": timestamp},
+            "source": "cash_shift_open",
+        },
+    )
+
+
 def _enrich_shift(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     if "transactions" in doc and isinstance(doc["transactions"], list):
@@ -846,9 +925,15 @@ def open_shift(
         else:
             cash_initial = 0.0
 
+    # Per-hotel per-day sequential number (T01, T02, ...) — see
+    # ``_next_shift_number``. Persisted at open time so the label stays
+    # stable for the whole shift instead of drifting with later opens.
+    shift_number = _next_shift_number(db, prop_id, now_dt)
+
     doc = {
         "prop_id": prop_id,
         "hotel_id": hotel_id,
+        "shift_number": shift_number,
         "shift_type": shift_type,
         "employee": employee,
         "employee_id": employee_id,
@@ -879,6 +964,18 @@ def open_shift(
         "Shift opened — prop_id=%s type=%s employee_label=%s opened_by=%s opened_by_id=%s cash_initial=%.2f",
         prop_id, shift_type, employee, opened_by, opened_by_id, cash_initial,
     )
+
+    # The cashier is also an employee: opening the drawer is physical
+    # presence proof, so flip today's pending HR shift to active. Best-
+    # effort — a failure here must never undo the successful open.
+    try:
+        _auto_checkin_attendance(opened_by, now_dt, prop_id=prop_id)
+    except Exception:
+        logger.exception(
+            "Auto check-in de asistencia failed for opener=%s prop_id=%s (shift already opened)",
+            opened_by, prop_id,
+        )
+
     return _enrich_shift(doc)
 
 
@@ -899,6 +996,75 @@ def _calc_payment_breakdown(transactions: list[dict]) -> dict[str, Any]:
         "other": breakdown.get("other", 0),
         "total": round(sum(breakdown.values()), 2),
     }
+
+
+def _unified_drawer(doc: dict) -> dict[str, Any]:
+    """Unified drawer for a shift document (source of truth del arqueo).
+
+    = transacciones registradas (type check_out/payment, vía
+    ``register_transaction``) + pagos CONFIRMADOS estampados con el
+    ``shift_id`` del turno (depósitos walk-in, folio settle, pos-charge —
+    creados por billing, que nunca pushean una transacción al turno). El
+    dedupe anti doble-conteo excluye el pago ya representado como
+    transacción check_out/payment (booking_id + amount).
+
+    Usado por ``close_shift`` (arqueo de cierre) y por ``get_active_shift``
+    (vista en vivo del turno) para que ambas superficies muestren EXACTAMENTE
+    el mismo drawer — y el mismo que ``list_open_shifts_overview``.
+    """
+    transactions = doc.get("transactions") or []
+    txn_total = round(
+        sum(
+            float(txn.get("amount", 0) or 0)
+            for txn in transactions
+            if txn.get("type") in ("check_out", "payment")
+        ),
+        2,
+    )
+    stamped_total, stamped_count, stamped_methods = _stamped_drawer_breakdown(doc)
+    txn_breakdown = _calc_payment_breakdown(transactions)
+    payment_breakdown = {
+        "cash": round(txn_breakdown["cash"] + stamped_methods["cash"], 2),
+        "card": round(txn_breakdown["card"] + stamped_methods["card"], 2),
+        "transfer": round(txn_breakdown["transfer"] + stamped_methods["transfer"], 2),
+        "other": round(txn_breakdown["other"] + stamped_methods["other"], 2),
+    }
+    payment_breakdown["total"] = round(sum(payment_breakdown.values()), 2)
+    return {
+        "total": round(txn_total + stamped_total, 2),
+        "payment_breakdown": payment_breakdown,
+        "stamped_count": stamped_count,
+    }
+
+
+def _shift_with_drawer(doc: dict, *, correct_arqueo: bool = False) -> dict[str, Any]:
+    """Enriched shift + drawer unificado (historial y detalle).
+
+    Cualquier superficie que liste/muestre un turno (historial cerrado,
+    detalle, cash-control del manager) debe exponer el MISMO drawer que el
+    cierre y la vista en vivo: ``total_collected`` / ``payment_breakdown``
+    unificados (transacciones + pagos estampados) y
+    ``stamped_payments_count``. Sin esto, un cierre histórico cerrado antes
+    del fix mostraría solo transacciones y el gerente vería un esperado/sobrante
+    falso.
+
+    ``correct_arqueo=True`` (cash-control): además recomputa ``cash_expected``
+    y ``cash_over_short`` con el breakdown unificado, para que la tabla del
+    manager y los KPIs muestren el arqueo corregido (el doc guardado
+    conserva el registro original como audit trail).
+    """
+    drawer = _unified_drawer(doc)
+    shift = _enrich_shift(doc)
+    shift["total_collected"] = drawer["total"]
+    shift["payment_breakdown"] = drawer["payment_breakdown"]
+    shift["stamped_payments_count"] = drawer["stamped_count"]
+    if correct_arqueo:
+        cash_initial = float(shift.get("cash_initial") or 0)
+        shift["cash_expected"] = round(cash_initial + drawer["payment_breakdown"]["cash"], 2)
+        counted = shift.get("cash_counted")
+        if counted is not None:
+            shift["cash_over_short"] = round(float(counted) - shift["cash_expected"], 2)
+    return shift
 
 
 def close_shift(
@@ -940,15 +1106,18 @@ def close_shift(
     if shift.get("status") != "open":
         raise ValueError("Shift is already closed")
 
-    transactions = shift.get("transactions", [])
-    total_collected = sum(
-        float(txn.get("amount", 0) or 0)
-        for txn in transactions
-        if txn.get("type") in ("check_out", "payment")
-    )
-
-    # Calculate payment method breakdown
-    payment_breakdown = _calc_payment_breakdown(transactions)
+    # ── Drawer unificado (misma fuente que la vista en vivo y el overview) ──
+    # ``total_collected`` del turno solo refleja los movimientos registrados
+    # vía ``register_transaction`` (check-out, counter payments). Los pagos
+    # creados por billing — depósitos de reserva walk-in, folio settle,
+    # pos-charge — se estampan con ``shift_id`` pero NUNCA pushean una
+    # transacción al turno. Sin sumarlos, el arqueo de cierre esperaría
+    # menos de lo físicamente cobrado → over/short falso. Se agregan con el
+    # dedupe anti doble-conteo (solo ``confirmed``; se excluye el pago ya
+    # representado como transacción check_out/payment por booking+amount).
+    drawer = _unified_drawer(shift)
+    total_collected = drawer["total"]
+    payment_breakdown = drawer["payment_breakdown"]
 
     # Calculate deposit totals. Only cash withdrawals/drops reduce the
     # physical cash left in the drawer.
@@ -1234,6 +1403,13 @@ def get_active_shift(prop_id: int) -> dict[str, Any] | None:
     now = _now_dt()
     enriched["max_open_hours"] = max_open_hours
     enriched["is_expired"] = _shift_expired(doc.get("start_time"), max_open_hours, now)
+    # Drawer unificado para la vista EN VIVO del turno: el arqueo del
+    # dashboard debe ver los pagos estampados (depósitos/billing) igual que
+    # el cierre — no solo las transacciones del array.
+    drawer = _unified_drawer(doc)
+    enriched["total_collected"] = drawer["total"]
+    enriched["payment_breakdown"] = drawer["payment_breakdown"]
+    enriched["stamped_payments_count"] = drawer["stamped_count"]
     try:
         start = datetime.fromisoformat(str(doc.get("start_time")))
         if start.tzinfo is None:
@@ -1276,7 +1452,7 @@ def get_shift(shift_id: str) -> dict[str, Any] | None:
         return None
     if not doc:
         return None
-    return _enrich_shift(doc)
+    return _shift_with_drawer(doc)
 
 
 def list_shifts(
@@ -1298,7 +1474,7 @@ def list_shifts(
         .sort("start_time", -1)
         .limit(limit)
     )
-    return [_enrich_shift(d) for d in docs]
+    return [_shift_with_drawer(d) for d in docs]
 
 
 def list_shifts_for_cash_control(
@@ -1331,11 +1507,11 @@ def list_shifts_for_cash_control(
         .sort("closed_at", -1)
         .limit(limit)
     )
-    shifts = [_enrich_shift(d) for d in docs]
-    # Manager view: resolve each shift's payments with their cashier
-    # attribution so the UI can show a "Responsable" column per payment,
-    # plus a per-employee summary of what each cashier collected (for
-    # detecting discrepancies between stamped and deposited cash).
+    # Manager view: drawer unificado (esperado corregido con los pagos
+    # estampados) + payments con su atribución de cajero (columna
+    # "Responsable") + resumen por empleado de lo que cada cajero estampó
+    # (para detectar discrepancias entre lo estampado y lo depositado).
+    shifts = [_shift_with_drawer(d, correct_arqueo=True) for d in docs]
     for shift in shifts:
         shift["payments"] = _resolve_shift_payments(shift.get("payment_ids", []))
         shift["employee_summary"] = _shift_employee_summary(shift.get("id") or "")

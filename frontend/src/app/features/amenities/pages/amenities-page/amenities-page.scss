@@ -809,35 +809,106 @@
   color: var(--app-text);
 }
 
-.request-row-flags {
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.request-flag {
+.rules-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem 0.5rem;
+  gap: 0.35rem;
+  width: fit-content;
+  padding: 0.28rem 0.6rem;
   border: 1px solid var(--app-border);
   border-radius: 999px;
   background: var(--surface);
   color: var(--muted-text);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
   transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
 
-  .material-symbols-outlined { font-size: 0.85rem; }
+  .material-symbols-outlined { font-size: 0.9rem; }
 
-  &:disabled { cursor: default; opacity: 0.75; }
-
-  &.is-on {
-    border-color: color-mix(in srgb, var(--accent) 55%, var(--app-border));
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--app-border));
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   }
+}
+
+.rules-toggle-chevron {
+  transition: transform 160ms ease;
+
+  &.is-open { transform: rotate(180deg); }
+}
+
+.rules-panel {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.55rem;
+  margin-top: 0.15rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.rule-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 140ms ease;
+
+  &:hover { background: var(--surface-hover); }
+
+  input[type="checkbox"] {
+    margin-top: 0.15rem;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    color: var(--muted-text);
+    margin-top: 0.1rem;
+  }
+}
+
+.rule-copy {
+  display: grid;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+
+  strong {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--app-text);
+  }
+
+  small {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--muted-text);
+  }
+}
+
+.rule-row.rule-implied {
+  cursor: default;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  border: 1px dashed color-mix(in srgb, var(--accent) 30%, var(--app-border));
+
+  &:hover { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+}
+
+.rule-badge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  white-space: nowrap;
 }
 
 .request-row-price {

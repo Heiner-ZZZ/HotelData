@@ -2,7 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { httpErrorInterceptor } from '../../../../core/api/http-error.interceptor';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -807,5 +807,85 @@ describe('CheckInDetailPageComponent', () => {
     const { fixture, component } = await renderDetail(reopenedDetail({ stay_status: 'no_show' }));
     expect(component.reopenedNotice()).toBeNull();
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Reserva reabierta tras no-show');
+  });
+
+  // ═══ Gate de depósito: banner accionable ante 409 deposit_not_met ═══
+  function checkinableDetail(): CheckInDetailDto {
+    const today = new Date();
+    const future = new Date();
+    future.setDate(future.getDate() + 2);
+    return {
+      ...DETAIL,
+      stay_status: 'pending',
+      check_in_date: localDateStr(today),
+      check_out_date: localDateStr(future),
+      assigned_rooms: [{
+        hotel_room_id: 'ROOM-1', room_number: '101', room_label: '101', floor: '1', room_status: 'available',
+      }],
+    } as unknown as CheckInDetailDto;
+  }
+
+  it('muestra el banner accionable con el faltante cuando el check-in responde 409 deposit_not_met', async () => {
+    const { fixture, component, checkInApi } = await renderDetail(checkinableDetail());
+
+    (checkInApi.completeCheckInWithDetail as jest.Mock).mockReturnValue(
+      throwError(() => ({
+        status: 409,
+        message: 'Esta propiedad exige un depósito mínimo del 30% ($75.00) para el check-in.',
+        details: {
+          detail: {
+            code: 'deposit_not_met',
+            message: 'Esta propiedad exige un depósito mínimo del 30% ($75.00) para el check-in.',
+            deposit_percent: 30,
+            min_deposit: 75,
+            paid_total: 50,
+            missing: 25,
+          },
+        },
+      })),
+    );
+
+    component.keysDelivered.set(true);
+    component.goToStep(5);
+    component.completeCheckIn();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(component.depositGate()).toEqual({
+      percent: 30,
+      minDeposit: 75,
+      paid: 50,
+      missing: 25,
+      message: 'Esta propiedad exige un depósito mínimo del 30% ($75.00) para el check-in.',
+    });
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Depósito mínimo no cubierto');
+    expect(text).toContain('75.00');
+    expect(text).toContain('25.00');
+    expect(text).toContain('Registrar cobro en Facturación');
+    expect(fixture.nativeElement.querySelector('.ciw-deposit-banner')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('a.ciw-deposit-banner-link')).not.toBeNull();
+  });
+
+  it('sigue usando el toast de error genérico cuando el 409 no es del gate de depósito', async () => {
+    const { fixture, component, checkInApi } = await renderDetail(checkinableDetail());
+
+    (checkInApi.completeCheckInWithDetail as jest.Mock).mockReturnValue(
+      throwError(() => ({
+        status: 409,
+        message: 'El turno activo superó el límite de horas sin cerrarse.',
+      })),
+    );
+
+    component.keysDelivered.set(true);
+    component.goToStep(5);
+    component.completeCheckIn();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(component.depositGate()).toBeNull();
+    expect(component.completeError()).toContain('turno activo');
+    expect(fixture.nativeElement.querySelector('.ciw-deposit-banner')).toBeNull();
   });
 });

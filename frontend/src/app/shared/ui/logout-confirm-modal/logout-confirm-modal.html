@@ -1,0 +1,95 @@
+@if (data(); as guard) {
+  <div
+    class="lg-modal-overlay"
+    (click)="$event.target === $event.currentTarget ? cancel.emit() : null"
+  >
+    <div
+      class="lg-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lg-modal-title"
+    >
+      <div class="lg-modal-header">
+        <span class="material-symbols-outlined lg-modal-icon" aria-hidden="true">timer</span>
+        <h2 id="lg-modal-title">Tenés turnos sin cerrar</h2>
+      </div>
+
+      <div class="lg-modal-body">
+        <p class="lg-intro">
+          Antes de cerrar sesión, verificá que cierres o dejes registrado tu
+          turno abierto — si no, la caja queda bloqueada y la asistencia queda
+          incompleta.
+        </p>
+
+        @if (guard.open_cash_shifts.length > 0) {
+          <section class="lg-section">
+            <h3 class="lg-section-title">
+              <span class="material-symbols-outlined" aria-hidden="true">point_of_sale</span>
+              Turno de caja abierto
+              <span class="lg-count">{{ guard.open_cash_shifts.length }}</span>
+            </h3>
+            @for (shift of guard.open_cash_shifts; track shift.id) {
+              <div class="lg-shift-card">
+                <div class="lg-shift-info">
+                  <strong>{{ shift.shift_label || 'Turno' }}</strong>
+                  <span>{{ shift.hotel_label }}</span>
+                  <span class="lg-shift-meta">
+                    {{ shift.employee || '—' }}
+                    @if (shift.start_time) {
+                      · {{ shift.start_time | date:'dd/MM HH:mm' }}
+                    }
+                  </span>
+                </div>
+                <a
+                  class="lg-link"
+                  [routerLink]="cashShiftLink(shift)"
+                  [queryParams]="cashShiftQueryParams(shift)"
+                  (click)="cancel.emit()"
+                >
+                  Ir a Cajas y Turnos
+                </a>
+              </div>
+            }
+          </section>
+        }
+
+        @if (guard.open_attendance_shift; as att) {
+          <section class="lg-section">
+            <h3 class="lg-section-title">
+              <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+              Turno de asistencia activo
+            </h3>
+            <div class="lg-shift-card">
+              <div class="lg-shift-info">
+                <strong>{{ att.employee_name || 'Mi turno' }}</strong>
+                <span>
+                  {{ att.date }} · {{ att.scheduled_start }}–{{ att.scheduled_end }}
+                </span>
+                @if (att.area) {
+                  <span class="lg-shift-meta">{{ att.area }}</span>
+                }
+              </div>
+              <a
+                class="lg-link"
+                [routerLink]="attendanceLink(att)"
+                (click)="cancel.emit()"
+              >
+                Ir a Mi Portal
+              </a>
+            </div>
+          </section>
+        }
+      </div>
+
+      <div class="lg-modal-footer">
+        <button type="button" class="lg-btn lg-btn-outline" (click)="cancel.emit()">
+          Volver
+        </button>
+        <button type="button" class="lg-btn lg-btn-danger" (click)="proceed.emit()">
+          <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+          Cerrar sesión de todos modos
+        </button>
+      </div>
+    </div>
+  </div>
+}

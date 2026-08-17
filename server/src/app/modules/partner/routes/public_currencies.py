@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 
 from src.app.modules.partner.services.currencies import list_currencies
+from src.app.modules.property_approval.pricing import available_plans
 from src.database.connection import get_database
 
 public_router = APIRouter(prefix="/api/public", tags=["public"])
@@ -73,6 +74,35 @@ def public_list_countries_api(
         if row.get("visitor_location_country_id") is not None
     ]
     return {"countries": countries, "fallback": False}
+
+
+@public_router.get("/pricing-plans")
+def public_pricing_plans_api() -> dict:
+    """Return the active pricing bands (public reference data).
+
+    Public — no auth required. Powers the onboarding wizard's plan-confirmation
+    step, which derives the owner's band from ``total_rooms`` client-side
+    without hardcoding prices (``PLAN_SUSCRIPCION_Y_PAGOS.md`` §12). Falls back
+    to the documented defaults when the catalog is empty — a GET never writes.
+    """
+    db = get_database()
+    plans: list[dict] = []
+    for plan in available_plans(db):
+        monthly = float(plan.get("monthly_usd", 0))
+        annual = plan.get("annual_monthly_usd")
+        if annual is None:
+            annual = round(monthly * 0.75)
+        plans.append(
+            {
+                "band": int(plan.get("band", 0)),
+                "label": plan.get("label", ""),
+                "min_rooms": int(plan.get("min_rooms", 0)),
+                "max_rooms": int(plan.get("max_rooms", 0)),
+                "monthly_usd": monthly,
+                "annual_monthly_usd": float(annual),
+            }
+        )
+    return {"plans": plans}
 
 
 @public_router.get("/hotels/{prop_id}/images")

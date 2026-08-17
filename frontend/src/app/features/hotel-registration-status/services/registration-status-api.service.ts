@@ -6,10 +6,12 @@ import { API_CONFIG } from '../../../core/api/api.config';
 import type {
   EditPropertyPayloadDto,
   PatchPropertyResponseDto,
+  PaymentMethodDto,
   RegistrationStatusDto,
   SuggestedBandDto,
 } from '../models/registration-status.dto';
 import type {
+  PaymentMethod,
   RegistrationProperty,
   RegistrationStatus,
   SuggestedBand,
@@ -48,6 +50,15 @@ function mapTimeline(events: RegistrationStatusDto['timeline']): TimelineEvent[]
   }));
 }
 
+function mapPaymentMethods(methods: PaymentMethodDto[] | undefined): PaymentMethod[] {
+  return (methods ?? []).map((m) => ({
+    code: m.code,
+    label: m.label,
+    sortOrder: m.sort_order,
+    details: m.details ?? {},
+  }));
+}
+
 /** Mapeo wire → model. Exportado para que el componente lo use como `parse`
  *  del httpResource de la pantalla (convención: GET vía httpResource). */
 export function mapRegistrationStatus(dto: RegistrationStatusDto): RegistrationStatus {
@@ -59,6 +70,8 @@ export function mapRegistrationStatus(dto: RegistrationStatusDto): RegistrationS
     statusChangedAt: dto.status_changed_at ?? null,
     property: mapProperty(dto.property),
     suggestedBand: mapSuggestedBand(dto.suggested_band),
+    initialGraceDays: dto.initial_grace_days ?? 7,
+    paymentMethods: mapPaymentMethods(dto.payment_methods),
     timeline: mapTimeline(dto.timeline),
   };
 }

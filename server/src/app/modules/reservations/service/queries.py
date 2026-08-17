@@ -442,6 +442,25 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
     # Cancellation policy
     cancellation_policy = _get_cancellation_policy(db, int(booking.get("prop_id", 0)))
 
+    # Depósito real (política de pago por adelantado): el pago registrado al
+    # confirmar la reserva vía billing (``payment_source="deposit"``). Nunca
+    # se deriva de metadata de tarjeta — el stub que marcaba "paid" en falso
+    # fue eliminado (2026-08).
+    deposit = db.reservation_payments.find_one(
+        {"booking_id": booking_id, "payment_source": "deposit"},
+        {"_id": 0, "amount": 1, "method": 1, "reference": 1, "status": 1, "paid_at": 1},
+        sort=[("paid_at", -1)],
+    )
+    deposit_data = None
+    if deposit:
+        deposit_data = {
+            "amount": round(float(deposit.get("amount", 0) or 0), 2),
+            "method": deposit.get("method"),
+            "reference": deposit.get("reference"),
+            "status": deposit.get("status"),
+            "paid_at": deposit.get("paid_at").isoformat() if deposit.get("paid_at") else None,
+        }
+
     from src.app.modules.reservations.service.special_request_fulfillment import (
         get_amenity_fulfillment,
         get_special_request_fulfillment,
@@ -449,6 +468,7 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
 
     return _json_safe({
         "booking": booking,
+        "deposit": deposit_data,
         "special_request_fulfillment": get_special_request_fulfillment(booking),
         "amenity_fulfillment": get_amenity_fulfillment(booking),
         "guest": guest,

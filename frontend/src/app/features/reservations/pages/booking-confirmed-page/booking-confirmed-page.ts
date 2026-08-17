@@ -54,4 +54,15 @@ export class BookingConfirmedPageComponent {
   copyRef(text: string) {
     navigator.clipboard.writeText(text).catch(() => {});
   }
+
+  /** Etiqueta legible del método de pago del depósito registrado. */
+  depositMethodLabel(method: string): string {
+    const labels: Record<string, string> = {
+      cash: 'Efectivo',
+      card: 'Tarjeta',
+      transfer: 'Transferencia',
+      other: 'Otro',
+    };
+    return labels[method] ?? method;
+  }
 }

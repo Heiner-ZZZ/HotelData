@@ -105,7 +105,8 @@ PERMISSION_CATALOG = [
     # Reports — granular táctico/estratégico (2026-08): cada informe con su
     # propio código + dos códigos de área (táctico/estratégico).
     ("reports.tactical.read", "Ver el área de informes tácticos (simples y compuestos)"),
-    ("reports.strategic.read", "Ver el área de informes estratégicos"),
+    ("reports.strategic.read", "Ver el área de informes estratégicos del hotel (Vista A)"),
+    ("reports.strategic.portfolio.read", "Ver la cartera estratégica del sistema (Vista B) — solo dirección"),
     ("reports.rates.adr.read", "Ver informe táctico ADR por fecha, tipo y canal (R1.2)"),
     ("reports.rates.calendar.read", "Ver informe táctico de calendario de tarifas"),
     ("reports.requests.read", "Ver informe táctico de solicitudes de servicio"),
@@ -149,6 +150,7 @@ PERMISSION_CATALOG = [
     ("billing.manage", "Administrar facturación — acceso total"),
     ("billing.read", "Ver facturas e historial"),
     ("billing.write_off.approve", "Aprobar cierre de folio con saldo (write-off, cortesía o settlement externo) — supervisor"),
+    ("billing.verify", "Conciliar comprobantes de suscripción (verify/reject) y gestionar suscripciones (override/cancel) — supervisor"),
     ("payments.manage", "Administrar pagos — acceso total"),
     ("payments.read", "Ver historial de pagos"),
     # Shifts / Cash register
@@ -220,10 +222,11 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "hr.manage",
         "hr.portal.read", "hr.directory.read", "hr.directory.manage",
         "hr.onboarding.create", "hr.shifts.read", "hr.shifts.manage",
-        "properties.approve",
+        "properties.read", "properties.approve",
         "billing.write_off.approve",
-        # Informes estratégicos (BSC) + descarga
-        "reports.strategic.read", "reports.download",
+        "billing.verify",
+        # Informes estratégicos: Vista A (hotel) + Vista B (cartera, solo dirección) + descarga
+        "reports.strategic.read", "reports.strategic.portfolio.read", "reports.download",
     ],
     "operador_datos": [
         "dashboard.read",
@@ -235,8 +238,8 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "etl.read",
         "audit.read", "monitoring.read",
         "reports.read",
-        # Informes estratégicos + descarga (evidencia de auditoría)
-        "reports.strategic.read", "reports.download",
+        # Informes estratégicos: Vista A + Vista B (cartera, evidencia de auditoría) + descarga
+        "reports.strategic.read", "reports.strategic.portfolio.read", "reports.download",
     ],
     "hotel_partner": [
         "dashboard.read",
@@ -282,6 +285,7 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         # Ancestros de dominio para ver los informes anidados
         "billing.read", "housekeeping.read",
         "billing.write_off.approve",
+        "billing.verify",
     ],
     "revenue_manager": [
         "dashboard.read",
@@ -499,13 +503,17 @@ NAVIGATION_CATALOG: list[dict[str, Any]] = [
     {"slug": "gestion.pms.auditoria", "label": "Auditoría Oper.", "icon": "receipt_long", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 80, "permission_code": "audit.read", "href": "/management/audit-log"},
     {"slug": "gestion.pms.perfil", "label": "Perfil", "icon": "account_circle", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 90, "permission_code": "account.read", "href": "/management/profile"},
     {"slug": "gestion.pms.equipo", "label": "Equipo y permisos", "icon": "admin_panel_settings", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 100, "permission_code": "hotel.manage_roles", "href": "/management/team-permissions"},
-    {"slug": "gestion.pms.finanzas", "label": "Finanzas", "icon": "monetization_on", "node_type": "leaf", "parent_slug": "gestion.pms", "position": 110, "permission_code": "revenue.read", "href": "/management/expenses"},
+    #     ── Informes (dashboards tácticos del área PMS) ──
+    # Convención: "Informes" SIEMPRE es el primer ítem de su submenú (position 5).
+    {"slug": "gestion.pms.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.pms", "position": 5, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.pms.finanzas", "label": "Finanzas", "icon": "monetization_on", "node_type": "leaf", "parent_slug": "gestion.pms.informes", "position": 10, "permission_code": "revenue.read", "href": "/management/expenses"},
+    {"slug": "gestion.pms.informes.reputacion", "label": "Reputación", "icon": "reviews", "node_type": "leaf", "parent_slug": "gestion.pms.informes", "position": 20, "permission_code": "reviews.read", "href": "/management/reviews/dashboard"},
     #   ── Grupo: Reservas (CRS) ──
     {"slug": "gestion.reservas", "label": "Reservas", "icon": "book_online", "node_type": "container", "parent_slug": "gestion", "position": 20, "permission_code": "reservations.read", "href": "/management/reservations"},
     {"slug": "gestion.reservas.disponibilidad", "label": "Disponibilidad", "icon": "event_available", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 10, "permission_code": "inventory.read", "href": "/management/availability"},
     {"slug": "gestion.reservas.tarifas", "label": "Tarifas", "icon": "sell", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 20, "permission_code": "rates.read", "href": "/management/rates"},
     #     ── Informes (menú horizontal de dashboards tácticos) ──
-    {"slug": "gestion.reservas.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.reservas", "position": 30, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.reservas.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.reservas", "position": 5, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
     {"slug": "gestion.reservas.informes.adr", "label": "Dashboard ADR", "icon": "monitoring", "node_type": "leaf", "parent_slug": "gestion.reservas.informes", "position": 10, "permission_code": "reports.rates.adr.read", "href": "/management/rates/dashboard"},
     {"slug": "gestion.reservas.informes.calendario", "label": "Calendario Tarifas", "icon": "calendar_month", "node_type": "leaf", "parent_slug": "gestion.reservas.informes", "position": 20, "permission_code": "reports.rates.calendar.read", "href": "/management/rates/calendar"},
     {"slug": "gestion.reservas.informes.solicitudes", "label": "Dashboard Solicitudes", "icon": "room_service", "node_type": "leaf", "parent_slug": "gestion.reservas.informes", "position": 30, "permission_code": "reports.requests.read", "href": "/management/service-requests"},
@@ -516,7 +524,7 @@ NAVIGATION_CATALOG: list[dict[str, Any]] = [
     {"slug": "gestion.reservas.politicas", "label": "Políticas", "icon": "policy", "node_type": "leaf", "parent_slug": "gestion.reservas", "position": 80, "permission_code": "properties.read", "href": "/management/policies"},
     #   ── Grupo: Housekeeping ──
     {"slug": "gestion.housekeeping", "label": "Housekeeping", "icon": "cleaning_services", "node_type": "container", "parent_slug": "gestion", "position": 30, "permission_code": "housekeeping.read", "href": "/management/housekeeping"},
-    {"slug": "gestion.housekeeping.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.housekeeping", "position": 10, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.housekeeping.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.housekeeping", "position": 5, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
     {"slug": "gestion.housekeeping.informes.dashboard", "label": "Dashboard", "icon": "dashboard", "node_type": "leaf", "parent_slug": "gestion.housekeeping.informes", "position": 10, "permission_code": "reports.housekeeping.dashboard.read", "href": "/management/housekeeping/dashboard"},
     {"slug": "gestion.housekeeping.informes.operaciones", "label": "Operaciones", "icon": "analytics", "node_type": "leaf", "parent_slug": "gestion.housekeeping.informes", "position": 20, "permission_code": "reports.housekeeping.operations.read", "href": "/management/housekeeping/operations"},
     {"slug": "gestion.housekeeping.informes.matriz", "label": "Matriz", "icon": "grid_view", "node_type": "leaf", "parent_slug": "gestion.housekeeping.informes", "position": 30, "permission_code": "reports.housekeeping.matrix.read", "href": "/management/housekeeping/matrix"},
@@ -529,15 +537,28 @@ NAVIGATION_CATALOG: list[dict[str, Any]] = [
     {"slug": "gestion.rrhh.directorio", "label": "Directorio RRHH", "icon": "groups", "node_type": "leaf", "parent_slug": "gestion.rrhh", "position": 20, "permission_code": "hr.directory.read", "href": "/management/hr/directory"},
     {"slug": "gestion.rrhh.onboarding", "label": "Onboarding", "icon": "person_add", "node_type": "leaf", "parent_slug": "gestion.rrhh", "position": 30, "permission_code": "hr.onboarding.create", "href": "/management/hr/onboarding"},
     {"slug": "gestion.rrhh.turnos", "label": "Turnos", "icon": "schedule", "node_type": "leaf", "parent_slug": "gestion.rrhh", "position": 40, "permission_code": "hr.shifts.read", "href": "/management/hr/shifts"},
+    #     ── Informes (dashboards tácticos del área RRHH) ──
+    {"slug": "gestion.rrhh.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.rrhh", "position": 5, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.rrhh.informes.dashboard", "label": "Dashboard RRHH", "icon": "dashboard", "node_type": "leaf", "parent_slug": "gestion.rrhh.informes", "position": 10, "permission_code": "hr.read", "href": "/management/hr/dashboard"},
     #   ── Grupo: Revenue ──
     {"slug": "gestion.revenue", "label": "Revenue", "icon": "trending_up", "node_type": "container", "parent_slug": "gestion", "position": 50, "permission_code": "revenue.read", "href": "/management/revenue"},
-    {"slug": "gestion.revenue.reportes", "label": "Reportes", "icon": "description", "node_type": "leaf", "parent_slug": "gestion.revenue", "position": 10, "permission_code": "reports.read", "href": "/management/reports"},
+    #     ── Informes (reportes de revenue en una vista global) ──
+    {"slug": "gestion.revenue.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.revenue", "position": 5, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.revenue.reportes", "label": "Reportes", "icon": "description", "node_type": "leaf", "parent_slug": "gestion.revenue.informes", "position": 10, "permission_code": "reports.read", "href": "/management/reports"},
     #   ── Grupo: Facturación ──
     {"slug": "gestion.billing", "label": "Facturación", "icon": "receipt", "node_type": "container", "parent_slug": "gestion", "position": 60, "permission_code": "billing.read", "href": "/management/billing"},
-    {"slug": "gestion.billing.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.billing", "position": 10, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.billing.informes", "label": "Informes", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion.billing", "position": 5, "permission_code": "reports.tactical.read", "href": None, "horizontal_menu": True},
     {"slug": "gestion.billing.informes.facturas", "label": "Dashboard", "icon": "monitoring", "node_type": "leaf", "parent_slug": "gestion.billing.informes", "position": 10, "permission_code": "reports.billing.invoices.read", "href": "/management/billing/dashboard"},
     {"slug": "gestion.billing.informes.pagos", "label": "Dashboard Pagos", "icon": "payments", "node_type": "leaf", "parent_slug": "gestion.billing.informes", "position": 20, "permission_code": "reports.billing.payments.read", "href": "/management/billing/payments-dashboard"},
     {"slug": "gestion.billing.pagos", "label": "Pagos", "icon": "payments", "node_type": "leaf", "parent_slug": "gestion.billing", "position": 20, "permission_code": "payments.read", "href": "/management/billing/payments"},
+    # ── Raíz: Gestión — Informes estratégicos del hotel (Vista A, TAF14) ──
+    # Grupo horizontal (mismo patrón que los informes tácticos compuestos):
+    # cada informe IE-H0x es UNA interfaz propia navegable por el menú
+    # horizontal (horizontal-sub-nav). El container no lleva href; el sidebar
+    # apunta al primer hijo (IE-H01) vía firstChildHref.
+    {"slug": "gestion.informes-estrategicos", "label": "Informes estratégicos", "icon": "monitoring", "node_type": "container", "parent_slug": "gestion", "position": 95, "permission_code": "reports.strategic.read", "href": None, "horizontal_menu": True},
+    {"slug": "gestion.informes-estrategicos.h01", "label": "IE-H01 · Desempeño y planes", "icon": "monitoring", "node_type": "leaf", "parent_slug": "gestion.informes-estrategicos", "position": 10, "permission_code": "reports.strategic.read", "href": "/management/informes-estrategicos/h01"},
+    {"slug": "gestion.informes-estrategicos.h02", "label": "IE-H02 · Posicionamiento local", "icon": "my_location", "node_type": "leaf", "parent_slug": "gestion.informes-estrategicos", "position": 20, "permission_code": "reports.strategic.read", "href": "/management/informes-estrategicos/h02"},
     # ── Raíz: Sistema ──
     {"slug": "sistema", "label": "Sistema", "icon": "admin_panel_settings", "node_type": "container", "parent_slug": None, "position": 20, "permission_code": None, "href": None},
     {"slug": "sistema.usuarios", "label": "Usuarios", "icon": "people", "node_type": "leaf", "parent_slug": "sistema", "position": 10, "permission_code": "users.read", "href": "/system/users"},
@@ -546,7 +567,17 @@ NAVIGATION_CATALOG: list[dict[str, Any]] = [
     {"slug": "sistema.monitoreo", "label": "Monitoreo", "icon": "monitoring", "node_type": "leaf", "parent_slug": "sistema", "position": 40, "permission_code": "monitoring.read", "href": "/system/monitoring"},
     {"slug": "sistema.notificaciones", "label": "Notificaciones", "icon": "notifications", "node_type": "leaf", "parent_slug": "sistema", "position": 50, "permission_code": "settings.read", "href": "/system/notifications"},
     {"slug": "sistema.monedas", "label": "Monedas", "icon": "payments", "node_type": "leaf", "parent_slug": "sistema", "position": 60, "permission_code": "settings.read", "href": "/system/currencies"},
-    {"slug": "sistema.bsc", "label": "BSC", "icon": "bar_chart", "node_type": "leaf", "parent_slug": "sistema", "position": 70, "permission_code": "dashboard.read", "href": "/system/bsc"},
+    {"slug": "sistema.conciliacion-suscripciones", "label": "Conciliación de suscripciones", "icon": "fact_check", "node_type": "leaf", "parent_slug": "sistema", "position": 65, "permission_code": "billing.verify", "href": "/admin/subscriptions"},
+    # ── Raíz: Sistema — Informes estratégicos de la cartera (Vista B, TAF14) ──
+    # Grupo horizontal: cada informe IE-G0x es UNA interfaz propia (menú
+    # horizontal, patrón de los tácticos compuestos). Permiso de cartera
+    # (exclusivo de dirección).
+    {"slug": "sistema.informes-estrategicos", "label": "Informes estratégicos", "icon": "monitoring", "node_type": "container", "parent_slug": "sistema", "position": 68, "permission_code": "reports.strategic.portfolio.read", "href": None, "horizontal_menu": True},
+    {"slug": "sistema.informes-estrategicos.g01", "label": "IE-G01 · KPIs de cartera", "icon": "monitoring", "node_type": "leaf", "parent_slug": "sistema.informes-estrategicos", "position": 10, "permission_code": "reports.strategic.portfolio.read", "href": "/informes-estrategicos/g01"},
+    {"slug": "sistema.informes-estrategicos.g02", "label": "IE-G02 · Rankings", "icon": "leaderboard", "node_type": "leaf", "parent_slug": "sistema.informes-estrategicos", "position": 20, "permission_code": "reports.strategic.portfolio.read", "href": "/informes-estrategicos/g02"},
+    {"slug": "sistema.informes-estrategicos.g03", "label": "IE-G03 · Rentabilidad", "icon": "payments", "node_type": "leaf", "parent_slug": "sistema.informes-estrategicos", "position": 30, "permission_code": "reports.strategic.portfolio.read", "href": "/informes-estrategicos/g03"},
+    {"slug": "sistema.informes-estrategicos.g04", "label": "IE-G04 · Mercados", "icon": "public", "node_type": "leaf", "parent_slug": "sistema.informes-estrategicos", "position": 40, "permission_code": "reports.strategic.portfolio.read", "href": "/informes-estrategicos/g04"},
+    {"slug": "sistema.informes-estrategicos.g05", "label": "IE-G05 · Forecasting", "icon": "query_stats", "node_type": "leaf", "parent_slug": "sistema.informes-estrategicos", "position": 50, "permission_code": "reports.strategic.portfolio.read", "href": "/informes-estrategicos/g05"},
     {"slug": "sistema.config-global", "label": "Configuración", "icon": "settings", "node_type": "leaf", "parent_slug": "sistema", "position": 80, "permission_code": "settings.read", "href": "/admin/global-settings"},
     {"slug": "sistema.geo-catalogo", "label": "Geo-Catálogo", "icon": "map", "node_type": "leaf", "parent_slug": "sistema", "position": 90, "permission_code": "settings.read", "href": "/admin/geo-catalog"},
     # ── Raíz: Propietario ──

@@ -1,0 +1,56 @@
+<div class="hrd-page">
+  <app-horizontal-sub-nav [activeSlug]="'gestion.rrhh.informes.dashboard'" />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando dashboard de RRHH..." />
+    }
+    @case ('error') {
+      <app-error-state [description]="errorMessage()" (retry)="retry()" />
+    }
+    @default {
+      @if (dashboard(); as d) {
+        <header class="hrd-header">
+          <div>
+            <h1 class="hrd-title">Dashboard RRHH</h1>
+            <p class="hrd-subtitle">Dotación, actividad y contrataciones recientes del equipo.</p>
+          </div>
+        </header>
+
+        <section class="hrd-kpis" aria-label="Indicadores de RRHH">
+          @for (card of kpiCards; track card.id) {
+            <article class="hrd-kpi-card" [style.--kpi-color]="card.color">
+              <span class="material-symbols-outlined hrd-kpi-icon" aria-hidden="true">{{ card.icon }}</span>
+              <div class="hrd-kpi-meta">
+                <span class="hrd-kpi-label">{{ card.label }}</span>
+                <span class="hrd-kpi-value">{{ d[card.key] }}</span>
+              </div>
+            </article>
+          }
+        </section>
+
+        <section class="hrd-recent" aria-labelledby="hrd-recent-title">
+          <h2 id="hrd-recent-title" class="hrd-section-title">Contrataciones recientes</h2>
+          @if (d.recentHires.length) {
+            <ul class="hrd-hire-list">
+              @for (hire of d.recentHires; track hire.id) {
+                <li class="hrd-hire-item">
+                  <span class="material-symbols-outlined hrd-hire-icon" aria-hidden="true">person</span>
+                  <div class="hrd-hire-info">
+                    <span class="hrd-hire-name">{{ hire.fullName }}</span>
+                    <span class="hrd-hire-role">{{ hire.position }} · {{ hire.department }}</span>
+                  </div>
+                  <time class="hrd-hire-date" [attr.datetime]="hire.hireDate">
+                    {{ hire.hireDate | date: 'd MMM yyyy' }}
+                  </time>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="hrd-empty">Todavía no hay contrataciones registradas.</p>
+          }
+        </section>
+      }
+    }
+  }
+</div>

@@ -33,7 +33,14 @@ const CUSTOM_CONFIG: ShiftConfig = {
 
 describe('ControlTurnosCajaPageComponent', () => {
   function setup(
-    opts: { canManage?: boolean; expired?: boolean; openedBy?: string; openedAt?: string } = {},
+    opts: {
+      canManage?: boolean;
+      expired?: boolean;
+      openedBy?: string;
+      openedAt?: string;
+      /** Overrides del shift activo (ej. payment_breakdown / stamped_payments_count). */
+      shift?: Record<string, unknown>;
+    } = {},
     apiOverrides: Partial<Record<'getShiftConfig', jest.Mock>> = {},
   ) {
     const router = {
@@ -82,6 +89,7 @@ describe('ControlTurnosCajaPageComponent', () => {
                       total_collected: 0,
                       status: 'open',
                       transactions: [],
+                      ...opts.shift,
                     }
                   : null,
                 shift_type_labels: CUSTOM_CONFIG.labels,
@@ -454,5 +462,35 @@ describe('ControlTurnosCajaPageComponent', () => {
       true,
       'Caja desincronizada por corte de luz',
     );
+  });
+
+  // ═══ Drawer unificado: pagos estampados visibles en el arqueo en vivo ═══
+
+  it('muestra el conteo de pagos estampados y el breakdown unificado en el arqueo', () => {
+    const { fixture } = setup({
+      openedBy: 'Recepcionista',
+      shift: {
+        payment_breakdown: { cash: 45, card: 0, transfer: 0, other: 0, total: 45 },
+        stamped_payments_count: 1,
+      },
+    });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    // Breakdown unificado: el depósito estampado aparece como ingreso
+    expect(text).toContain('+$45.00');
+    // Fila de pagos de sistema + conteo en el header de auditoría
+    expect(text).toContain('Pagos registrados en sistema');
+    expect(text).toContain('+1 pagos');
+    expect(text).toContain('· 1 pagos de sistema');
+  });
+
+  it('NO muestra la fila de pagos estampados cuando no hay ninguno', () => {
+    const { fixture } = setup({ openedBy: 'Recepcionista' });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toContain('Pagos registrados en sistema');
+    expect(text).not.toContain('pagos de sistema');
   });
 });

@@ -7,11 +7,54 @@ livianas a ClickHouse.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from config.settings import get_settings
 from src.etl.mongo_to_clickhouse.config import OPERATIONAL_COLLECTIONS
+
+# Un snapshot sintético más antiguo que este umbral (90 días) se considera el
+# funnel GA03 (2012-2013) y se re-ancla a la ventana reciente. Datos reales
+# recientes (2026+) nunca superan el umbral y no se tocan.
+FUNNEL_REANCHOR_STALE_DAYS = 90
+
+
+def _reanchor_funnel_dates(
+    rows: list[dict[str, Any]],
+    *,
+    today: date | None = None,
+) -> list[dict[str, Any]]:
+    """Desplaza fechas de un dataset sintético antiguo a la ventana reciente.
+
+    ``fact_hotel_reservations`` es el dataset GA03 de Expedia con fechas
+    2012-2013 (800K docs de demo). Sin re-anclar, los informes estratégicos
+    (``strat_market_monthly``) y tácticos (``kpi_funnel_*``) muestran años
+    anteriores mientras el resto de tablas operacionales van en 2026. Si el
+    máximo de la serie está a más de ``FUNNEL_REANCHOR_STALE_DAYS`` de hoy,
+    todas las filas se desplazan hacia adelante para que ese máximo caiga en
+    la fecha de anclaje (hoy por defecto), preservando la distribución.
+
+    Si el máximo ya es reciente (datos reales), devuelve las filas intactas.
+    """
+    if not rows:
+        return rows
+    today = today or datetime.now(UTC).date()
+    parsed: list[date] = []
+    for row in rows:
+        value = str(row.get("date") or "")[:10]
+        if len(value) == 10 and value.replace("-", "").isdigit():
+            parsed.append(date.fromisoformat(value))
+    if not parsed:
+        return rows
+    max_day = max(parsed)
+    delta = today - max_day
+    if delta.days <= FUNNEL_REANCHOR_STALE_DAYS:
+        return rows
+    for row in rows:
+        value = str(row.get("date") or "")[:10]
+        if len(value) == 10 and value.replace("-", "").isdigit():
+            row["date"] = (date.fromisoformat(value) + delta).isoformat()
+    return rows
 
 
 def _mongo_client(client, settings):
@@ -456,7 +499,7 @@ def _minutes_between(start: Any, end: Any) -> float | None:
     return minutes
 
 
-def _add_metric(bucket: dict[str, Any], key: str, value: float | int = 1) -> None:
+def _add_metric(bucket: dict[str, Any], key: str, value: float = 1) -> None:
     bucket[key] = bucket.get(key, 0) + value
 
 
@@ -746,12 +789,11 @@ def extract_kpi_payment_daily(client, db_name: str) -> list[dict[str, Any]]:
 
 
 def extract_kpi_funnel_daily(client, db_name: str) -> list[dict[str, Any]]:
-    """Agrega la Fact grande por día × país × destino para análisis global.
-
-    Esta tabla conserva el resumen compacto histórico. Para el informe táctico
-    por hotel y canal se usa ``extract_kpi_funnel_property_channel_daily``.
-    ``revenue_usd`` solo suma reservas (`reserva_bool=true`), no el precio de
-    todas las búsquedas.
+    """Agrega el embudo de demanda por día × país × destino desde tablas
+    OPERATIVAS (click_events + booking_orders), nunca de la fact sintética
+    GA03. Para el informe táctico por hotel y canal se usa
+    ``extract_kpi_funnel_property_channel_daily``. ``revenue_usd`` solo suma
+    reservas confirmadas, no el precio de todas las búsquedas.
     """
     settings = get_settings()
     mongo, owns = _mongo_client(client, settings)
@@ -764,133 +806,167 @@ def extract_kpi_funnel_daily(client, db_name: str) -> list[dict[str, Any]]:
 
 
 def _extract_kpi_funnel(db) -> list[dict[str, Any]]:
-    pipeline = [
-        {
-            "$group": {
-                "_id": {
-                    "date": {"$ifNull": ["$date_key", ""]},
-                    "visitor_location_country_id": {
-                        "$ifNull": ["$visitor_location_country_id", 0]
-                    },
-                    "srch_destination_id": {"$ifNull": ["$srch_destination_id", 0]},
-                },
-                "searches": {"$sum": 1},
-                "clicks": {"$sum": {"$ifNull": ["$click_bool", False]}},
-                "reservations": {"$sum": {"$ifNull": ["$reserva_bool", False]}},
-                "revenue_usd": {
-                    "$sum": {
-                        "$cond": [
-                            {"$eq": ["$reserva_bool", True]},
-                            {"$ifNull": ["$reservas_brutas_usd", {"$ifNull": ["$price_usd", 0]}]},
-                            0,
-                        ]
-                    }
-                },
-                "avg_booking_window": {"$avg": {"$ifNull": ["$srch_booking_window", 0]}},
-            }
-        },
-        {"$sort": {"_id.date": 1}},
-    ]
-    docs = list(db.fact_hotel_reservations.aggregate(pipeline, allowDiskUse=True))
-    return [
-        {
-            "date": _parse_day(item["_id"]["date"]),
-            "visitor_location_country_id": item["_id"]["visitor_location_country_id"],
-            "srch_destination_id": item["_id"]["srch_destination_id"],
-            "searches": item["searches"],
-            "clicks": int(item["clicks"]),
-            "reservations": int(item["reservations"]),
-            "revenue_usd": float(item["revenue_usd"] or 0),
-            "avg_booking_window": float(item["avg_booking_window"] or 0),
-        }
-        for item in docs
-        if item["_id"]["date"]
-    ]
+    """Embudo de demanda desde tablas OPERATIVAS (click_events +
+    booking_orders), nunca de la fact sintética GA03 (800K docs de demo).
+
+    - searches/clicks: ``click_events`` (source ``search``/``detail``)
+    - reservations/revenue: ``booking_orders`` confirmadas (check_in_date)
+    - país/destino: del hotel real (``dim_hotels``: display_country_label,
+      city), porque los eventos operativos no traen país visitante propio.
+
+    El resultado mantiene el contrato de ``kpi_funnel_daily`` (día × país ×
+    destino con searches/clicks/reservations/revenue), pero con el destino
+    identificado por ``prop_id`` del hotel real.
+    """
+    cancelled = {"cancelled", "canceled", "cancelled_by_guest", "cancelled_by_hotel"}
+
+    # 1) Clics reales: día × prop → searches (source=search) / clicks (source=detail)
+    clicks: dict[tuple[str, Any], dict[str, int]] = {}
+    for ev in db.click_events.find({}, {"clicked_at": 1, "prop_id": 1, "source": 1}):
+        day = _parse_day(ev.get("clicked_at"))
+        if not day:
+            continue
+        key = (day, ev.get("prop_id"))
+        bucket = clicks.setdefault(key, {"searches": 0, "clicks": 0})
+        if str(ev.get("source") or "").strip().lower() == "search":
+            bucket["searches"] += 1
+        else:
+            bucket["clicks"] += 1
+
+    # 2) Reservas reales: día (check_in) × prop → reservations + revenue
+    bookings: dict[tuple[str, Any], dict[str, Any]] = {}
+    for bo in db.booking_orders.find({}, {"check_in_date": 1, "prop_id": 1, "total_price": 1, "status": 1}):
+        day = _parse_day(bo.get("check_in_date"))
+        if not day:
+            continue
+        if str(bo.get("status") or "").strip().lower() in cancelled:
+            continue
+        key = (day, bo.get("prop_id"))
+        bucket = bookings.setdefault(key, {"reservations": 0, "revenue_usd": 0.0})
+        bucket["reservations"] += 1
+        bucket["revenue_usd"] += float(bo.get("total_price") or 0)
+
+    # 3) Hoteles reales: prop → país/ciudad (para labels sin JOIN en CH).
+    prop_ids = sorted({pid for _, pid in clicks} | {pid for _, pid in bookings}, key=lambda v: (v is None, str(v)))
+    hotel_query = {"prop_id": {"$in": prop_ids}} if prop_ids else {"_id": {"$exists": False}}
+    hotels: dict[str, dict[str, Any]] = {}
+    for doc in db.dim_hotels.find(hotel_query, {"prop_id": 1, "display_country_label": 1, "city": 1, "prop_country_id": 1}):
+        hotels[_label_key(doc.get("prop_id"))] = doc
+
+    rows = []
+    for day, pid in sorted(clicks.keys() | bookings.keys()):
+        hotel = hotels.get(_label_key(pid), {})
+        click_bucket = clicks.get((day, pid), {"searches": 0, "clicks": 0})
+        booking_bucket = bookings.get((day, pid), {"reservations": 0, "revenue_usd": 0.0})
+        rows.append({
+            "date": day,
+            "visitor_location_country_id": int(hotel.get("prop_country_id") or 0),
+            "visitor_country_label": str(hotel.get("display_country_label") or ""),
+            "srch_destination_id": int(pid or 0),
+            "destination_label": str(hotel.get("city") or ""),
+            "searches": click_bucket["searches"],
+            "clicks": click_bucket["clicks"],
+            "reservations": booking_bucket["reservations"],
+            "revenue_usd": round(booking_bucket["revenue_usd"], 2),
+            "avg_booking_window": 0.0,
+        })
+    return rows
 
 
 def extract_kpi_funnel_property_channel_daily(client, db_name: str) -> list[dict[str, Any]]:
-    """Agrega el embudo para la vista táctica por hotel y canal.
+    """Embudo táctico por hotel/canal desde tablas OPERATIVAS (click_events +
+    booking_orders), nunca de la fact sintética GA03.
 
-    Granularidad: día × prop_id × site_id × país visitante × destino.
-    La Fact conserva todos esos campos y la agregación se ejecuta dentro de
-    MongoDB; solo los grupos y sus métricas viajan a ClickHouse. El volumen
-    La granularidad completa produce 785K+ grupos en el dataset sintético;
-    por eso esta tabla se filtra a los IDs operacionales conocidos y se mantiene
-    separada del resumen global. En los datos actuales esa intersección produce
-    solo 22 filas, y sus ``prop_id`` siguen siendo IDs del catálogo de búsqueda:
-    no deben interpretarse como una relación con reservas operacionales hasta
-    que exista una fuente de eventos propia.
+    Granularidad: día × prop_id. Los eventos operativos no modelan el canal de
+    búsqueda (site_id), así que este agregado agrupa por hotel real y deja
+    ``site_id``/``site_label`` vacíos; el país/destino sale de ``dim_hotels``
+    (display_country_label, city). El contrato de columnas de
+    ``kpi_funnel_property_channel_daily`` se conserva intacto.
     """
     settings = get_settings()
     mongo, owns = _mongo_client(client, settings)
     try:
-        db = mongo[db_name]
-        operational_prop_ids = _operational_prop_ids(db)
-        if not operational_prop_ids:
-            return []
-
-        pipeline = [
-            {"$match": {"prop_id": {"$in": operational_prop_ids}}},
-            {
-                "$group": {
-                    "_id": {
-                        "date": {"$ifNull": ["$date_key", ""]},
-                        "prop_id": {"$ifNull": ["$prop_id", 0]},
-                        "site_id": {"$ifNull": ["$site_id", 0]},
-                        "visitor_location_country_id": {
-                            "$ifNull": ["$visitor_location_country_id", 0]
-                        },
-                        "srch_destination_id": {"$ifNull": ["$srch_destination_id", 0]},
-                    },
-                    "searches": {"$sum": 1},
-                    "clicks": {"$sum": {"$cond": ["$click_bool", 1, 0]}},
-                    "reservations": {"$sum": {"$cond": ["$reserva_bool", 1, 0]}},
-                    "revenue_usd": {
-                        "$sum": {
-                            "$cond": [
-                                {"$eq": ["$reserva_bool", True]},
-                                {"$ifNull": ["$reservas_brutas_usd", {"$ifNull": ["$price_usd", 0]}]},
-                                0,
-                            ]
-                        }
-                    },
-                    "avg_booking_window": {
-                        "$avg": {"$ifNull": ["$srch_booking_window", 0]}
-                    },
-                    "avg_length_of_stay": {
-                        "$avg": {"$ifNull": ["$srch_length_of_stay", 0]}
-                    },
-                    "adults": {"$sum": {"$ifNull": ["$srch_adults_count", 0]}},
-                    "children": {"$sum": {"$ifNull": ["$srch_children_count", 0]}},
-                    "rooms": {"$sum": {"$ifNull": ["$srch_room_count", 0]}},
-                }
-            },
-            {"$sort": {"_id.date": 1}},
-        ]
-        docs = list(db.fact_hotel_reservations.aggregate(pipeline, allowDiskUse=True))
-        return [
-            {
-                "date": _parse_day(item["_id"]["date"]),
-                "prop_id": item["_id"]["prop_id"],
-                "site_id": item["_id"]["site_id"],
-                "visitor_location_country_id": item["_id"]["visitor_location_country_id"],
-                "srch_destination_id": item["_id"]["srch_destination_id"],
-                "searches": int(item["searches"]),
-                "clicks": int(item["clicks"]),
-                "reservations": int(item["reservations"]),
-                "revenue_usd": float(item["revenue_usd"] or 0),
-                "avg_booking_window": float(item["avg_booking_window"] or 0),
-                "avg_length_of_stay": float(item["avg_length_of_stay"] or 0),
-                "adults": int(item["adults"]),
-                "children": int(item["children"]),
-                "rooms": int(item["rooms"]),
-            }
-            for item in docs
-            if item["_id"]["date"]
-        ]
+        return _extract_kpi_funnel_property_channel(mongo[db_name])
     finally:
         if owns:
             mongo.close()
+
+
+def _extract_kpi_funnel_property_channel(db) -> list[dict[str, Any]]:
+    """Implementación del embudo táctico por hotel con fuente operativa."""
+    cancelled = {"cancelled", "canceled", "cancelled_by_guest", "cancelled_by_hotel"}
+
+    # 1) Clics reales: día × prop → searches / clicks
+    clicks: dict[tuple[str, Any], dict[str, int]] = {}
+    for ev in db.click_events.find({}, {"clicked_at": 1, "prop_id": 1, "source": 1}):
+        day = _parse_day(ev.get("clicked_at"))
+        if not day:
+            continue
+        key = (day, ev.get("prop_id"))
+        bucket = clicks.setdefault(key, {"searches": 0, "clicks": 0})
+        if str(ev.get("source") or "").strip().lower() == "search":
+            bucket["searches"] += 1
+        else:
+            bucket["clicks"] += 1
+
+    # 2) Reservas reales: día × prop → reservations + revenue + estancia media
+    bookings: dict[tuple[str, Any], dict[str, Any]] = {}
+    for bo in db.booking_orders.find(
+        {}, {"check_in_date": 1, "prop_id": 1, "total_price": 1, "status": 1,
+             "total_nights": 1, "adults": 1, "children": 1, "rooms": 1}
+    ):
+        day = _parse_day(bo.get("check_in_date"))
+        if not day:
+            continue
+        if str(bo.get("status") or "").strip().lower() in cancelled:
+            continue
+        key = (day, bo.get("prop_id"))
+        bucket = bookings.setdefault(key, {
+            "reservations": 0, "revenue_usd": 0.0, "length_sum": 0.0,
+            "adults": 0, "children": 0, "rooms": 0,
+        })
+        bucket["reservations"] += 1
+        bucket["revenue_usd"] += float(bo.get("total_price") or 0)
+        bucket["length_sum"] += float(bo.get("total_nights") or 0)
+        bucket["adults"] += int(bo.get("adults") or 0)
+        bucket["children"] += int(bo.get("children") or 0)
+        bucket["rooms"] += int(bo.get("rooms") or 0)
+
+    # 3) Hoteles reales: prop → labels.
+    prop_ids = sorted({pid for _, pid in clicks} | {pid for _, pid in bookings}, key=lambda v: (v is None, str(v)))
+    hotel_query = {"prop_id": {"$in": prop_ids}} if prop_ids else {"_id": {"$exists": False}}
+    hotels: dict[str, dict[str, Any]] = {}
+    for doc in db.dim_hotels.find(hotel_query, {"prop_id": 1, "display_country_label": 1, "city": 1, "prop_country_id": 1}):
+        hotels[_label_key(doc.get("prop_id"))] = doc
+
+    rows = []
+    for day, pid in sorted(clicks.keys() | bookings.keys()):
+        hotel = hotels.get(_label_key(pid), {})
+        click_bucket = clicks.get((day, pid), {"searches": 0, "clicks": 0})
+        booking_bucket = bookings.get((day, pid), {
+            "reservations": 0, "revenue_usd": 0.0, "length_sum": 0.0,
+            "adults": 0, "children": 0, "rooms": 0,
+        })
+        res = booking_bucket["reservations"]
+        rows.append({
+            "date": day,
+            "prop_id": int(pid or 0),
+            "site_id": 0,
+            "visitor_location_country_id": int(hotel.get("prop_country_id") or 0),
+            "visitor_country_label": str(hotel.get("display_country_label") or ""),
+            "srch_destination_id": int(pid or 0),
+            "destination_label": str(hotel.get("city") or ""),
+            "searches": click_bucket["searches"],
+            "clicks": click_bucket["clicks"],
+            "reservations": res,
+            "revenue_usd": round(booking_bucket["revenue_usd"], 2),
+            "avg_booking_window": 0.0,
+            "avg_length_of_stay": round(booking_bucket["length_sum"] / res, 2) if res else 0.0,
+            "adults": booking_bucket["adults"],
+            "children": booking_bucket["children"],
+            "rooms": booking_bucket["rooms"],
+        })
+    return rows
 
 
 def _label_key(value: Any) -> str:
@@ -937,22 +1013,226 @@ def _enrich_kpi_labels(db, payload: dict[str, list[dict[str, Any]]]) -> None:
 
     for table_name, rows in payload.items():
         for row in rows:
-            if "prop_id" in row:
+            # El enriquecimiento solo RELLENA labels vacíos: si el extractor ya
+            # resolvió un label real (ej. ciudad/país desde dim_hotels), se
+            # conserva y nunca se pisa con el catálogo sintético GA03.
+            if "prop_id" in row and not row.get("hotel_label"):
                 row["hotel_label"] = hotel_labels.get((_label_key(row["prop_id"]),), "")
-            if "room_type_id" in row:
+            if "room_type_id" in row and not row.get("room_type_label"):
                 room_labels_by_prop = room_labels.get(
                     (_label_key(row.get("prop_id")), _label_key(row["room_type_id"])),
                     "",
                 )
                 row["room_type_label"] = room_labels_by_prop or room_labels.get((_label_key(row["room_type_id"]),), "")
-            if "rate_plan_id" in row:
+            if "rate_plan_id" in row and not row.get("rate_plan_label"):
                 row["rate_plan_label"] = rate_labels.get((_label_key(row["rate_plan_id"]),), "")
-            if "visitor_location_country_id" in row:
+            if "visitor_location_country_id" in row and not row.get("visitor_country_label"):
                 row["visitor_country_label"] = country_labels.get((_label_key(row["visitor_location_country_id"]),), "")
-            if "srch_destination_id" in row:
+            if "srch_destination_id" in row and not row.get("destination_label"):
                 row["destination_label"] = destination_labels.get((_label_key(row["srch_destination_id"]),), "")
-            if "site_id" in row:
+            if "site_id" in row and not row.get("site_label"):
                 row["site_label"] = site_labels.get((_label_key(row["site_id"]),), "")
+
+
+# ── Capa estratégica mensual (TAF14) ────────────────────────────────────
+
+
+def _hotel_total_rooms(db, prop_ids: list[Any]) -> dict[str, int]:
+    """Mapa prop_id → total_rooms (denominador de ocupación/RevPAR).
+
+    Fuentes en orden (solo lectura durante el ETL, nunca desde el dashboard):
+    1. ``dim_hotels.total_rooms``
+    2. ``dim_hotels.total_rooms_declared`` (aprobación de onboarding)
+    3. suma de ``room_inventory_calendar.total_rooms`` por prop (capacidad
+       táctica de la casa, la misma que alimenta ``kpi_inventory_daily``)
+
+    0 solo cuando ninguna fuente tiene el dato (ej: catálogo sintético sin
+    capacidad declarada).
+    """
+    result: dict[str, int] = {}
+    query: dict[str, Any] = {"prop_id": {"$in": prop_ids}} if prop_ids else {}
+    projection = {"prop_id": 1, "total_rooms": 1, "total_rooms_declared": 1}
+    for doc in db.dim_hotels.find(query, projection):
+        value = 0
+        for field in ("total_rooms", "total_rooms_declared"):
+            raw = doc.get(field)
+            if raw is not None:
+                try:
+                    value = int(raw)
+                except (TypeError, ValueError):
+                    continue
+                break
+        result[_label_key(doc.get("prop_id"))] = value
+
+    missing = [pid for pid in prop_ids if not result.get(_label_key(pid), 0)]
+    if missing:
+        # El calendario tiene un doc por fecha×tipo; la capacidad es la suma de
+        # los tipos de habitación DISTINTOS (max por tipo), no de todas las filas.
+        pipeline = [
+            {"$match": {"prop_id": {"$in": missing}, "total_rooms": {"$gt": 0}}},
+            {"$group": {"_id": {"prop": "$prop_id", "rt": "$room_type_id"}, "cap": {"$max": "$total_rooms"}}},
+            {"$group": {"_id": "$_id.prop", "total": {"$sum": "$cap"}}},
+        ]
+        for doc in db.room_inventory_calendar.aggregate(pipeline, allowDiskUse=True):
+            result[_label_key(doc["_id"])] = int(doc.get("total") or 0)
+
+    return result
+
+
+def _extract_strat_booking_monthly(db, *, by_room_type: bool) -> list[dict[str, Any]]:
+    """Agregado mensual de ``booking_orders`` por mes de llegada.
+
+    ``by_room_type`` añade ``room_type_id`` a la clave (tabla de planes). Los
+    importes no se prorratean por noche: para la lectura estratégica mensual se
+    usa el mes de ``check_in_date`` y ``total_price`` como revenue neto de
+    descuento (``discount_amount`` = original_total − total, sin inventar
+    comisiones ni costos que Mongo no aporta).
+    """
+    _id: dict[str, Any] = {
+        "month": {"$concat": [{"$substrBytes": ["$check_in_date", 0, 7]}, "-01"]},
+        "prop_id": "$prop_id",
+        "currency": {"$toUpper": {"$ifNull": ["$currency", ""]}},
+    }
+    if by_room_type:
+        _id["room_type_id"] = {"$ifNull": ["$room_type_id", ""]}
+    pipeline = [
+        {"$match": {"check_in_date": {"$type": "string"}}},
+        {"$set": {
+            "_rooms": {"$max": [{"$convert": {"input": "$rooms", "to": "int", "onError": 1, "onNull": 1}}, 1]},
+            "_nights": {"$max": [{"$convert": {"input": "$total_nights", "to": "int", "onError": 0, "onNull": 0}}, 0]},
+            "_is_cancelled": {"$in": [{"$toLower": {"$ifNull": ["$status", ""]}}, ["cancelled", "canceled", "cancelled_by_guest", "cancelled_by_hotel"]]},
+            "_original": {"$ifNull": ["$original_total_price", {"$ifNull": ["$total_price", 0]}]},
+        }},
+        {"$group": {
+            "_id": _id,
+            "bookings": {"$sum": 1},
+            "rooms_sold": {"$sum": {"$cond": ["$_is_cancelled", 0, "$_rooms"]}},
+            "room_nights": {"$sum": {"$cond": ["$_is_cancelled", 0, {"$multiply": ["$_nights", "$_rooms"]}]}},
+            "revenue": {"$sum": {"$cond": ["$_is_cancelled", 0, {"$ifNull": ["$total_price", 0]}]}},
+            "discount_amount": {"$sum": {"$cond": ["$_is_cancelled", 0, {"$max": [0, {"$subtract": ["$_original", {"$ifNull": ["$total_price", 0]}]}]}]}},
+            "adults": {"$sum": {"$cond": ["$_is_cancelled", 0, {"$ifNull": ["$adults", 0]}]}},
+            "children": {"$sum": {"$cond": ["$_is_cancelled", 0, {"$ifNull": ["$children", 0]}]}},
+            "cancelled_rooms": {"$sum": {"$cond": ["$_is_cancelled", "$_rooms", 0]}},
+        }},
+        {"$sort": {"_id.month": 1}},
+    ]
+    docs = list(db.booking_orders.aggregate(pipeline, allowDiskUse=True))
+    rows: list[dict[str, Any]] = []
+    for item in docs:
+        row: dict[str, Any] = {
+            "month": item["_id"]["month"], "prop_id": item["_id"]["prop_id"],
+            "currency": item["_id"]["currency"],
+            "bookings": int(item["bookings"]), "rooms_sold": int(item["rooms_sold"]),
+            "room_nights": int(item["room_nights"]), "revenue": float(item["revenue"] or 0),
+            "discount_amount": float(item["discount_amount"] or 0),
+            "adults": int(item["adults"]), "children": int(item["children"]),
+            "cancelled_rooms": int(item["cancelled_rooms"]),
+        }
+        if by_room_type:
+            row["room_type_id"] = item["_id"]["room_type_id"]
+        rows.append(row)
+    return rows
+
+
+def extract_strat_hotel_monthly(client, db_name: str) -> list[dict[str, Any]]:
+    """Desempeño mensual por hotel (revenue, noches, cancelaciones, total_rooms)."""
+    settings = get_settings()
+    mongo, owns = _mongo_client(client, settings)
+    try:
+        db = mongo[db_name]
+        rows = _extract_strat_booking_monthly(db, by_room_type=False)
+        prop_ids = [row["prop_id"] for row in rows if row.get("prop_id") is not None]
+        rooms_map = _hotel_total_rooms(db, prop_ids)
+        for row in rows:
+            row["total_rooms"] = rooms_map.get(_label_key(row.get("prop_id")), 0)
+        return rows
+    finally:
+        if owns:
+            mongo.close()
+
+
+def extract_strat_plan_monthly(client, db_name: str) -> list[dict[str, Any]]:
+    """Rentabilidad mensual por tipo de habitación/plan (revenue y descuento)."""
+    settings = get_settings()
+    mongo, owns = _mongo_client(client, settings)
+    try:
+        return _extract_strat_booking_monthly(mongo[db_name], by_room_type=True)
+    finally:
+        if owns:
+            mongo.close()
+
+
+def extract_strat_reputation_monthly(client, db_name: str) -> list[dict[str, Any]]:
+    """Reputación mensual por hotel (rating aprobado, sentimiento, respuesta)."""
+    settings = get_settings()
+    mongo, owns = _mongo_client(client, settings)
+    try:
+        db = mongo[db_name]
+        pipeline = [
+            {"$match": {"created_at": {"$type": "date"}}},
+            {"$set": {
+                "_month": {"$dateToString": {"format": "%Y-%m-01", "date": "$created_at"}},
+                "_status": {"$toLower": {"$trim": {"input": {"$ifNull": ["$moderation_status", "pending"]}}}},
+                "_has_response": {"$and": [
+                    {"$ne": [{"$ifNull": ["$staff_response", None]}, None]},
+                    {"$ne": [{"$ifNull": ["$staff_response", ""]}, ""]},
+                ]},
+            }},
+            {"$group": {
+                "_id": {"month": "$_month", "prop_id": "$prop_id"},
+                "reviews": {"$sum": 1},
+                "rating_sum": {"$sum": {"$cond": [{"$eq": ["$_status", "approved"]}, {"$ifNull": ["$rating", 0]}, 0]}},
+                "approved": {"$sum": {"$cond": [{"$eq": ["$_status", "approved"]}, 1, 0]}},
+                "positive": {"$sum": {"$cond": [{"$eq": [{"$toLower": {"$ifNull": ["$sentiment_label", ""]}}, "positive"]}, 1, 0]}},
+                "neutral": {"$sum": {"$cond": [{"$eq": [{"$toLower": {"$ifNull": ["$sentiment_label", ""]}}, "neutral"]}, 1, 0]}},
+                "negative": {"$sum": {"$cond": [{"$eq": [{"$toLower": {"$ifNull": ["$sentiment_label", ""]}}, "negative"]}, 1, 0]}},
+                "responded": {"$sum": {"$cond": ["$_has_response", 1, 0]}},
+            }},
+            {"$sort": {"_id.month": 1}},
+        ]
+        rows: list[dict[str, Any]] = []
+        for item in db.reviews.aggregate(pipeline, allowDiskUse=True):
+            reviews = int(item["reviews"])
+            approved = int(item["approved"])
+            responded = int(item["responded"])
+            rows.append({
+                "month": item["_id"]["month"], "prop_id": item["_id"].get("prop_id", 0),
+                "reviews": reviews,
+                "avg_rating": float(item["rating_sum"] or 0) / approved if approved else 0.0,
+                "positive": int(item["positive"]), "neutral": int(item["neutral"]),
+                "negative": int(item["negative"]), "responded": responded,
+                "response_rate": (responded / reviews * 100.0) if reviews else 0.0,
+            })
+        return rows
+    finally:
+        if owns:
+            mongo.close()
+
+
+def rollup_market_monthly(daily_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Rueda el embudo diario (``kpi_funnel_daily``) a granularidad mensual.
+
+    Reutiliza la agregación diaria ya calculada (una sola lectura de la Fact
+    grande), sin re-agregar ``fact_hotel_reservations`` por segunda vez.
+    """
+    buckets: dict[tuple[str, int, int], dict[str, Any]] = {}
+    for row in daily_rows:
+        day = str(row.get("date") or "")
+        month = day[:7] + "-01" if len(day) >= 10 else day
+        key = (month, int(row.get("visitor_location_country_id") or 0), int(row.get("srch_destination_id") or 0))
+        bucket = buckets.setdefault(key, {
+            "month": month,
+            "visitor_location_country_id": key[1],
+            "visitor_country_label": str(row.get("visitor_country_label") or ""),
+            "srch_destination_id": key[2],
+            "destination_label": str(row.get("destination_label") or ""),
+            "searches": 0, "clicks": 0, "reservations": 0, "revenue_usd": 0.0,
+        })
+        bucket["searches"] += int(row.get("searches") or 0)
+        bucket["clicks"] += int(row.get("clicks") or 0)
+        bucket["reservations"] += int(row.get("reservations") or 0)
+        bucket["revenue_usd"] += float(row.get("revenue_usd") or 0)
+    return sorted(buckets.values(), key=lambda item: item["month"])
 
 
 def extract_all(client, db_name: str) -> dict[str, list[dict[str, Any]]]:
@@ -983,6 +1263,13 @@ def extract_all(client, db_name: str) -> dict[str, list[dict[str, Any]]]:
         # Pagos tácticos: agregado por día/hotel/método/estado + contexto de
         # facturación del día para el saldo pendiente.
         payload["kpi_payment_daily"] = extract_kpi_payment_daily(mongo, db_name)
+        # Capa estratégica mensual (TAF14): pocos agregados, sin replicar Mongo.
+        payload["strat_hotel_monthly"] = extract_strat_hotel_monthly(mongo, db_name)
+        payload["strat_plan_monthly"] = extract_strat_plan_monthly(mongo, db_name)
+        payload["strat_reputation_monthly"] = extract_strat_reputation_monthly(mongo, db_name)
+        # Mercado mensual se deriva del embudo diario ya agregado (sin re-leer
+        # la Fact grande una segunda vez).
+        payload["strat_market_monthly"] = rollup_market_monthly(payload["kpi_funnel_daily"])
         _enrich_kpi_labels(mongo[db_name], payload)
         return payload
     finally:

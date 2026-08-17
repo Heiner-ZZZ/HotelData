@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Any
+
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from src.app.core.timezone import local_now, local_today
 from src.app.modules.partner.services.audit import register_action
@@ -336,17 +340,300 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
     }
 
 
+def _cleanup_object_id(value: Any) -> ObjectId | None:
+    if isinstance(value, ObjectId):
+        return value
+    try:
+        return ObjectId(str(value))
+    except (InvalidId, TypeError, ValueError):
+        return None
+
+
+def _cleanup_values(*values: Any) -> list[Any]:
+    result: list[Any] = []
+    for value in values:
+        if value is None or value == "":
+            continue
+        result.extend([value, str(value)])
+        object_id = _cleanup_object_id(value)
+        if object_id is not None:
+            result.append(object_id)
+    return list(dict.fromkeys(result))
+
+
+def _cleanup_or(*clauses: dict[str, Any]) -> dict[str, Any]:
+    return {"$or": list(clauses)} if clauses else {"_id": {"$in": []}}
+
+
+def _cleanup_ids(db: Any, collection_name: str, query: dict[str, Any]) -> list[Any]:
+    return [doc["_id"] for doc in db[collection_name].find(query, {"_id": 1})]
+
+
 def cleanup_test_booking(booking_id: str) -> dict[str, Any]:
+    """Remove a test booking's complete cross-module aggregate.
+
+    The reservation flag is the safety gate. Once it is true, collect every
+    direct foreign key (folio, invoice, payment and settlement ids) before a
+    single Mongo transaction deletes operational/fact projections and their
+    derived audit/outbox records. Reception shifts are shared aggregates: only
+    this booking's embedded ids and transactions are removed, never the shift.
+    """
     db = get_database()
-    booking = db.booking_orders.find_one({"booking_id": booking_id}, {"_id": 0, "is_test": 1})
+    booking = db.booking_orders.find_one({"booking_id": booking_id})
     if booking is None:
         return {"booking_id": booking_id, "deleted": False, "reason": "not_found"}
     if not booking.get("is_test"):
         return {"booking_id": booking_id, "deleted": False, "reason": "not_marked_as_test"}
-    deleted = {
-        "booking_orders": db.booking_orders.delete_one({"booking_id": booking_id}).deleted_count,
-        "booking_guests": db.booking_guests.delete_many({"booking_id": booking_id}).deleted_count,
-        "booking_status_history": db.booking_status_history.delete_many({"booking_id": booking_id}).deleted_count,
-        "manual_reservations": db.manual_reservations.delete_many({"booking_id": booking_id}).deleted_count,
+
+    booking_object_id = booking.get("_id")
+    booking_values = _cleanup_values(booking_id, booking_object_id)
+
+    folio_query = {"booking_id": booking_id}
+    folio_docs = list(db.guest_folios.find(folio_query))
+    folio_ids = [doc["_id"] for doc in folio_docs]
+    folio_numbers = [doc.get("folio_number") for doc in folio_docs if doc.get("folio_number")]
+    folio_values = _cleanup_values(*folio_ids, *folio_numbers)
+    posting_ids = [
+        posting.get("posting_id")
+        for folio in folio_docs
+        for posting in (folio.get("postings") or [])
+        if posting.get("posting_id")
+    ]
+
+    invoice_query = {"booking_id": booking_id}
+    invoice_docs = list(db.reservation_invoices.find(invoice_query))
+    invoice_ids = [doc["_id"] for doc in invoice_docs]
+    invoice_numbers = [doc.get("invoice_number") for doc in invoice_docs if doc.get("invoice_number")]
+    invoice_values = _cleanup_values(*invoice_ids, *invoice_numbers)
+
+    payment_query = _cleanup_or(
+        {"booking_id": booking_id},
+        {"invoice_id": {"$in": invoice_values}},
+    )
+    payment_docs = list(db.reservation_payments.find(payment_query))
+    payment_ids = [doc["_id"] for doc in payment_docs]
+    payment_values = _cleanup_values(*payment_ids)
+
+    settlement_query = _cleanup_or(
+        {"booking_id": booking_id},
+        {"folio_id": {"$in": folio_values}},
+        {"invoice_id": {"$in": invoice_values}},
+        {"payment_id": {"$in": payment_values}},
+    )
+    settlement_docs = list(db.folio_settlement_events.find(settlement_query))
+    settlement_ids = [doc["_id"] for doc in settlement_docs]
+    settlement_values = _cleanup_values(*settlement_ids)
+
+    refund_query = _cleanup_or(
+        {"payment_id": {"$in": payment_values}},
+        {"invoice_id": {"$in": invoice_values}},
+    )
+
+    event_values = _cleanup_values(
+        booking_id,
+        booking_object_id,
+        *folio_ids,
+        *folio_numbers,
+        *invoice_ids,
+        *invoice_numbers,
+        *payment_ids,
+        *settlement_ids,
+    )
+
+    booking_id_collections = (
+        "booking_guests",
+        "booking_room_guests",
+        "booking_status_history",
+        "manual_reservations",
+        "additional_charges",
+        "notification_log",
+        "housekeeping_tasks",
+        "room_status_history",
+        "room_status_log",
+        "stay_sessions",
+        "stay_service_requests",
+        "stay_messages",
+        "maintenance_tasks",
+        "payment_reconciliation_events",
+        "fact_hotel_reservations",
+        "fact_hotel_events",
+        "platform_earnings",
+    )
+    ids_by_collection: dict[str, list[Any]] = {
+        collection_name: _cleanup_ids(db, collection_name, {"booking_id": booking_id})
+        for collection_name in booking_id_collections
+        if collection_name in db.list_collection_names()
     }
+
+    ids_by_collection["booking_orders"] = [booking["_id"]]
+    ids_by_collection["additional_charges"] = _cleanup_ids(
+        db,
+        "additional_charges",
+        _cleanup_or({"booking_id": booking_id}, {"folio_id": {"$in": folio_values}}),
+    )
+    ids_by_collection["notification_log"] = _cleanup_ids(
+        db,
+        "notification_log",
+        _cleanup_or({"booking_id": booking_id}, {"entity_id": {"$in": event_values}}),
+    )
+    ids_by_collection["payment_reconciliation_events"] = _cleanup_ids(
+        db,
+        "payment_reconciliation_events",
+        _cleanup_or(
+            {"booking_id": booking_id},
+            {"payment_id": {"$in": payment_values}},
+            {"invoice_id": {"$in": invoice_values}},
+        ),
+    )
+    ids_by_collection["guest_folios"] = _cleanup_ids(
+        db,
+        "guest_folios",
+        _cleanup_or({"booking_id": booking_id}, {"_id": {"$in": folio_values}}),
+    )
+
+    invoice_query_all = _cleanup_or(
+        {"booking_id": booking_id},
+        {"_id": {"$in": invoice_values}},
+        {"invoice_number": {"$in": invoice_values}},
+    )
+    for collection_name in ("reservation_invoices", "fact_reservation_invoices"):
+        ids_by_collection[collection_name] = _cleanup_ids(db, collection_name, invoice_query_all)
+
+    payment_query_all = _cleanup_or(
+        {"booking_id": booking_id},
+        {"_id": {"$in": payment_values}},
+        {"invoice_id": {"$in": invoice_values}},
+    )
+    for collection_name in ("reservation_payments", "fact_reservation_payments"):
+        ids_by_collection[collection_name] = _cleanup_ids(db, collection_name, payment_query_all)
+
+    for collection_name in ("folio_settlement_events", "fact_folio_settlement_events"):
+        ids_by_collection[collection_name] = _cleanup_ids(db, collection_name, settlement_query)
+
+    for collection_name in ("refund_documents", "fact_refund_documents"):
+        if collection_name in db.list_collection_names():
+            ids_by_collection[collection_name] = _cleanup_ids(db, collection_name, refund_query)
+
+    ledger_query = _cleanup_or(
+        {"booking_id": booking_id},
+        {"source_id": {"$in": _cleanup_values(*invoice_numbers, *posting_ids, *folio_numbers)}},
+        {"folio_ref": {"$in": folio_values}},
+    )
+    ids_by_collection["ledger_transactions"] = _cleanup_ids(db, "ledger_transactions", ledger_query)
+
+    event_regex = {"$regex": "|".join(re.escape(str(value)) for value in event_values)}
+    event_query = _cleanup_or(
+        {"booking_id": booking_id},
+        {"source_id": {"$in": event_values}},
+        {"aggregate_id": {"$in": event_values}},
+        {"payload.booking_id": booking_id},
+        {"payload.folio_id": {"$in": folio_values}},
+        {"idempotency_key": event_regex},
+    )
+    for collection_name in ("hotel_domain_events", "fact_hotel_domain_events"):
+        ids_by_collection[collection_name] = _cleanup_ids(db, collection_name, event_query)
+
+    text_values = [booking_id, *folio_numbers, *invoice_numbers]
+    text_regex = {"$regex": "|".join(re.escape(str(value)) for value in text_values)}
+    audit_query = _cleanup_or(
+        {"entity_id": {"$in": event_values}},
+        {"metadata.booking_id": booking_id},
+        {"metadata.folio_number": {"$in": folio_values}},
+        {"metadata.invoice_number": {"$in": invoice_values}},
+        {"summary": text_regex},
+        {"metadata.path": text_regex},
+    )
+    ids_by_collection["audit_log"] = _cleanup_ids(db, "audit_log", audit_query)
+
+    outbox_query = _cleanup_or(
+        {"document_id": {"$in": event_values}},
+        {"operational_id": {"$in": event_values}},
+        {"document._id": {"$in": event_values}},
+        {"document.booking_id": booking_id},
+        {"document.folio_id": {"$in": folio_values}},
+        {"document.folio_number": {"$in": folio_values}},
+        {"document.invoice_id": {"$in": invoice_values}},
+        {"document.invoice_number": {"$in": invoice_values}},
+        {"document.payment_id": {"$in": payment_values}},
+        {"document.entity_id": {"$in": event_values}},
+        {"document.payload.booking_id": booking_id},
+        {"document.summary": text_regex},
+        {"document.metadata.path": text_regex},
+    )
+    ids_by_collection["outbox"] = _cleanup_ids(db, "outbox", outbox_query)
+
+    shift_query = _cleanup_or(
+        {"booking_ids": {"$in": booking_values}},
+        {"folio_ids": {"$in": folio_values}},
+        {"transactions.booking_id": booking_id},
+    )
+    shift_ids = _cleanup_ids(db, "reception_shifts", shift_query)
+
+    deleted: dict[str, int] = {}
+    with db.client.start_session() as session, session.start_transaction():
+        for collection_name, ids in ids_by_collection.items():
+            if not ids:
+                continue
+            result = db[collection_name].delete_many({"_id": {"$in": ids}}, session=session)
+            deleted[collection_name] = result.deleted_count
+
+        shift_updated = 0
+        for shift_id in shift_ids:
+            shift_doc = db.reception_shifts.find_one({"_id": shift_id}, session=session)
+            if not shift_doc:
+                continue
+            update_set: dict[str, Any] = {}
+            if "booking_ids" in shift_doc:
+                update_set["booking_ids"] = [
+                    value for value in shift_doc["booking_ids"] if value not in booking_values
+                ]
+            if "folio_ids" in shift_doc:
+                update_set["folio_ids"] = [
+                    value for value in shift_doc["folio_ids"] if value not in folio_values
+                ]
+            if "transactions" in shift_doc:
+                update_set["transactions"] = [
+                    transaction for transaction in shift_doc["transactions"]
+                    if not _cleanup_transaction_matches(
+                        transaction,
+                        booking_values,
+                        folio_values,
+                        invoice_values,
+                        payment_values,
+                    )
+                ]
+            if update_set:
+                result = db.reception_shifts.update_one(
+                    {"_id": shift_id},
+                    {"$set": update_set},
+                    session=session,
+                )
+                shift_updated += result.modified_count
+        if shift_updated:
+            deleted["reception_shifts"] = shift_updated
+
     return {"booking_id": booking_id, "deleted": True, "counts": deleted}
+
+
+def _cleanup_transaction_matches(
+    transaction: dict[str, Any],
+    booking_values: list[Any],
+    folio_values: list[Any],
+    invoice_values: list[Any],
+    payment_values: list[Any],
+) -> bool:
+    values = {
+        str(value)
+        for value in (
+            transaction.get("booking_id"),
+            transaction.get("folio_id"),
+            transaction.get("invoice_id"),
+            transaction.get("payment_id"),
+        )
+        if value is not None
+    }
+    target_values = {
+        str(value)
+        for value in (*booking_values, *folio_values, *invoice_values, *payment_values)
+    }
+    return bool(values & target_values)
