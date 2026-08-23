@@ -302,6 +302,33 @@ def create_payment(
         )
         doc["status"] = "confirmed"
 
+        # Un pago confirmado que lleva el saldo del folio a cero lo cierra
+        # automáticamente como ``settled`` (Registrar Pago → folio liquidado).
+        # La actualización es atómica y condicional: solo el pago que postea el
+        # último peso gana la carrera, y un reembolso concurrente que restaure
+        # saldo (status open + total_due > 0) bloquea el cierre. Los campos
+        # replican los que usa settle_folio para que ambos flujos convivan.
+        if folio is not None and round(float(folio.get("total_due", 0) or 0), 2) <= 0.005:
+            # post_to_folio devuelve el folio enriquecido (``id`` str, sin ``_id``).
+            folio_oid = folio["id"] if isinstance(folio.get("id"), ObjectId) else ObjectId(str(folio["id"]))
+            db.guest_folios.update_one(
+                {"_id": folio_oid, "status": "open", "total_due": {"$lte": 0.005}},
+                {"$set": {
+                    "status": "settled",
+                    "settlement_type": "payment",
+                    "settlement_amount": round(
+                        float(folio.get("total_payments", doc.get("amount", 0)) or 0), 2
+                    ),
+                    "settled_at": doc.get("paid_at") or confirmed_time,
+                    "settled_recorded_at": confirmed_time,
+                    "settled_by": actor_username or "system",
+                    "settled_by_user_id": actor_user_id,
+                    "settlement_evidence_type": evidence_type,
+                    "settlement_evidence_reference": evidence_reference,
+                    "updated_at": confirmed_time,
+                }},
+            )
+
     if invoice_id and status == "confirmed" and doc.get("status") == "confirmed":
         confirmed_total = round(sum(
             float(row.get("amount", 0) or 0)

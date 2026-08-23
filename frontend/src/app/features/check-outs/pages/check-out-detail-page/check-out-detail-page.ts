@@ -7,6 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { getErrorStatus, getErrorMessage } from '../../../../shared/utils/http-error.util';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -51,6 +52,7 @@ export class CheckOutDetailPageComponent {
   private readonly opMode = inject(OperationModeService);
   private readonly auth = inject(AuthService);
   private readonly noShow = inject(NoShowService);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   readonly viewState = signal<ViewState>('loading');
   /**
@@ -73,9 +75,29 @@ export class CheckOutDetailPageComponent {
   });
   readonly bookingId = computed(() => this.paramMap().get('bookingId') ?? '');
 
+  // prop_id reactivo: prioriza ?prop_id de la URL, fallback a PropertyContext (single-hotel).
+  // Sin prop_id el backend responde 400 `Contexto de hotel requerido` (require_prop_permission).
+  private readonly queryParamMap = toSignal(
+    ((this.activatedRoute.queryParamMap ?? this.activatedRoute.paramMap) as any),
+    {
+      initialValue: ((this.activatedRoute.snapshot.queryParamMap ?? this.activatedRoute.snapshot.paramMap) as any),
+    },
+  );
+  private readonly effectivePropId = computed(() => {
+    const raw = (this.queryParamMap() as any)?.get('prop_id') as string | null | undefined;
+    const fromUrl = raw ? Number(raw) : 0;
+    if (Number.isFinite(fromUrl) && fromUrl > 0) return fromUrl;
+    const ctx = this.propertyCtx.currentPropId();
+    return Number.isFinite(ctx) && ctx > 0 ? ctx : 0;
+  });
+
   readonly detailResource = httpResource<CheckOutDetailDto>(() => {
     const id = this.bookingId();
-    return id ? `/management/check-outs/${id}/detail` : undefined;
+    if (!id) return undefined;
+    const propId = this.effectivePropId();
+    if (propId > 0) return `/management/check-outs/${id}/detail?prop_id=${propId}`;
+    if (!this.propertyCtx.ready()) return undefined;
+    return `/management/check-outs/${id}/detail`;
   });
 
   /**
@@ -226,7 +248,7 @@ export class CheckOutDetailPageComponent {
     this.errorMessage.set('');
     try {
       // Flujo compartido: diálogo de confirmación → POST no-show → folio.
-      const result = await this.noShow.markNoShowWithConfirm(d.booking_id, d.guest_name);
+      const result = await this.noShow.markNoShowWithConfirm(d.booking_id, d.guest_name, d.prop_id);
       if (!result) return; // cancelado — el finally libera el pending
       this.successMessage.set(this.noShow.successMessage(result));
       this.noShowResult.set({
@@ -467,8 +489,9 @@ export class CheckOutDetailPageComponent {
 
   removeCharge(chargeId: string): void {
     if (!chargeId) return;
+    const propId = this.data()?.prop_id ?? 0;
     this.chargeSaving.set(true);
-    this.api.deleteCharge(chargeId).subscribe({
+    this.api.deleteCharge(chargeId, propId).subscribe({
       next: () => {
         if (this.data()) this.detailResource.reload();
         this.chargeSaving.set(false);

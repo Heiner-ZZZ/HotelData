@@ -1,4 +1,5 @@
 export interface NotificationLogItem {
+  id: string;
   notificationType: string;
   recipientEmail: string;
   recipientName: string;
@@ -6,6 +7,7 @@ export interface NotificationLogItem {
   propId: number;
   status: string;
   errorMessage: string;
+  message: string;
   createdAt: string;
   typeLabel: string;
   statusLabel: string;

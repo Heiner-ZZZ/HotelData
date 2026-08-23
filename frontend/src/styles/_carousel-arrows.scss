@@ -1,0 +1,57 @@
+/* ═══ Flechas prev/next de carrusel — diseño canónico del comparador ═══
+   Única definición de los botones de navegación de galería: círculo de 30px
+   con --overlay + backdrop-filter blur(4px) e icono en --on-accent, ocultas
+   solo cuando el consumidor activa el modo reveal (ver carousel-controls).
+   Lo usa el componente compartido app-carousel-controls — que a su vez
+   alimenta welcome, hoteles similares, habitaciones, el comparador y el
+   hotel-card de búsqueda/favoritos. Cualquier cambio de diseño se hace acá.
+
+   Uso:
+     @use '.../styles/carousel-arrows' as *;
+     @include carousel-arrows('.cc-arrow', '.cc-prev', '.cc-next');
+
+   $arrow: selector del botón (círculo 30px con overlay + blur).
+   $prev:  selector del botón anterior (left: 6px).
+   $next:  selector del botón siguiente (right: 6px). */
+@mixin carousel-arrows($arrow, $prev, $next) {
+  #{$arrow} {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--overlay);
+    backdrop-filter: blur(4px);
+    color: var(--on-accent);
+    cursor: pointer;
+    transition: opacity 200ms ease, background 160ms ease, transform 160ms ease;
+    z-index: 3;
+
+    .material-symbols-outlined {
+      font-size: 1.1rem;
+      --icon-opsz: 20;
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.65);
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--surface);
+      outline-offset: 2px;
+    }
+  }
+
+  #{$prev} {
+    left: 6px;
+  }
+
+  #{$next} {
+    right: 6px;
+  }
+}

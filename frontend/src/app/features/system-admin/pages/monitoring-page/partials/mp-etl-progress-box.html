@@ -1,0 +1,144 @@
+<!-- Caja "Progreso ETL" — OnPush aislado: solo se re-renderiza cuando cambia el progreso real (polling). -->
+<section class="surface-card accordion-section">
+  <div class="accordion-header" (click)="toggleOpen()">
+    <div>
+      <h2>Progreso ETL</h2>
+      <p>Preparación: {{ progress().preparationPercent }}% | Pipeline: {{ progress().pipelinePercent }}%</p>
+    </div>
+    <span class="accordion-chevron">{{ open() ? '▼' : '▶' }}</span>
+  </div>
+  @if (open()) {
+    <div class="accordion-body">
+      <div class="progress-columns">
+        <article class="progress-card">
+          <h3>Preparación</h3>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="progress().preparationPercent"></div>
+          </div>
+          <div class="progress-meta">
+            <span>{{ progress().preparationLoaded }}@if (progress().preparationTarget > 0) { / {{ progress().preparationTarget }} } registros</span>
+            <app-status-badge
+              [tone]="statusTone(progress().preparationStatus)"
+              [label]="progress().preparationStatus"
+            />
+          </div>
+          <p class="progress-msg">{{ progress().preparationMessage }}</p>
+        </article>
+
+        <article class="progress-card">
+          <h3>Pipeline</h3>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="progress().pipelinePercent"></div>
+          </div>
+          <div class="progress-meta">
+            <span>{{ progress().pipelinePercent }}% — {{ progress().pipelineElapsedMs }} ms</span>
+            <app-status-badge
+              [tone]="statusTone(progress().pipelineStatus)"
+              [label]="progress().pipelineStatus"
+            />
+          </div>
+          <p class="progress-msg">{{ progress().pipelineMessage }}</p>
+
+          <div class="step-list">
+            @for (section of progress().pipelineSections; track section.key) {
+              <div class="step-item">
+                @if (section.complete) {
+                  <span class="material-symbols-outlined step-done">check_circle</span>
+                } @else {
+                  <span class="material-symbols-outlined step-pending">radio_button_unchecked</span>
+                }
+                <span>{{ section.label }}</span>
+                <small>{{ section.complete ? 'completado' : 'pendiente' }}</small>
+              </div>
+            }
+          </div>
+        </article>
+      </div>
+
+      <!-- Stop buttons -->
+      @if (isRunning()) {
+        <div class="stop-row">
+          @if (progress().preparationStatus === 'running') {
+            <button type="button" class="action-btn stop-btn" (click)="stopSeed.emit()" [disabled]="actionBusy()">
+              Detener preparación
+            </button>
+          }
+          @if (progress().pipelineStatus === 'running') {
+            <button type="button" class="action-btn stop-btn" (click)="stopPipeline.emit()" [disabled]="actionBusy()">
+              Detener pipeline
+            </button>
+          }
+        </div>
+      }
+
+      <!-- Target selectors -->
+      <div class="targets-row">
+        <div class="target-field">
+          <label for="targetPbSelect">Registros a PocketBase:</label>
+          <select
+            id="targetPbSelect"
+            class="target-select"
+            [value]="targetPocketbase()"
+            (change)="targetPocketbaseChange.emit(+$any($event.target).value)"
+            [disabled]="isRunning()"
+          >
+            @for (opt of targetOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="target-field">
+          <label for="targetMongoSelect">Registros a MongoDB:</label>
+          <select
+            id="targetMongoSelect"
+            class="target-select"
+            [value]="targetMongodb()"
+            (change)="targetMongodbChange.emit(+$any($event.target).value)"
+            [disabled]="isRunning()"
+          >
+            @for (opt of targetOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <!-- ETL mode toggle -->
+      <div class="etl-mode-row">
+        <span class="etl-mode-label">Modo ETL:</span>
+        <button
+          type="button"
+          class="mode-toggle"
+          [class.active]="incrementalMode()"
+          (click)="incrementalModeChange.emit()"
+          [disabled]="isRunning()"
+        >
+          <span class="mode-toggle-track">
+            <span class="mode-toggle-thumb"></span>
+          </span>
+          <span class="mode-toggle-text">{{ etlModeLabel() }}</span>
+        </button>
+        <app-info-tooltip
+          title="Modo ETL"
+          text="<strong>Completo (full reload):</strong> Extrae <em>todos</em> los registros de PocketBase, borra y reescribe las colecciones en MongoDB. Util para recargar todo desde cero.<br><br><strong>Incremental:</strong> Extrae solo los registros <em>nuevos</em> (desde la ultima ejecucion) y los agrega con <em>upsert</em> sin borrar lo existente. Mas rapido cuando ya hay datos cargados."
+        />
+      </div>
+
+      <!-- Action buttons -->
+      <div class="action-row">
+        <button type="button" class="action-btn" (click)="seed.emit()" [disabled]="actionBusy() || isRunning()">
+          Preparar fuente desde CSV
+        </button>
+        <button type="button" class="action-btn" (click)="validate.emit()" [disabled]="actionBusy() || isRunning()">
+          Validar dataset
+        </button>
+        <button type="button" class="action-btn" (click)="pipeline.emit()" [disabled]="actionBusy() || isRunning()">
+          Ejecutar pipeline
+        </button>
+        <button type="button" class="action-btn danger-btn" (click)="clearEvidence.emit()" [disabled]="actionBusy()">
+          Limpiar evidencia
+        </button>
+      </div>
+    </div>
+  }
+</section>

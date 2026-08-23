@@ -37,7 +37,7 @@
           Cerrar Turno e Imprimir Acta
         </button>
       }
-      @if (!shift() && !loading() && canMutateShift()) {
+      @if (!shift() && !occupiedByOther() && !loading() && canMutateShift()) {
         <button class="sc-btn-primary" (click)="openOpenForm()">
           <span class="material-symbols-outlined">play_arrow</span>
           Abrir Turno
@@ -48,6 +48,23 @@
 
   @if (loading()) {
     <div class="sc-loading">Cargando información del turno...</div>
+  } @else if (!shift() && occupiedByOther()) {
+    <!-- ── Turno activo de otro empleado (oculto por aislamiento) ── -->
+    <div class="sc-empty">
+      <span class="material-symbols-outlined sc-empty-icon">lock_clock</span>
+      <h2>Turno de otro empleado</h2>
+      <p>
+        Hay un turno activo abierto por
+        <strong>{{ occupiedOpener() || 'otro empleado' }}</strong>.
+        No puedes abrir otro hasta que se cierre.
+      </p>
+      @if (occupiedLimitHint()) {
+        <p class="sc-empty-hint">
+          <span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span>
+          {{ occupiedLimitHint() }}
+        </p>
+      }
+    </div>
   } @else if (!shift()) {
     <!-- ── No active shift ── -->
     <div class="sc-empty">

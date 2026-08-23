@@ -432,7 +432,7 @@ export class RoomsPageComponent {
     if (!file || !roomTypeId) return;
 
     this.editUploading.set(true);
-    this.api.uploadRoomImage(roomTypeId, file).pipe(
+    this.api.uploadRoomImage(this.selectedPropId(), roomTypeId, file).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (result) => {
@@ -480,7 +480,7 @@ export class RoomsPageComponent {
     if (!roomTypeId) return;
     this.deleting.set(true);
     this.errorMessage.set('');
-    this.api.deleteRoomType(roomTypeId).pipe(
+    this.api.deleteRoomType(this.selectedPropId(), roomTypeId).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
@@ -511,7 +511,7 @@ export class RoomsPageComponent {
     const featuresArr = [...this.selectedFeatures()].map((label) => ({ label }));
     const roomTypeId = value.roomTypeId;
 
-    this.api.updateRoomType(roomTypeId, {
+    this.api.updateRoomType(propId, roomTypeId, {
       name: value.name,
       description: value.description,
       maxAdults: value.maxAdults,
@@ -566,7 +566,7 @@ export class RoomsPageComponent {
 
     if (mode === 'existing' && existingTypeId) {
       // En modo 'Usar existente': solo crear hotel_room ligado al tipo seleccionado
-      request = this.api.createHotelRoomForType(existingTypeId, {
+      request = this.api.createHotelRoomForType(current.propId, existingTypeId, {
         roomNumber: value.roomNumber,
         floor: value.floor,
         view: value.view,
@@ -598,7 +598,7 @@ export class RoomsPageComponent {
             const roomTypeId = created?.room_type_id;
             // If there's a pending file, upload it after creation
             if (pendingFile && roomTypeId) {
-              return this.api.uploadRoomImage(roomTypeId, pendingFile).pipe(
+              return this.api.uploadRoomImage(current.propId, roomTypeId, pendingFile).pipe(
                 map(() => roomTypeId)
               );
             }

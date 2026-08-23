@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission
 from src.app.security.permissions import user_has_permission
 from src.app.modules.partner.services.audit import register_action
 from src.database.connection import get_database
@@ -30,10 +30,56 @@ logger = logging.getLogger(__name__)
 api_router = APIRouter(prefix="/api/reception", tags=["reception-api"])
 
 
+def _user_owns_shift(shift: dict, user: dict) -> bool:
+    """True cuando el turno fue abierto por ``user`` (por ``opened_by_id``
+    FK; fallback por ``opened_by`` username para turnos legacy / system)."""
+    opened_by_id = shift.get("opened_by_id")
+    user_id = user.get("_id")
+    if opened_by_id is not None and user_id is not None:
+        return str(opened_by_id) == str(user_id)
+    return str(shift.get("opened_by") or "") == str(user.get("username") or "")
+
+
+def _can_view_all_shifts(db, user: dict) -> bool:
+    """Gerencia (``shifts.manage``) ve y cierra cualquier turno."""
+    return user_has_permission(db, user, "shifts.manage")
+
+
+def _shift_owner_recorded(shift: dict) -> bool:
+    """True cuando el turno lleva dueño (``opened_by`` o ``opened_by_id``)."""
+    return bool(shift.get("opened_by")) or shift.get("opened_by_id") is not None
+
+
+def _shift_visible_to(shift: dict, user: dict, db) -> bool:
+    """Gerencia ve todo; el dueño ve su turno; un turno legacy SIN dueño
+    registrado queda visible a todos (no hay a quién aislar)."""
+    if _can_view_all_shifts(db, user):
+        return True
+    if not _shift_owner_recorded(shift):
+        return True
+    return _user_owns_shift(shift, user)
+
+
+# Cuándo el turno activo pertenece a OTRO empleado, la respuesta no filtra
+# datos del turno ajeno (caja/transacciones): solo la señal ``occupied`` + quién
+# lo abrió + cuándo alcanza su límite de apertura (para que el empleado sepa
+# cuándo podría quedar libre, sin ver los números del compañero).
+def _occupied_response(labels: dict, shift: dict) -> dict:
+    return {
+        "shift": None,
+        "shift_type_labels": labels,
+        "occupied": True,
+        "opener_username": shift.get("opened_by"),
+        "opener_employee": shift.get("employee"),
+        "expires_at": shift.get("expires_at"),
+        "max_open_hours": shift.get("max_open_hours"),
+    }
+
+
 @api_router.get("/shifts/active")
 def shift_active_api(
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_permission("shifts.read")),
+    current_user: dict = Depends(require_prop_permission("shifts.read")),
 ):
     """Return the currently active shift for a property, or null.
 
@@ -44,13 +90,17 @@ def shift_active_api(
     labels = get_shift_labels(prop_id)
     if shift is None:
         return {"shift": None, "shift_type_labels": labels}
+    db = get_database()
+    if not _shift_visible_to(shift, current_user, db):
+        return _occupied_response(labels, shift)
     return {"shift": shift, "shift_type_labels": labels}
 
 
 @api_router.post("/shifts/open")
 def shift_open_api(
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("shifts.create")),
+    current_user: dict = Depends(require_prop_permission("shifts.create")),
 ):
     """Open a new reception shift.
 
@@ -64,6 +114,10 @@ def shift_open_api(
     (use sparingly — force-close discards reconciliation data).
     """
     prop_id = payload.get("prop_id")
+    # E 2026-08: el gate por-hotel valida el QUERY prop_id; el body debe
+    # coincidir — una llamada inconsistente es sospechosa (400).
+    if query_prop_id is not None and int(str(prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     shift_type = payload.get("shift_type", "morning")
     employee = payload.get("employee", "")
     raw_cash_initial = payload.get("cash_initial")
@@ -246,18 +300,26 @@ def shift_open_api(
         ) from exc
     except ActiveShiftExistsError as exc:
         # 409 Conflict — another shift is open. Frontend reads detail.active_shift
-        # to populate its confirmation modal.
+        # to populate its confirmation modal. Si el turno activo pertenece a OTRO
+        # empleado, se redacta el snapshot (no se filtra caja/transacciones ajenas).
+        db_scoped = get_database()
+        redacted = not _shift_visible_to(exc.active_shift or {}, current_user, db_scoped)
         raise HTTPException(
             status_code=409,
             detail={
                 "error": "active_shift_exists",
                 "message": (
-                    "Ya hay un turno activo para esta propiedad. Ciérrelo primero "
-                    "manualmente o reintente con force=true (no recomendado)."
+                    "Ya hay un turno activo abierto por otro empleado. "
+                    "Espera a que se cierre para abrir el tuyo."
+                    if redacted
+                    else (
+                        "Ya hay un turno activo para esta propiedad. Ciérrelo primero "
+                        "manualmente o reintente con force=true (no recomendado)."
+                    )
                 ),
-                "active_shift": exc.active_shift,
-                "transactions_count": exc.transactions_count,
-                "total_collected": exc.total_collected,
+                "active_shift": None if redacted else exc.active_shift,
+                "transactions_count": None if redacted else exc.transactions_count,
+                "total_collected": None if redacted else exc.total_collected,
                 # None => no previous closed shift or over/short not set.
                 # 0    => previous closed shift balanced perfectly.
                 # ±X   => previous closed shift had a discrepancy of X.
@@ -275,7 +337,7 @@ def shift_open_api(
 @api_router.get("/shifts/config")
 def shift_config_get_api(
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_permission("shifts.read")),
+    current_user: dict = Depends(require_prop_permission("shifts.read")),
 ):
     """Return the effective shift-window config for a property.
 
@@ -286,8 +348,9 @@ def shift_config_get_api(
 
 @api_router.put("/shifts/config")
 def shift_config_put_api(
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("shifts.manage")),
+    current_user: dict = Depends(require_prop_permission("shifts.manage")),
 ):
     """Persist custom cash-shift windows (start/end HH:MM) for a property.
 
@@ -295,6 +358,10 @@ def shift_config_put_api(
     Validation rejects overlapping / malformed / zero-length windows.
     """
     prop_id = payload.get("prop_id")
+    # E 2026-08: el gate por-hotel valida el QUERY prop_id; el body debe
+    # coincidir — una llamada inconsistente es sospechosa (400).
+    if query_prop_id is not None and int(str(prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     windows = payload.get("windows")
     raw_max_open_hours = payload.get("max_open_hours")
     raw_notify_manager_hours = payload.get("notify_manager_hours")
@@ -340,8 +407,9 @@ def shift_config_put_api(
 @api_router.post("/shifts/{shift_id}/close")
 def shift_close_api(
     shift_id: str,
+    prop_id: int | None = Query(default=None, ge=1),
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("shifts.update")),
+    current_user: dict = Depends(require_prop_permission("shifts.update")),
 ):
     """Close an active shift with full cash register data.
 
@@ -371,10 +439,24 @@ def shift_close_api(
     # expectation and unblocks an expired shift. Only ``shifts.manage``
     # (gerente_hotel / super_admin) may use it.
     db_perm = get_database()
-    if emergency and not user_has_permission(db_perm, current_user, "shifts.manage"):
+    if emergency and not user_has_permission(db_perm, current_user, "shifts.manage", prop_id=prop_id):
         raise HTTPException(
             status_code=403,
             detail="Permiso requerido: shifts.manage — el cierre de emergencia es solo para gerencia",
+        )
+
+    # Solo quien abrió el turno (o gerencia) puede cerrarlo: evita que un
+    # compañero del mismo hotel arqueé/cierre el cajón de otro empleado.
+    target_shift = get_shift(shift_id)
+    if target_shift is None:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    # Cross-hotel (E 2026-08): el turno debe pertenecer al hotel pedido.
+    if prop_id is not None and target_shift.get("prop_id") != prop_id:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    if not _shift_visible_to(target_shift, current_user, db_perm):
+        raise HTTPException(
+            status_code=403,
+            detail="Solo quien abrió el turno (o un gerente) puede cerrarlo.",
         )
 
     try:
@@ -484,11 +566,18 @@ def shift_open_overview_api(
 @api_router.get("/shifts/{shift_id}")
 def shift_detail_api(
     shift_id: str,
-    current_user: dict = Depends(require_permission("shifts.read")),
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_prop_permission("shifts.read")),
 ):
     """Return detailed info for a specific shift."""
     shift = get_shift(shift_id)
     if shift is None:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    # Cross-hotel (E 2026-08): el turno debe pertenecer al hotel pedido.
+    if prop_id is not None and shift.get("prop_id") != prop_id:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    db = get_database()
+    if not _shift_visible_to(shift, current_user, db):
         raise HTTPException(status_code=404, detail="Turno no encontrado")
     return {"shift": shift}
 
@@ -498,8 +587,14 @@ def shift_list_api(
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_permission("shifts.read")),
+    current_user: dict = Depends(require_prop_permission("shifts.read")),
 ):
-    """List shifts for a property, newest first."""
+    """List shifts for a property, newest first.
+
+    Un empleado solo ve SUS turnos; gerencia (``shifts.manage``) ve todos.
+    """
     shifts = list_shifts(prop_id=prop_id, status_filter=status_filter, limit=limit)
+    db = get_database()
+    if not _can_view_all_shifts(db, current_user):
+        shifts = [s for s in shifts if _shift_visible_to(s, current_user, db)]
     return {"items": shifts, "total": len(shifts)}

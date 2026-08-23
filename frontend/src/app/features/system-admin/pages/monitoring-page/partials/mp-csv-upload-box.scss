@@ -1,0 +1,60 @@
+// ═══════════════════════════════════════════════
+// Caja "Subir CSV fuente" — estilos encapsulados
+// (antes en el monitoreo: _mp-actions.scss y _mp-content.scss)
+// ═══════════════════════════════════════════════
+
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.file-picker {
+  flex: 1;
+  min-width: 220px;
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.file-label {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border: 1px dashed var(--accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  color: var(--muted-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.file-label:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.action-btn {
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+
+  &[disabled] {
+    opacity: 0.65;
+    cursor: wait;
+  }
+}

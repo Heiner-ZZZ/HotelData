@@ -1,6 +1,12 @@
 .version-banner {
   position: fixed;
-  bottom: 16px;
+  /* Arriba-centro, sobre el header del top-nav y por ENCIMA de los toasts
+     globales (top: 72px, alineados a la derecha): lejos de la barra de
+     acciones en lote y de los diálogos del contenido, que viven
+     abajo-centro. Un banner fijo abajo-centro se superponía a esos botones
+     y un click ahí recargaba la app completa (matando notificaciones y
+     trabajo en curso). */
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;
@@ -14,13 +20,21 @@
   box-shadow: 0 4px 24px color-mix(in srgb, var(--accent-strong) 35%, transparent);
   font-size: 13px;
   font-weight: 500;
-  animation: vb-slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: vb-slide-down 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   max-width: calc(100vw - 32px);
   white-space: nowrap;
+  /* El contenedor no captura clicks: solo los botones lo hacen, así el banner
+     nunca roba la interacción del contenido que haya debajo. */
+  pointer-events: none;
 }
 
-@keyframes vb-slide-up {
-  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+.version-banner-btn,
+.version-banner-close {
+  pointer-events: auto;
+}
+
+@keyframes vb-slide-down {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 

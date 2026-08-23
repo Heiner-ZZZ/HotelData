@@ -31,7 +31,6 @@
 .planner-copy { display: grid; gap: 0.28rem; min-width: 0; flex: 1; }
 .planner-label { font-size: 0.78rem; color: var(--muted-text); font-weight: 600; }
 
-.planner-select-wrap select,
 .planner-dates input {
   border: none;
   background: transparent;
@@ -42,21 +41,17 @@
   color: var(--app-text);
 }
 
-.planner-select-wrap select:focus,
 .planner-dates input:focus { outline: none; box-shadow: none; }
-.planner-select-wrap .select-arrow { right: 0; }
+
+.planner-copy app-property-selector {
+  display: block;
+  min-width: 0;
+}
 
 .planner-dates { display: flex; align-items: center; gap: 0.35rem; width: 100%; flex-wrap: nowrap; }
 .planner-dates input { border: none; background: transparent; padding: 0.2rem 0; width: 105px; max-width: 100%; font-size: 0.88rem; color: var(--app-text); font-weight: 500; outline: none; }
 .planner-dates input::-webkit-calendar-picker-indicator { opacity: 0.75; cursor: pointer; margin-left: 2px; }
 .planner-separator { color: var(--muted-text); font-weight: 600; padding: 0 2px; }
-.planner-value { font-size: 0.98rem; color: var(--app-text); font-weight: 500; }
-.planner-steppers { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.15rem; }
-.mini-stepper { display: grid; gap: 0.25rem; }
-.mini-stepper-label { font-size: 0.68rem; color: var(--muted-text); font-weight: 600; }
-.planner-field--occupancy .stepper { border-radius: 999px; }
-.planner-field--occupancy .stepper-btn { width: 28px; height: 28px; }
-.planner-field--occupancy .stepper-value { min-width: 28px; font-size: 0.82rem; }
 
 .planner-cta {
   align-self: center;

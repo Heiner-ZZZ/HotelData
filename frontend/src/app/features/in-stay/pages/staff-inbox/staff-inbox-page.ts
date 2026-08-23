@@ -73,6 +73,40 @@ function getRequestIcon(type?: string): string {
   }
 }
 
+/** Chat buckets used by the conversation filters. */
+export type ChatBucket = 'active' | 'today' | 'history';
+
+export const CHAT_BUCKET_META: readonly { id: ChatBucket; label: string; icon: string }[] = [
+  { id: 'active', label: 'Activas', icon: 'bed' },
+  { id: 'today', label: 'Del día', icon: 'today' },
+  { id: 'history', label: 'Historial', icon: 'history' },
+] as const;
+
+/** Finalized reservation states — the guest is no longer staying. */
+const FINALIZED_STATUSES = new Set(['checked_out', 'no_show', 'cancelled']);
+
+/**
+ * Classify a conversation into one of three mutually exclusive chat buckets,
+ * keyed off the reservation dates (not the last message time nor a possibly
+ * stuck `stay_status`):
+ *  1. history — the reservation/folio is over (check_out already passed) or
+ *     finalized (check-out / no-show / cancelled).
+ *  2. today   — check-in or check-out happens today.
+ *  3. active  — currently staying, no arrival/departure today.
+ */
+export function classifyConversation(conv: Conversation, today: string): ChatBucket {
+  const status = (conv.stay_status ?? '').toLowerCase();
+  const checkIn = (conv.check_in ?? '').slice(0, 10);
+  const checkOut = (conv.check_out ?? '').slice(0, 10);
+
+  // Reservation no longer active: date is the source of truth. `stay_status`
+  // can remain `pending` after the reservation ended, so it must NOT gate this.
+  if (FINALIZED_STATUSES.has(status)) return 'history';
+  if (checkOut && checkOut < today) return 'history';
+  if (checkIn === today || checkOut === today) return 'today';
+  return 'active';
+}
+
 @Component({
   selector: 'app-staff-inbox',
   imports: [
@@ -111,6 +145,14 @@ export class StaffInboxPageComponent {
   readonly activeTab = signal<MainTab>('unified');
   readonly loading = signal(true);
 
+  /** Route-based tab mapping. */
+  private readonly tabRouteMap: Record<string, MainTab> = {
+    '': 'unified',
+    'folios': 'folios',
+    'sessions': 'sessions',
+    'lost-found': 'lost-found',
+  };
+
   // Conversations (left sidebar)
   readonly conversations = signal<Conversation[]>([]);
   readonly selectedRoom = signal<string | null>(null);
@@ -123,6 +165,8 @@ export class StaffInboxPageComponent {
   readonly selectedRequest = signal<ServiceRequest | null>(null);
   readonly requestCategoryFilter = signal<string | null>(null);
   readonly categories = REQUEST_CATEGORIES;
+  /** Bucket metadata for the chat stay-state filter chips. */
+  readonly chatBucketMeta = CHAT_BUCKET_META;
 
   // Staff response input
   readonly staffResponseInput = signal('');
@@ -189,6 +233,9 @@ export class StaffInboxPageComponent {
   readonly foliosLoading = signal(false);
   readonly folioStatusFilter = signal('open');
 
+  /** Estados que agrupa el chip "Cerrados": todos los folios no abiertos. */
+  private readonly CLOSED_FOLIO_STATUSES = 'closed,settled,written_off';
+
   // Payment / transfer modal state
   readonly paymentModalFolio = signal<LedgerFolio | null>(null);
   readonly transferModalFolio = signal<LedgerFolio | null>(null);
@@ -204,6 +251,41 @@ export class StaffInboxPageComponent {
       this.requests(),
       this.requestCategoryFilter(),
     ),
+  );
+
+  /** Chat stay-state filter — null shows every bucket. */
+  readonly chatFilter = signal<ChatBucket | null>(null);
+
+  /** Conversations grouped into the three chat buckets. */
+  readonly conversationBuckets = computed(() => {
+    const buckets: Record<ChatBucket, Conversation[]> = { active: [], today: [], history: [] };
+    for (const c of this.conversations()) {
+      buckets[classifyConversation(c, this.todayDate)].push(c);
+    }
+    return buckets;
+  });
+
+  /** Bucket ids visible under the current filter (empty buckets hidden). */
+  readonly visibleChatBuckets = computed(() => {
+    const f = this.chatFilter();
+    const buckets = this.conversationBuckets();
+    const order: ChatBucket[] = ['active', 'today', 'history'];
+    if (f) return buckets[f].length > 0 ? [f] : [];
+    return order.filter((b) => buckets[b].length > 0);
+  });
+
+  /** Visible buckets with label/icon/conversations for the template. */
+  readonly visibleChatGroups = computed(() => {
+    const buckets = this.conversationBuckets();
+    return this.visibleChatBuckets().map((id) => {
+      const meta = CHAT_BUCKET_META.find((m) => m.id === id)!;
+      return { id, label: meta.label, icon: meta.icon, conversations: buckets[id] };
+    });
+  });
+
+  /** Requests (always shown in main list). */
+  readonly requestItems = computed(() =>
+    this.timeline().filter(item => item.type === 'request'),
   );
 
   /** Map room_label → conversation for DND lookup in template. */
@@ -243,6 +325,15 @@ export class StaffInboxPageComponent {
       document.title = this.originalTitle;
     });
 
+    // Initial tab from the deep-link URL (read once). Tab clicks stay local
+    // so switching never reloads the component.
+    const segments = this.route.snapshot.url.map((s) => s.path);
+    const tabSegment = segments[segments.length - 1] ?? '';
+    const initialTab = this.tabRouteMap[tabSegment] ?? 'unified';
+    this.activeTab.set(initialTab);
+    if (initialTab === 'sessions') this.loadSessions();
+    if (initialTab === 'lost-found') this.loadLostFound();
+
     // Auto-select property in single-hotel mode
     effect(() => {
       if (this.propCtx.ready() && this.propCtx.singleHotelMode()) {
@@ -257,15 +348,7 @@ export class StaffInboxPageComponent {
     this.connectSse();
   }
 
-  /** Update browser tab title with unread + pending count (Gmail-style). */
-  private updateTabTitle(): void {
-    const total = this.unreadCount() + this.pendingCount();
-    if (total > 0) {
-      document.title = `(${total}) ${this.originalTitle}`;
-    } else {
-      document.title = this.originalTitle;
-    }
-  }
+  /** No-op — removed Gmail-style tab title counter per user request. */
 
   // ── Data loading ──
 
@@ -276,14 +359,13 @@ export class StaffInboxPageComponent {
     this.api.listConversations(propId).subscribe({
       next: (res) => {
         this.conversations.set(res.conversations);
-        this.updateTabTitle();
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
     });
 
     this.api.listRequests(propId, undefined).subscribe({
-      next: (res) => { this.requests.set(res.items); this.updateTabTitle(); },
+      next: (res) => this.requests.set(res.items),
     });
 
     this.loadFolios();
@@ -294,7 +376,11 @@ export class StaffInboxPageComponent {
     if (!propId) return;
 
     this.foliosLoading.set(true);
-    this.ledgerApi.getLedgerFolios(propId, this.folioStatusFilter()).subscribe({
+    const status =
+      this.folioStatusFilter() === 'closed'
+        ? this.CLOSED_FOLIO_STATUSES
+        : this.folioStatusFilter();
+    this.ledgerApi.getLedgerFolios(propId, status).subscribe({
       next: (res) => {
         this.folios.set(res.items);
         this.foliosLoading.set(false);
@@ -305,6 +391,7 @@ export class StaffInboxPageComponent {
 
   // ── Tab switching ──
 
+  /** Switch tabs locally — no route navigation, so the interface does not reload. */
   setTab(tab: MainTab): void {
     this.activeTab.set(tab);
     if (tab === 'folios') this.loadFolios();
@@ -373,7 +460,7 @@ export class StaffInboxPageComponent {
 
   deactivateSession(token: string): void {
     if (!confirm('¿Desactivar esta sesión? El huésped perderá acceso al portal.')) return;
-    this.api.deactivateSession(token).subscribe({
+    this.api.deactivateSession(token, this.selectedPropId()).subscribe({
       next: () => {
         this.toast.success('Sesión desactivada');
         this.loadSessions();
@@ -411,6 +498,10 @@ export class StaffInboxPageComponent {
 
   setCategoryFilter(categoryId: string | null): void {
     this.requestCategoryFilter.set(categoryId);
+  }
+
+  setChatFilter(bucket: ChatBucket | null): void {
+    this.chatFilter.set(bucket);
   }
 
   // ── Lost & Found ──
@@ -499,7 +590,7 @@ export class StaffInboxPageComponent {
     if (!room || !msg) return;
 
     this.sendingReply.set(true);
-    this.api.staffReply(room, msg).subscribe({
+    this.api.staffReply(room, msg, this.selectedPropId()).subscribe({
       next: () => {
         this.replyInput.set('');
         this.sendingReply.set(false);
@@ -687,7 +778,7 @@ export class StaffInboxPageComponent {
       next: (res) => this.conversations.set(res.conversations),
     });
     this.api.listRequests(propId, undefined).subscribe({
-      next: (res) => { this.requests.set(res.items); this.updateTabTitle(); },
+      next: (res) => this.requests.set(res.items),
     });
   }
 

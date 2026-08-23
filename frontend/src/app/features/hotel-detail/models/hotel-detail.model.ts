@@ -26,7 +26,7 @@ export interface HotelDetailViewModel {
     floor: string;
     isActive: boolean;
   }[];
-  roomTypes: { id: string; name: string; capacityLabel: string; statusLabel: string; description: string; imageUrl: string; features: string[] }[];
+  roomTypes: { id: string; name: string; capacityLabel: string; statusLabel: string; description: string; imageUrl: string; images: string[]; features: string[] }[];
   policies: { label: string; value: string }[];
   cancellationPolicy: string;
   galleryImages: string[];

@@ -79,7 +79,7 @@ export class BlackoutService {
     this.state.saving.set(true);
 
     this.api
-      .deleteBlackout(payload.blackoutId)
+      .deleteBlackout(this.state.selectedPropId(), payload.blackoutId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
@@ -121,7 +121,7 @@ export class BlackoutService {
     if (roomNumbers.length > 0) payload['room_numbers'] = roomNumbers;
     else payload['blocked_rooms'] = Math.max(1, Number(this.form.controls.blockedRooms.value) || 1);
 
-    const request$ = editing ? this.api.updateBlackout(editing.blackoutId, payload) : this.api.createBlackout(payload as any);
+    const request$ = editing ? this.api.updateBlackout(propId, editing.blackoutId, payload) : this.api.createBlackout(payload as any);
 
     request$
       .pipe(takeUntilDestroyed(this.destroyRef))

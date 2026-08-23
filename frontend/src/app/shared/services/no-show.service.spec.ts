@@ -2,9 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
+import { signal } from '@angular/core';
 
 import { ConfirmDialogService } from '../ui/confirm-dialog/confirm-dialog.service';
 import { NoShowService, type NoShowResult } from './no-show.service';
+import { PropertyContextService } from './property-context.service';
 
 describe('NoShowService', () => {
   const RESULT: NoShowResult = {
@@ -25,6 +27,19 @@ describe('NoShowService', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: ConfirmDialogService, useValue: { open: jest.fn(() => Promise.resolve(true)) } },
+        {
+          provide: PropertyContextService,
+          useValue: {
+            currentPropId: signal(1),
+            ready: signal(true),
+            currentPropLabel: signal('Hotel Lima Centro'),
+            currentPropLabelShort: signal('Hotel Lima'),
+            singleHotelMode: signal(false),
+            defaultPropId: signal(1),
+            mode: signal('all' as const),
+            assignedProperties: signal([{ propId: 1, label: 'Hotel Lima Centro' }]),
+          },
+        },
       ],
     });
     service = TestBed.inject(NoShowService);
@@ -41,6 +56,7 @@ describe('NoShowService', () => {
 
     const req = httpTesting.expectOne((r) => r.method === 'POST' && r.url === '/management/bookings/BK-1/no-show');
     expect(req.request.body).toEqual({});
+    expect(req.request.params.get('prop_id')).toBe('1');
     req.flush(RESULT);
 
     expect(await promise).toEqual(RESULT);
@@ -78,6 +94,7 @@ describe('NoShowService', () => {
     await Promise.resolve();
 
     const req = httpTesting.expectOne((r) => r.method === 'POST' && r.url === '/management/bookings/BK-1/no-show');
+    expect(req.request.params.get('prop_id')).toBe('1');
     req.flush(RESULT);
 
     expect(await promise).toEqual(RESULT);

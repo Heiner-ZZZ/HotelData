@@ -83,17 +83,36 @@
       </div>
     </div>
 
-    @if (successMessage()) {
-      <div class="toast toast-success">
-        <span class="material-symbols-outlined">check_circle</span>
-        {{ successMessage() }}
-      </div>
-    }
-    @if (warningMessage()) {
-      <div class="toast toast-warning" role="alert" aria-live="assertive">
-        <span class="material-symbols-outlined">warning</span>
-        {{ warningMessage() }}
-      </div>
+    <!-- Aviso post check-in masivo: reservas con checklist operativo sin
+         completar (llaves, documento, acompañantes). El masivo es express;
+         cada una se completa desde su detalle de check-in. -->
+    @if (incompleteChecklistRows().length > 0) {
+      <section class="checklist-banner" role="region" aria-label="Check-in con checklist pendiente">
+        <div class="checklist-banner-head">
+          <span class="material-symbols-outlined checklist-banner-icon" aria-hidden="true">assignment_turned_in</span>
+          <div class="checklist-banner-text">
+            <strong>{{ incompleteChecklistRows().length }} check-in{{ incompleteChecklistRows().length === 1 ? '' : 's' }} con checklist pendiente</strong>
+            <span>Registrá llaves entregadas, documento verificado y acompañantes en el detalle de cada uno.</span>
+          </div>
+          <button type="button" class="checklist-banner-close" (click)="dismissIncompleteChecklist()" aria-label="Descartar aviso">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <ul class="checklist-banner-list">
+          @for (row of incompleteChecklistRows(); track row.bookingId) {
+            <li class="checklist-banner-item">
+              <div class="checklist-banner-item-info">
+                <span class="checklist-banner-guest">{{ row.guestName }}</span>
+                <span class="checklist-banner-meta">{{ row.bookingId }}</span>
+              </div>
+              <a [routerLink]="['/management/check-ins', row.bookingId]" class="checklist-banner-link">
+                <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
+                Completar checklist
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
     }
 
     <!-- Stats bar -->
@@ -206,7 +225,7 @@
           [headerHeight]="40"
           [rowHeight]="56"
           [domLayout]="'autoHeight'"
-          [rowSelection]="{ mode: 'multiRow', checkboxes: true, headerCheckbox: true, enableClickSelection: false }"
+          [rowSelection]="{ mode: 'multiRow', checkboxes: true, headerCheckbox: true, enableClickSelection: false, hideDisabledCheckboxes: true, isRowSelectable: isRowSelectable }"
           [rowClassRules]="rowClassRules"
           style="width: 100%;"
           (gridReady)="onGridReady($event)"
@@ -222,7 +241,12 @@
               <span class="material-symbols-outlined">checklist</span>
               <strong>{{ selectedRowCount() }}</strong>
               reserva{{ selectedRowCount() === 1 ? '' : 's' }} seleccionada{{ selectedRowCount() === 1 ? '' : 's' }}
-              @if (!canBulkCheckIn()) {
+              @if (hasPendingSelected() && !canBulkConfirm()) {
+                <span class="bulk-action-hint" aria-live="polite">
+                  · sólo las pendientes admiten confirmación masiva
+                </span>
+              }
+              @if (hasConfirmedSelected() && !canBulkCheckIn()) {
                 <span class="bulk-action-hint" aria-live="polite">
                   · sólo las confirmadas admiten check-in masivo
                 </span>
@@ -237,20 +261,38 @@
                 <span class="material-symbols-outlined">close</span>
                 Limpiar
               </button>
-              <button type="button"
-                      class="bulk-btn bulk-btn-primary"
-                      (click)="onBulkCheckIn()"
-                      [disabled]="!canBulkCheckIn() || bulkActionLoading()"
-                      [attr.aria-label]="'Registrar check-in masivo para ' + selectedRowCount() + ' reservas'">
-                <span class="material-symbols-outlined" [class.spin]="bulkActionLoading()">
-                  {{ bulkActionLoading() ? 'progress_activity' : 'login' }}
-                </span>
-                @if (bulkActionLoading()) {
-                  {{ bulkActionProgress().done }} / {{ bulkActionProgress().total }}
-                } @else {
-                  Check-in Masivo
-                }
-              </button>
+              @if (hasPendingSelected()) {
+                <button type="button"
+                        class="bulk-btn bulk-btn-confirm"
+                        (click)="onBulkConfirm()"
+                        [disabled]="!canBulkConfirm() || bulkActionLoading()"
+                        [attr.aria-label]="'Confirmar ' + selectedRowCount() + ' reservas pendientes'">
+                  <span class="material-symbols-outlined" [class.spin]="bulkActionLoading()">
+                    {{ bulkActionLoading() ? 'progress_activity' : 'fact_check' }}
+                  </span>
+                  @if (bulkActionLoading()) {
+                    {{ bulkActionProgress().done }} / {{ bulkActionProgress().total }}
+                  } @else {
+                    Confirmar
+                  }
+                </button>
+              }
+              @if (hasConfirmedSelected()) {
+                <button type="button"
+                        class="bulk-btn bulk-btn-primary"
+                        (click)="onBulkCheckIn()"
+                        [disabled]="!canBulkCheckIn() || bulkActionLoading()"
+                        [attr.aria-label]="'Registrar check-in masivo para ' + selectedRowCount() + ' reservas'">
+                  <span class="material-symbols-outlined" [class.spin]="bulkActionLoading()">
+                    {{ bulkActionLoading() ? 'progress_activity' : 'login' }}
+                  </span>
+                  @if (bulkActionLoading()) {
+                    {{ bulkActionProgress().done }} / {{ bulkActionProgress().total }}
+                  } @else {
+                    Check-in Masivo
+                  }
+                </button>
+              }
             </div>
           </div>
         }

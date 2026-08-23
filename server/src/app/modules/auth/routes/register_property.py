@@ -38,6 +38,7 @@ from src.app.modules.auth.routes._helpers import (
     _now,
     _send_property_verification_code,
 )
+from src.app.modules.geocoding.service import geocode
 from src.app.modules.legal.service import validate_terms_acceptance
 from src.app.modules.property_approval.pricing import suggested_band_for
 from src.app.security.role_helpers import resolve_role_id
@@ -84,6 +85,62 @@ def _ensure_indexes() -> None:
 
 
 _ensure_indexes()
+
+
+def _coerce_geo_fields(payload: dict[str, Any]) -> tuple[str, float | None, float | None]:
+    """Valida address/latitude/longitude opcionales del onboarding.
+
+    Las coordenadas van juntas (ambas o ninguna) y en rango; la dirección es
+    texto libre acotado. Devuelve ``(address, latitude, longitude)`` con
+    ``None`` para lo no provisto.
+    """
+    address = str(payload.get("address") or "").strip()
+    latitude = payload.get("latitude")
+    longitude = payload.get("longitude")
+    if (latitude is None) != (longitude is None):
+        raise HTTPException(
+            status_code=400,
+            detail="La latitud y la longitud deben ir juntas (ambas o ninguna).",
+        )
+    lat_float: float | None = None
+    lng_float: float | None = None
+    if latitude is not None:
+        try:
+            lat_float = float(latitude)
+            lng_float = float(longitude)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Las coordenadas deben ser numéricas.")
+        if not (-90.0 <= lat_float <= 90.0) or not (-180.0 <= lng_float <= 180.0):
+            raise HTTPException(
+                status_code=400,
+                detail="Coordenadas fuera de rango (lat −90..90, lng −180..180).",
+            )
+    if len(address) > 200:
+        raise HTTPException(status_code=400, detail="La dirección no puede superar los 200 caracteres.")
+    return address, lat_float, lng_float
+
+
+def _resolve_coordinates(
+    *,
+    address: str,
+    city: str,
+    country_label: str,
+    latitude: float | None,
+    longitude: float | None,
+) -> tuple[float | None, float | None]:
+    """Coordenadas reales: las provistas por el dueño o, si no las dio y hay
+    dirección/ciudad, geocodificadas vía Nominatim (best-effort, cacheada).
+    Devuelve ``(None, None)`` si nada resuelve — nunca coordenadas falsas."""
+    if latitude is not None and longitude is not None:
+        return float(latitude), float(longitude)
+    # Solo la DIRECCIÓN (calle) dispara geocodificación; con solo ciudad no se
+    # inventa una coordenada por hotel — el ETL caerá a geo_catalog (ciudad).
+    if not address:
+        return None, None
+    resolved = geocode(address, city=city or "", country=country_label or "")
+    if resolved:
+        return resolved["latitude"], resolved["longitude"]
+    return None, None
 
 
 def _validate_property_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -152,6 +209,8 @@ def _validate_property_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if len(description) > 500:
         raise HTTPException(status_code=400, detail="La descripción no puede superar los 500 caracteres.")
 
+    address, latitude, longitude = _coerce_geo_fields(payload)
+
     plan_band_int: int | None = None
     if plan_band is not None:
         try:
@@ -189,6 +248,9 @@ def _validate_property_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "currency": currency,
             "total_rooms": total_rooms_int,
             "description": description,
+            "address": address,
+            "latitude": latitude,
+            "longitude": longitude,
         },
     }
 
@@ -234,6 +296,8 @@ def _validate_property_edit_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if len(description) > 500:
         raise HTTPException(status_code=400, detail="La descripción no puede superar los 500 caracteres.")
 
+    address, latitude, longitude = _coerce_geo_fields(payload)
+
     return {
         "property_name": property_name,
         "property_type": property_type,
@@ -241,6 +305,9 @@ def _validate_property_edit_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "city": city,
         "total_rooms": total_rooms_int,
         "description": description,
+        "address": address,
+        "latitude": latitude,
+        "longitude": longitude,
     }
 
 
@@ -266,25 +333,6 @@ def _country_label(country: dict, country_id: int) -> str:
         country.get("country_name")
         or f"País {country_id}"
     )
-
-
-def _resolve_geo_country(db, country: dict, country_id: int) -> tuple[str | None, object | None]:
-    """Resolve geo_country_code and geo_catalog_id from a dim_visitor_countries doc.
-
-    Matches the country's display name against geo_catalog.type=country entries
-    by name (case-insensitive). Returns (geo_country_code, geo_catalog_id) or
-    (None, None) if no match found.
-    """
-    country_name = _country_label(country, country_id).strip().lower()
-    if not country_name:
-        return None, None
-    geo_doc = db.geo_catalog.find_one(
-        {"type": "country", "name": {"$regex": f"^{re.escape(country_name)}$", "$options": "i"}},
-        {"code": 1},
-    )
-    if geo_doc:
-        return geo_doc.get("code"), geo_doc["_id"]
-    return None, None
 
 
 def _next_prop_id(db) -> int:
@@ -490,7 +538,13 @@ def confirm_property_registration_code(
         db, pending_property["country_id"], pending_property["currency"]
     )
     country_label = _country_label(country, pending_property["country_id"])
-    geo_country_code, geo_catalog_id = _resolve_geo_country(db, country, pending_property["country_id"])
+    latitude, longitude = _resolve_coordinates(
+        address=str(pending_property.get("address") or ""),
+        city=str(pending_property.get("city") or ""),
+        country_label=country_label or "",
+        latitude=pending_property.get("latitude"),
+        longitude=pending_property.get("longitude"),
+    )
     now = _now()
     prop_id = _next_prop_id(db)
 
@@ -540,8 +594,6 @@ def confirm_property_registration_code(
         "description": pending_property.get("description", ""),
         "display_country_label": country_label,
         "prop_country_id": pending_property["country_id"],
-        "geo_country_code": geo_country_code,
-        "geo_catalog_id": geo_catalog_id,
         "currency": pending_property["currency"],
         "accepted_currencies": [pending_property["currency"]],
         "billing_cycle": pending_property.get("billing_cycle", "monthly"),
@@ -558,6 +610,9 @@ def confirm_property_registration_code(
         "contact_phone": pending_property["phone"],
         "property_type": pending_property["type"],
         "city": pending_property["city"],
+        "address": pending_property.get("address") or "",
+        "latitude": latitude,
+        "longitude": longitude,
         "total_rooms_declared": pending_property["total_rooms"],
         "owner_user_id": user_id,
         "owner_username": pending["username"],

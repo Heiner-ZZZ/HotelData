@@ -19,7 +19,6 @@ from .lookups import (
     _build_match,
     _country_lookup,
     _destination_lookup,
-    _geo_country_lookup,
     _hotel_lookup,
 )
 from .operational import published_prop_ids

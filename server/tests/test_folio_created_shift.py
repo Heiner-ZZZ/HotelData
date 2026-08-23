@@ -92,7 +92,7 @@ async def test_folio_exposes_created_shift(client, db, admin_user):
     _seed_booking(db, "BK-FOLIO-CREATED")
     _seed_folio(db, "BK-FOLIO-CREATED", shift_id=shift_id)
 
-    resp = await client.get("/api/billing/folios/BK-FOLIO-CREATED")
+    resp = await client.get("/api/billing/folios/BK-FOLIO-CREATED?prop_id=1")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -114,7 +114,7 @@ async def test_folio_read_logs_shift_attribution_access(client, db, admin_user):
     _seed_booking(db, "BK-FOLIO-TRACE")
     _seed_folio(db, "BK-FOLIO-TRACE", shift_id=shift_id)
 
-    resp = await client.get("/api/billing/folios/BK-FOLIO-TRACE")
+    resp = await client.get("/api/billing/folios/BK-FOLIO-TRACE?prop_id=1")
 
     assert resp.status_code == 200
     entry = db.audit_log.find_one(
@@ -137,7 +137,7 @@ async def test_folio_without_shift_logs_no_access_trace(client, db, admin_user):
     _seed_booking(db, "BK-FOLIO-NOTRACE")
     _seed_folio(db, "BK-FOLIO-NOTRACE", shift_id=None)
 
-    resp = await client.get("/api/billing/folios/BK-FOLIO-NOTRACE")
+    resp = await client.get("/api/billing/folios/BK-FOLIO-NOTRACE?prop_id=1")
 
     assert resp.status_code == 200
     assert (
@@ -154,7 +154,7 @@ async def test_folio_without_shift_stays_null(client, db, admin_user):
     _seed_booking(db, "BK-FOLIO-NOSHIFT")
     _seed_folio(db, "BK-FOLIO-NOSHIFT", shift_id=None)
 
-    resp = await client.get("/api/billing/folios/BK-FOLIO-NOSHIFT")
+    resp = await client.get("/api/billing/folios/BK-FOLIO-NOSHIFT?prop_id=1")
 
     assert resp.status_code == 200
     body = resp.json()

@@ -111,16 +111,17 @@ export class CheckOutsPageComponent {
   readonly confirmPending = signal(false);
 
   private readonly consumptionChargesCache = new Map<string, { items: BookingCharge[] }>();
-  readonly consumptionChargesResource = rxResource<{ items: BookingCharge[] } | undefined, { bookingId: string } | undefined>({
+  readonly consumptionChargesResource = rxResource<{ items: BookingCharge[] } | undefined, { bookingId: string; propId: number } | undefined>({
     params: () => {
       const bookingId = this.consumptionBookingId();
-      return this.showConsumptionModal() && bookingId ? { bookingId } : undefined;
+      const propId = this.consumptionPropId();
+      return this.showConsumptionModal() && bookingId ? { bookingId, propId } : undefined;
     },
     stream: ({ params }) => {
       if (!params) return of<{ items: BookingCharge[] } | undefined>(undefined);
       const cached = this.consumptionChargesCache.get(params.bookingId);
       if (cached) return of(cached);
-      return this.api.getBookingCharges(params.bookingId).pipe(
+      return this.api.getBookingCharges(params.bookingId, params.propId).pipe(
         tap((res: { items: BookingCharge[] }) => this.consumptionChargesCache.set(params.bookingId, res)),
       );
     },

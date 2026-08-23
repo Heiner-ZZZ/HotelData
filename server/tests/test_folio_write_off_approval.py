@@ -51,7 +51,21 @@ def test_write_off_approval_permission_is_canonical_and_supervisor_only() -> Non
     assert FOLIO_ADJUST_APPROVAL_PERMISSION not in ROLE_PERMISSIONS["recepcionista"]
 
 
-def _seed_user(db, username: str, role_name: str, permissions: list[str]) -> None:
+def _seed_user(
+    db,
+    username: str,
+    role_name: str,
+    permissions: list[str],
+    *,
+    prop_id: int | None = None,
+    hotel_permissions: list[str] | None = None,
+) -> None:
+    """Rol GLOBAL (legacy) + opcionalmente un hotel role en *prop_id*.
+
+    Migración E: las rutas de billing gatean por-hotel; los tests de ruta
+    necesitan role_assignment → hotel_roles para que el gate pase y la
+    decisión la tome el gate supervisor (allow-list) que es lo que prueban.
+    """
     role_id = db.roles.insert_one(
         {
             "role_name": role_name,
@@ -61,7 +75,7 @@ def _seed_user(db, username: str, role_name: str, permissions: list[str]) -> Non
             "created_at": datetime.now(UTC),
         }
     ).inserted_id
-    db.users.insert_one(
+    user_id = db.users.insert_one(
         {
             "username": username,
             "email": f"{username}@hotel.local",
@@ -69,10 +83,31 @@ def _seed_user(db, username: str, role_name: str, permissions: list[str]) -> Non
             "password_hash": _pwd.hash("WriteOff123!"),
             "primary_role": role_name,
             "role_ids": [role_id],
+            "assigned_hotels": [prop_id] if prop_id is not None else [],
             "is_active": True,
             "created_at": datetime.now(UTC),
         }
-    )
+    ).inserted_id
+    if prop_id is not None and hotel_permissions is not None:
+        hotel_role_id = db.hotel_roles.insert_one(
+            {
+                "name": f"{role_name}_hotel",
+                "display_name": f"{role_name} (hotel)",
+                "permissions": hotel_permissions,
+                "is_active": True,
+                "is_system": True,
+                "prop_id": prop_id,
+                "created_at": datetime.now(UTC),
+            }
+        ).inserted_id
+        db.role_assignments.insert_one(
+            {
+                "user_id": user_id,
+                "role_id": hotel_role_id,
+                "prop_id": prop_id,
+                "created_at": datetime.now(UTC),
+            }
+        )
 
 
 def test_receptionist_cannot_approve_write_off(db) -> None:
@@ -218,12 +253,15 @@ async def test_receptionist_cannot_close_folio_with_write_off(
 ) -> None:
     """La recepcionista tiene billing.manage pero no puede condonar: 403 antes
     de tocar el folio (queda abierto e intacto)."""
-    _seed_user(db, "recepcionista_wo_route", "recepcionista", ["billing.manage"])
+    _seed_user(
+        db, "recepcionista_wo_route", "recepcionista", ["billing.manage"],
+        prop_id=994, hotel_permissions=["billing.manage"],
+    )
     _seed_booking_with_folio(db, "BK-WO-ROUTE-403", total_due=120.0)
     assert await login(client, "recepcionista_wo_route", "WriteOff123!") == 200
 
     response = await client.post(
-        "/api/billing/folios/BK-WO-ROUTE-403/close",
+        "/api/billing/folios/BK-WO-ROUTE-403/close?prop_id=994",
         json={"close_reason": "approved_write_off: Recepción intenta condonar"},
     )
 
@@ -240,12 +278,15 @@ async def test_manager_can_close_folio_with_write_off(
 ) -> None:
     """El gerente (catálogo canónico) cierra con write-off: 200 + folio cerrado
     con la razón documentada."""
-    _seed_user(db, "gerente_wo_route", "gerente_hotel", ROLE_PERMISSION_CODES["gerente_hotel"])
+    _seed_user(
+        db, "gerente_wo_route", "gerente_hotel", ROLE_PERMISSION_CODES["gerente_hotel"],
+        prop_id=994, hotel_permissions=ROLE_PERMISSION_CODES["gerente_hotel"],
+    )
     _seed_booking_with_folio(db, "BK-WO-ROUTE-200", total_due=120.0)
     assert await login(client, "gerente_wo_route", "WriteOff123!") == 200
 
     response = await client.post(
-        "/api/billing/folios/BK-WO-ROUTE-200/close",
+        "/api/billing/folios/BK-WO-ROUTE-200/close?prop_id=994",
         json={"close_reason": "approved_write_off: Huésped con problema de pago"},
     )
 
@@ -261,12 +302,15 @@ async def test_manager_can_settle_folio_with_write_off(
     client: AsyncClient, db
 ) -> None:
     """El botón de write-off del detalle de folio acepta al gerente por su permiso de aprobación."""
-    _seed_user(db, "gerente_settle_route", "gerente_hotel", ROLE_PERMISSION_CODES["gerente_hotel"])
+    _seed_user(
+        db, "gerente_settle_route", "gerente_hotel", ROLE_PERMISSION_CODES["gerente_hotel"],
+        prop_id=994, hotel_permissions=ROLE_PERMISSION_CODES["gerente_hotel"],
+    )
     _seed_booking_with_folio(db, "BK-WO-SETTLE-200", total_due=120.0)
     assert await login(client, "gerente_settle_route", "WriteOff123!") == 200
 
     response = await client.post(
-        "/api/billing/folios/BK-WO-SETTLE-200/settle",
+        "/api/billing/folios/BK-WO-SETTLE-200/settle?prop_id=994",
         json={
             "settlement_type": "write_off",
             "idempotency_key": "SETTLE-WO-200",
@@ -287,12 +331,15 @@ async def test_receptionist_cannot_settle_folio_with_write_off(
     client: AsyncClient, db
 ) -> None:
     """billing.manage no reemplaza la aprobación supervisora del write-off."""
-    _seed_user(db, "recepcionista_settle_route", "recepcionista", ["billing.manage"])
+    _seed_user(
+        db, "recepcionista_settle_route", "recepcionista", ["billing.manage"],
+        prop_id=994, hotel_permissions=["billing.manage"],
+    )
     _seed_booking_with_folio(db, "BK-WO-SETTLE-403", total_due=120.0)
     assert await login(client, "recepcionista_settle_route", "WriteOff123!") == 200
 
     response = await client.post(
-        "/api/billing/folios/BK-WO-SETTLE-403/settle",
+        "/api/billing/folios/BK-WO-SETTLE-403/settle?prop_id=994",
         json={
             "settlement_type": "write_off",
             "idempotency_key": "SETTLE-WO-403",
@@ -313,12 +360,15 @@ async def test_admin_sistema_can_close_folio_with_write_off(
     client: AsyncClient, db
 ) -> None:
     """admin_sistema (allow-list supervisor) aprueba el cierre con saldo."""
-    _seed_user(db, "admin_wo_route", "admin_sistema", ROLE_PERMISSION_CODES["admin_sistema"])
+    _seed_user(
+        db, "admin_wo_route", "admin_sistema", ROLE_PERMISSION_CODES["admin_sistema"],
+        prop_id=994, hotel_permissions=ROLE_PERMISSION_CODES["admin_sistema"],
+    )
     _seed_booking_with_folio(db, "BK-WO-ROUTE-ADMIN", total_due=75.0)
     assert await login(client, "admin_wo_route", "WriteOff123!") == 200
 
     response = await client.post(
-        "/api/billing/folios/BK-WO-ROUTE-ADMIN/close",
+        "/api/billing/folios/BK-WO-ROUTE-ADMIN/close?prop_id=994",
         json={"close_reason": "approved_external_settlement: convenio externo"},
     )
 
@@ -335,11 +385,14 @@ async def test_close_folio_with_balance_without_exception_conflicts_with_action(
     """Cerrar un folio con saldo sin close_reason de excepción → 409 con
     instrucción de QUÉ hacer (registrar el pago o pedir autorización de
     supervisor), no solo el estado."""
-    _seed_user(db, "recepcionista_wo_409", "recepcionista", ["billing.manage"])
+    _seed_user(
+        db, "recepcionista_wo_409", "recepcionista", ["billing.manage"],
+        prop_id=994, hotel_permissions=["billing.manage"],
+    )
     _seed_booking_with_folio(db, "BK-WO-ROUTE-409", total_due=80.0)
     assert await login(client, "recepcionista_wo_409", "WriteOff123!") == 200
 
-    response = await client.post("/api/billing/folios/BK-WO-ROUTE-409/close", json={})
+    response = await client.post("/api/billing/folios/BK-WO-ROUTE-409/close?prop_id=994", json={})
 
     assert response.status_code == 409
     detail = response.json()["detail"]
@@ -355,12 +408,15 @@ async def test_receptionist_normal_close_still_works(
 ) -> None:
     """La recepción conserva el cierre NORMAL (sin excepción de saldo): el
     gate supervisor solo aplica a los ajustes financieros."""
-    _seed_user(db, "recepcionista_wo_normal", "recepcionista", ["billing.manage"])
+    _seed_user(
+        db, "recepcionista_wo_normal", "recepcionista", ["billing.manage"],
+        prop_id=994, hotel_permissions=["billing.manage"],
+    )
     _seed_booking_with_folio(db, "BK-WO-ROUTE-NORMAL", total_due=0.0)
     assert await login(client, "recepcionista_wo_normal", "WriteOff123!") == 200
 
     response = await client.post(
-        "/api/billing/folios/BK-WO-ROUTE-NORMAL/close",
+        "/api/billing/folios/BK-WO-ROUTE-NORMAL/close?prop_id=994",
         json={},
     )
 

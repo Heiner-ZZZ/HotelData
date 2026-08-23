@@ -242,7 +242,7 @@ export class CoStepInvoiceComponent {
     this.emailing.set(true);
     this.errorMsg.set('');
 
-    this.api.sendInvoiceEmail(invoiceId).subscribe({
+    this.api.sendInvoiceEmail(invoiceId, this.propId()).subscribe({
       next: () => {
         this.emailing.set(false);
         this.emailSent.set(true);

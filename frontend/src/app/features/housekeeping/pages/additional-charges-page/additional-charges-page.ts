@@ -187,7 +187,7 @@ export class AdditionalChargesPageComponent {
           quantity: raw.quantity,
           charge_date: raw.chargeDate || undefined,
           note: raw.note || undefined,
-        })
+        }, this.selectedPropId())
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: () => {
@@ -235,7 +235,7 @@ export class AdditionalChargesPageComponent {
   repairChargePosting(item: AdditionalChargeItem): void {
     if (item.postingStatus !== 'posting_failed' || this.repairingId()) return;
     this.repairingId.set(item.id);
-    this.api.repairChargePosting(item.id)
+    this.api.repairChargePosting(item.id, this.selectedPropId())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
@@ -267,7 +267,7 @@ export class AdditionalChargesPageComponent {
     });
     if (!ok) return;
 
-    this.api.deleteCharge(item.id)
+    this.api.deleteCharge(item.id, this.selectedPropId())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {

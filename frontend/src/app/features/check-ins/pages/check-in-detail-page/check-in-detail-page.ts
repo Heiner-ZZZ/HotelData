@@ -9,6 +9,7 @@ import { catchAndToastWarning } from '../../../../shared/utils/catch-and-toast';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CHECK_INS_EARLY_APPROVE, CHECK_INS_NO_SHOW_REOPEN } from '../../../../core/auth/permission.constants';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -20,6 +21,7 @@ import {
   type CheckInDetailDto,
   type EarlyCheckInDto,
   type LateArrivalDto,
+  type RoomAvailabilityDto,
 } from '../../services/check-ins-api.service';
 import { STAY_CHECKED_IN, STAY_NO_SHOW } from '../../../reservations/utils/reservation-status.util';
 
@@ -101,6 +103,7 @@ export class CheckInDetailPageComponent {
   private readonly opMode = inject(OperationModeService);
   private readonly auth = inject(AuthService);
   private readonly noShowService = inject(NoShowService);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   readonly viewState = signal<ViewState>('loading');
   /**
@@ -125,9 +128,31 @@ export class CheckInDetailPageComponent {
   });
   readonly bookingId = computed(() => this.paramMap().get('bookingId') ?? '');
 
+  // prop_id reactivo: prioriza ?prop_id de la URL, fallback a PropertyContext (single-hotel).
+  // Sin prop_id el backend responde 400 `Contexto de hotel requerido` (require_prop_permission).
+  private readonly queryParamMap = toSignal(
+    ((this.activatedRoute.queryParamMap ?? this.activatedRoute.paramMap) as any),
+    {
+      initialValue: ((this.activatedRoute.snapshot.queryParamMap ?? this.activatedRoute.snapshot.paramMap) as any),
+    },
+  );
+  private readonly effectivePropId = computed(() => {
+    const raw = (this.queryParamMap() as any)?.get('prop_id') as string | null | undefined;
+    const fromUrl = raw ? Number(raw) : 0;
+    if (Number.isFinite(fromUrl) && fromUrl > 0) return fromUrl;
+    const ctx = this.propertyCtx.currentPropId();
+    return Number.isFinite(ctx) && ctx > 0 ? ctx : 0;
+  });
+
   readonly detailResource = httpResource<CheckInDetailDto>(() => {
     const id = this.bookingId();
-    return id ? `/management/check-ins/${id}/detail` : undefined;
+    if (!id) return undefined;
+    const propId = this.effectivePropId();
+    if (propId > 0) return `/management/check-ins/${id}/detail?prop_id=${propId}`;
+    // Sin prop_id: si el contexto aún carga (single-hotel bootstrap), esperar para evitar 400 de carrera.
+    // Si ya está ready y sigue sin prop_id (super_admin sin selección), disparar sin query para surfear el 400 como error visible.
+    if (!this.propertyCtx.ready()) return undefined;
+    return `/management/check-ins/${id}/detail`;
   });
 
   /**
@@ -244,6 +269,12 @@ export class CheckInDetailPageComponent {
   readonly earlyCheckInFee = signal(0);
   readonly earlyDialogError = signal('');
   private earlyDialogTrigger: HTMLElement | null = null;
+
+  // ── Room availability for early check-in ──
+  /** Real-time room status loaded when the early check-in dialog opens. */
+  readonly roomAvailability = signal<RoomAvailabilityDto | null>(null);
+  readonly roomAvailabilityLoading = signal(false);
+  readonly roomAvailabilityError = signal('');
 
   // ── No-show: guest never arrived and stay already ended ──
   // Una reserva marcada como no_show (estado terminal) o cuya fecha de
@@ -445,7 +476,7 @@ export class CheckInDetailPageComponent {
     this.reopenPending.set(true);
     this.reopenError.set('');
     this.api
-      .reopenNoShow(d.booking_id, reason)
+      .reopenNoShow(d.booking_id, reason, d.prop_id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
@@ -479,7 +510,7 @@ export class CheckInDetailPageComponent {
     this.errorMessage.set('');
     try {
       // Flujo compartido: diálogo de confirmación → POST no-show → folio.
-      const result = await this.noShowService.markNoShowWithConfirm(d.booking_id, d.guest_name);
+      const result = await this.noShowService.markNoShowWithConfirm(d.booking_id, d.guest_name, d.prop_id);
       if (!result) return; // cancelado — el finally libera el pending
       this.successMessage.set(this.noShowService.successMessage(result));
       this.noShowResult.set({
@@ -682,7 +713,7 @@ export class CheckInDetailPageComponent {
 
   completeCheckIn(): void {
     const d = this.data();
-    if (!d || this.completing() || !this.keysDelivered() || this.isFutureDate()) return;
+    if (!d || this.completing() || !this.keysDelivered() || !this.documentVerified() || this.isFutureDate()) return;
     if (!this.allRoomsAvailable()) {
       this.completeError.set('No se puede completar el check-in: hay habitaciones asignadas que no están disponibles (ocupadas, en mantenimiento, etc.). Asigna otras habitaciones antes de continuar.');
       return;
@@ -710,12 +741,44 @@ export class CheckInDetailPageComponent {
     this.earlyCheckInFee.set(policy.default_fee || 0);
     this.earlyDialogError.set('');
     this.earlyDialogOpen.set(true);
+    // Load real-time room availability when dialog opens
+    this.loadRoomAvailability();
     // Angular renders the dialog after the signal update. A macrotask keeps
     // focus handoff after that render (a microtask could run while the node
     // is still absent, leaving keyboard users on the trigger).
     setTimeout(() => {
       if (this.earlyDialogOpen()) document.getElementById('ciw-early-dialog')?.focus();
     }, 0);
+  }
+
+  /** Load real-time room availability for the early check-in dialog. */
+  private loadRoomAvailability(): void {
+    const d = this.data();
+    if (!d) return;
+    this.roomAvailabilityLoading.set(true);
+    this.roomAvailabilityError.set('');
+    this.roomAvailability.set(null);
+    this.api.validateRoomAvailability(d.booking_id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.roomAvailability.set(result);
+          this.roomAvailabilityLoading.set(false);
+          // Block confirmation if rooms are not available
+          if (!result.all_available) {
+            this.earlyDialogError.set(
+              'Las habitaciones asignadas no están disponibles en este momento. ' +
+              (result.issues.length > 0 ? result.issues[0] : 'Verificá el estado de las habitaciones.')
+            );
+          }
+        },
+        error: (err: ApiError) => {
+          this.roomAvailabilityLoading.set(false);
+          this.roomAvailabilityError.set(
+            err.message || 'No se pudo validar la disponibilidad de habitaciones.'
+          );
+        },
+      });
   }
 
   cancelEarlyCheckIn(): void {
@@ -734,6 +797,15 @@ export class CheckInDetailPageComponent {
     }
     if (mode === 'early_approved' && !reason) {
       this.earlyDialogError.set('Escribe el motivo de la aprobación antes de continuar.');
+      return;
+    }
+    // Validate room availability before proceeding
+    const availability = this.roomAvailability();
+    if (availability && !availability.all_available) {
+      this.earlyDialogError.set(
+        'No se puede completar el early check-in: las habitaciones no están disponibles. ' +
+        (availability.issues.length > 0 ? availability.issues[0] : 'Verificá el estado de las habitaciones.')
+      );
       return;
     }
     this.earlyDialogOpen.set(false);
@@ -757,7 +829,7 @@ export class CheckInDetailPageComponent {
     fee: number;
   }): void {
     const d = this.data();
-    if (!d || this.completing() || !this.keysDelivered() || this.isFutureDate()) return;
+    if (!d || this.completing() || !this.keysDelivered() || !this.documentVerified() || this.isFutureDate()) return;
 
     this.completing.set(true);
     this.completeError.set('');

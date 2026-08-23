@@ -31,38 +31,46 @@ SERVER_ROOT = Path(__file__).resolve().parents[1]
 # Ruta → código(s) granular(es) esperado(s). Clave: (método, ruta).
 # Una tupla de 1 elemento = require_permission exacto; de 2+ =
 # require_any_permission (cualquiera de ellos).
-EXPECTED_ROUTE_PERMISSIONS: dict[tuple[str, str], tuple[str, ...]] = {
-    ("GET", "/dashboard"): ("hr.read",),  # landing RRHH (umbrella)
+EXPECTED_ROUTE_PERMISSIONS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
+    # Valor: (dependency, códigos). require_prop_permission = gate con
+    # contexto de hotel (Fase 1 RBAC por hotel — rol_assignments → hotel_roles).
+    ("GET", "/dashboard"): ("require_permission", ("hr.read",)),  # landing RRHH (umbrella)
     # ── Mi Portal ──
-    ("GET", "/my-portal"): ("hr.portal.read",),
-    ("GET", "/portal/{employee_id}"): ("hr.portal.read",),
-    ("GET", "/portal/{employee_id}/tasks"): ("hr.portal.read",),
+    ("GET", "/my-portal"): ("require_permission", ("hr.portal.read",)),
+    # Auto-servicio del empleado: el payload se deriva del propio user_id,
+    # sin exposición cross-hotel → gate global basta.
+    ("GET", "/portal/{employee_id}"): ("require_prop_permission", ("hr.portal.read",)),
+    # Portal de un empleado CONCRETO: feature por-hotel → exige prop_id
+    # (query) + rol del hotel (deny-by-default) + pertenencia del empleado
+    # al hotel (404 cross-hotel). Fix B 2026-08.
+    ("GET", "/portal/{employee_id}/tasks"): ("require_prop_permission", ("hr.portal.read",)),
     # ── Directorio ──
-    ("GET", ""): ("hr.directory.read",),
-    ("GET", "/{employee_id}"): ("hr.directory.read",),
-    ("GET", "/{employee_id}/attendance"): ("hr.directory.read",),
-    ("GET", "/departments"): ("hr.directory.read",),
-    ("GET", "/documents"): ("hr.directory.read",),
-    ("GET", "/documents/{document_id}"): ("hr.directory.read",),
-    ("POST", "/departments"): ("hr.directory.manage",),
-    ("POST", "/documents"): ("hr.directory.manage",),
-    ("DELETE", "/documents/{document_id}"): ("hr.directory.manage",),
-    ("PUT", "/{employee_id}"): ("hr.directory.manage",),
-    ("DELETE", "/{employee_id}"): ("hr.directory.manage",),
+    ("GET", ""): ("require_permission", ("hr.directory.read",)),
+    ("GET", "/{employee_id}"): ("require_permission", ("hr.directory.read",)),
+    ("GET", "/{employee_id}/attendance"): ("require_permission", ("hr.directory.read",)),
+    ("GET", "/departments"): ("require_permission", ("hr.directory.read",)),
+    ("GET", "/documents"): ("require_permission", ("hr.directory.read",)),
+    ("GET", "/documents/{document_id}"): ("require_permission", ("hr.directory.read",)),
+    ("POST", "/departments"): ("require_permission", ("hr.directory.manage",)),
+    ("POST", "/documents"): ("require_permission", ("hr.directory.manage",)),
+    ("DELETE", "/documents/{document_id}"): ("require_permission", ("hr.directory.manage",)),
+    ("PUT", "/{employee_id}"): ("require_permission", ("hr.directory.manage",)),
+    ("DELETE", "/{employee_id}"): ("require_permission", ("hr.directory.manage",)),
     # ── Onboarding ──
-    ("POST", ""): ("hr.onboarding.create",),
-    ("GET", "/replacement-candidates"): ("hr.onboarding.create",),
+    ("POST", ""): ("require_permission", ("hr.onboarding.create",)),
+    ("GET", "/replacement-candidates"): ("require_permission", ("hr.onboarding.create",)),
     # ── Turnos ──
-    ("GET", "/shifts"): ("hr.shifts.read",),
-    ("POST", "/shifts"): ("hr.shifts.manage",),
-    ("PUT", "/shifts/{shift_id}"): ("hr.shifts.manage",),
-    ("DELETE", "/shifts/{shift_id}"): ("hr.shifts.manage",),
+    ("GET", "/shifts"): ("require_permission", ("hr.shifts.read",)),
+    ("POST", "/shifts"): ("require_permission", ("hr.shifts.manage",)),
+    ("PUT", "/shifts/{shift_id}"): ("require_permission", ("hr.shifts.manage",)),
+    ("DELETE", "/shifts/{shift_id}"): ("require_permission", ("hr.shifts.manage",)),
     # Check-in/out: el gerente los registra (shifts.manage) PERO el
     # auto-servicio del Mi Portal también (portal.read) — el empleado
-    # registra su propia asistencia. require_any_permission, patrón
-    # housekeeping/lost-found.
-    ("POST", "/shifts/{shift_id}/check-in"): ("hr.shifts.manage", "hr.portal.read"),
-    ("POST", "/shifts/{shift_id}/check-out"): ("hr.shifts.manage", "hr.portal.read"),
+    # registra su propia asistencia. require_any_prop_permission (Fase 1
+    # RBAC por hotel): prop_id obligatorio (query), deny-by-default sin
+    # role_assignment y 404 si el turno no pertenece al hotel pedido.
+    ("POST", "/shifts/{shift_id}/check-in"): ("require_any_prop_permission", ("hr.shifts.manage", "hr.portal.read")),
+    ("POST", "/shifts/{shift_id}/check-out"): ("require_any_prop_permission", ("hr.shifts.manage", "hr.portal.read")),
 }
 
 GRANULAR_CODES = sorted(
@@ -99,14 +107,15 @@ def _canon():
     return _load("init_security_model_ga03_hr_audit", "scripts/init_security_model_ga03.py")
 
 
-def _route_permissions() -> dict[tuple[str, str], tuple[str, ...]]:
+def _route_permissions() -> dict[tuple[str, str], tuple[str, tuple[str, ...]]]:
     """Parse de hr/routes.py: decorador @api_router.<method>("<path>") seguido
-    del primer Depends(require_permission(...)) / require_any_permission(...)
-    en la firma de la función. Devuelve la tupla de códigos exigidos."""
+    del primer Depends(require_permission(...)) / require_any_permission(...) /
+    require_prop_permission(...) en la firma de la función. Devuelve
+    (dependency, tupla de códigos exigidos)."""
     text = (SERVER_ROOT / "src/app/modules/hr/routes.py").read_text(encoding="utf-8")
     route_re = re.compile(r"@api_router\.(get|post|put|patch|delete)\(\s*\"([^\"]*)\"")
-    perm_re = re.compile(r"Depends\((require_any_permission|require_permission)\((.*?)\)\)")
-    mapping: dict[tuple[str, str], tuple[str, ...]] = {}
+    perm_re = re.compile(r"Depends\((require_any_prop_permission|require_any_permission|require_permission|require_prop_permission)\((.*?)\)\)")
+    mapping: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {}
     current: tuple[str, str] | None = None
     for line in text.splitlines():
         m = route_re.search(line)
@@ -116,7 +125,7 @@ def _route_permissions() -> dict[tuple[str, str], tuple[str, ...]]:
         p = perm_re.search(line)
         if p and current is not None and current not in mapping:
             codes = tuple(re.findall(r'"([^"]+)"', p.group(2)))
-            mapping[current] = codes
+            mapping[current] = (p.group(1), codes)
     return mapping
 
 
@@ -135,7 +144,7 @@ def test_hr_routes_use_exact_granular_permissions() -> None:
 def test_hr_route_permissions_exist_in_canonical_catalog() -> None:
     canon = _canon()
     perm_codes = {code for code, _ in canon.PERMISSION_CATALOG}
-    used = {code for codes in _route_permissions().values() for code in codes}
+    used = {code for _, codes in _route_permissions().values() for code in codes}
     orphans = sorted(used - perm_codes)
     assert not orphans, f"permisos de rutas HR fuera del catálogo canónico: {orphans}"
 

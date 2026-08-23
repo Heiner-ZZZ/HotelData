@@ -68,7 +68,7 @@ async def test_put_policies_saves_late_arrival_fields(client, admin_user, db) ->
     _seed_hotel(db)
     await _login_admin(client, admin_user)
 
-    response = await client.put("/api/management/policies", json=_policies_payload())
+    response = await client.put("/api/management/policies", params={"prop_id": 801}, json=_policies_payload())
 
     assert response.status_code == 200
     body = response.json()
@@ -113,6 +113,7 @@ async def test_put_policies_room_type_scope_ignores_late_arrival_fields(client, 
 
     response = await client.put(
         "/api/management/policies",
+        params={"prop_id": 801},
         json=_policies_payload(room_type_id="RT-STD", late_arrival_cutoff="04:00", guaranteed_reservation=False),
     )
 
@@ -135,6 +136,7 @@ async def test_put_policies_rejects_bad_late_arrival_cutoff(client, admin_user, 
 
     response = await client.put(
         "/api/management/policies",
+        params={"prop_id": 801},
         json=_policies_payload(late_arrival_cutoff="99:99"),
     )
 
@@ -148,6 +150,7 @@ async def test_put_policies_rejects_bad_no_show_execution(client, admin_user, db
 
     response = await client.put(
         "/api/management/policies",
+        params={"prop_id": 801},
         json=_policies_payload(no_show_execution="whenever"),
     )
 

@@ -432,7 +432,7 @@ export class MaintenancePageComponent {
     const val = this.completeForm.getRawValue();
 
     try {
-      await lastValueFrom(this.api.completeMaintenance(item.id, val.observations || ''));
+      await lastValueFrom(this.api.completeMaintenance(item.id, this.selectedPropId(), val.observations || ''));
       this.message.set(`✅ Mantenimiento completado — ${item.title}`);
       this.errorMessage.set('');
       this.closeCompleteModal();
@@ -445,7 +445,7 @@ export class MaintenancePageComponent {
 
   async classifyNoCost(item: MaintenanceTaskItem): Promise<void> {
     try {
-      await lastValueFrom(this.api.reconcileNoCostMaintenance(item.id));
+      await lastValueFrom(this.api.reconcileNoCostMaintenance(item.id, this.selectedPropId()));
       this.message.set(`Sin costo registrado: ${item.title}`);
       this.errorMessage.set('');
       this.maintenanceResource.reload();
@@ -473,7 +473,7 @@ export class MaintenancePageComponent {
     });
     if (!ok) return;
     try {
-      await lastValueFrom(this.api.deleteMaintenance(taskId));
+      await lastValueFrom(this.api.deleteMaintenance(taskId, this.selectedPropId()));
       this.message.set('🗑️ Mantenimiento eliminado');
       this.errorMessage.set('');
       this.maintenanceResource.reload();

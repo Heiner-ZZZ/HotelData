@@ -266,19 +266,40 @@ def _available_room_types_for_properties(
     return available
 
 
-def _hotel_min_rates_for_properties(
-    prop_ids: list[int], check_in: str, check_out: str,
-) -> dict[int, float]:
-    """Load minimum rates for all properties in one aggregation."""
-    dates_list = _date_range(check_in, check_out)
-    if not dates_list or not prop_ids:
-        return {}
+def _min_rates_for_properties(pipeline_match: dict[str, Any]) -> dict[int, float]:
+    """Min nightly rate per property from calendar rows whose rate plan is
+    active, tied to at least one room type, and priced at/above the plan's
+    base_rate.
+
+    Inactive plans, orphan plans (no room-type association) and calendar rows
+    priced below the plan's base_rate (data-sanity outliers, e.g. a stray $2
+    on a $5 plan) must never surface as the guest-facing price.
+    """
     db = get_database()
     rows = db.hotel_rate_calendar.aggregate([
+        {"$match": pipeline_match},
+        {"$lookup": {
+            "from": "rate_plans",
+            "let": {"pid": "$rate_plan_id"},
+            "pipeline": [
+                {"$match": {
+                    "$expr": {"$eq": ["$rate_plan_id", "$$pid"]},
+                    "is_active": {"$ne": False},
+                    "$or": [
+                        {"applicable_room_types": {"$exists": True, "$ne": []}},
+                        {"room_type_id": {"$exists": True, "$ne": ""}},
+                    ],
+                }},
+                {"$project": {"_id": 0, "base_rate": 1}},
+            ],
+            "as": "plan",
+        }},
         {"$match": {
-            "prop_id": {"$in": prop_ids},
-            "date": {"$in": dates_list},
-            "is_closed": {"$ne": True},
+            "plan": {"$ne": []},
+            "$expr": {"$gte": [
+                "$rate_amount",
+                {"$ifNull": [{"$arrayElemAt": ["$plan.base_rate", 0]}, 0]},
+            ]},
         }},
         {"$group": {"_id": "$prop_id", "min_rate": {"$min": "$rate_amount"}}},
     ])
@@ -286,6 +307,118 @@ def _hotel_min_rates_for_properties(
         int(row["_id"]): round(float(row["min_rate"]), 2)
         for row in rows
         if row.get("_id") is not None and row.get("min_rate") is not None
+    }
+
+
+def _hotel_min_rates_for_properties(
+    prop_ids: list[int], check_in: str, check_out: str,
+) -> dict[int, float]:
+    """Load minimum rates for all properties in one aggregation — con cobertura total.
+
+    FIX ciego 2026-08-23: el helper anterior tomaba ``$min`` sobre cualquier
+    fila que coincidiera con el rango, sin verificar que TODAS las noches
+    tuvieran al menos una tarifa abierta. Si ``2026-08-28`` no tenía tarifa
+    pero ``26`` y ``27`` sí, devolvía ``135`` y el search mostraba el hotel
+    como disponible para ``26→29`` aunque una noche intermedia no fuera
+    vendible. Ahora agrupa por ``(prop_id, date)`` para deduplicar planes por
+    noche, cuenta noches cubiertas y exige ``covered == len(dates_list)``.
+    """
+    dates_list = _date_range(check_in, check_out)
+    if not dates_list or not prop_ids:
+        return {}
+    db = get_database()
+    pipeline: list[dict[str, Any]] = [
+        {"$match": {
+            "prop_id": {"$in": prop_ids},
+            "date": {"$in": dates_list},
+            "is_closed": {"$ne": True},
+        }},
+        {"$lookup": {
+            "from": "rate_plans",
+            "let": {"pid": "$rate_plan_id"},
+            "pipeline": [
+                {"$match": {
+                    "$expr": {"$eq": ["$rate_plan_id", "$$pid"]},
+                    "is_active": {"$ne": False},
+                    "$or": [
+                        {"applicable_room_types": {"$exists": True, "$ne": []}},
+                        {"room_type_id": {"$exists": True, "$ne": ""}},
+                    ],
+                }},
+                {"$project": {"_id": 0, "base_rate": 1}},
+            ],
+            "as": "plan",
+        }},
+        {"$match": {
+            "plan": {"$ne": []},
+            "$expr": {"$gte": [
+                "$rate_amount",
+                {"$ifNull": [{"$arrayElemAt": ["$plan.base_rate", 0]}, 0]},
+            ]},
+        }},
+        # Deduplica planes por noche: una noche con 2 planes válidos cuenta como 1
+        {"$group": {"_id": {"prop": "$prop_id", "date": "$date"}, "min_rate_for_date": {"$min": "$rate_amount"}}},
+        {"$group": {"_id": "$_id.prop", "min_rate": {"$min": "$min_rate_for_date"}, "covered": {"$sum": 1}}},
+        {"$match": {"covered": len(dates_list)}},
+    ]
+    return {
+        int(row["_id"]): round(float(row["min_rate"]), 2)
+        for row in db.hotel_rate_calendar.aggregate(pipeline)
+        if row.get("_id") is not None and row.get("min_rate") is not None
+    }
+
+
+def _hotel_rate_totals_for_properties(
+    prop_ids: list[int], check_in: str, check_out: str,
+) -> dict[int, float]:
+    """Suma de la tarifa mínima por noche — total real del rango, no estimado.
+
+    Usa la misma cobertura estricta que ``_hotel_min_rates_for_properties``:
+    si falta tarifa en una noche intermedia el hotel queda fuera (no vendible).
+    Cuando todas las noches tienen tarifa, el total es la suma de los mínimos
+    diarios (corrige el ciego ``min * noches`` cuando el precio varía por noche).
+    """
+    dates_list = _date_range(check_in, check_out)
+    if not dates_list or not prop_ids:
+        return {}
+    db = get_database()
+    pipeline: list[dict[str, Any]] = [
+        {"$match": {
+            "prop_id": {"$in": prop_ids},
+            "date": {"$in": dates_list},
+            "is_closed": {"$ne": True},
+        }},
+        {"$lookup": {
+            "from": "rate_plans",
+            "let": {"pid": "$rate_plan_id"},
+            "pipeline": [
+                {"$match": {
+                    "$expr": {"$eq": ["$rate_plan_id", "$$pid"]},
+                    "is_active": {"$ne": False},
+                    "$or": [
+                        {"applicable_room_types": {"$exists": True, "$ne": []}},
+                        {"room_type_id": {"$exists": True, "$ne": ""}},
+                    ],
+                }},
+                {"$project": {"_id": 0, "base_rate": 1}},
+            ],
+            "as": "plan",
+        }},
+        {"$match": {
+            "plan": {"$ne": []},
+            "$expr": {"$gte": [
+                "$rate_amount",
+                {"$ifNull": [{"$arrayElemAt": ["$plan.base_rate", 0]}, 0]},
+            ]},
+        }},
+        {"$group": {"_id": {"prop": "$prop_id", "date": "$date"}, "min_rate_for_date": {"$min": "$rate_amount"}}},
+        {"$group": {"_id": "$_id.prop", "total": {"$sum": "$min_rate_for_date"}, "covered": {"$sum": 1}}},
+        {"$match": {"covered": len(dates_list)}},
+    ]
+    return {
+        int(row["_id"]): round(float(row["total"]), 2)
+        for row in db.hotel_rate_calendar.aggregate(pipeline)
+        if row.get("_id") is not None and row.get("total") is not None
     }
 
 
@@ -297,25 +430,18 @@ def _hotel_min_rate_for_range(prop_id: int, check_in: str, check_out: str) -> fl
 def _hotel_min_rates_from_today_for_properties(prop_ids: list[int]) -> dict[int, float]:
     """Minimum nightly rate from today onward per property — the base 'Desde'
     price for searches without a date range. One aggregation for the batch.
+
+    Same eligibility + floor rule as the dated path: only active plans tied
+    to a room type, at/above the plan's base_rate, feed the price.
     """
     if not prop_ids:
         return {}
     from src.app.core.timezone import local_today
-    db = get_database()
-    today = local_today()
-    rows = db.hotel_rate_calendar.aggregate([
-        {"$match": {
-            "prop_id": {"$in": prop_ids},
-            "date": {"$gte": today},
-            "is_closed": {"$ne": True},
-        }},
-        {"$group": {"_id": "$prop_id", "min_rate": {"$min": "$rate_amount"}}},
-    ])
-    return {
-        int(row["_id"]): round(float(row["min_rate"]), 2)
-        for row in rows
-        if row.get("_id") is not None and row.get("min_rate") is not None
-    }
+    return _min_rates_for_properties({
+        "prop_id": {"$in": prop_ids},
+        "date": {"$gte": local_today()},
+        "is_closed": {"$ne": True},
+    })
 
 
 def _hotel_image_url(prop_id: int) -> str | None:

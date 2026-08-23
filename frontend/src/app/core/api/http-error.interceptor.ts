@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 
 import { ToastService } from '../../shared/services/toast.service';
+import { SUPPRESS_ERROR_TOAST } from './api-context.tokens';
 import type { ApiError } from './api-error.model';
 
 /**
@@ -15,6 +16,10 @@ import type { ApiError } from './api-error.model';
  *      `error: () => ...` sites that previously hid errors from both
  *      dev and user — even if a calling catch swallows the err
  *      afterwards, the global toast already announced it.
+ *
+ * Opt-out: requests marked with {@link SUPPRESS_ERROR_TOAST} skip the
+ * automatic toast (the caller reports its own summary), but still get the
+ * typed `ApiError`.
  */
 export const httpErrorInterceptor: HttpInterceptorFn = (request, next) => {
   const toast = inject(ToastService);
@@ -30,7 +35,9 @@ export const httpErrorInterceptor: HttpInterceptorFn = (request, next) => {
           error.message ||
           'Unexpected API error';
 
-        toast.error(message);
+        if (!request.context.get(SUPPRESS_ERROR_TOAST)) {
+          toast.error(message);
+        }
 
         const apiError: ApiError = {
           status: error.status,

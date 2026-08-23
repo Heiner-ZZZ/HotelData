@@ -267,7 +267,7 @@ export class InvoiceDetailPageComponent {
         amount: qc.amount * qc.quantity,
         quantity: qc.quantity,
         reference_type: 'quick_charge',
-      }),
+      }, inv.propId as number),
       invoice: this.billingApi.addLineItem(inv.id, {
         name: qc.name,
         quantity: qc.quantity,

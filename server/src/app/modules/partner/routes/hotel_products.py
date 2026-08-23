@@ -10,6 +10,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.app.core.types import ObjectIdStr
 from src.app.modules.partner.routes._common import require_prop_id
+from src.app.modules.partner.services._reports import (
+    compute_cogs_report,
+    compute_margin_report,
+    compute_stock_value_report,
+)
 from src.app.modules.partner.services.hotel_products import (
     add_booking_line_item,
     create_hotel_product,
@@ -24,12 +29,8 @@ from src.app.modules.partner.services.hotel_products import (
     restock_product,
     update_hotel_product,
 )
-from src.app.modules.partner.services._reports import (
-    compute_cogs_report,
-    compute_margin_report,
-    compute_stock_value_report,
-)
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission
+from src.database.connection import get_database
 
 router = APIRouter(prefix="/api/management", tags=["products"])
 
@@ -229,7 +230,7 @@ StockValueReportResponse.model_rebuild()
 @router.get("/products/hotels/{prop_id}")
 def list_products(
     prop_id: int,
-    current_user: dict = Depends(require_permission("properties.read")),
+    current_user: dict = Depends(require_prop_permission("properties.read")),
 ):
     return {"items": list_hotel_products(require_prop_id(prop_id))}
 
@@ -238,7 +239,7 @@ def list_products(
 def create_product(
     prop_id: int,
     payload: dict[str, Any] = Body(...),
-    current_user: dict = Depends(require_permission("properties.update")),
+    current_user: dict = Depends(require_prop_permission("properties.update")),
 ):
     try:
         result = create_hotel_product(
@@ -261,7 +262,7 @@ def update_product(
     prop_id: int,
     product_id: str,
     payload: dict[str, Any] = Body(...),
-    current_user: dict = Depends(require_permission("properties.update")),
+    current_user: dict = Depends(require_prop_permission("properties.update")),
 ):
     result = update_hotel_product(
         require_prop_id(prop_id),
@@ -283,7 +284,7 @@ def update_product(
 def delete_product(
     prop_id: int,
     product_id: str,
-    current_user: dict = Depends(require_permission("properties.update")),
+    current_user: dict = Depends(require_prop_permission("properties.update")),
 ):
     ok = delete_hotel_product(require_prop_id(prop_id), product_id)
     if not ok:
@@ -296,7 +297,7 @@ def restock(
     prop_id: int,
     product_id: str,
     payload: dict[str, Any] = Body(...),
-    current_user: dict = Depends(require_permission("inventory.products.cost.manage")),
+    current_user: dict = Depends(require_prop_permission("inventory.products.cost.manage")),
 ):
     """Registra reposición manual de stock con costo + posting al ledger.
 
@@ -347,7 +348,7 @@ def restock(
 @router.get("/products/reports/margin", response_model=MarginReportResponse)
 def get_margin_report(
     prop_id: int,
-    current_user: dict = Depends(require_permission("inventory.products.cost.read")),
+    current_user: dict = Depends(require_prop_permission("inventory.products.cost.read")),
 ):
     """Return the margin report for a hotel: per-product margin %/abs + summary."""
     return compute_margin_report(require_prop_id(prop_id))
@@ -368,7 +369,7 @@ def get_cogs_report(
             "layers migration is run)."
         ),
     ),
-    current_user: dict = Depends(require_permission("inventory.products.cost.read")),
+    current_user: dict = Depends(require_prop_permission("inventory.products.cost.read")),
 ):
     """Return the Cost of Goods Sold report for a period.
 
@@ -386,7 +387,7 @@ def get_cogs_report(
 @router.get("/products/reports/stock-value", response_model=StockValueReportResponse)
 def get_stock_value_report(
     prop_id: int,
-    current_user: dict = Depends(require_permission("inventory.products.cost.read")),
+    current_user: dict = Depends(require_prop_permission("inventory.products.cost.read")),
 ):
     """Return the current stock value (Σ qty × cost_price) per category."""
     return compute_stock_value_report(require_prop_id(prop_id))
@@ -395,11 +396,26 @@ def get_stock_value_report(
 # ─── Booking Line Items (add-on products) ──────────────────────────────
 
 
+def _require_booking_same_hotel(db, booking_id: str, prop_id: int | None) -> None:
+    """404 (no 403) si el booking no pertenece al hotel pedido — deny cross-hotel.
+
+    Migración E: los line-items de reserva se resuelven por booking_id; el
+    hotel viene del query y el booking debe pertenecerle.
+    """
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id}, {"prop_id": 1}
+    )
+    if not booking or booking.get("prop_id") != prop_id:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+
+
 @router.get("/products/bookings/{booking_id}/line-items")
 def get_line_items(
     booking_id: str,
-    current_user: dict = Depends(require_permission("reservations.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     return {"items": list_booking_line_items(booking_id)}
 
 
@@ -407,8 +423,10 @@ def get_line_items(
 def add_line_item(
     booking_id: str,
     payload: dict[str, Any] = Body(...),
-    current_user: dict = Depends(require_permission("reservations.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
 ):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     product_id = str(payload.get("product_id", ""))
     name = str(payload.get("name", ""))
     unit_price = float(payload.get("unit_price", 0))
@@ -434,8 +452,10 @@ def add_line_item(
 def remove_line_item(
     booking_id: str,
     item_id: str,
-    current_user: dict = Depends(require_permission("reservations.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
 ):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     ok = remove_booking_line_item(
         booking_id,
         item_id,

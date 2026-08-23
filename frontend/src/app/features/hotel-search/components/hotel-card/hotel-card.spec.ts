@@ -80,8 +80,8 @@ describe('HotelCardComponent — galería de imágenes', () => {
     const { fixture, comp } = setup();
     fixture.detectChanges();
 
-    const prev = fixture.debugElement.query(By.css('.gallery-prev'));
-    const next = fixture.debugElement.query(By.css('.gallery-next'));
+    const prev = fixture.debugElement.query(By.css('.cc-prev'));
+    const next = fixture.debugElement.query(By.css('.cc-next'));
     expect(prev).toBeTruthy();
     expect(next).toBeTruthy();
 
@@ -109,21 +109,21 @@ describe('HotelCardComponent — galería de imágenes', () => {
     const { fixture, comp } = setup();
     fixture.detectChanges();
 
-    const dots = fixture.debugElement.queryAll(By.css('.card-dot'));
+    const dots = fixture.debugElement.queryAll(By.css('.cc-dot'));
     expect(dots.length).toBe(comp.totalImages());
-    expect(dots[0].nativeElement.classList.contains('active')).toBe(true);
+    expect(dots[0].nativeElement.classList.contains('is-active')).toBe(true);
 
     comp.goToImage(2);
     fixture.detectChanges();
-    expect(dots[2].nativeElement.classList.contains('active')).toBe(true);
-    expect(dots[0].nativeElement.classList.contains('active')).toBe(false);
+    expect(dots[2].nativeElement.classList.contains('is-active')).toBe(true);
+    expect(dots[0].nativeElement.classList.contains('is-active')).toBe(false);
   });
 
   it('clic en un puntito navega a esa imagen', () => {
     const { fixture, comp } = setup();
     fixture.detectChanges();
 
-    const dots = fixture.debugElement.queryAll(By.css('.card-dot'));
+    const dots = fixture.debugElement.queryAll(By.css('.cc-dot'));
     dots[1].nativeElement.click();
     fixture.detectChanges();
     expect(comp.currentImageIdx()).toBe(1);

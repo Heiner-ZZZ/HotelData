@@ -1,18 +1,24 @@
 from __future__ import annotations
 
 import calendar as _cal
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from math import ceil
 from typing import Any
 
 from bson import ObjectId
-
 from bson.errors import InvalidId
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, status
-
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    status,
+)
 from passlib.context import CryptContext
 
-from src.database.connection import get_database
 from src.app.modules.hr.schemas import (
     AttendanceResponse,
     DashboardResponse,
@@ -45,8 +51,13 @@ from src.app.modules.hr.service.collections import (
     module_status,
 )
 from src.app.modules.partner.services.audit import register_action
+from src.app.security.dependencies import (
+    require_any_prop_permission,
+    require_permission,
+    require_prop_permission,
+)
 from src.app.security.role_helpers import resolve_role_id
-from src.app.security.dependencies import require_any_permission, require_permission
+from src.database.connection import get_database
 
 _password_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -54,15 +65,27 @@ _password_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _DEPT_RENAMES = {"Limpieza": "Housekeeping"}
 
 
+_AUTO_CLOSE_NOTE = "Cierre automático: turno anterior sin cerrar"
+
+
 def _serialize_hr_doc(doc: dict[str, Any]) -> dict[str, Any]:
-    """Convert Mongo-native values to the API's JSON-safe wire shape."""
+    """Convert Mongo-native values to the API's JSON-safe wire shape.
+
+    ``_id`` → ``id`` (str), ObjectId fields → str, datetime fields → ISO
+    8601. Any field can carry an ObjectId FK (``department_id``,
+    ``position_id``, ``user_id``…), not just ``_id`` — leaving one raw
+    crashes Pydantic v2 JSON serialization with
+    ``PydanticSerializationError`` (HTTP 500) when the doc flows into a
+    permissive ``dict[str, Any]`` response (e.g. the employee portal).
+    """
     serialized = dict(doc)
     if "_id" in serialized:
         serialized["id"] = str(serialized.pop("_id"))
-    for field in ("created_at", "updated_at"):
-        value = serialized.get(field)
-        if isinstance(value, datetime):
-            serialized[field] = value.isoformat()
+    for key, value in list(serialized.items()):
+        if isinstance(value, ObjectId):
+            serialized[key] = str(value)
+        elif isinstance(value, datetime):
+            serialized[key] = value.isoformat()
     return serialized
 
 
@@ -170,7 +193,7 @@ def _ensure_user_account(db, employee_doc: dict) -> dict:
 
     password = secrets.token_urlsafe(10)
     password_hash = _password_ctx.hash(password)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     emp_prop_id = employee_doc.get("prop_id")
     if emp_prop_id is None:
@@ -353,7 +376,7 @@ def create_department(
         "name": payload.name,
         "description": payload.description,
         "head_count": 0,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
     }
     result = db[DEPARTMENTS_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -377,23 +400,50 @@ def create_department(
 # Shift Management  (MUST be before /{employee_id} catch-all)
 # ═══════════════════════════════════════════════════════════
 
+def _require_shift_same_hotel(db, shift_id: str, prop_id: int | None) -> None:
+    """404 (no 403) si el turno no pertenece al hotel pedido — deny cross-hotel.
+
+    El turno no guarda ``prop_id``: se resuelve vía el empleado asignado
+    (``shift.employee_id`` → ``employees.prop_id``). Si el empleado no existe
+    o no tiene hotel, se trata como no perteneciente (404) para no filtrar la
+    existencia del turno (Migración E, mismo patrón que ``_require_review_same_hotel``).
+    """
+    try:
+        shift_oid = ObjectId(shift_id)
+    except InvalidId:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
+    shift = db[SHIFTS_COLLECTION].find_one({"_id": shift_oid}, {"employee_id": 1})
+    if not shift:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
+    employee = db[EMPLOYEES_COLLECTION].find_one(
+        {"_id": shift.get("employee_id")}, {"prop_id": 1}
+    )
+    if not employee or employee.get("prop_id") != prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
+
+
 @api_router.post("/shifts/{shift_id}/check-in", response_model=ShiftActionResponse)
 def shift_check_in(
     shift_id: str = Path(...),
     payload: EmployeeShiftCheckIn = Body(...),
-    current_user: dict = Depends(require_any_permission("hr.shifts.manage", "hr.portal.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("hr.shifts.manage", "hr.portal.read")),
 ):
     """Record an employee check-in for a shift.
 
-    Any-of: el gerente registra la asistencia (hr.shifts.manage) O el
-    empleado auto-registra la suya desde Mi Portal (hr.portal.read)."""
+    Any-of (por hotel): el gerente registra la asistencia (hr.shifts.manage)
+    O el empleado auto-registra la suya desde Mi Portal (hr.portal.read).
+    ``prop_id`` obligatorio (query): deny-by-default sin role_assignment y
+    404 si el turno pertenece a otro hotel (Migración E).
+    """
     db = get_database()
+    _require_shift_same_hotel(db, shift_id, query_prop_id)
     try:
         shift_oid = ObjectId(shift_id)
     except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     timestamp = now.isoformat()
     if payload.timestamp:
         timestamp = payload.timestamp
@@ -417,15 +467,36 @@ def shift_check_in(
         "status": {"old": before.get("status"), "new": "active"},
         "actual_check_in": {"old": before.get("actual_check_in"), "new": timestamp},
     }
+
+    # Auto-cierre (individual por empleado): si ESTE empleado tiene turnos
+    # activos de días ANTERIORES (check-in sin check-out, dato stale), el
+    # nuevo check-in implica que terminaron → se completan. El filtro lleva
+    # ``employee_id``: nunca toca turnos de otros empleados ni de otros
+    # hoteles.
+    emp_ref = _to_object_id_ref(payload.employee_id)
+    today_str = now.strftime("%Y-%m-%d")
+    stale_closed = db[SHIFTS_COLLECTION].update_many(
+        {"employee_id": emp_ref, "status": "active", "date": {"$lt": today_str}},
+        {"$set": {
+            "status": "completed",
+            "check_out_notes": _AUTO_CLOSE_NOTE,
+            "updated_at": now,
+        }},
+    ).modified_count
+
     register_action(
-        prop_id=0,
+        prop_id=query_prop_id or 0,
         entity_type="shift",
         entity_id=shift_id,
         action="update",
         summary=f"Check-in de turno {shift_id}",
         changed_by=current_user.get("username", "system"),
         diff=diff,
-        metadata={"employee_id": payload.employee_id, "notes": payload.notes},
+        metadata={
+            "employee_id": payload.employee_id,
+            "notes": payload.notes,
+            "closed_stale_shifts": stale_closed,
+        },
     )
     return ShiftActionResponse.model_validate({
         "shift_id": shift_id,
@@ -438,19 +509,23 @@ def shift_check_in(
 def shift_check_out(
     shift_id: str = Path(...),
     payload: EmployeeShiftCheckOut = Body(...),
-    current_user: dict = Depends(require_any_permission("hr.shifts.manage", "hr.portal.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("hr.shifts.manage", "hr.portal.read")),
 ):
     """Record an employee check-out for a shift.
 
-    Any-of: el gerente registra la salida (hr.shifts.manage) O el empleado
-    desde Mi Portal (hr.portal.read)."""
+    Any-of (por hotel): el gerente registra la salida (hr.shifts.manage) O el
+    empleado desde Mi Portal (hr.portal.read). ``prop_id`` obligatorio (query)
+    con deny-by-default y 404 cross-hotel (Migración E).
+    """
     db = get_database()
+    _require_shift_same_hotel(db, shift_id, query_prop_id)
     try:
         shift_oid = ObjectId(shift_id)
     except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     timestamp = now.isoformat()
     if payload.timestamp:
         timestamp = payload.timestamp
@@ -475,7 +550,7 @@ def shift_check_out(
         "actual_check_out": {"old": before.get("actual_check_out"), "new": timestamp},
     }
     register_action(
-        prop_id=0,
+        prop_id=query_prop_id or 0,
         entity_type="shift",
         entity_id=shift_id,
         action="update",
@@ -501,9 +576,17 @@ def employee_portal(
     employee_id: str = Path(...),
     prop_id: int | None = Query(default=None, ge=1),
     week_start: str | None = Query(default=None, description="YYYY-MM-DD of the Monday of the week to show. Defaults to current week."),
-    current_user: dict = Depends(require_permission("hr.portal.read")),
+    current_user: dict = Depends(require_prop_permission("hr.portal.read")),
 ):
-    """Return the full portal payload for an employee dashboard."""
+    """Return the full portal payload for an employee dashboard.
+
+    Fix B (2026-08): gate POR-HOTEL (``require_prop_permission``) — el
+    portal de un empleado concreto es una feature de hotel: exige
+    ``prop_id`` en el query, el rol del hotel (``role_assignments`` →
+    ``hotel_roles``, deny-by-default) y que el empleado pertenezca al hotel
+    pedido (404 cross-hotel). El rol GLOBAL con ``hr.portal.read`` ya no
+    basta para leer empleados de cualquier hotel.
+    """
     db = get_database()
     try:
         emp_oid = ObjectId(employee_id)
@@ -513,11 +596,16 @@ def employee_portal(
     emp_raw = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid, "is_active": True})
     if not emp_raw:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+    # Cross-hotel: el empleado debe pertenecer al hotel pedido. 404 (no 403)
+    # para no filtrar la existencia de empleados de otros hoteles.
+    emp_prop_id = emp_raw.get("prop_id")
+    if prop_id is not None and emp_prop_id is not None and emp_prop_id != prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     today_str = now.strftime("%Y-%m-%d")
-    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
-    today_end = datetime(now.year, now.month, now.day, 23, 59, 59, 999999, tzinfo=timezone.utc)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=UTC)
+    today_end = datetime(now.year, now.month, now.day, 23, 59, 59, 999999, tzinfo=UTC)
 
     # ── Current Shift ──
     current_shift: dict | None = None
@@ -527,15 +615,11 @@ def employee_portal(
         "status": {"$in": ["pending", "active"]},
     })
     if shift_doc:
-        # Surface datetimes as ISO strings before passing to Pydantic.
-        for k in ("actual_check_in", "actual_check_out", "created_at"):
-            v = shift_doc.get(k)
-            if isinstance(v, datetime):
-                shift_doc[k] = v.isoformat()
-            elif v is None:
-                shift_doc[k] = None
-        shift_doc["id"] = str(shift_doc.pop("_id"))
-        current_shift = shift_doc
+        # Serializar valores Mongo-nativos (FK ObjectId, datetimes) a la forma
+        # JSON-safe antes de Pydantic — mismo helper que el blob ``employee``.
+        # Un ObjectId crudo en ``current_shift`` (ej. el FK ``employee_id``)
+        # crasheaba la serialización con PydanticSerializationError (HTTP 500).
+        current_shift = _serialize_hr_doc(shift_doc)
 
     # ── KPIs from operations ──
     emp_prop_id = emp_raw.get("prop_id")
@@ -567,7 +651,7 @@ def employee_portal(
     # ── Weekly Roster ──
     if week_start:
         try:
-            monday_dt = datetime.strptime(week_start, "%Y-%m-%d").date()
+            monday_dt = date.fromisoformat(week_start)
             if monday_dt.weekday() != 0:
                 monday_dt = monday_dt - timedelta(days=monday_dt.weekday())
         except ValueError:
@@ -686,9 +770,10 @@ def employee_portal(
         metadata={"prop_id": prop_id or emp_prop_id, "url": str(request.url)},
     )
 
-    # Strip _id from employee payload before Pydantic parses it.
-    employee_dict: dict[str, Any] = dict(emp_raw)
-    employee_dict["id"] = str(employee_dict.pop("_id"))
+    # Serialize Mongo-native values (ObjectId FKs, datetimes) to the
+    # JSON-safe wire shape before Pydantic sees them — a raw ObjectId in
+    # the permissive ``employee`` dict crashes serialization (500).
+    employee_dict: dict[str, Any] = _serialize_hr_doc(emp_raw)
     return EmployeePortalResponse.model_validate({
         "employee": employee_dict,
         "current_shift": current_shift,
@@ -702,9 +787,14 @@ def employee_portal(
 @api_router.get("/portal/{employee_id}/tasks", response_model=PortalTasksResponse)
 def employee_portal_tasks(
     employee_id: str = Path(...),
-    current_user: dict = Depends(require_permission("hr.portal.read")),
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_prop_permission("hr.portal.read")),
 ):
-    """Return the employee's assigned tasks, dirty rooms, and daily duties."""
+    """Return the employee's assigned tasks, dirty rooms, and daily duties.
+
+    Mismo gate por-hotel que el portal (Fix B): prop_id + rol del hotel +
+    pertenencia del empleado al hotel.
+    """
     db = get_database()
     try:
         emp_oid = ObjectId(employee_id)
@@ -713,6 +803,10 @@ def employee_portal_tasks(
 
     emp = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid, "is_active": True})
     if not emp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+
+    emp_prop_id = emp.get("prop_id")
+    if prop_id is not None and emp_prop_id is not None and emp_prop_id != prop_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
 
     emp_name = emp.get("full_name", "")
@@ -837,7 +931,7 @@ def my_portal(current_user: dict = Depends(require_permission("hr.portal.read"))
         if not user_assigned or emp_prop_id not in user_assigned:
             db.users.update_one(
                 {"_id": user_id},
-                {"$addToSet": {"assigned_hotels": emp_prop_id}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+                {"$addToSet": {"assigned_hotels": emp_prop_id}, "$set": {"updated_at": datetime.now(UTC)}},
             )
 
     emp_oid = emp["_id"]
@@ -875,7 +969,7 @@ def my_shift_today(
     if not emp:
         return {"shift": None, "employee_name": ""}
 
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_str = datetime.now(UTC).strftime("%Y-%m-%d")
     shift = db[SHIFTS_COLLECTION].find_one(
         {
             "employee_id": emp["_id"],
@@ -906,7 +1000,7 @@ def list_replacement_candidates(
 ):
     """Return active employees in one hotel with transferable work counts."""
     db = get_database()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     candidates: list[dict[str, Any]] = []
 
     for employee in db[EMPLOYEES_COLLECTION].find(
@@ -970,7 +1064,7 @@ def employee_attendance(
     if not emp:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     today = now.date()
 
     if month and len(month) == 7:
@@ -1009,7 +1103,7 @@ def employee_attendance(
 
     for day_num in range(1, last_day + 1):
         date_str = f"{year:04d}-{mon:02d}-{day_num:02d}"
-        day_dt = datetime(year, mon, day_num, tzinfo=timezone.utc)
+        day_dt = datetime(year, mon, day_num, tzinfo=UTC)
         day_idx = day_dt.weekday()
         day_name = day_names[day_idx]
 
@@ -1030,7 +1124,7 @@ def employee_attendance(
             elif isinstance(check_in, datetime) and sched_start and sched_end:
                 try:
                     hi, mi = map(int, sched_end.split(":"))
-                    check_out_fallback = datetime(year, mon, day_num, hi, mi, tzinfo=timezone.utc)
+                    check_out_fallback = datetime(year, mon, day_num, hi, mi, tzinfo=UTC)
                     delta = check_out_fallback - check_in
                     if delta.total_seconds() > 0:
                         hours_worked = round(delta.total_seconds() / 3600, 2)
@@ -1047,7 +1141,7 @@ def employee_attendance(
             if isinstance(check_in, datetime) and sched_start:
                 try:
                     h, m = map(int, sched_start.split(":"))
-                    scheduled_dt = datetime(year, mon, day_num, h, m, tzinfo=timezone.utc)
+                    scheduled_dt = datetime(year, mon, day_num, h, m, tzinfo=UTC)
                     grace_dt = scheduled_dt + timedelta(minutes=15)
                     if check_in <= grace_dt:
                         on_time_count += 1
@@ -1121,7 +1215,7 @@ def create_shift(
 ):
     """Create a new shift for an employee."""
     db = get_database()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     try:
         emp_oid = ObjectId(payload.employee_id)
@@ -1237,7 +1331,7 @@ def update_shift(
     if not before:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     update = {
         "employee_id": _to_object_id_ref(payload.employee_id),
         "date": payload.date,
@@ -1329,7 +1423,7 @@ def create_employee_document(
     so the wire shape is locked for the front-end regardless of input shape.
     """
     db = get_database()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     employee_id = payload.get("employee_id", "")
     try:
@@ -1440,7 +1534,7 @@ def create_employee(
 ):
     """Create a new employee with optional replacement logic."""
     db = get_database()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     existing = db[EMPLOYEES_COLLECTION].find_one({"id_document": payload.id_document})
     if existing:
@@ -1529,7 +1623,7 @@ def create_employee(
                 {
                     "employee_id": old_id,
                     "$or": [
-                        {"date": {"$gte": datetime.now(timezone.utc).strftime("%Y-%m-%d")}, "status": {"$nin": ["completed", "cancelled"]}},
+                        {"date": {"$gte": datetime.now(UTC).strftime("%Y-%m-%d")}, "status": {"$nin": ["completed", "cancelled"]}},
                         {"status": "active"},
                     ],
                 },
@@ -1748,7 +1842,7 @@ def update_employee(
     if "user_id" in update:
         update["user_id"] = _to_object_id_ref(update["user_id"])
 
-    update["updated_at"] = datetime.now(timezone.utc)
+    update["updated_at"] = datetime.now(UTC)
     db[EMPLOYEES_COLLECTION].update_one({"_id": oid}, {"$set": update})
 
     if "department" in update:

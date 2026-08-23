@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, status
 
-from src.app.security.dependencies import require_login, require_permission
+from src.app.security.dependencies import require_login, require_permission, require_prop_permission
 from src.app.security.hotel_filter import hotel_filter_from_user, user_can_access_hotel
 from src.app.security.permissions import user_has_permission
 from src.app.security.role_helpers import get_role_name
@@ -53,6 +53,30 @@ def hotel_reviews_api(
     return get_hotel_reviews(prop_id, page=page, page_size=page_size)
 
 
+def _require_review_same_hotel(db, review_id: str, prop_id: int | None) -> None:
+    """404 (no 403) si la reseña pertenece a otro hotel — deny cross-hotel."""
+    from bson import ObjectId
+    from bson.errors import InvalidId
+    try:
+        query = {"_id": ObjectId(review_id)}
+    except InvalidId:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada")
+    doc = db.reviews.find_one(query, {"prop_id": 1})
+    if doc is None or doc.get("prop_id") != prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada")
+
+
+def _review_prop_id(db, review_id: str) -> int | None:
+    """Resuelve el prop_id de una reseña (para gates inline de rutas mixtas)."""
+    from bson import ObjectId
+    from bson.errors import InvalidId
+    try:
+        doc = db.reviews.find_one({"_id": ObjectId(review_id)}, {"prop_id": 1})
+    except InvalidId:
+        doc = None
+    return int(doc.get("prop_id") or 0) if doc else None
+
+
 @api_router.post("", status_code=201, response_model=ReviewResponse)
 def create_review_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
     user_id = str(current_user.get("_id", ""))
@@ -100,7 +124,24 @@ def list_reviews_api(
     # cliente podía enumerar reseñas de cualquier usuario y ver estados de
     # moderación que la vista pública no expone.
     db = get_database()
-    is_staff = user_has_permission(db, current_user, "reviews.read")
+    # Migración E: con prop_id el staff gatea POR HOTEL (deny-by-default: el
+    # rol global no basta). Sin prop_id (huésped multi-hotel) conserva el
+    # comportamiento global.
+    if prop_id is not None:
+        from src.app.modules.hotels.service.operational import non_operational_hotel as _non_op
+        if _non_op(db, prop_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"El hotel {prop_id} no está operativo.",
+            )
+        if not user_can_access_hotel(current_user, prop_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Sin acceso al hotel {prop_id}.",
+            )
+        is_staff = user_has_permission(db, current_user, "reviews.read", prop_id=prop_id)
+    else:
+        is_staff = user_has_permission(db, current_user, "reviews.read")
     if (user_id is not None or moderation_status is not None) and not is_staff:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -135,9 +176,11 @@ def list_reviews_api(
 def moderate_review_api(
     review_id: str,
     payload: ReviewModeration = Body(...),
-    current_user: dict = Depends(require_permission("reviews.moderate")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reviews.moderate")),
 ):
     """RF-005: Moderate a review. Only marketing_hotelero and super_admin can moderate."""
+    _require_review_same_hotel(get_database(), review_id, query_prop_id)
     result = moderate_review(review_id, payload, current_user)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo moderar la reseña")
@@ -151,6 +194,19 @@ def respond_review_api(
     current_user: dict = Depends(require_login),
 ):
     """RF-006: Respond to an approved review. Only hotel_partner of that hotel can respond."""
+    # Migración E: gate por-hotel INLINE — la reseña debe pertenecer a un
+    # hotel donde el rol del hotel porte reviews.read (deny-by-default).
+    db = get_database()
+    prop_id = _review_prop_id(db, review_id)
+    if prop_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada")
+    from src.app.modules.hotels.service.operational import non_operational_hotel as _non_op
+    if _non_op(db, prop_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"El hotel {prop_id} no está operativo.")
+    if not user_can_access_hotel(current_user, prop_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Sin acceso al hotel {prop_id}.")
+    if not user_has_permission(db, current_user, "reviews.read", prop_id=prop_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permiso requerido: reviews.read")
     # Verify the user is a hotel_partner or super_admin
     role = get_role_name(current_user)
     if role not in ("hotel_partner", "super_admin", "admin_sistema"):
@@ -229,17 +285,21 @@ def list_review_reports_api(
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_login),
 ):
-    """List review reports (staff: marketing_hotelero, super_admin). Requires authentication."""
+    """List review reports (staff: marketing_hotelero, super_admin).
+
+    Cola de moderación multi-hotel (vista de gerencia — excepción global
+    documentada de la Migración E: el handler no filtra por prop_id).
+    Requires authentication."""
     return list_review_reports(status=status, page=page, page_size=page_size)
 
 
 @api_router.get("/reputation/analytics")
 def reputation_analytics_api(
-    prop_id: int | None = Query(default=None),
+    prop_id: int | None = Query(default=None, ge=1),
     days: int = Query(default=30, ge=1, le=365),
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_prop_permission("reviews.read")),
 ):
     """Return the hourly ClickHouse reputation aggregate when available.
 
@@ -261,9 +321,9 @@ def reputation_analytics_api(
 
 @api_router.get("/reputation/dashboard")
 def reputation_dashboard_api(
-    prop_id: int | None = Query(default=None),
+    prop_id: int | None = Query(default=None, ge=1),
     days: int = Query(default=30, ge=1, le=365),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_prop_permission("reviews.read")),
 ):
     """Return reputation dashboard data: GRI, departmental sentiment, recent feedback."""
     return get_reputation_dashboard(prop_id=prop_id, days=days)
@@ -278,7 +338,12 @@ def get_review_api(review_id: str, current_user: dict = Depends(require_login)):
 
 
 @api_router.delete("/{review_id}", status_code=204)
-def delete_review_api(review_id: str, current_user: dict = Depends(require_permission("reviews.moderate"))):
+def delete_review_api(
+    review_id: str,
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reviews.moderate")),
+):
+    _require_review_same_hotel(get_database(), review_id, query_prop_id)
     deleted = delete_review(review_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada")

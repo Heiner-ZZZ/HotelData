@@ -3,15 +3,16 @@
  * when the backend hasn't supplied a real photo.
  *
  * Uses loremflickr.com with a `?lock=` param so the same hotel always
- * resolves to the same photo across renders. The single `hotel` tag keeps
- * the URL deterministic without needing per-variant tag fan-out — variant
- * differentiation (lobby / pool / room) is encoded in the `seed` itself,
- * since callers concat a variant suffix (`${id}1`, `${id}2`, …) before
- * passing it in.
+ * resolves to the same photo across renders. ALL loremflickr knowledge
+ * (host, tag set, lock scheme) lives in this module — callers never
+ * hardcode placeholder URLs.
  *
- * Hybrid display strategy: `hotel-detail.mapper` composes
- * `[...locals, ...3 fallbacks]` so loremflickr photos serve as visual
- * decorators even when the hotel has its own images configured.
+ * ⚠️ TAG COMPUESTO OBLIGATORIO: loremflickr devuelve HTTP 500 para el tag
+ * único `hotel` (https://loremflickr.com/400/250/hotel → 500, verificado
+ * 2026-08) y para `hotel,suite` / `hotel,bathroom`. Los tags compuestos
+ * usados aquí (room, bedroom, living, interior, lobby) responden 200 y
+ * sirven JPEG reales, incluso con `?lock=`. Si algún tag empieza a dar 500,
+ * reemplazarlo por otro que responda 200.
  *
  * @param seed Any identifier — hotel id, composite key, or string.
  *             Encoded into the URL so collisions are unlikely.
@@ -23,8 +24,46 @@ export function placeholderImageUrl(
   width = 400,
   height = 250,
 ): string {
+  return loremflickrUrl(seed, 'room', width, height);
+}
+
+/** Variantes de habitación (tags que hoy responden 200 en loremflickr). */
+const ROOM_TAGS = ['room', 'bedroom', 'living', 'interior', 'lobby'] as const;
+
+/**
+ * Placeholder determinista para un tipo de habitación sin foto.
+ *
+ * Cicla las variantes por `roomIdx` (room → bedroom → living → interior →
+ * lobby → …) y fija el `?lock=` al hotel: dos habitaciones del mismo hotel
+ * siempre muestran la misma foto; hoteles distintos no colisionan.
+ *
+ * @param roomKey Hotel id (o clave compuesta) — se combina con `roomIdx`
+ *                en el lock para que cada habitación sea estable.
+ * @param roomIdx Índice de la habitación en la lista (0-based); determina
+ *                la variante de foto.
+ * @param width   Target width in pixels.
+ * @param height  Target height in pixels.
+ */
+export function roomPlaceholderUrl(
+  roomKey: string | number,
+  roomIdx: number,
+  width = 400,
+  height = 250,
+): string {
+  const tag = ROOM_TAGS[((roomIdx % ROOM_TAGS.length) + ROOM_TAGS.length) % ROOM_TAGS.length];
+  const seed = Number(roomKey) * 100 + roomIdx;
+  return loremflickrUrl(seed, tag, width, height);
+}
+
+/** Construye la URL loremflickr con tag compuesto `hotel,<tag>` + lock. */
+function loremflickrUrl(
+  seed: string | number,
+  tag: string,
+  width: number,
+  height: number,
+): string {
   const safeSeed = encodeURIComponent(String(seed ?? 'hotel'));
-  return `https://loremflickr.com/${width}/${height}/hotel?lock=${safeSeed}`;
+  return `https://loremflickr.com/${width}/${height}/hotel,${tag}?lock=${safeSeed}`;
 }
 
 /**

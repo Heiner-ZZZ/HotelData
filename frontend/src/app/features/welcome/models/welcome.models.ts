@@ -5,7 +5,9 @@ export interface FeaturedHotel {
   readonly location: string;
   readonly stars: number;
   readonly score: number | null;
-  readonly imageUrl: string;
+  /** Galería determinista (3 variantes: hotel / lobby / pool) que alimenta
+   *  el mini-carrusel con puntitos de la card. */
+  readonly images: readonly string[];
   readonly rateLabel: string | null;
 }
 

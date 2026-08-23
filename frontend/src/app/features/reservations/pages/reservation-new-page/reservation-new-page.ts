@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { httpResource, HttpParams } from '@angular/common/http';
+import { HttpClient, httpResource, HttpParams } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, ViewEncapsulation } from '@angular/core';
 import type { AbstractControl, ValidationErrors } from '@angular/forms';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -12,13 +12,12 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { ReservationsAuthService } from '../../services/reservations-auth.service';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { RnPlannerSectionComponent } from './partials/rn-planner-section';
 import { RnGuestSectionComponent } from './partials/rn-guest-section';
 import { RnReviewSectionComponent } from './partials/rn-review-section';
-import { mapReservationOptions } from '../../mappers/reservations.mapper';
 import { availabilityInfoFor } from './partials/reservation-form-messages';
-import type { RatePlanOption, ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
-import type { ReservationOptionsDto } from '../../models/reservations.dto';
+import type { RatePlanOption, ReservationCreateInput, ReservationPreview } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { GuestAmenityService } from '../../../amenities/services/guest-amenity.service';
 import type { GuestAmenityCategoryDto, GuestSpecialRequestDto } from '../../../amenities/models/guest-amenity.dto';
@@ -94,7 +93,9 @@ export class ReservationNewPageComponent {
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly propertyCtx = inject(PropertyContextService);
   private readonly guestAmenityService = inject(GuestAmenityService);
+  private readonly http = inject(HttpClient);
   private readonly operationMode = inject(OperationModeService);
 
   // ─── Form ─── (declared BEFORE the toSignal fields that read it)
@@ -139,13 +140,9 @@ export class ReservationNewPageComponent {
 
   // ─── httpResource declarations (GETs only — POSTs stay as `subscribe(takeUntilDestroyed)`) ───
 
-  /** Hotel options dropdown — fired once on mount, no dependency. */
-  readonly optionsResource = httpResource<ReservationHotelOption[]>(
-    () => ({ url: '/reservations/options' }),
-    { parse: (dto) => mapReservationOptions(dto as ReservationOptionsDto) },
-  );
-
-  /** Per-hotel availability — re-fires when propId or any date signal changes. */
+  /** Per-hotel availability — re-fires when propId or any date signal changes.
+   *  Guards on `isAuthenticated()` so the request only fires once the session
+   *  cookie is settled, avoiding 401/403 loops right after login. */
   readonly availabilityResource = httpResource<{
     hasInventory: boolean;
     hasRoomTypes: boolean;
@@ -153,6 +150,7 @@ export class ReservationNewPageComponent {
     availableRooms: number;
     message: string;
   }>(() => {
+    if (!this.authService.isAuthenticated()) return undefined;
     const propId = this.propIdSignal();
     const checkIn = this.checkInDateSignal();
     const checkOut = this.checkOutDateSignal();
@@ -167,8 +165,10 @@ export class ReservationNewPageComponent {
     };
   });
 
-  /** Available rate plans for the selected hotel + dates + optional room type. */
+  /** Available rate plans for the selected hotel + dates + optional room type.
+   *  Guards on `isAuthenticated()` to avoid firing before the session cookie is ready. */
   readonly ratePlansResource = httpResource<RatePlanOption[]>(() => {
+    if (!this.authService.isAuthenticated()) return undefined;
     const propId = this.propIdSignal();
     const checkIn = this.checkInDateSignal();
     const checkOut = this.checkOutDateSignal();
@@ -206,12 +206,13 @@ export class ReservationNewPageComponent {
     };
   });
 
-  // ─── Writable signals preserved for template compatibility ───
-  readonly loading = signal(true);
+  // ─── Writable signals ───
+  // The shared property selector owns the hotel catalog/loading state. This
+  // page only keeps the selected id in the reactive form.
+  readonly loading = signal(false);
   readonly submitting = signal(false);
   readonly previewing = signal(false);
   readonly errorMessage = signal('');
-  readonly hotelOptions = signal<ReservationHotelOption[]>([]);
   readonly preview = signal<ReservationPreview | null>(null);
   readonly step = signal<'details' | 'review'>('details');
 
@@ -295,9 +296,24 @@ export class ReservationNewPageComponent {
   readonly isStaff = this.reservationsAuth.isStaff;
   readonly isClient = this.reservationsAuth.isClient;
 
+  /** ID exposed to the planner so the shared selector stays in sync with the form. */
+  readonly selectedPropId = computed(() => this.propIdSignal());
+
+  /** Label comes from the shared property context after selection. */
+  readonly selectedLabel = computed(() => this.propertyCtx.currentPropLabel());
+
+  /**
+   * The planner needs a hotel object for its metadata and downstream sections.
+   * The shared selector owns the authoritative label; before it resolves an
+   * initial URL id, keep the UI useful with a non-empty fallback.
+   */
   readonly selectedHotel = computed(() => {
     const selectedId = this.propIdSignal();
-    return this.hotelOptions().find((item) => item.propId === selectedId) || null;
+    if (!selectedId) return null;
+    return {
+      propId: selectedId,
+      label: this.selectedLabel() || `Hotel ${selectedId}`,
+    };
   });
 
   readonly computedNights = computed(() => {
@@ -356,6 +372,9 @@ export class ReservationNewPageComponent {
     const prefixedCheckOut = this.activatedRoute.snapshot.queryParamMap.get('check_out') ?? '';
     const prefixedCheckInTime = this.activatedRoute.snapshot.queryParamMap.get('check_in_time') ?? '';
     const prefixedCheckOutTime = this.activatedRoute.snapshot.queryParamMap.get('check_out_time') ?? '';
+    if (prefixedPropId > 0) {
+      this.form.controls.propId.setValue(prefixedPropId);
+    }
     if (prefixedRoomType) {
       this.preselectedRoomTypeId.set(prefixedRoomType);
       this.preselectedRoomTypeName.set(prefixedRoomTypeName);
@@ -364,40 +383,25 @@ export class ReservationNewPageComponent {
       this.preselectedHotelRoomId.set(prefixedHotelRoomId);
       this.preselectedRoomNumber.set(prefixedRoomNumber);
     }
-    if (prefixedCheckIn || prefixedCheckOut || prefixedCheckInTime || prefixedCheckOutTime) {
+    // Dates from URL query params ALWAYS take precedence over Redis.
+    const hasUrlDates = !!(prefixedCheckIn || prefixedCheckOut || prefixedCheckInTime || prefixedCheckOutTime);
+    if (hasUrlDates) {
       this.form.patchValue({
         checkInDate: prefixedCheckIn,
         checkOutDate: prefixedCheckOut,
         checkInTime: prefixedCheckInTime || this.form.controls.checkInTime.value,
         checkOutTime: prefixedCheckOutTime || this.form.controls.checkOutTime.value,
       });
+    } else {
+      // No dates in URL → load from Redis (guest session prefs persisted from search page)
+      this._loadSearchPrefsFromRedis();
     }
     this._loadGuestSuggestions();
     this._restoreGuestDraft();
     this._persistGuestDraft();
 
-    // ── Resources → writable signals (effect-based) ──
-
-    // optionsResource.value() → hotelOptions + (initial) propId setValue + loading toggle.
-    // The setValue triggers propIdSignal → amenityResource / availabilityResource / ratePlansResource
-    // auto-fire on the same micro-task, so we don't need manual `checkHotelAvailability()` calls.
-    effect(() => {
-      const r = this.optionsResource.value();
-      if (!r) return;
-      this.hotelOptions.set(r);
-      if (prefixedPropId > 0 && this.form.controls.propId.value === 0) {
-        this.form.controls.propId.setValue(prefixedPropId);
-      }
-      this.loading.set(false);
-    });
-
-    // optionsResource.error() → toast + loading toggle (avoids the page getting stuck on loading=true).
-    effect(() => {
-      const err = this.optionsResource.error();
-      if (!err) return;
-      // The HTTP interceptor emits the single global toast for this failure.
-      this.loading.set(false);
-    });
+    // The shared property selector handles hotel catalog loading. Once it
+    // emits a property, the form control drives all dependent resources below.
 
     // availabilityResource.value() → hotelAvailabilityStatus dict.
     effect(() => {
@@ -525,6 +529,19 @@ export class ReservationNewPageComponent {
         this.form.controls.guestName.setValue(user.displayName || '');
         this.form.controls.guestEmail.setValue(user.email || '');
       }
+      // Pre-fill cedula from profile if guest has DNI or passport saved
+      this.http.get<{ id_document_type?: string; id_document_number?: string }>('/account/profile')
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (profile) => {
+            const docType = profile?.id_document_type ?? '';
+            const docNumber = profile?.id_document_number ?? '';
+            if ((docType === 'dni' || docType === 'passport') && docNumber) {
+              this.form.controls.cedula.setValue(docNumber);
+            }
+          },
+          error: () => { /* Profile unavailable — cedula stays empty, guest enters manually */ },
+        });
     }
   }
 
@@ -786,8 +803,20 @@ export class ReservationNewPageComponent {
     control.markAsDirty();
   }
 
-  trackByPropId(_index: number, item: ReservationHotelOption): number {
-    return item.propId;
+  /** Handle the shared selector without duplicating hotel-option logic here. */
+  onPropertySelected(event: { propId: number; label: string }): void {
+    const propId = event.propId || 0;
+    if (propId) {
+      this.propertyCtx.setProperty(propId, event.label || `Propiedad #${propId}`);
+    } else {
+      this.propertyCtx.clear();
+    }
+    this.form.controls.propId.setValue(propId);
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { prop_id: propId || null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   validateCoupon() {
@@ -802,7 +831,12 @@ export class ReservationNewPageComponent {
       return;
     }
     this.couponValidating.set(true);
-    this.reservationsApi.validateCoupon(code, propId).subscribe({
+    this.reservationsApi.validateCoupon(code, propId, {
+      checkIn: this.form.controls.checkInDate.value || undefined,
+      checkOut: this.form.controls.checkOutDate.value || undefined,
+      ratePlanId: this.selectedRatePlanId() || undefined,
+      roomTypeId: this.preselectedRoomTypeId() || this.form.controls.rooms.value ? undefined : undefined,
+    }).subscribe({
       next: (res) => {
          this.couponStatus.set({
            valid: res.valid,
@@ -839,6 +873,24 @@ export class ReservationNewPageComponent {
   }
 
   /** True si la petición marcada está flaggeada como late_arrival en el catálogo. */
+  /** Load search dates from Redis (guest session prefs persisted by search page).
+   *  Only called when the URL has no dates — URL always wins. */
+  private _loadSearchPrefsFromRedis(): void {
+    this.http.get<{ check_in?: string; check_out?: string }>('/api/guest/session-prefs')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (prefs) => {
+          if (prefs?.check_in || prefs?.check_out) {
+            this.form.patchValue({
+              checkInDate: prefs.check_in || '',
+              checkOutDate: prefs.check_out || '',
+            });
+          }
+        },
+        error: () => { /* Redis unavailable — form stays empty, user picks dates manually */ },
+      });
+  }
+
   private _isLateArrivalRequest(request: string): boolean {
     const r = this.specialRequestOptions().find((opt) => opt.value === request);
     return !!r?.late_arrival;

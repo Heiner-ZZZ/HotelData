@@ -14,8 +14,10 @@ import type {
   SelectionChangedEvent,
 } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } from 'ag-grid-community';
-import { HttpClient, httpResource } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams, httpResource } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+
+import { SUPPRESS_ERROR_TOAST } from '../../../../core/api/api-context.tokens';
 
 import { ReservationsAuthService } from '../../services/reservations-auth.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -26,6 +28,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 
@@ -45,6 +48,11 @@ import { ReceptionTimelineComponent } from '../../components/reception-timeline/
 
 import { todayIso, shiftDate } from './reservations-list-page.utils';
 import { buildColumnDefs } from './reservations-list-page.columns';
+import {
+  BOOKING_CONFIRMED,
+  BOOKING_PENDING,
+  isBulkSelectable,
+} from '../../utils/reservation-status.util';
 import { ReservationsStatsBarComponent } from './components/reservations-stats-bar/reservations-stats-bar';
 import { ReservationsFiltersBarComponent } from './components/reservations-filters-bar/reservations-filters-bar';
 import { ReservationsHistoryModalComponent } from './components/reservations-history-modal/reservations-history-modal';
@@ -52,6 +60,14 @@ import { mapReservationsList, mapReservationStats } from '../../mappers/reservat
 import type { ReservationsListDto, ReservationStatsDto } from '../../models/reservations.dto';
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
+
+/** Respuesta de POST /api/management/check-ins/{id}/complete — el backend
+ *  reporta el checklist operativo para que el flujo masivo avise qué
+ *  reservas quedaron sin completar. */
+interface CheckInCompleteResponse {
+  booking_id?: string;
+  checklist?: { complete?: boolean };
+}
 
 @Component({
   selector: 'app-reservations-list-page',
@@ -85,6 +101,7 @@ export class ReservationsListPageComponent {
   private readonly actionService = inject(ReservationActionService);
   private readonly apiService = inject(ReservationsApiService);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   /** Exportación CSV del listado gateada por ``reports.download``. */
   readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
@@ -173,6 +190,12 @@ export class ReservationsListPageComponent {
   });
   readonly getRowId = (params: GetRowIdParams<ReservationListItem>) => String(params.data?.bookingId ?? '');
 
+  /** AG Grid: solo filas con acción en lote aplicable (pendientes para
+   *  Confirmar, confirmadas para Check-in, sin no_show/terminales) muestran
+   *  checkbox — nunca una selección sin salida. */
+  readonly isRowSelectable = (node: { data?: ReservationListItem | null }) =>
+    isBulkSelectable(node.data?.status ?? '', node.data?.stayStatus ?? '');
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi.set(params.api);
   }
@@ -253,14 +276,42 @@ export class ReservationsListPageComponent {
     failures: [],
   });
 
+  /** Reservas que quedaron check-in sin checklist operativo completo
+   *  (llaves, documento, acompañantes) — se muestran en el banner con
+   *  link a su detalle para completarlas (ver onBulkCheckIn). */
+  readonly incompleteChecklistRows = signal<{ bookingId: string; guestName: string }[]>([]);
+
   readonly selectedRowCount = computed(() => this.selectedRows().length);
 
   /** Every selected row must have status='confirmed' to bulk-check-in. */
   readonly canBulkCheckIn = computed(() => {
     const rows = this.selectedRows();
     if (rows.length === 0) return false;
-    return rows.every((r) => r.status === 'confirmed');
+    // Guard adicional: no_show / checked_in / checked_out no son elegibles
+    // aunque la selección venga de un estado previo del grid (defensivo).
+    return rows.every(
+      (r) => r.status === BOOKING_CONFIRMED && isBulkSelectable(r.status, r.stayStatus)
+    );
   });
+
+  /** Every selected row must have status='pending' to bulk-confirm. */
+  readonly canBulkConfirm = computed(() => {
+    const rows = this.selectedRows();
+    if (rows.length === 0) return false;
+    return rows.every(
+      (r) => r.status === BOOKING_PENDING && isBulkSelectable(r.status, r.stayStatus)
+    );
+  });
+
+  /** Selection contains at least one pending row (bulk confirm applies). */
+  readonly hasPendingSelected = computed(() =>
+    this.selectedRows().some((r) => r.status === 'pending'),
+  );
+
+  /** Selection contains at least one confirmed row (bulk check-in applies). */
+  readonly hasConfirmedSelected = computed(() =>
+    this.selectedRows().some((r) => r.status === 'confirmed'),
+  );
 
   onSelectionChanged(event: SelectionChangedEvent) {
     // Freeze selection updates while a bulk action is in-flight so the
@@ -286,9 +337,103 @@ export class ReservationsListPageComponent {
     });
     if (!ok) return;
 
+    // El masivo omite el checklist operativo (llaves, documento, acompañantes)
+    // por diseño: se completa después desde el detalle de cada check-in. El
+    // backend reporta por reserva si el checklist quedó incompleto, y acá se
+    // arma el aviso con los links directos (patrón del banner unpriced).
+    this.incompleteChecklistRows.set([]);
+    const incomplete: { bookingId: string; guestName: string }[] = [];
+
+    await this.runSequentialBulk(rows, {
+      devLabel: '[reservations-list] bulk check-in failed for',
+      fallbackError: 'Error al registrar check-in',
+      okMsg: `Check-in masivo completado · ${total} reserva${total === 1 ? '' : 's'}`,
+      partialPrefix: 'Check-in masivo',
+      failAllMsg: 'Check-in masivo no completado',
+      run: async (row) => {
+        const propId = row.propId || this.calendarPropId() || this.propertyCtx.currentPropId() || 0;
+        const params = propId > 0 ? new HttpParams().set('prop_id', String(propId)) : undefined;
+        const res = await firstValueFrom(
+          this.http.post<CheckInCompleteResponse>(
+            `/api/management/check-ins/${row.bookingId}/complete`,
+            { payment_method: '', express: true },
+            // El bulk reporta sus propios toasts resumidos: el interceptor no
+            // debe disparar un toast rojo por cada fila fallida (dedupe o no,
+            // repite el mismo mensaje que ya va en el toast agregado).
+            { context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true), ...(params ? { params } : {}) }
+          )
+        );
+        if (res?.checklist && res.checklist.complete === false) {
+          incomplete.push({ bookingId: row.bookingId, guestName: row.guestName || row.bookingId });
+        }
+      },
+    });
+
+    this.incompleteChecklistRows.set(incomplete);
+  }
+
+  /** Descarta el aviso de checklist pendiente sin recargar nada. */
+  dismissIncompleteChecklist(): void {
+    this.incompleteChecklistRows.set([]);
+  }
+
+  /** Confirmación masiva de reservas pendientes (mismo patrón que el
+   *  check-in masivo): es la contraparte en lote del botón ✓ de fila, y la
+   *  razón de ser de la columna de checkboxes — seleccioná pendientes y
+   *  confirmalas de una. */
+  async onBulkConfirm(): Promise<void> {
+    if (!this.canBulkConfirm() || this.bulkActionLoading()) return;
+
+    const rows = this.selectedRows();
+    const total = rows.length;
+    if (total === 0) return;
+
+    const ok = await this.confirmDialog.open({
+      title: 'Confirmar reservas',
+      message: `Vas a confirmar ${total} reserva${total === 1 ? '' : 's'} pendiente${total === 1 ? '' : 's'}. La operación se aplicará secuencialmente y registrará una fila en la auditoría.`,
+      confirmLabel: 'Confirmar',
+      cancelLabel: 'Cancelar',
+      variant: 'default',
+    });
+    if (!ok) return;
+
+    await this.runSequentialBulk(rows, {
+      devLabel: '[reservations-list] bulk confirm failed for',
+      fallbackError: 'Error al confirmar',
+      okMsg: `Confirmación masiva completada · ${total} reserva${total === 1 ? '' : 's'}`,
+      partialPrefix: 'Confirmación masiva',
+      failAllMsg: 'Confirmación masiva no completada',
+      // Mismo opt-out que el check-in masivo: el toast resumido del bulk
+      // reemplaza al rojo del interceptor por cada fila.
+      run: (row) =>
+        firstValueFrom(
+          this.actionService.confirm({
+            bookingId: row.bookingId,
+            context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true),
+          })
+        ),
+    });
+  }
+
+  /** Ejecuta una acción en lote fila por fila con progreso y reporte de
+   *  fallos parciales. Compartido por check-in masivo y confirmación masiva.
+   *  Sin guestName, el confirm/reject no abre diálogo por fila: el único
+   *  diálogo es el de preflight de la operación completa. */
+  private async runSequentialBulk(
+    rows: ReservationListItem[],
+    opts: {
+      devLabel: string;
+      fallbackError: string;
+      okMsg: string;
+      partialPrefix: string;
+      /** Mensaje del toast de error cuando TODAS las filas fallan. */
+      failAllMsg: string;
+      run: (row: ReservationListItem) => Promise<unknown>;
+    },
+  ): Promise<void> {
+    const total = rows.length;
     this.bulkActionLoading.set(true);
     this.bulkActionProgress.set({ done: 0, total, failures: [] });
-    this.warningMessage.set('');
 
     const failures: string[] = [];
     for (let i = 0; i < rows.length; i++) {
@@ -299,18 +444,14 @@ export class ReservationsListPageComponent {
         continue;
       }
       try {
-        await firstValueFrom(
-          this.http.post(`/api/management/check-ins/${bookingId}/complete`, {
-            payment_method: '',
-          })
-        );
+        await opts.run(row);
       } catch (err: unknown) {
         // Dev visibility: log the raw error so devs see which booking +
         // HTTP status failed. The user-facing toast still gets the friendly
         // message via the failures array.
-        if (isDevMode()) console.error('[reservations-list] bulk check-in failed for', bookingId, err);
+        if (isDevMode()) console.error(opts.devLabel, bookingId, err);
         const error = err as { error?: { detail?: string }; message?: string };
-        const msg = error.error?.detail || error.message || 'Error al registrar check-in';
+        const msg = error.error?.detail || error.message || opts.fallbackError;
         failures.push(`${row.guestName || bookingId}: ${msg}`);
       } finally {
         // Single signal.set call replaces the previous update-with-slice
@@ -322,20 +463,29 @@ export class ReservationsListPageComponent {
 
     this.bulkActionLoading.set(false);
     if (failures.length === 0) {
-      this.successMessage.set(`Check-in masivo completado · ${total} reservas`);
-    } else {
-      this.successMessage.set(
-        `Check-in masivo: ${total - failures.length} ok, ${failures.length} con error`
+      // Todo OK → un único toast de éxito.
+      this.toast.success(opts.okMsg);
+    } else if (failures.length === total) {
+      // Todo falló → UN solo toast de error. El success "0 ok, N con error"
+      // era engañoso (verde para un fracaso total) y el warning repetía el
+      // mensaje del interceptor. El SUPPRESS_ERROR_TOAST de las requests ya
+      // evitó los toasts rojos por fila, así que este es el único aviso.
+      this.toast.error(
+        `${opts.failAllMsg} · ${total} reserva${total === 1 ? '' : 's'}: ${failures.slice(0, 3).join(' · ')}${failures.length > 3 ? ' \u2026' : ''}`
       );
-      this.warningMessage.set(
+    } else {
+      // Éxito parcial → DOS toasts: el success informa cuántas OK y el
+      // warning cuáles fallaron. Ambos aportan información distinta.
+      this.toast.success(
+        `${opts.partialPrefix}: ${total - failures.length} ok, ${failures.length} con error`
+      );
+      this.toast.warning(
         `Fallaron ${failures.length} de ${total}: ${failures.slice(0, 3).join(' · ')}${failures.length > 3 ? ' \u2026' : ''}`
       );
     }
     this.reservationsResource.reload();
     this.statsResource.reload();
     this.clearSelection();
-    setTimeout(() => this.successMessage.set(''), 5000);
-    setTimeout(() => this.warningMessage.set(''), 8000);
   }
 
   clearSelection() {
@@ -392,25 +542,23 @@ export class ReservationsListPageComponent {
   async onRecalculatePrice(bookingId: string): Promise<void> {
     if (this.recalculatingId()) return;
     this.recalculatingId.set(bookingId);
-    this.successMessage.set('');
-    this.warningMessage.set('');
     try {
       const result = await firstValueFrom(this.apiService.recalculatePrice(bookingId));
       const price =
         result.total_price != null
           ? `${new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 }).format(result.total_price)} ${result.currency || 'USD'}`
           : 'sin tarifa calculable';
-      this.successMessage.set(`Precio recalculado · ${bookingId} → ${price}`);
+      // Toast GLOBAL (raíz de la app): el auto-dismiss del ToastService
+      // reemplaza al setTimeout local que limpiaba la señal de la página.
+      this.toast.success(`Precio recalculado · ${bookingId} → ${price}`);
       this.reservationsResource.reload();
       this.statsResource.reload();
       this.unpricedResource.reload();
     } catch (err: unknown) {
       if (isDevMode()) console.error('[reservations-list] recalculate price failed', bookingId, err);
-      this.warningMessage.set(`No se pudo recalcular ${bookingId}. Intenta nuevamente.`);
+      this.toast.warning(`No se pudo recalcular ${bookingId}. Intenta nuevamente.`);
     } finally {
       this.recalculatingId.set(null);
-      setTimeout(() => this.successMessage.set(''), 5000);
-      setTimeout(() => this.warningMessage.set(''), 8000);
     }
   }
 
@@ -432,9 +580,6 @@ export class ReservationsListPageComponent {
   // Inline confirm/reject
   readonly confirmingId = signal<string | null>(null);
   readonly rejectingId = signal<string | null>(null);
-  readonly successMessage = signal('');
-  /** Warning toast for partial-failure scenarios (e.g. bulk ops with errors). */
-  readonly warningMessage = signal('');
 
   // More menu (⋮)
   readonly showMenu = signal(false);
@@ -564,7 +709,6 @@ export class ReservationsListPageComponent {
   ): void {
     if (this.confirmingId() || this.rejectingId()) return;
     loadingSignal.set(bookingId);
-    this.successMessage.set('');
 
     const serviceCall =
       type === 'confirm'
@@ -574,10 +718,9 @@ export class ReservationsListPageComponent {
     serviceCall.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         loadingSignal.set(null);
-        this.successMessage.set(successMsg);
+        this.toast.success(successMsg);
         this.reservationsResource.reload();
         this.statsResource.reload();
-        setTimeout(() => this.successMessage.set(''), 3000);
       },
       error: (err) => {
         // Dev visibility: surface the actual error so we can diagnose

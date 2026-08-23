@@ -220,11 +220,12 @@ export class BillingApiService {
   }
 
   /** Register a payment (or a failed/rejected/declined/error attempt). */
-  createPayment(payload: { booking_id: string; invoice_id?: string; amount: number; method: string; status: string }) {
+  createPayment(payload: { booking_id: string; invoice_id?: string; amount: number; method: string; status: string }, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.post<PaymentDto>(
       `${this.apiConfig.baseUrl}/billing/payments`,
       payload,
-      { withCredentials: true },
+      { params, withCredentials: true },
     );
   }
 

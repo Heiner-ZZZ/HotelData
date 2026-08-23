@@ -91,6 +91,7 @@
   font-size: 1.1rem;
   color: var(--muted-text);
   pointer-events: none;
+  z-index: 1;
 }
 
 .textarea-prefix {
@@ -98,7 +99,8 @@
 }
 
 .input-wrap input,
-.input-wrap textarea {
+.input-wrap textarea,
+.input-wrap select {
   width: 100%;
   min-height: 2.6rem;
   padding: 0 1rem 0 2.4rem;
@@ -118,8 +120,21 @@
   }
 }
 
+/* Native <select> renders above absolutely-positioned children (icon prefix).
+   Remove native chrome and add a custom chevron so the icon prefix stays visible. */
+.input-wrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1.1rem;
+  cursor: pointer;
+}
+
 [data-theme="dark"] .input-wrap input,
-[data-theme="dark"] .input-wrap textarea {
+[data-theme="dark"] .input-wrap textarea,
+[data-theme="dark"] .input-wrap select {
   color-scheme: dark;
 }
 

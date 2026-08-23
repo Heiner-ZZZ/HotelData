@@ -20,7 +20,7 @@ from src.app.modules.partner.services import (
 from src.app.modules.partner.services.rooms.queries import hotel_rooms_by_type
 from src.app.modules.partner.services.rooms.availability import update_blackout_block
 from src.app.modules.partner.services.audit import register_action
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission
 
 
 @web_router.post("/hotels/{prop_id}/inventory")
@@ -95,6 +95,16 @@ def blackout_dates_submit(
     )
 
 
+def _check_body_prop_id(query_prop_id: int | None, payload: dict) -> None:
+    """Consistencia gate(query) ↔ body: el prop_id del query es autoritativo."""
+    try:
+        body_prop_id = int(str(payload.get("prop_id") or 0))
+    except (TypeError, ValueError):
+        body_prop_id = 0
+    if query_prop_id is not None and body_prop_id != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
+
+
 @api_router.get("/availability")
 def availability_api(
     request: Request,
@@ -102,11 +112,12 @@ def availability_api(
     days: int = Query(default=90, ge=1, le=365),
     start_date: str = Query(default=""),
     end_date: str = Query(default=""),
+    current_user: dict = Depends(require_prop_permission("inventory.read")),
 ):
     detail = partner_hotel_inventory(require_prop_id(prop_id), days=days, start_date=start_date, end_date=end_date)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    user = getattr(request.state, "current_user", None) or {}
+    user = current_user or getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=prop_id,
         entity_type="availability",
@@ -128,6 +139,9 @@ def availability_options_api(
     page_size: int = Query(default=10, ge=1, le=100),
     current_user: dict = Depends(require_permission("inventory.read")),
 ):
+    """Vista MULTI-HOTEL del picker de Disponibilidad (excepción global
+    documentada): sin prop_id lista los hoteles accesibles del usuario, no
+    opera un hotel concreto. Con prop_id añade los room types del hotel."""
     results = list_partner_hotels(q, page=page, page_size=page_size, user=current_user)
     response: dict[str, object] = {
         "properties": [
@@ -183,17 +197,21 @@ def _availability_update(payload: dict, changed_by: str = "system"):
 @api_router.post("/availability")
 def availability_update_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("inventory.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("inventory.manage")),
 ):
+    _check_body_prop_id(query_prop_id, payload)
     return _availability_update(payload, changed_by=current_user.get("username", "system"))
 
 
 @api_router.patch("/availability")
 def availability_patch_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("inventory.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("inventory.manage")),
 ):
     """Partial update of inventory (used by Angular frontend)."""
+    _check_body_prop_id(query_prop_id, payload)
     return _availability_update(payload, changed_by=current_user.get("username", "system"))
 
 
@@ -201,7 +219,7 @@ def availability_patch_api(
 def availability_blackouts_list_api(
     request: Request,
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_permission("inventory.read")),
+    current_user: dict = Depends(require_prop_permission("inventory.read")),
 ):
     """List all blackout blocks for a property."""
     items = list_property_blackouts(require_prop_id(prop_id))
@@ -223,10 +241,11 @@ def availability_hotel_rooms_api(
     request: Request,
     prop_id: int = Query(..., ge=1),
     room_type_id: str = Query(...),
+    current_user: dict = Depends(require_prop_permission("inventory.read")),
 ):
     """Return individual hotel rooms for a given room type (used by multi-select in frontend)."""
     items = hotel_rooms_by_type(require_prop_id(prop_id), room_type_id)
-    user = getattr(request.state, "current_user", None) or {}
+    user = current_user or getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=prop_id,
         entity_type="hotel_room",
@@ -243,7 +262,10 @@ def availability_hotel_rooms_api(
 def availability_blackout_api(
     request: Request,
     payload: dict = Body(...),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("inventory.manage")),
 ):
+    _check_body_prop_id(query_prop_id, payload)
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     # Accept room_numbers array or blocked_rooms count
     room_numbers = payload.get("room_numbers")
@@ -251,7 +273,7 @@ def availability_blackout_api(
         blocked_rooms = len(room_numbers)
     else:
         blocked_rooms = payload.get("blocked_rooms")
-    user = getattr(request.state, "current_user", None) or {}
+    user = current_user or getattr(request.state, "current_user", None) or {}
     changed_by = user.get("username", "system")
     try:
         saved = create_blackout_block(
@@ -284,9 +306,24 @@ def availability_blackout_update_api(
     request: Request,
     blackout_id: str,
     payload: dict = Body(...),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("inventory.manage")),
 ):
     """Update a future blackout block (dates, reason, room numbers)."""
-    user = getattr(request.state, "current_user", None) or {}
+    from bson import ObjectId
+    from bson.errors import InvalidId
+    from src.database.connection import get_database
+
+    db = get_database()
+    try:
+        before = db.blackout_dates.find_one({"_id": ObjectId(blackout_id)}, {"prop_id": 1})
+    except InvalidId:
+        before = None
+    # E 2026-08 cross-hotel: el bloqueo debe pertenecer al hotel pedido (404).
+    if before is None or before.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bloqueo no encontrado")
+
+    user = current_user or getattr(request.state, "current_user", None) or {}
     changed_by = user.get("username", "system")
     try:
         room_numbers = payload.get("room_numbers")
@@ -312,7 +349,7 @@ def availability_inventory_delete_api(
     prop_id: int = Query(..., ge=1),
     room_type_id: str = Query(...),
     date: str = Query(...),
-    current_user: dict = Depends(require_permission("inventory.manage")),
+    current_user: dict = Depends(require_prop_permission("inventory.manage")),
 ):
     """Soft-delete an inventory entry."""
     try:
@@ -328,9 +365,24 @@ def availability_inventory_delete_api(
 def availability_blackout_delete_api(
     request: Request,
     blackout_id: str,
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("inventory.manage")),
 ):
     """Delete a blackout block and reverse its effect on inventory."""
-    user = getattr(request.state, "current_user", None) or {}
+    from bson import ObjectId
+    from bson.errors import InvalidId
+    from src.database.connection import get_database
+
+    db = get_database()
+    try:
+        before = db.blackout_dates.find_one({"_id": ObjectId(blackout_id)}, {"prop_id": 1})
+    except InvalidId:
+        before = None
+    # E 2026-08 cross-hotel: el bloqueo debe pertenecer al hotel pedido (404).
+    if before is None or before.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bloqueo no encontrado")
+
+    user = current_user or getattr(request.state, "current_user", None) or {}
     changed_by = user.get("username", "system")
     try:
         result = delete_blackout_block(blackout_id, changed_by=changed_by)

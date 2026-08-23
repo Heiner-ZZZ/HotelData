@@ -4,11 +4,12 @@ import {
   isValidImageUrl,
   placeholderImageUrl,
 } from '../../../../shared/utils/placeholder-image.util';
+import { CarouselControlsComponent } from '../../../../shared/ui/carousel-controls/carousel-controls';
 import type { SimilarHotel } from '../../models/hotel-detail.model';
 
 @Component({
   selector: 'app-similar-carousel',
-  imports: [],
+  imports: [CarouselControlsComponent],
   templateUrl: './similar-carousel.html',
   styleUrl: './similar-carousel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,10 +34,6 @@ export class SimilarCarouselComponent {
       placeholderImageUrl(`${h.id}3`),
     ].filter((url) => !failed.has(this.resolveUrl(url)));
   });
-
-  readonly dotIndices = computed(() =>
-    Array.from({ length: this.galleryImages().length }, (_, i) => i),
-  );
 
   readonly stripOffset = computed(() => {
     if (this.galleryImages().length <= 1) return '';

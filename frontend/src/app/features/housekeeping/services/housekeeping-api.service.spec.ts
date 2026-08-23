@@ -36,7 +36,10 @@ describe('HousekeepingApiService', () => {
       expect(res.roomLabel).toBe('101');
     });
 
-    const req = httpMock.expectOne('/housekeeping/tasks');
+    const req = httpMock.expectOne(
+      (r) => r.url === '/housekeeping/tasks' && r.method === 'POST',
+    );
+    expect(req.request.params.get('prop_id')).toBe('1');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual(payload);
     req.flush({
@@ -75,7 +78,10 @@ describe('HousekeepingApiService', () => {
       expect(res.roomId).toBe('HR-1-102');
     });
 
-    const req = httpMock.expectOne(`/housekeeping/tasks/${taskId}`);
+    const req = httpMock.expectOne(
+      (r) => r.url === `/housekeeping/tasks/${taskId}` && r.method === 'PUT',
+    );
+    expect(req.request.params.get('prop_id')).toBe('1');
     expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual(payload);
     req.flush({
@@ -96,13 +102,16 @@ describe('HousekeepingApiService', () => {
   it('should complete a housekeeping task', () => {
     const taskId = 'task-1';
 
-    service.completeTask(taskId, 'Done').subscribe((res) => {
+    service.completeTask(taskId, 1, 'Done').subscribe((res) => {
       expect(res.id).toBe(taskId);
       expect(res.status).toBe('completed');
     });
 
-    const req = httpMock.expectOne(`/housekeeping/tasks/${taskId}/complete`);
+    const req = httpMock.expectOne(
+      (r) => r.url === `/housekeeping/tasks/${taskId}/complete` && r.method === 'POST',
+    );
     expect(req.request.method).toBe('POST');
+    expect(req.request.params.get('prop_id')).toBe('1');
     expect(req.request.body).toEqual({ note: 'Done' });
     req.flush({
       id: taskId,
@@ -115,13 +124,16 @@ describe('HousekeepingApiService', () => {
   it('should delete a housekeeping task', () => {
     const taskId = 'task-1';
 
-    service.deleteTask(taskId).subscribe((res) => {
+    service.deleteTask(taskId, 1).subscribe((res) => {
       expect(res.id).toBe(taskId);
       expect(res.status).toBe('deleted');
     });
 
-    const req = httpMock.expectOne(`/housekeeping/tasks/${taskId}`);
+    const req = httpMock.expectOne(
+      (r) => r.url === `/housekeeping/tasks/${taskId}` && r.method === 'DELETE',
+    );
     expect(req.request.method).toBe('DELETE');
+    expect(req.request.params.get('prop_id')).toBe('1');
     req.flush({
       id: taskId,
       status: 'deleted',

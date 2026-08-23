@@ -36,10 +36,11 @@ from src.app.modules.reservations.service import (
     list_check_outs,
     save_check_in_detail,
     save_check_out_detail,
+    validate_room_availability,
 )
 from src.app.modules.reservations.service._checkinout import update_check_in_datetime
 from src.app.modules.reservations.service.late_arrival import declare_late_arrival
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_any_permission, require_any_prop_permission, require_permission, require_prop_permission
 from src.app.security.permissions import (
     EARLY_CHECK_IN_APPROVAL_PERMISSION,
     LATE_CHECKOUT_APPROVAL_PERMISSION,
@@ -78,11 +79,18 @@ def _require_active_shift(prop_id: int) -> str:
     return shift_id
 
 
+def _require_booking_same_hotel(db, booking_id: str, prop_id: int | None) -> None:
+    """404 (no 403) si la reserva pertenece a otro hotel — deny cross-hotel."""
+    doc = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1})
+    if doc is None or doc.get("prop_id") != prop_id:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+
+
 @management_api_router.get("/check-ins/dates")
 def check_in_dates_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("check-ins.read")),
+    current_user: dict = Depends(require_prop_permission("check-ins.read")),
 ):
     result = list_check_in_dates(prop_id=prop_id)
     register_action(
@@ -102,7 +110,7 @@ def check_ins_api(
     request: Request,
     operation_date: str = Query(..., alias="date"),
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("check-ins.read")),
+    current_user: dict = Depends(require_prop_permission("check-ins.read")),
 ):
     result = list_check_ins(operation_date=operation_date, prop_id=prop_id, user=current_user)
     register_action(
@@ -121,9 +129,11 @@ def check_ins_api(
 def check_in_update_datetime_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("check-ins.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-ins.manage")),
 ):
     db = get_database()
+    _require_booking_same_hotel(db, booking_id, query_prop_id)
     before = db.booking_orders.find_one({"booking_id": booking_id}, {"check_in_date": 1, "check_in_time": 1, "prop_id": 1})
     try:
         result = update_check_in_datetime(
@@ -155,7 +165,8 @@ def check_in_update_datetime_api(
 def check_in_declare_late_arrival_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("check-ins.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-ins.manage")),
 ):
     """Recepción declara (o retira) una llegada tardía para una reserva.
 
@@ -206,9 +217,11 @@ def check_in_declare_late_arrival_api(
 def check_in_detail_api(
     request: Request,
     booking_id: str,
-    current_user: dict = Depends(require_permission("check-ins.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-ins.read")),
 ):
     """Return all check-in detail data for the booking page."""
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     try:
         result = get_check_in_detail(booking_id)
     except ValueError as exc:
@@ -225,14 +238,46 @@ def check_in_detail_api(
     return result
 
 
+@management_api_router.get("/check-ins/{booking_id}/room-availability")
+def check_in_room_availability_api(
+    request: Request,
+    booking_id: str,
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-ins.read")),
+):
+    """Return real-time room availability for early check-in authorization.
+
+    This is a lightweight read-only endpoint that the frontend calls when the
+    early check-in dialog opens, so the receptionist sees current room status
+    before authorizing the early arrival.
+    """
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
+    try:
+        result = validate_room_availability(booking_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    register_action(
+        prop_id=0,
+        entity_type="check_in",
+        entity_id=booking_id,
+        action="read",
+        summary=f"Validación de disponibilidad de habitaciones para reserva {booking_id}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"url": str(request.url)},
+    )
+    return result
+
+
 @management_api_router.patch("/check-ins/{booking_id}/detail")
 def check_in_save_detail_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("check-ins.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-ins.manage")),
 ):
     """Save check-in detail fields incrementally (draft)."""
     db = get_database()
+    _require_booking_same_hotel(db, booking_id, query_prop_id)
     before = db.booking_orders.find_one(
         {"booking_id": booking_id},
         {
@@ -285,9 +330,11 @@ def check_in_complete_api(
     booking_id: str,
     payload: dict = Body(default={}),
     request: Request = None,
-    current_user: dict = Depends(require_permission("check-ins.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-ins.manage")),
 ):
     db = get_database()
+    _require_booking_same_hotel(db, booking_id, query_prop_id)
     before = db.booking_orders.find_one(
         {"booking_id": booking_id},
         {"prop_id": 1, "status": 1, "stay_status": 1, "check_in_by": 1},
@@ -310,6 +357,24 @@ def check_in_complete_api(
             detail=(
                 f"Permiso requerido: {EARLY_CHECK_IN_APPROVAL_PERMISSION}. "
                 "Solo un gerente de hotel o super_admin puede aprobar este early check-in."
+            ),
+        )
+
+    # Regla alineada manual vs masivo: el check-in manual exige el checklist
+    # operativo (llaves entregadas + documento verificado) antes de completar.
+    # El flujo masivo declara ``express=true`` y omite el checklist por diseño
+    # (se reporta después vía el banner post-masivo en recepción).
+    express = bool(payload.get("express", False))
+    if not express and not (
+        payload.get("check_in_keys_delivered") is True
+        and payload.get("check_in_document_verified") is True
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Check-in manual incompleto: registrá la entrega de llaves y el "
+                "documento verificado antes de completar. El flujo masivo puede "
+                "omitirlos declarando express=true."
             ),
         )
 
@@ -384,7 +449,7 @@ def check_in_complete_api(
 def check_out_dates_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("check-outs.read")),
+    current_user: dict = Depends(require_prop_permission("check-outs.read")),
 ):
     result = list_check_out_dates(prop_id=prop_id)
     register_action(
@@ -404,7 +469,7 @@ def check_outs_api(
     request: Request,
     operation_date: str = Query(..., alias="date"),
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("check-outs.read")),
+    current_user: dict = Depends(require_prop_permission("check-outs.read")),
 ):
     result = list_check_outs(operation_date=operation_date, prop_id=prop_id, user=current_user)
     register_action(
@@ -423,9 +488,11 @@ def check_outs_api(
 def check_out_detail_api(
     request: Request,
     booking_id: str,
-    current_user: dict = Depends(require_permission("check-outs.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-outs.read")),
 ):
     """Return all check-out detail data for the liquidation page."""
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     try:
         result = get_check_out_detail(booking_id)
     except ValueError as exc:
@@ -458,10 +525,12 @@ def check_out_detail_api(
 def check_out_save_detail_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("check-outs.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-outs.manage")),
 ):
     """Save check-out detail fields incrementally (draft)."""
     db = get_database()
+    _require_booking_same_hotel(db, booking_id, query_prop_id)
     before = db.booking_orders.find_one(
         {"booking_id": booking_id},
         {
@@ -514,9 +583,11 @@ def check_out_complete_api(
     booking_id: str,
     payload: dict = Body(default={}),
     request: Request = None,
-    current_user: dict = Depends(require_permission("check-outs.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-outs.manage")),
 ):
     db = get_database()
+    _require_booking_same_hotel(db, booking_id, query_prop_id)
     before = db.booking_orders.find_one(
         {"booking_id": booking_id},
         {"prop_id": 1, "status": 1, "stay_status": 1, "check_out_by": 1},
@@ -625,7 +696,8 @@ def check_out_complete_api(
 def booking_pos_charge_api(
     booking_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("charges.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("charges.manage")),
 ):
     """POS: add a charge to an actively checked-in booking during the stay.
 
@@ -668,9 +740,18 @@ def user_search_api(
     request: Request,
     q: str = Query(..., min_length=1),
     limit: int = Query(default=10, ge=1, le=50),
-    current_user: dict = Depends(require_permission("users.read")),
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(
+        require_any_prop_permission("reservations.manage", "reservations.read")
+    ),
 ):
-    """Search registered users by name or email for quick guest data prefill."""
+    """Search registered users by name or email for quick guest data prefill.
+
+    Decisión C 2026-08 (lógica dura): el prefill de huéspedes es operación de
+    RESERVAS, no de plataforma. ``users.read`` (lista global de usuarios del
+    sistema) ya no es el gate — el recepcionista canónico porta
+    reservations.* y no users.read.
+    """
     db = get_database()
     result = search_users(q, limit, db)
     register_action(
@@ -693,12 +774,14 @@ def user_search_api(
 @management_api_router.post("/bookings/{booking_id}/no-show")
 def booking_no_show_api(
     booking_id: str,
-    current_user: dict = Depends(require_permission("reservations.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
 ):
     """Mark a confirmed booking as no-show with first-night penalty."""
     from src.app.modules.reservations.service.no_show import process_no_show
 
     db = get_database()
+    _require_booking_same_hotel(db, booking_id, query_prop_id)
     before = db.booking_orders.find_one(
         {"booking_id": booking_id},
         {"prop_id": 1, "status": 1, "stay_status": 1, "guest_name": 1},
@@ -730,7 +813,8 @@ def booking_no_show_api(
 def booking_reopen_no_show_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("check-ins.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("check-ins.manage")),
 ):
     """Reabrir una reserva cerrada como no-show (autorización de gerente).
 
@@ -803,9 +887,11 @@ def booking_reopen_no_show_api(
 def booking_available_rooms_api(
     request: Request,
     booking_id: str,
-    current_user: dict = Depends(require_permission("reservations.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     """List available physical rooms for a booking based on its room type and prop."""
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     db = get_database()
     result = get_available_rooms(booking_id, db)
     booking = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1})
@@ -825,10 +911,12 @@ def booking_available_rooms_api(
 def booking_assign_rooms_api(
     booking_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("reservations.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
 ):
     """Assign specific physical rooms to a booking."""
     db = get_database()
+    _require_booking_same_hotel(db, booking_id, query_prop_id)
     before = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1, "assigned_rooms": 1})
     room_ids = payload.get("room_ids", [])
     result = assign_rooms_to_booking(booking_id, room_ids, current_user, db)

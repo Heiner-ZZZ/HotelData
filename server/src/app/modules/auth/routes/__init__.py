@@ -33,6 +33,7 @@ from .register_property import api_router as _register_property_api_router
 from .registration_status import api_router as _registration_status_api_router
 from .profile import api_router as _profile_api_router, web_router as _profile_web_router
 from .password import api_router as _password_api_router
+from .guest_prefs import api_router as _guest_prefs_api_router
 
 # Merge all api_router routes into _login_api_router (the main one)
 for sub_router in (
@@ -41,6 +42,7 @@ for sub_router in (
     _registration_status_api_router,
     _profile_api_router,
     _password_api_router,
+    _guest_prefs_api_router,
 ):
     for route in sub_router.routes:
         _login_api_router.routes.append(route)

@@ -1,3 +1,4 @@
+import { HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, from, map, of, switchMap, throwError } from 'rxjs';
 
@@ -8,6 +9,11 @@ export interface ReservationActionOptions {
   bookingId: string;
   /** Guest name shown in the confirmation dialog. If omitted, no dialog is shown. */
   guestName?: string;
+  /**
+   * HttpContext for the underlying API call (e.g. SUPPRESS_ERROR_TOAST in
+   * bulk flows that report their own summary toasts).
+   */
+  context?: HttpContext;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -27,7 +33,7 @@ export class ReservationActionService {
       dialogMessage: (name) => `¿Confirmar la reserva de "${name}"?`,
       confirmLabel: 'Confirmar',
       variant: 'default',
-      apiCall: (id) => this.api.confirmReservation(id),
+      apiCall: (id) => this.api.confirmReservation(id, options.context),
     });
   }
 
@@ -43,7 +49,7 @@ export class ReservationActionService {
       dialogMessage: (name) => `¿Rechazar la reserva de "${name}"?`,
       confirmLabel: 'Rechazar',
       variant: 'danger',
-      apiCall: (id) => this.api.rejectReservation(id),
+      apiCall: (id) => this.api.rejectReservation(id, options.context),
     });
   }
 

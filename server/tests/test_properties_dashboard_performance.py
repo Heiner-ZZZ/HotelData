@@ -14,16 +14,18 @@ Two sibling bugs of the rooms-options one:
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
-from src.app.modules.partner.services.dashboard.reports import management_property_options
+from src.app.modules.partner.services.dashboard.reports import (
+    management_property_options,
+)
 from src.app.modules.partner.services.properties import list_partner_hotels
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _user(*, role: str, assigned_hotels: list[int] | None = "MISSING") -> dict:
@@ -58,20 +60,24 @@ def _heavy_keys(row: dict) -> list[str]:
 def test_management_property_options_skips_enriched_listing(db, monkeypatch):
     """amenities/options only needs id+name — must NOT run the per-hotel
     enriched listing (100 × aggregates ≈ 5s). Spy fails the test if the
-    heavy path is still called."""
+    light path is not the one used."""
     _seed_hotels(db)
     admin = _user(role="super_admin")
 
-    import src.app.modules.partner.services.dashboard.reports as reports_module
+    import src.app.modules.partner.services.properties.listing as listing_module
 
-    def _boom(*args, **kwargs):
-        raise AssertionError("management_property_options must not call list_partner_hotels")
+    captured: list[str] = []
 
-    monkeypatch.setattr(reports_module, "list_partner_hotels", _boom)
+    def _fake_light(q: str, page: int = 1, page_size: int = 10, user: dict | None = None) -> dict:
+        captured.append(q)
+        return {"items": [{"prop_id": 1, "display_name": "Hotel Uno"}], "total": 1}
+
+    monkeypatch.setattr(listing_module, "list_property_options", _fake_light)
 
     result = management_property_options(user=admin)
 
-    assert len(result) == 3
+    assert captured, "management_property_options debe usar la ruta LIGERA (list_property_options)"
+    assert result == [{"prop_id": 1, "display_name": "Hotel Uno"}]
     for item in result:
         assert set(item.keys()) == {"prop_id", "display_name"}, item.keys()
         assert _heavy_keys(item) == []

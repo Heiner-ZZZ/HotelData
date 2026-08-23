@@ -50,7 +50,7 @@ from src.app.modules.reception import (
     get_shift_attribution,
     list_shifts,
 )
-from src.app.security.dependencies import require_any_permission, require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission, require_any_prop_permission
 from src.app.security.permissions import (
     FOLIO_ADJUST_APPROVAL_PERMISSION,
     require_supervisor_authorization,
@@ -393,7 +393,8 @@ def billing_module_status():
 @api_router.post("/invoices", status_code=201, response_model=InvoiceResponse)
 def create_invoice_api(
     payload: InvoiceCreate = Body(...),
-    current_user: dict = Depends(require_any_permission("billing.manage", "check-outs.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("billing.manage", "check-outs.manage")),
 ):
     db = get_database()
     # Issuing a fiscal document is a money operation: it must be attributable
@@ -452,7 +453,8 @@ def create_invoice_api(
 @api_router.post("/invoices/complement", status_code=201, response_model=InvoiceResponse)
 def create_complement_invoice_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_any_permission("billing.manage", "check-outs.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("billing.manage", "check-outs.manage")),
 ):
     """Emit a complementary invoice for the un-invoiced gap ("factura corta").
 
@@ -518,7 +520,7 @@ def list_invoices_api(
     employee: str | None = Query(default=None, alias="cajero"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
-    current_user: dict = Depends(require_permission("billing.read")),
+    current_user: dict = Depends(require_prop_permission("billing.read")),
 ):
     prop_id = _require_billing_scope(prop_id)
     result = list_invoices(
@@ -561,7 +563,7 @@ def invoice_dashboard_api(
     status: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
-    current_user: dict = Depends(require_permission("reports.billing.invoices.read")),
+    current_user: dict = Depends(require_prop_permission("reports.billing.invoices.read")),
 ):
     """Dashboard táctico F1.4: monto facturado por período (ClickHouse).
 
@@ -611,7 +613,7 @@ def payments_dashboard_api(
     status: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
-    current_user: dict = Depends(require_permission("reports.billing.payments.read")),
+    current_user: dict = Depends(require_prop_permission("reports.billing.payments.read")),
 ):
     """Dashboard táctico F1.5: pagos por método/estado y saldo pendiente.
 
@@ -656,7 +658,7 @@ def payments_dashboard_api(
 def invoice_stats_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("billing.read")),
+    current_user: dict = Depends(require_prop_permission("billing.read")),
 ):
     """Return aggregate counts and totals grouped by invoice status."""
     prop_id = _require_billing_scope(prop_id)
@@ -678,7 +680,7 @@ def get_invoice_api(
     request: Request,
     invoice_id: str,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("billing.read")),
+    current_user: dict = Depends(require_prop_permission("billing.read")),
 ):
     prop_id = _require_billing_scope(prop_id)
     result = get_invoice(invoice_id)
@@ -709,7 +711,7 @@ def add_line_item_api(
     invoice_id: str,
     prop_id: int | None = Query(default=None, ge=1),
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(require_prop_permission("billing.manage")),
 ):
     """Add a line item to an invoice (only if status='issued').
 
@@ -768,7 +770,7 @@ def remove_line_item_api(
     invoice_id: str,
     item_id: str,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(require_prop_permission("billing.manage")),
 ):
     """Remove a line item from an invoice (only if status='issued').
 
@@ -808,7 +810,7 @@ def remove_line_item_api(
 def repair_invoice_settlement_api(
     invoice_id: str,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(require_prop_permission("billing.manage")),
 ):
     """Reconcile a cancelled/refunded invoice without erasing its original value."""
     _scoped_invoice(invoice_id, prop_id)
@@ -841,7 +843,7 @@ def repair_invoice_settlement_api(
 def create_credit_note_api(
     invoice_id: str,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(require_prop_permission("billing.manage")),
 ):
     """Issue/reuse the formal credit note for a cancelled/refunded invoice."""
     invoice = _scoped_invoice(invoice_id, prop_id)
@@ -889,7 +891,7 @@ def cancel_invoice_api(
     invoice_id: str,
     prop_id: int | None = Query(default=None, ge=1),
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(require_prop_permission("billing.manage")),
 ):
     before_raw = _scoped_invoice(invoice_id, prop_id)
     # Voiding a fiscal document reverses money: the whole fiscal cycle must be
@@ -938,7 +940,7 @@ def cancel_invoice_api(
 def pay_invoice_api(
     invoice_id: str,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(require_prop_permission("billing.manage")),
 ):
     """Staff-side: simulate payment for any invoice. No ownership check."""
     from src.app.modules.billing.schemas import PaymentCreate
@@ -1005,7 +1007,7 @@ def pay_invoice_api(
 def send_invoice_email_api(
     invoice_id: str,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_any_permission("billing.manage", "check-outs.manage")),
+    current_user: dict = Depends(require_any_prop_permission("billing.manage", "check-outs.manage")),
 ):
     """Send the invoice to the guest by email."""
     from bson import ObjectId
@@ -1060,7 +1062,8 @@ def send_invoice_email_api(
 @api_router.post("/payments", status_code=201, response_model=PaymentResponse)
 def create_payment_api(
     payload: PaymentCreate = Body(...),
-    current_user: dict = Depends(require_permission("payments.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("payments.manage")),
 ):
     # Every payment at the front desk — cash, card, transfer or gateway — is a
     # money operation that must be attributable to the cashier on duty. The
@@ -1115,7 +1118,7 @@ def list_payments_api(
     sin_turno: bool = Query(default=False, alias="sin_turno"),
     shift_id: str | None = Query(default=None, alias="turno"),
     employee: str | None = Query(default=None, alias="cajero"),
-    current_user: dict = Depends(require_permission("payments.read")),
+    current_user: dict = Depends(require_prop_permission("payments.read")),
 ):
     prop_id = _require_billing_scope(prop_id)
     result = list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size, sin_turno=sin_turno, shift_id=shift_id, employee=employee)
@@ -1144,7 +1147,7 @@ def list_payments_api(
 def classify_failed_payment_informational_api(
     payment_id: str,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("payments.manage")),
+    current_user: dict = Depends(require_prop_permission("payments.manage")),
 ):
     """Mark a failed payment without invoice as an informational attempt."""
     _scoped_payment(payment_id, prop_id)
@@ -1176,7 +1179,7 @@ def classify_failed_payment_informational_api(
 def payment_link_candidates_api(
     payment_id: str,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("payments.manage")),
+    current_user: dict = Depends(require_prop_permission("payments.manage")),
 ):
     """Candidate shifts of the payment's property for linking a legacy payment."""
     payment = _scoped_payment(payment_id, prop_id)
@@ -1189,7 +1192,7 @@ def link_payment_shift_api(
     payment_id: str,
     payload: dict = Body(default={}),
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("payments.manage")),
+    current_user: dict = Depends(require_prop_permission("payments.manage")),
 ):
     """Link a legacy payment (without shift) to the responsible shift.
 
@@ -1245,7 +1248,7 @@ def get_payment_api(
     request: Request,
     payment_id: str,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("payments.read")),
+    current_user: dict = Depends(require_prop_permission("payments.read")),
 ):
     prop_id = _require_billing_scope(prop_id)
     result = get_payment(payment_id)
@@ -1270,7 +1273,7 @@ def refund_payment_api(
     payment_id: str,
     prop_id: int | None = Query(default=None, ge=1),
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("payments.manage")),
+    current_user: dict = Depends(require_prop_permission("payments.manage")),
 ):
     before = _scoped_payment(payment_id, prop_id)
     if not isinstance(payload, dict):
@@ -1391,7 +1394,7 @@ def billing_services_api(
     request: Request,
     prop_id: int = Query(default=0, ge=0),
     booking_id: str | None = Query(default=None),
-    current_user: dict = Depends(require_permission("billing.read")),
+    current_user: dict = Depends(require_prop_permission("billing.read")),
 ):
     """Return billable services for the invoice page.
 
@@ -1454,7 +1457,8 @@ def folio_categories_api(
 def get_folio_api(
     request: Request,
     booking_id: str,
-    current_user: dict = Depends(require_permission("billing.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("billing.read")),
 ):
     """Get the folio for a booking."""
     result = get_folio(booking_id)
@@ -1493,7 +1497,8 @@ def get_folio_api(
 def post_to_folio_api(
     booking_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("billing.manage")),
 ):
     """Post a transaction to the guest's folio.
 
@@ -1554,7 +1559,8 @@ def post_to_folio_api(
 @api_router.post("/folios/{booking_id}/reopen", response_model=FolioResponse)
 def reopen_folio_api(
     booking_id: str,
-    current_user: dict = Depends(require_permission("billing.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("billing.manage")),
 ):
     """Reopen a closed folio with a collectible positive balance."""
     result = reopen_folio_with_balance(
@@ -1586,8 +1592,9 @@ def reopen_folio_api(
 def settle_folio_api(
     booking_id: str,
     payload: FolioSettlementRequest = Body(...),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
     current_user: dict = Depends(
-        require_any_permission("billing.manage", FOLIO_ADJUST_APPROVAL_PERMISSION)
+        require_any_prop_permission("billing.manage", FOLIO_ADJUST_APPROVAL_PERMISSION)
     ),
 ):
     """Resolve a folio balance with a payment or an approved exception."""
@@ -1683,8 +1690,9 @@ def settle_folio_api(
 def close_folio_api(
     booking_id: str,
     payload: dict = Body(default={}),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
     current_user: dict = Depends(
-        require_any_permission("billing.manage", FOLIO_ADJUST_APPROVAL_PERMISSION)
+        require_any_prop_permission("billing.manage", FOLIO_ADJUST_APPROVAL_PERMISSION)
     ),
 ):
     """Close a folio at check-out."""
@@ -1777,7 +1785,7 @@ def list_folios_api(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
-    current_user: dict = Depends(require_permission("billing.read")),
+    current_user: dict = Depends(require_prop_permission("billing.read")),
 ):
     """List folios with optional property and status filters."""
     result = list_folios(prop_id=prop_id, status=status_filter, page=page, page_size=page_size)
@@ -1793,6 +1801,64 @@ def list_folios_api(
         metadata={"prop_id": prop_id, "status": status_filter, "page": page, "url": str(request.url)},
     )
     return FolioListResponse.model_validate(result)
+
+
+@api_router.get("/my-invoices/{invoice_id}", response_model=InvoiceResponse)
+def my_invoice_detail_api(
+    invoice_id: str,
+    current_user: dict = Depends(require_permission("account.read")),
+):
+    """Self-service detail of an invoice owned by the current user.
+
+    Excepción global documentada (mismo patrón que ``my_invoices_api``): el
+    huésped NO tiene contexto de hotel; la factura se resuelve y el acceso
+    se auto-escopa por ``user_id`` vía ``booking_orders`` (403 si la factura
+    no pertenece al usuario actual).
+    """
+    db = get_database()
+    from bson import ObjectId
+
+    inv = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
+    if not inv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la factura. Verificá el identificador de la factura e intentá de nuevo.",
+        )
+    # Ownership check — join por el booking_id de NEGOCIO (``BK-…``), que es
+    # lo que ``reservation_invoices.booking_id`` almacena (no el ``_id``).
+    user_id = current_user.get("_id")
+    if isinstance(user_id, str) and ObjectId.is_valid(user_id):
+        user_id = ObjectId(user_id)
+    booking = db.booking_orders.find_one({"booking_id": inv["booking_id"], "user_id": user_id})
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Esta factura no pertenece al usuario actual. Verificá que estés iniciando sesión con "
+                "la cuenta que hizo la reserva e intentá de nuevo."
+            ),
+        )
+    result = get_invoice(invoice_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la factura. Verificá el identificador de la factura e intentá de nuevo.",
+        )
+    result = to_json_safe(result)
+    register_action(
+        prop_id=(inv.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="read",
+        summary=f"Detalle de mi factura {result.get('invoice_number', invoice_id)} (self-service)",
+        changed_by=current_user.get("username", "system"),
+        metadata={
+            "user_id": str(user_id),
+            "source": "my-invoices",
+            "url": f"/api/billing/my-invoices/{invoice_id}",
+        },
+    )
+    return InvoiceResponse.model_validate(result)
 
 
 @api_router.post("/my-invoices/{invoice_id}/pay", response_model=ActionResponse)

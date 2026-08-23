@@ -125,24 +125,34 @@ export class ProductsApiService {
       .pipe(map(mapRestock));
   }
 
-  /** Get all line items (add-on products) for a booking */
-  getLineItems(bookingId: string): Observable<BookingLineItem[]> {
+  /** Get all line items (add-on products) for a booking. Migración E: prop_id
+ *  en query (gate por-hotel + pertenencia del booking al hotel). */
+  getLineItems(bookingId: string, propId: number): Observable<BookingLineItem[]> {
     return this.http
-      .get<BookingLineItemListDto>(`${this.base}/bookings/${bookingId}/line-items`, { withCredentials: true })
+      .get<BookingLineItemListDto>(`${this.base}/bookings/${bookingId}/line-items`, {
+        params: { prop_id: String(propId) },
+        withCredentials: true,
+      })
       .pipe(map((dto) => (dto.items ?? []).map(mapLineItem)));
   }
 
-  /** Add a product as a line item to an active booking */
-  addLineItem(bookingId: string, payload: AddLineItemPayload): Observable<BookingLineItem> {
+  /** Add a product as a line item to an active booking. */
+  addLineItem(bookingId: string, payload: AddLineItemPayload, propId: number): Observable<BookingLineItem> {
     return this.http
-      .post<BookingLineItemDto>(`${this.base}/bookings/${bookingId}/line-items`, payload, { withCredentials: true })
+      .post<BookingLineItemDto>(`${this.base}/bookings/${bookingId}/line-items`, payload, {
+        params: { prop_id: String(propId) },
+        withCredentials: true,
+      })
       .pipe(map(mapLineItem));
   }
 
-  /** Remove a line item from a booking */
-  removeLineItem(bookingId: string, itemId: string): Observable<boolean> {
+  /** Remove a line item from a booking. */
+  removeLineItem(bookingId: string, itemId: string, propId: number): Observable<boolean> {
     return this.http
-      .delete<RemoveLineItemResponse>(`${this.base}/bookings/${bookingId}/line-items/${itemId}`, { withCredentials: true })
+      .delete<RemoveLineItemResponse>(`${this.base}/bookings/${bookingId}/line-items/${itemId}`, {
+        params: { prop_id: String(propId) },
+        withCredentials: true,
+      })
       .pipe(map((res) => res.ok));
   }
 }

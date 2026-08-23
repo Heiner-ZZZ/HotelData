@@ -240,7 +240,7 @@ async def test_http_complement_requires_active_shift(client, admin_user, db):
     _charge(db, booking_id, total=50.0)
 
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
-    response = await client.post("/api/billing/invoices/complement", json={"booking_id": booking_id})
+    response = await client.post("/api/billing/invoices/complement?prop_id=940", json={"booking_id": booking_id})
 
     assert response.status_code == 409
     assert "turno" in response.json()["detail"]
@@ -254,7 +254,7 @@ async def test_http_complement_emits_with_shift(client, admin_user, db):
     _open_shift(db)
 
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
-    response = await client.post("/api/billing/invoices/complement", json={"booking_id": booking_id})
+    response = await client.post("/api/billing/invoices/complement?prop_id=940", json={"booking_id": booking_id})
 
     assert response.status_code == 201
     data = response.json()
@@ -276,7 +276,7 @@ async def test_http_complement_400_when_no_gap(client, admin_user, db):
     _open_shift(db)
 
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
-    response = await client.post("/api/billing/invoices/complement", json={"booking_id": booking_id})
+    response = await client.post("/api/billing/invoices/complement?prop_id=940", json={"booking_id": booking_id})
 
     assert response.status_code == 400
     assert "sin facturar" in response.json()["detail"]

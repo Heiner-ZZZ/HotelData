@@ -41,13 +41,13 @@ def _write_pipeline_progress(message: str, target_records: int = 0) -> None:
         "percent": 0,
         "elapsed_ms": 0,
         "message": message,
-        "sections": [
-            {"key": "extract", "label": "Extract", "complete": False},
-            {"key": "parquet", "label": "Parquet", "complete": False},
-            {"key": "transform", "label": "Transform", "complete": False},
-            {"key": "mongodb", "label": "Carga MongoDB", "complete": False},
-            {"key": "reports", "label": "Reportes", "complete": False},
-        ],
+        "sections": {
+            "extract": {"label": "Extract", "complete": False},
+            "parquet": {"label": "Parquet", "complete": False},
+            "transform": {"label": "Transform", "complete": False},
+            "load_mongodb": {"label": "Carga MongoDB", "complete": False},
+            "reports": {"label": "Reportes", "complete": False},
+        },
         "target_records": target,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -97,6 +97,32 @@ def preparation_progress() -> dict:
     return result
 
 
+def _normalize_sections(raw_sections: object, default_sections: dict) -> dict:
+    """Normalize ``sections`` to the canonical ``{key: {label, complete}}`` shape.
+
+    The canonical writer (``ga03_airflow.progress``) emits a dict. The legacy
+    ``_write_pipeline_progress`` emitted a list of ``{key, label, complete}``
+    and used ``mongodb`` instead of ``load_mongodb``; both are tolerated here.
+    """
+    if isinstance(raw_sections, dict):
+        return {**default_sections, **raw_sections}
+    if isinstance(raw_sections, list):
+        normalized = dict(default_sections)
+        for item in raw_sections:
+            if not isinstance(item, dict):
+                continue
+            key = item.get("key")
+            if key == "mongodb":
+                key = "load_mongodb"
+            if key in normalized:
+                normalized[key] = {
+                    "label": item.get("label") or normalized[key]["label"],
+                    "complete": bool(item.get("complete", False)),
+                }
+        return normalized
+    return dict(default_sections)
+
+
 def pipeline_progress() -> dict:
     settings = get_settings()
     progress_path = settings.reports_dir / "progreso_pipeline_reservas_03.json"
@@ -135,7 +161,7 @@ def pipeline_progress() -> dict:
             "message": "El archivo de progreso del pipeline no es JSON válido.",
         }
     status = payload.get("status", "pending")
-    sections = {**default_sections, **payload.get("sections", {})}
+    sections = _normalize_sections(payload.get("sections"), default_sections)
     if status == "running" and is_stale_timestamp(payload.get("updated_at"), minutes=stale_minutes):
         stale_message = (
             "Ejecución anterior detenida o sin actualización reciente. "

@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import gridfs
 from bson import ObjectId
-from fastapi import Body, File, HTTPException, Query, UploadFile, status
+from bson.errors import InvalidId
+from fastapi import Body, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import JSONResponse
 
-from fastapi import Depends
-from fastapi.responses import Response, JSONResponse
-
-from src.database.connection import get_database
 from src.app.modules.partner.routes import api_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
@@ -19,12 +17,18 @@ from src.app.modules.partner.services import (
     save_partner_hotel_amenities,
 )
 from src.app.modules.partner.services.content.amenities import (
+    _GLOBAL_DEFAULTS_PROP_ID,
     _get_price_defaults,
     _load_price_defaults_from_db,
-    _GLOBAL_DEFAULTS_PROP_ID,
     invalidate_price_defaults_cache,
 )
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import (
+    require_login,
+    require_permission,
+    require_prop_permission,
+)
+from src.app.security.hotel_filter import user_can_access_hotel
+from src.database.connection import get_database
 
 
 @api_router.get("/amenities")
@@ -36,7 +40,22 @@ def amenities_api(prop_id: int = Query(..., ge=1), room_type_id: str = Query(def
 
 
 @api_router.get("/amenities/options")
-def amenities_options_api(prop_id: int | None = Query(default=None, ge=1), current_user: dict = Depends(require_permission("amenities.read"))):
+def amenities_options_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_login),
+):
+    """Selector de amenities: login-only, catálogo por asignación.
+
+    Opción 2 (2026-08): sin prop_id devuelve la lista ligera de propiedades
+    del scope del usuario (sin códigos globales). Con prop_id el catálogo del
+    hotel se restringe por ASIGNACIÓN (``user_can_access_hotel``): un usuario
+    sin ese hotel asignado recibe 403 (sin fuga cross-hotel).
+    """
+    if prop_id is not None and not user_can_access_hotel(current_user, prop_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes acceso a este hotel",
+        )
     response: dict[str, object] = {"properties": management_property_options(user=current_user)}
     if prop_id:
         detail = partner_hotel_content(require_prop_id(prop_id))
@@ -50,17 +69,27 @@ def amenities_options_api(prop_id: int | None = Query(default=None, ge=1), curre
 @api_router.put("/amenities/special-requests")
 def special_requests_update_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("amenities.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("amenities.manage")),
 ):
     """Replace the hotel's special-requests catalog + high_floor_from threshold.
 
     Body: ``{"prop_id", "special_requests": [{label, unit_price, flags}],
     "high_floor_from"}``. Returns the normalized catalog + threshold.
+    Migración E: prop_id por QUERY + consistencia query↔body.
     """
     from src.app.modules.partner.services.content.save import save_special_requests
-    from src.app.modules.partner.services.content.special_requests import special_requests_payload_for_prop
+    from src.app.modules.partner.services.content.special_requests import (
+        special_requests_payload_for_prop,
+    )
 
-    prop_id = require_prop_id(int(payload.get("prop_id") or 0))
+    prop_id = require_prop_id(query_prop_id)
+    body_prop_id = int(payload.get("prop_id") or 0)
+    if body_prop_id != prop_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="prop_id del query y del body no coinciden",
+        )
     raw = payload.get("special_requests")
     if not isinstance(raw, list):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="special_requests debe ser una lista")
@@ -84,9 +113,17 @@ def special_requests_update_api(
 @api_router.put("/amenities")
 def amenities_update_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("amenities.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("amenities.manage")),
 ):
-    prop_id = require_prop_id(int(payload.get("prop_id") or 0))
+    """Update hotel amenities (Migración E: prop_id por QUERY + consistencia)."""
+    prop_id = require_prop_id(query_prop_id)
+    body_prop_id = int(payload.get("prop_id") or 0)
+    if body_prop_id != prop_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="prop_id del query y del body no coinciden",
+        )
     active_amenities = payload.get("active_amenities") or []
     if not isinstance(active_amenities, list):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="active_amenities must be a list")
@@ -137,12 +174,12 @@ async def upload_amenity_photo(
     prop_id: int = Query(..., ge=1),
     amenity_label: str = Query(..., min_length=1),
     file: UploadFile = File(...),
-    current_user: dict = Depends(require_permission("amenities.manage")),
+    current_user: dict = Depends(require_prop_permission("amenities.manage")),
 ):
     """Upload a photo for a specific active amenity. Max 5 per amenity."""
     if file.content_type not in _PHOTO_ALLOWED_TYPES:
         return JSONResponse(
-            {"ok": False, "message": f"Formato no permitido. Usa JPG, PNG o WebP."},
+            {"ok": False, "message": "Formato no permitido. Usa JPG, PNG o WebP."},
             status_code=400,
         )
     content = await file.read()
@@ -176,7 +213,7 @@ async def upload_amenity_photo(
         "content_type": file.content_type,
         "filename": filename,
         "uploaded_by": current_user.get("username", "system"),
-        "uploaded_at": datetime.now(timezone.utc),
+        "uploaded_at": datetime.now(UTC),
     }
     db.amenity_photos.insert_one(doc)
     return {"ok": True, "photo_id": str(gridfs_id), "message": "Foto subida."}
@@ -185,20 +222,30 @@ async def upload_amenity_photo(
 @api_router.delete("/amenities/photos/{photo_id}")
 def delete_amenity_photo(
     photo_id: str,
-    current_user: dict = Depends(require_permission("amenities.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("amenities.manage")),
 ):
-    """Delete an amenity photo by its gridfs_id."""
+    """Delete an amenity photo by its gridfs_id.
+
+    Migración E: la foto debe pertenecer al hotel pedido (404 cross-hotel;
+    el doc ``amenity_photos`` guarda ``prop_id``).
+    """
     db = get_database()
     _ensure_amenity_photos_indexes()
     try:
         oid = ObjectId(photo_id)
-    except Exception:
+    except (InvalidId, ValueError):
         return JSONResponse({"ok": False, "message": "ID inválido."}, status_code=400)
 
-    doc = db.amenity_photos.find_one_and_delete({"gridfs_id": oid})
+    doc = db.amenity_photos.find_one({"gridfs_id": oid}, {"prop_id": 1})
     if not doc:
         return JSONResponse({"ok": False, "message": "Foto no encontrada."}, status_code=404)
+    # Cross-hotel (Migración E): la foto debe pertenecer al hotel pedido — 404
+    # para no filtrar la existencia.
+    if doc.get("prop_id") != query_prop_id:
+        return JSONResponse({"ok": False, "message": "Foto no encontrada."}, status_code=404)
 
+    db.amenity_photos.delete_one({"gridfs_id": oid})
     fs = gridfs.GridFS(db)
     if fs.exists(oid):
         fs.delete(oid)
@@ -272,10 +319,10 @@ def update_amenity_default_prices_api(
         {
             "$set": {
                 "amenity_prices": prices,
-                "updated_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(UTC),
                 "updated_by": current_user.get("username", "system"),
             },
-            "$setOnInsert": {"prop_id": _GLOBAL_DEFAULTS_PROP_ID, "created_at": datetime.now(timezone.utc)},
+            "$setOnInsert": {"prop_id": _GLOBAL_DEFAULTS_PROP_ID, "created_at": datetime.now(UTC)},
         },
         upsert=True,
     )
@@ -297,7 +344,7 @@ def update_amenity_default_prices_api(
 def list_amenity_photos(
     prop_id: int = Query(..., ge=1),
     amenity_label: str = Query(default=""),
-    current_user: dict = Depends(require_permission("amenities.read")),
+    current_user: dict = Depends(require_prop_permission("amenities.read")),
 ):
     """List photos for amenities of a property. Optionally filter by amenity_label.
     Returns list of {photo_id, amenity_label, url}."""

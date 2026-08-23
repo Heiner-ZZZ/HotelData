@@ -110,8 +110,13 @@ async def test_round_trip_all_catalog_roles_holding_compound_code(client, db, ad
     """Audit regression: every role in the catalog that holds
     ``hotel.manage_roles`` (the only compound code without a ``hotel.read``
     sibling) must round-trip through the role editor with its FULL permission
-    set. Mirrors the dev-DB audit: gerente_hotel (27 codes) and hotel_partner
-    (10 codes) both hold it; saving their complete set must return 200."""
+    set. Mirrors the dev-DB audit: gerente_hotel and hotel_partner both hold
+    it; saving their complete set must return 200.
+
+    Decisión C 2026-08: ``properties.approve`` (aprobación de hoteles) es de
+    PLATAFORMA y sale del set canónico de gerente_hotel — el round-trip usa
+    el set sin él (el editor rechazaría 400 otorgarlo de nuevo).
+    """
     _seed_catalog(db)
     _seed_role(
         db,
@@ -121,7 +126,6 @@ async def test_round_trip_all_catalog_roles_holding_compound_code(client, db, ad
             "dashboard.read",
             "reservations.manage",
             "reservations.read",
-            "properties.approve",
             "properties.read",
         ],
     )
@@ -133,7 +137,7 @@ async def test_round_trip_all_catalog_roles_holding_compound_code(client, db, ad
     await login(client, admin_user["username"], admin_user["password"])
 
     for role_name, codes in [
-        ("gerente_hotel", ["hotel.manage_roles", "dashboard.read", "reservations.manage", "reservations.read", "properties.approve", "properties.read"]),
+        ("gerente_hotel", ["hotel.manage_roles", "dashboard.read", "reservations.manage", "reservations.read", "properties.read"]),
         ("hotel_partner", ["hotel.manage_roles", "dashboard.read", "properties.read"]),
     ]:
         response = await client.put(

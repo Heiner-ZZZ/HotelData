@@ -91,9 +91,26 @@ def _seed_receptionist(db) -> dict[str, str]:
             "password_hash": _pwd.hash(password),
             "primary_role": "recepcionista",
             "role_ids": [role_id],
+            "assigned_hotels": [991],
             "is_active": True,
             "created_at": datetime.now(UTC),
         }
+    )
+    # Migración E: asignación por-hotel (role_assignment → hotel_roles) para
+    # que el gate prop de check-ins pase y la lógica de negocio se pruebe.
+    user = db.users.find_one({"username": "recepcionista_late_test"})
+    hotel_role_id = db.hotel_roles.insert_one(
+        {
+            "prop_id": 991,
+            "name": "recepcionista",
+            "display_name": "Recepcionista",
+            "permissions": ["check-ins.manage"],
+            "is_active": True,
+            "created_at": datetime.now(UTC),
+        }
+    ).inserted_id
+    db.role_assignments.insert_one(
+        {"user_id": user["_id"], "role_id": hotel_role_id, "prop_id": 991}
     )
     return {"username": "recepcionista_late_test", "password": password}
 
@@ -109,7 +126,7 @@ async def test_receptionist_can_declare_late_arrival(client, db) -> None:
     assert await login(client, credentials["username"], credentials["password"]) == 200
 
     response = await client.post(
-        "/api/management/check-ins/BK-LA-AUTH/declare-late-arrival",
+        "/api/management/check-ins/BK-LA-AUTH/declare-late-arrival?prop_id=991",
         json={"declared_late_arrival": True, "estimated_arrival_time": "01:45"},
     )
 
@@ -132,7 +149,7 @@ async def test_receptionist_can_clear_late_arrival(client, db) -> None:
     assert await login(client, credentials["username"], credentials["password"]) == 200
 
     response = await client.post(
-        "/api/management/check-ins/BK-LA-AUTH/declare-late-arrival",
+        "/api/management/check-ins/BK-LA-AUTH/declare-late-arrival?prop_id=991",
         json={"declared_late_arrival": False},
     )
 
@@ -150,7 +167,7 @@ async def test_cliente_cannot_declare_late_arrival(client, cliente_user, db) -> 
     assert await login(client, cliente_user["username"], cliente_user["password"]) == 200
 
     response = await client.post(
-        "/api/management/check-ins/BK-LA-AUTH/declare-late-arrival",
+        "/api/management/check-ins/BK-LA-AUTH/declare-late-arrival?prop_id=991",
         json={"declared_late_arrival": True, "estimated_arrival_time": "01:45"},
     )
 

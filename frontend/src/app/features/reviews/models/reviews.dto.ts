@@ -77,6 +77,7 @@ export interface ReviewItemDto {
   id: string;
   booking_id: string;
   prop_id: number;
+  hotel_label?: string;
   user_id: string;
   user_display_name: string;
   rating: number;
@@ -98,6 +99,7 @@ export interface ReviewDetailDto {
   id: string;
   booking_id: string;
   prop_id: number;
+  hotel_label?: string;
   user_id: string;
   user_display_name: string;
   rating: number;

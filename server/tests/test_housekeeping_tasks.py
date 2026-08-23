@@ -72,7 +72,7 @@ async def test_create_task_with_room_id(logged_client: AsyncClient, room_id: str
         "note": "Test task",
         "scheduled_date": "2026-07-22",
     }
-    response = await logged_client.post("/api/housekeeping/tasks", json=payload)
+    response = await logged_client.post("/api/housekeeping/tasks?prop_id=1", json=payload)
     assert response.status_code == 201
 
     data = response.json()
@@ -92,13 +92,13 @@ async def test_create_task_rejects_unknown_room_id(logged_client: AsyncClient):
         "room_id": "HR-1-999",
         "task_type": "cleaning",
     }
-    response = await logged_client.post("/api/housekeeping/tasks", json=payload)
+    response = await logged_client.post("/api/housekeeping/tasks?prop_id=1", json=payload)
     assert response.status_code == 400
     assert "Habitación no encontrada" in response.json().get("detail", "")
 
 
 async def test_list_tasks_returns_room_id(logged_client: AsyncClient, room_id: str):
-    await logged_client.post("/api/housekeeping/tasks", json={
+    await logged_client.post("/api/housekeeping/tasks?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "cleaning",
@@ -118,7 +118,7 @@ async def test_list_tasks_returns_room_id(logged_client: AsyncClient, room_id: s
 async def test_update_task_changes_room_id(
     logged_client: AsyncClient, room_id: str, other_room_id: str
 ):
-    create_response = await logged_client.post("/api/housekeeping/tasks", json={
+    create_response = await logged_client.post("/api/housekeeping/tasks?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "cleaning",
@@ -135,7 +135,7 @@ async def test_update_task_changes_room_id(
         "scheduled_date": "2026-07-23",
         "status": "pending",
     }
-    response = await logged_client.put(f"/api/housekeeping/tasks/{task_id}", json=update_payload)
+    response = await logged_client.put(f"/api/housekeeping/tasks/{task_id}?prop_id=1", json=update_payload)
     assert response.status_code == 200
 
     data = response.json()
@@ -149,14 +149,14 @@ async def test_update_task_changes_room_id(
 async def test_update_task_rejects_invalid_room_id(
     logged_client: AsyncClient, room_id: str
 ):
-    create_response = await logged_client.post("/api/housekeeping/tasks", json={
+    create_response = await logged_client.post("/api/housekeeping/tasks?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "cleaning",
     })
     task_id = create_response.json()["id"]
 
-    response = await logged_client.put(f"/api/housekeeping/tasks/{task_id}", json={
+    response = await logged_client.put(f"/api/housekeeping/tasks/{task_id}?prop_id=1", json={
         "prop_id": 1,
         "room_id": "HR-1-999",
         "task_type": "cleaning",
@@ -167,14 +167,14 @@ async def test_update_task_rejects_invalid_room_id(
 
 
 async def test_complete_task(logged_client: AsyncClient, room_id: str):
-    create_response = await logged_client.post("/api/housekeeping/tasks", json={
+    create_response = await logged_client.post("/api/housekeeping/tasks?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "cleaning",
     })
     task_id = create_response.json()["id"]
 
-    response = await logged_client.post(f"/api/housekeeping/tasks/{task_id}/complete", json={"note": "Done"})
+    response = await logged_client.post(f"/api/housekeeping/tasks/{task_id}/complete?prop_id=1", json={"note": "Done"})
     assert response.status_code == 200
 
     data = response.json()
@@ -183,14 +183,14 @@ async def test_complete_task(logged_client: AsyncClient, room_id: str):
 
 
 async def test_delete_task(logged_client: AsyncClient, room_id: str):
-    create_response = await logged_client.post("/api/housekeeping/tasks", json={
+    create_response = await logged_client.post("/api/housekeeping/tasks?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "cleaning",
     })
     task_id = create_response.json()["id"]
 
-    response = await logged_client.delete(f"/api/housekeeping/tasks/{task_id}")
+    response = await logged_client.delete(f"/api/housekeeping/tasks/{task_id}?prop_id=1")
     assert response.status_code == 200
     assert response.json()["status"] == "deleted"
 

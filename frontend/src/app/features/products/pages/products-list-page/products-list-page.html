@@ -4,30 +4,40 @@
     subtitle="Catálogo de productos y amenities que se venden a huéspedes"
     icon="inventory_2"
   >
-    @if (canCreate()) {
-      <button type="button" class="btn-primary" (click)="create()">
-        <span class="material-symbols-outlined">add</span>
-        <span>Nuevo producto</span>
-      </button>
-    }
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
 
-    @if (canSeeCost()) {
-      <a routerLink="reports/margin" [queryParams]="{ prop_id: currentPropId() }" class="btn-secondary">
-        <span class="material-symbols-outlined">trending_up</span>
-        <span>Margen</span>
-      </a>
-      <a routerLink="reports/cogs" [queryParams]="{ prop_id: currentPropId() }" class="btn-secondary">
-        <span class="material-symbols-outlined">receipt_long</span>
-        <span>COGS</span>
-      </a>
-      <a routerLink="reports/stock-value" [queryParams]="{ prop_id: currentPropId() }" class="btn-secondary">
-        <span class="material-symbols-outlined">warehouse</span>
-        <span>Valor stock</span>
-      </a>
-    }
+    <div slot="actions" class="page-header-actions-row">
+      @if (canCreate()) {
+        <button type="button" class="btn-primary" (click)="create()">
+          <span class="material-symbols-outlined">add</span>
+          <span>Nuevo producto</span>
+        </button>
+      }
+
+      @if (canSeeCost()) {
+        <a routerLink="reports/margin" [queryParams]="{ prop_id: selectedPropId() }" class="btn-secondary">
+          <span class="material-symbols-outlined">trending_up</span>
+          <span>Margen</span>
+        </a>
+        <a routerLink="reports/cogs" [queryParams]="{ prop_id: selectedPropId() }" class="btn-secondary">
+          <span class="material-symbols-outlined">receipt_long</span>
+          <span>COGS</span>
+        </a>
+        <a routerLink="reports/stock-value" [queryParams]="{ prop_id: selectedPropId() }" class="btn-secondary">
+          <span class="material-symbols-outlined">warehouse</span>
+          <span>Valor stock</span>
+        </a>
+      }
+    </div>
   </app-page-header>
 
-  <!-- Toolbar -->
+  <!-- Toolbar (solo con hotel seleccionado) -->
+  @if (selectedPropId()) {
   <div class="toolbar">
     <div class="search-input">
       <span class="material-symbols-outlined">search</span>
@@ -45,12 +55,13 @@
       }
     </div>
 
-    <div class="filter-chips">
+    <div class="filter-chips" role="group" aria-label="Filtrar por tipo de producto">
       @for (filter of typeFilters(); track filter.key) {
         <button
           type="button"
           class="chip"
           [class.is-active]="typeFilter() === filter.key"
+          [attr.aria-pressed]="typeFilter() === filter.key"
           (click)="onTypeChange(filter.key)"
         >
           {{ filter.label }}
@@ -59,6 +70,7 @@
       }
     </div>
   </div>
+  }
 
   <!-- View states -->
   @switch (viewState()) {
@@ -73,21 +85,28 @@
       />
     }
     @case ('empty') {
-      <app-empty-state
-        title="No hay productos"
-        message="Crea tu primer producto para empezar a vender amenities."
-        icon="inventory_2"
-      >
-        @if (canCreate()) {
-          <button type="button" class="btn-primary" (click)="create()">
-            <span class="material-symbols-outlined">add</span>
-            <span>Crear producto</span>
-          </button>
-        }
-      </app-empty-state>
+      @if (!selectedPropId()) {
+        <app-empty-state
+          title="Selecciona una propiedad"
+          message="Usa el selector de hotel para ver su catálogo de productos y amenities."
+          icon="location_searching"
+        />
+      } @else {
+        <app-empty-state
+          title="No hay productos"
+          message="Crea tu primer producto para empezar a vender amenities."
+          icon="inventory_2"
+        >
+          @if (canCreate()) {            <button type="button" class="btn-primary" (click)="create()">
+              <span class="material-symbols-outlined">add</span>
+              <span>Crear producto</span>
+            </button>
+          }
+        </app-empty-state>
+      }
     }
     @case ('success') {
-      <div class="table-wrapper">
+      <div class="table-wrapper" role="region" aria-label="Tabla de productos">
         <table class="products-table">
           <thead>
             <tr>
@@ -175,31 +194,34 @@
                       <button
                         type="button"
                         class="btn-icon"
-                        title="Reponer stock"
+                        aria-label="Reponer stock de {{ p.name }}"
+                        [title]="'Reponer stock de ' + p.name"
                         [disabled]="!!p.archivedAt"
                         (click)="openRestock(p)"
                       >
-                        <span class="material-symbols-outlined">inventory</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">inventory</span>
                       </button>
                     }
                     @if (canEdit()) {
                       <button
                         type="button"
                         class="btn-icon"
-                        title="Editar producto"
+                        aria-label="Editar {{ p.name }}"
+                        [title]="'Editar ' + p.name"
                         [disabled]="!!p.archivedAt"
                         (click)="edit(p)"
                       >
-                        <span class="material-symbols-outlined">edit</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">edit</span>
                       </button>
                       <button
                         type="button"
                         class="btn-icon"
-                        [title]="p.isActive ? 'Desactivar' : 'Activar'"
+                        [attr.aria-label]="p.isActive ? 'Desactivar ' + p.name : 'Activar ' + p.name"
+                        [title]="p.isActive ? 'Desactivar ' + p.name : 'Activar ' + p.name"
                         [disabled]="!!p.archivedAt"
                         (click)="toggleActive(p)"
                       >
-                        <span class="material-symbols-outlined">{{ p.isActive ? 'visibility_off' : 'visibility' }}</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">{{ p.isActive ? 'visibility_off' : 'visibility' }}</span>
                       </button>
                     }
                   </div>

@@ -22,12 +22,12 @@ from passlib.context import CryptContext
 DASHBOARDS = [
     ("/api/management/rates/analytics/room-performance", "rates.read", "reports.rates.adr.read"),
     ("/api/management/rates/analytics/rate-calendar", "rates.read", "reports.rates.calendar.read"),
-    ("/api/stay/requests/analytics", "reservations.read", "reports.requests.read"),
-    ("/api/housekeeping/dashboard", "housekeeping.read", "reports.housekeeping.dashboard.read"),
-    ("/api/housekeeping/operations/analytics", "housekeeping.read", "reports.housekeeping.operations.read"),
-    ("/api/housekeeping/room-status/analytics", "housekeeping.read", "reports.housekeeping.matrix.read"),
-    ("/api/billing/analytics/invoices", "billing.read", "reports.billing.invoices.read"),
-    ("/api/billing/analytics/payments", "billing.read", "reports.billing.payments.read"),
+    ("/api/stay/requests/analytics?prop_id=1", "reservations.read", "reports.requests.read"),
+    ("/api/housekeeping/dashboard?prop_id=1", "housekeeping.read", "reports.housekeeping.dashboard.read"),
+    ("/api/housekeeping/operations/analytics?prop_id=1", "housekeeping.read", "reports.housekeeping.operations.read"),
+    ("/api/housekeeping/room-status/analytics?prop_id=1", "housekeeping.read", "reports.housekeeping.matrix.read"),
+    ("/api/billing/analytics/invoices?prop_id=1", "billing.read", "reports.billing.invoices.read"),
+    ("/api/billing/analytics/payments?prop_id=1", "billing.read", "reports.billing.payments.read"),
     # Estratégicos TAF14: el permiso grueso (reports.read) NO abre las vistas.
     # Vista B (cartera) exige el permiso de cartera (exclusivo de dirección);
     # Vista A (hotel) el de hotel. Un permiso NO abre la otra vista.
@@ -96,7 +96,24 @@ async def test_fine_permission_grants_access_to_mongo_dashboard(client, db):
         }
     )
     _make_user(db, username, role)
+    # Migración E: housekeeping gatea por hotel — el código fino debe vivir en
+    # un hotel role del prop pedido.
+    from bson import ObjectId
+    uid = db.users.find_one({"username": username})["_id"]
+    hr_id = db.hotel_roles.insert_one(
+        {
+            "prop_id": 1,
+            "name": "fine_matrix_hotel",
+            "display_name": "Fine Matrix",
+            "permissions": ["reports.housekeeping.matrix.read"],
+            "is_active": True,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+    ).inserted_id
+    db.role_assignments.insert_one({"user_id": uid, "prop_id": 1, "role_id": hr_id})
+    db.users.update_one({"_id": uid}, {"$set": {"assigned_hotels": [1]}})
     await _login(client, username)
 
-    resp = await client.get("/api/housekeeping/room-status/analytics")
+    resp = await client.get("/api/housekeeping/room-status/analytics?prop_id=1")
     assert resp.status_code == 200, resp.text

@@ -96,6 +96,7 @@
                 <a class="notif-item-sm" [class.unread]="n.unread"
                    [routerLink]="notifHref(n)"
                    (click)="onNotifClick(n)">
+                  <span class="material-symbols-outlined notif-item-icon-sm">{{ notificationIcon(n.type) }}</span>
                   <div class="notif-item-body-sm">
                     <p class="notif-item-title-sm">{{ n.title }}</p>
                     <p class="notif-item-desc-sm">{{ n.description }}</p>

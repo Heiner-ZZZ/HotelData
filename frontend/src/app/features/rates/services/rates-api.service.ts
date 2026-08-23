@@ -132,6 +132,7 @@ export class RatesApiService {
     eligibleRoles?: string[];
     includedAmenities?: string[];
   }) {
+    const params = new HttpParams().set('prop_id', String(payload.propId));
     return this.http.post(
       `${this.apiConfig.baseUrl}/management/rates/plans`,
       {
@@ -145,11 +146,11 @@ export class RatesApiService {
         eligible_roles: payload.eligibleRoles ?? [],
         included_amenities: payload.includedAmenities ?? []
       },
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
-  updateRatePlan(planId: string, payload: {
+  updateRatePlan(propId: number, planId: string, payload: {
     name: string;
     description: string;
     baseRate: number;
@@ -159,6 +160,7 @@ export class RatesApiService {
     eligibleRoles?: string[];
     includedAmenities?: string[];
   }) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/rates/plans/${planId}`,
       {
@@ -171,14 +173,15 @@ export class RatesApiService {
         eligible_roles: payload.eligibleRoles ?? [],
         included_amenities: payload.includedAmenities ?? []
       },
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
-  deleteRatePlan(planId: string) {
+  deleteRatePlan(propId: number, planId: string) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/rates/plans/${planId}`,
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
@@ -190,6 +193,7 @@ export class RatesApiService {
     endDate: string;
     priceOverride: number;
   }) {
+    const params = new HttpParams().set('prop_id', String(payload.propId));
     return this.http.post(
       `${this.apiConfig.baseUrl}/management/rates/seasonal-rules`,
       {
@@ -200,17 +204,18 @@ export class RatesApiService {
         end_date: payload.endDate,
         price_override: payload.priceOverride
       },
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
-  updateSeasonalRule(ruleId: string, payload: {
+  updateSeasonalRule(propId: number, ruleId: string, payload: {
     ratePlanId: string;
     name: string;
     startDate: string;
     endDate: string;
     priceOverride: number;
   }) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/rates/seasonal-rules/${ruleId}`,
       {
@@ -220,14 +225,15 @@ export class RatesApiService {
         end_date: payload.endDate,
         price_override: payload.priceOverride
       },
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
-  deleteSeasonalRule(ruleId: string) {
+  deleteSeasonalRule(propId: number, ruleId: string) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/rates/seasonal-rules/${ruleId}`,
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
@@ -243,6 +249,7 @@ export class RatesApiService {
     /** true = solo cuenta los días afectados (modal de confirmación), sin escribir. */
     dryRun?: boolean;
   }) {
+    const params = new HttpParams().set('prop_id', String(payload.propId));
     return this.http.post<{ affected_days: number; start_date: string; end_date: string; rate_plan_id: string }>(
       `${this.apiConfig.baseUrl}/management/rates/calendar/batch`,
       {
@@ -256,7 +263,7 @@ export class RatesApiService {
         only_weekends: payload.onlyWeekends || false,
         dry_run: payload.dryRun ?? false
       },
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
@@ -268,6 +275,7 @@ export class RatesApiService {
     /** true = solo cuenta las entradas que se crearían (modal de confirmación), sin escribir. */
     dryRun?: boolean;
   }) {
+    const params = new HttpParams().set('prop_id', String(payload.propId));
     return this.http.post<{ plans_processed: number; entries_generated: number; start_date: string; end_date: string }>(
       `${this.apiConfig.baseUrl}/management/rates/calendar/generate`,
       {
@@ -277,7 +285,7 @@ export class RatesApiService {
         end_date: payload.endDate || '',
         dry_run: payload.dryRun ?? false,
       },
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
@@ -289,6 +297,7 @@ export class RatesApiService {
     minStayNights: number;
     isClosed: boolean;
   }) {
+    const params = new HttpParams().set('prop_id', String(payload.propId));
     return this.http.post(
       `${this.apiConfig.baseUrl}/management/rates/calendar`,
       {
@@ -299,7 +308,7 @@ export class RatesApiService {
         min_stay_nights: payload.minStayNights,
         is_closed: payload.isClosed
       },
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 

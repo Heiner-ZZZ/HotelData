@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from scripts.init_security_model_ga03 import ROLE_PERMISSION_CODES
 from src.app.modules.partner.services.properties import list_partner_hotels
 from src.app.modules.partner.services.properties.listing import list_property_options
 
@@ -148,6 +149,34 @@ async def test_properties_options_api_lightweight_shape(client, db, admin_user):
     assert payload["total"] == 3
     for prop in payload["properties"]:
         assert set(prop.keys()) == {"prop_id", "display_name"}, prop.keys()
+
+
+@pytest.mark.asyncio
+async def test_client_can_use_property_selector_endpoints(client, db, cliente_user):
+    """The guest booking form can reuse the global searchable selector.
+
+    Guests already have ``reservations.read`` and the reservation flow exposes
+    the same public hotel catalog; they should not need the management-only
+    ``properties.read`` permission just to choose where to book.
+    """
+    _seed_hotels(db)
+    db.roles.insert_one({
+        "role_name": "cliente",
+        "permissions": ROLE_PERMISSION_CODES["cliente"],
+        "is_active": True,
+    })
+    await _login(client, cliente_user["username"], cliente_user["password"])
+
+    options = await client.get(
+        "/api/management/properties/options",
+        params={"q": "dos", "page": 1, "page_size": 10},
+    )
+    assert options.status_code == 200, options.text
+    assert [item["prop_id"] for item in options.json()["properties"]] == [2]
+
+    context = await client.get("/api/management/properties/context")
+    assert context.status_code == 200, context.text
+    assert context.json()["mode"] == "all"
 
 
 @pytest.mark.asyncio

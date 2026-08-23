@@ -74,3 +74,56 @@ describe('mapProduct', () => {
     expect(product.lastPurchaseInvoiceRef).toBeNull();
   });
 });
+
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+
+import { API_CONFIG } from '../../../core/api/api.config';
+import { ProductsApiService } from './products-api.service';
+
+/**
+ * Migración E (2026-08): los line-items de reserva exigen prop_id en query
+ * (gate por-hotel + pertenencia del booking). El cliente lo envía.
+ */
+describe('ProductsApiService line-items (Migración E: prop_id en query)', () => {
+  function setup() {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: API_CONFIG, useValue: { baseUrl: '/api' } },
+      ],
+    });
+    return {
+      service: TestBed.inject(ProductsApiService),
+      httpMock: TestBed.inject(HttpTestingController),
+    };
+  }
+
+  afterEach(() => {
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  it('getLineItems envía prop_id en query', () => {
+    const { service, httpMock } = setup();
+    service.getLineItems('BK-1', 5).subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === '/api/management/products/bookings/BK-1/line-items' && r.method === 'GET',
+    );
+    expect(req.request.params.get('prop_id')).toBe('5');
+    req.flush({ items: [] });
+  });
+
+  it('addLineItem envía prop_id en query', () => {
+    const { service, httpMock } = setup();
+    service.addLineItem('BK-1', { product_id: 'P1', name: 'Spa', unit_price: 10, quantity: 1 } as never, 5).subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url === '/api/management/products/bookings/BK-1/line-items' && r.method === 'POST',
+    );
+    expect(req.request.params.get('prop_id')).toBe('5');
+    req.flush({});
+  });
+});

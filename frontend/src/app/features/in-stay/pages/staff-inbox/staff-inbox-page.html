@@ -18,31 +18,30 @@
   </header>
 
   <!-- ═══ TAB NAV ═══ -->
-  <nav class="si-tabs">
-    <button class="si-tab" [class.active]="activeTab() === 'unified'" (click)="setTab('unified')">
-      <span class="material-symbols-outlined">forum</span>
+  <nav class="si-tabs" aria-label="Navegación de pestañas">
+    <button class="si-tab" type="button"
+       [class.active]="activeTab() === 'unified'"
+       (click)="setTab('unified')">
+      <span class="material-symbols-outlined" aria-hidden="true">forum</span>
       Mensajes y Solicitudes
-      @if (unreadCount() + pendingCount() > 0) {
-        <span class="si-tab-count">{{ unreadCount() + pendingCount() }}</span>
-      }
     </button>
-    <button class="si-tab" [class.active]="activeTab() === 'folios'" (click)="setTab('folios')">
-      <span class="material-symbols-outlined">receipt_long</span>
+    <button class="si-tab" type="button"
+       [class.active]="activeTab() === 'folios'"
+       (click)="setTab('folios')">
+      <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
       Folios
-      @if (folioCount() > 0) {
-        <span class="si-tab-count">{{ folioCount() }}</span>
-      }
     </button>
-    <button class="si-tab" [class.active]="activeTab() === 'sessions'" (click)="setTab('sessions')">
-      <span class="material-symbols-outlined">devices</span>
+    <button class="si-tab" type="button"
+       [class.active]="activeTab() === 'sessions'"
+       (click)="setTab('sessions')">
+      <span class="material-symbols-outlined" aria-hidden="true">devices</span>
       Sesiones
     </button>
-    <button class="si-tab" [class.active]="activeTab() === 'lost-found'" (click)="setTab('lost-found')">
-      <span class="material-symbols-outlined">search_off</span>
+    <button class="si-tab" type="button"
+       [class.active]="activeTab() === 'lost-found'"
+       (click)="setTab('lost-found')">
+      <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
       Lost &amp; Found
-      @if (lostCount() > 0) {
-        <span class="si-tab-count">{{ lostCount() }}</span>
-      }
     </button>
   </nav>
 
@@ -83,66 +82,129 @@
           }
         </div>
 
+        <!-- Chat stay-state filter -->
+        <div class="si-chips si-chat-filter" role="group" aria-label="Filtrar conversaciones por estado de estadía">
+          <button
+            class="si-chip"
+            type="button"
+            [class.active]="chatFilter() === null"
+            (click)="setChatFilter(null)"
+          >
+            Todas
+          </button>
+          @for (bucket of chatBucketMeta; track bucket.id) {
+            <button
+              class="si-chip"
+              type="button"
+              [class.active]="chatFilter() === bucket.id"
+              (click)="setChatFilter(bucket.id)"
+            >
+              <span class="material-symbols-outlined si-chip-icon">{{ bucket.icon }}</span>
+              {{ bucket.label }}
+            </button>
+          }
+        </div>
+
         <!-- Timeline List -->
-        <div class="si-timeline">
+        <div class="si-timeline" role="list" aria-label="Mensajes y solicitudes">
           @if (loading()) {
-            <div class="si-loading">Cargando...</div>
+            <div class="si-loading" role="status">Cargando...</div>
           } @else if (timeline().length === 0) {
             <div class="si-empty">
-              <span class="material-symbols-outlined">inbox</span>
+              <span class="material-symbols-outlined" aria-hidden="true">inbox</span>
               <p>No hay actividad reciente</p>
             </div>
           } @else {
-            <div class="si-timeline-list">
-              @for (item of timeline(); track item.id) {
-                <button
-                  class="si-tl-item"
-                  [class.active]="(item.type === 'message' && selectedRoom() === item.roomLabel) || (item.type === 'request' && selectedRequest()?._id === item.id)"
-                  [class.unread]="item.type === 'message' && (item.unread ?? 0) > 0"
-                  [class.selected-left]="item.type === 'request' && item.status === 'in_progress'"
-                  (click)="item.type === 'message' ? selectConversation(item.roomLabel) : selectRequest(item.request!)"
-                >
-                  <div class="si-tl-left">
-                    @if (item.type === 'message') {
-                      <span class="si-tl-icon si-tl-msg-icon material-symbols-outlined">chat</span>
-                    } @else {
-                      <span class="si-tl-icon si-tl-req-icon material-symbols-outlined">{{ getRequestIcon(item.requestType) }}</span>
-                    }
-                  </div>
-                  <div class="si-tl-body">
-                <div class="si-tl-head">
-                  <span class="si-tl-room">
-                    Hab. {{ item.roomLabel }}
-                    @if (item.type === 'message' && dndFor(item.roomLabel)) {
-                      <span class="si-dnd-badge">
-                        <app-info-tooltip icon="do_not_disturb" text="<strong>No Molestar</strong> — esta habitacion tiene el modo No Molestar activado. El huesped no recibira notificaciones."></app-info-tooltip>
-                        <span class="material-symbols-outlined">do_not_disturb</span>
-                        No Molestar
-                      </span>
-                    }
-                  </span>
-                      <span class="si-tl-time">{{ item.time | date:'HH:mm' }}</span>
-                    </div>
-                    <div class="si-tl-head-sub">
-                      @if (item.type === 'message') {
-                        <span class="si-tl-guest">{{ item.guestName || 'Huésped' }}</span>
-                      } @else {
-                        <span class="si-tl-req-type">{{ item.request?.request_type_label }}</span>
-                      }
-                    </div>
-                    <p class="si-tl-preview">{{ item.preview }}</p>
-                  </div>
-                  <div class="si-tl-right">
-                    @if (item.type === 'message' && (item.unread ?? 0) > 0) {
-                      <span class="si-tl-unread">{{ item.unread }}</span>
-                    }
-                    @if (item.type === 'request' && item.status) {
-                      <span class="si-tl-status si-{{ item.status }}">{{ item.statusLabel }}</span>
-                    }
-                  </div>
-                </button>
-              }
-            </div>
+            <!-- Solicitudes (always visible) -->
+            @if (requestItems().length > 0) {
+              <div class="si-timeline-section" role="group" aria-labelledby="section-requests">
+                <div class="si-timeline-section-header" id="section-requests">
+                  <span class="material-symbols-outlined" aria-hidden="true">handyman</span>
+                  <span>Solicitudes</span>
+                  <span class="si-timeline-section-count">{{ requestItems().length }}</span>
+                </div>
+                <div class="si-timeline-list">
+                  @for (item of requestItems(); track item.id) {
+                    <button
+                      class="si-tl-item"
+                      role="listitem"
+                      [class.active]="selectedRequest()?._id === item.id"
+                      [class.selected-left]="item.status === 'in_progress'"
+                      (click)="selectRequest(item.request!)"
+                      [attr.aria-current]="selectedRequest()?._id === item.id ? 'true' : null"
+                    >
+                      <div class="si-tl-left">
+                        <span class="si-tl-icon si-tl-req-icon material-symbols-outlined" aria-hidden="true">{{ getRequestIcon(item.requestType) }}</span>
+                      </div>
+                      <div class="si-tl-body">
+                        <div class="si-tl-head">
+                          <span class="si-tl-room">Hab. {{ item.roomLabel }}</span>
+                          <span class="si-tl-time">{{ item.time | date:'HH:mm' }}</span>
+                        </div>
+                        <div class="si-tl-head-sub">
+                          <span class="si-tl-req-type">{{ item.request?.request_type_label }}</span>
+                        </div>
+                        <p class="si-tl-preview">{{ item.preview }}</p>
+                      </div>
+                      <div class="si-tl-right">
+                        <span class="si-tl-status si-{{ item.status }}">{{ item.statusLabel }}</span>
+                      </div>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Chat buckets (filtered by stay state) -->
+            @for (group of visibleChatGroups(); track group.id) {
+              <div class="si-timeline-section" role="group" [attr.aria-labelledby]="'section-' + group.id">
+                <div class="si-timeline-section-header" [id]="'section-' + group.id">
+                  <span class="material-symbols-outlined" aria-hidden="true">{{ group.icon }}</span>
+                  <span>{{ group.label }}</span>
+                  <span class="si-timeline-section-count">{{ group.conversations.length }}</span>
+                </div>
+                <div class="si-timeline-list">
+                  @for (conv of group.conversations; track conv._id) {
+                    <button
+                      class="si-tl-item"
+                      role="listitem"
+                      [class.active]="selectedRoom() === conv._id"
+                      [class.unread]="conv.unread > 0"
+                      (click)="selectConversation(conv._id)"
+                      [attr.aria-current]="selectedRoom() === conv._id ? 'true' : null"
+                    >
+                      <div class="si-tl-left">
+                        <span class="si-tl-icon si-tl-msg-icon material-symbols-outlined" aria-hidden="true">chat</span>
+                      </div>
+                      <div class="si-tl-body">
+                        <div class="si-tl-head">
+                          <span class="si-tl-room">
+                            Hab. {{ conv._id }}
+                            @if (dndFor(conv._id)) {
+                              <span class="si-dnd-badge">
+                                <app-info-tooltip icon="do_not_disturb" text="<strong>No Molestar</strong> — esta habitacion tiene el modo No Molestar activado. El huesped no recibira notificaciones."></app-info-tooltip>
+                                <span class="material-symbols-outlined" aria-hidden="true">do_not_disturb</span>
+                                <span class="visually-hidden">No Molestar</span>
+                              </span>
+                            }
+                          </span>
+                          <span class="si-tl-time">{{ conv.last_time | date:(group.id === 'history' ? 'dd/MM HH:mm' : 'HH:mm') }}</span>
+                        </div>
+                        <div class="si-tl-head-sub">
+                          <span class="si-tl-guest">{{ conv.guest_name || 'Huésped' }}</span>
+                        </div>
+                        <p class="si-tl-preview">{{ conv.last_message }}</p>
+                      </div>
+                      <div class="si-tl-right">
+                        @if (conv.unread > 0) {
+                          <span class="si-tl-unread" aria-label=" mensajes sin leer">{{ conv.unread }}</span>
+                        }
+                      </div>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
           }
         </div>
       </aside>

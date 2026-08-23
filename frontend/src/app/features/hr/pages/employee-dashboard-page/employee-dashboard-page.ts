@@ -70,12 +70,27 @@ export class EmployeeDashboardPageComponent {
     return `Semana del ${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
   });
 
+  /** prop_id del query (?prop_id=1) — el portal es una feature por-hotel
+   * (Fix B: el backend exige contexto de hotel con require_prop_permission
+   * y rechaza 400/403 sin él). */
+  private _propId(): number | undefined {
+    const raw = this.route.snapshot.queryParamMap.get('prop_id');
+    const n = Number(raw || '');
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }
+
+  /** prop_id del turno: el del query (?prop_id=) o el del empleado logueado
+   * (el portal ya exige contexto de hotel para cargar) — Migración E. */
+  private _shiftPropId(): number | undefined {
+    return this._propId() ?? this.portal()?.employee.propId ?? undefined;
+  }
+
   readonly portal = toSignal(
     toObservable(this.refreshTrigger).pipe(
       switchMap(() => this.route.paramMap),
       switchMap(params => {
         const employeeId = params.get('employeeId') || '';
-        return this.api.getPortal(employeeId, this.weekStart());
+        return this.api.getPortal(employeeId, this.weekStart(), this._propId());
       })
     )
   );
@@ -119,7 +134,7 @@ export class EmployeeDashboardPageComponent {
   private _loadPortalTasks(): void {
     const data = this.portal();
     if (!data) return;
-    this.api.getPortalTasks(data.employee.id).subscribe({
+    this.api.getPortalTasks(data.employee.id, this._propId()).subscribe({
       next: (pt) => this.portalTasks.set(pt),
       error: () => { /* non-critical – tasks panel simply stays empty */ },
     });
@@ -154,7 +169,7 @@ export class EmployeeDashboardPageComponent {
     const dateStr = now.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     this.shiftLoading.set(true);
-    this.api.shiftCheckIn(shift.id, data.employee.id).subscribe({
+    this.api.shiftCheckIn(shift.id, data.employee.id, undefined, this._shiftPropId()).subscribe({
       next: () => {
         this.shiftLoading.set(false);
         this.refreshTrigger.update(v => v + 1);
@@ -202,7 +217,7 @@ export class EmployeeDashboardPageComponent {
       const timeStr = now2.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
       this.shiftLoading.set(true);
-      this.api.shiftCheckOut(shift.id, data.employee.id).subscribe({
+      this.api.shiftCheckOut(shift.id, data.employee.id, undefined, this._shiftPropId()).subscribe({
         next: () => {
           this.shiftLoading.set(false);
           this.refreshTrigger.update(v => v + 1);
@@ -255,8 +270,8 @@ export class EmployeeDashboardPageComponent {
     const employeeId = data.employee.id;
     const shift = data.currentShift;
     const action = shift.status === 'active'
-      ? this.api.shiftCheckOut(shift.id, employeeId)
-      : this.api.shiftCheckIn(shift.id, employeeId);      action.subscribe({
+      ? this.api.shiftCheckOut(shift.id, employeeId, undefined, this._shiftPropId())
+      : this.api.shiftCheckIn(shift.id, employeeId, undefined, this._shiftPropId());      action.subscribe({
       next: () => {
         // Cancel auto check-out timer if user manually checked out
         if (shift.status === 'active') {

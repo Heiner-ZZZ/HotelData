@@ -1,0 +1,34 @@
+/* ═══ Controles compartidos de carrusel — diseño del comparador ═══
+   Puntitos: círculo de 7px al 45% de blanco; el activo crece a una píldora
+   de 18px en --surface. Flechas: círculo de 30px con --overlay + blur(4px).
+   En modo reveal (hover de la card) las flechas quedan ocultas hasta que el
+   padre marca `.revealed` en el host, o llega el foco por teclado; los
+   puntitos siempre son visibles (igual que en /hotels/compare). */
+
+@use '../../../../styles/carousel-arrows' as *;
+@use '../../../../styles/carousel-dots' as *;
+
+/* El host no genera caja: los controles se posicionan contra el ancestro
+   con position: relative del padre (card image / room image / strip). */
+:host {
+  display: contents;
+}
+
+/* Puntitos: definición única en styles/_carousel-dots.scss (píldora activa). */
+@include carousel-dots('.cc-dots', '.cc-dot');
+
+/* Flechas: definición única en styles/_carousel-arrows.scss (círculo 30px
+   con overlay + blur) — consumida también por hotel-card y el comparador
+   vía este mismo componente. */
+@include carousel-arrows('.cc-arrow', '.cc-prev', '.cc-next');
+
+/* Modo reveal: flechas ocultas hasta `.revealed` en el host (hover de la
+   card) o foco por teclado. Los puntitos siguen visibles siempre. */
+:host.reveal-mode .cc-arrow {
+  opacity: 0;
+}
+
+:host.reveal-mode.revealed .cc-arrow,
+:host.reveal-mode .cc-arrow:focus-visible {
+  opacity: 1;
+}

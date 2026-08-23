@@ -56,7 +56,7 @@ from src.app.modules.housekeeping.routes_impl import (
     validate_sync_payload,
 )
 from src.app.modules.partner.services.audit import register_action
-from src.app.security.dependencies import require_login, require_permission
+from src.app.security.dependencies import require_login, require_permission, require_prop_permission
 
 router = APIRouter(prefix="/modules/housekeeping", tags=["modules-housekeeping"])
 api_router = APIRouter(prefix="/api/housekeeping", tags=["housekeeping-api"])
@@ -75,11 +75,15 @@ def housekeeping_module_status() -> ModuleStatus:
 @api_router.put("/room-status", status_code=200)
 def room_status_upsert_api(
     payload: RoomStatusLogCreate = Body(...),
-    current_user: dict = Depends(require_permission("housekeeping.create")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.create")),
 ):
     """Create or update a room's status."""
     from src.database.connection import get_database
     db = get_database()
+    # E 2026-08: consistencia gate(body) — el query prop_id es autoritativo.
+    if query_prop_id is not None and int(str(payload.prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     from .service.collections import ROOM_STATUS_COLLECTION
     before = db[ROOM_STATUS_COLLECTION].find_one(
         {"prop_id": payload.prop_id, "room_label": payload.room_label},
@@ -111,7 +115,7 @@ def room_status_list_api(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    current_user: dict = Depends(require_prop_permission("housekeeping.read")),
 ):
     """List room statuses with optional filtering."""
     result = list_room_status(
@@ -141,7 +145,7 @@ def room_status_history_api(
     booking_id: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    current_user: dict = Depends(require_prop_permission("housekeeping.read")),
 ):
     """List room status change history for auditing."""
     result = list_room_status_history(
@@ -171,7 +175,7 @@ def room_status_analytics_api(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_permission("reports.housekeeping.matrix.read")),
+    current_user: dict = Depends(require_prop_permission("reports.housekeeping.matrix.read")),
 ):
     """Dashboard simple O1.2: matriz de estado de habitaciones (Mongo).
 
@@ -192,11 +196,14 @@ def room_status_analytics_api(
 def room_status_get_api(
     request: Request,
     record_id: str,
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.read")),
 ):
     """Get a single room status record."""
     result = get_room_status(record_id)
     if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registro no encontrado")
+    if query_prop_id is not None and result.get("propId") != query_prop_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registro no encontrado")
     register_action(
         prop_id=result.get("propId", 0),
@@ -213,10 +220,13 @@ def room_status_get_api(
 @api_router.post("/room-status/bulk")
 def room_status_bulk_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.update")),
 ):
     """Update status for multiple rooms at once."""
     prop_id, room_labels, new_status, note = validate_bulk_update(payload)
+    if query_prop_id is not None and int(str(prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     count = update_room_status_bulk(prop_id, room_labels, new_status, note)
     register_action(
         prop_id=prop_id or 0,
@@ -236,10 +246,13 @@ def room_status_bulk_api(
 @api_router.post("/room-status/sync")
 def room_status_sync_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.update")),
 ):
     """Auto‑seed room_status_log from hotel_rooms for a property."""
     prop_id = validate_sync_payload(payload)
+    if query_prop_id is not None and int(str(prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     result = sync_room_status_from_hotel_rooms(prop_id)
     register_action(
         prop_id=prop_id or 0,
@@ -288,9 +301,12 @@ def room_status_cleanup_api(
 @api_router.post("/tasks", status_code=201)
 def hk_task_create_api(
     payload: HousekeepingTaskCreate = Body(...),
-    current_user: dict = Depends(require_permission("housekeeping.create")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.create")),
 ):
     """Create a new housekeeping task."""
+    if query_prop_id is not None and int(str(payload.prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     try:
         result = create_housekeeping_task(payload)
     except ValueError as exc:
@@ -321,7 +337,7 @@ def hk_task_list_api(
     priority: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    current_user: dict = Depends(require_prop_permission("housekeeping.read")),
 ):
     """List housekeeping tasks."""
     result = list_housekeeping_tasks(
@@ -348,7 +364,8 @@ def hk_task_list_api(
 def hk_task_complete_api(
     task_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.update")),
 ):
     """Mark a housekeeping task as completed."""
     from src.database.connection import get_database
@@ -359,6 +376,9 @@ def hk_task_complete_api(
         before = db.housekeeping_tasks.find_one({"_id": ObjectId(task_id)}, {"status": 1, "prop_id": 1, "room_label": 1, "task_type": 1})
     except (InvalidId, Exception):
         before = None
+    # E 2026-08 cross-hotel: la tarea debe pertenecer al hotel pedido (404).
+    if before is not None and query_prop_id is not None and before.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada o ya completada")
     result = complete_housekeeping_task(task_id, note=str(payload.get("note", "")))
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada o ya completada")
@@ -381,7 +401,8 @@ def hk_task_complete_api(
 def hk_task_update_api(
     task_id: str,
     payload: HousekeepingTaskCreate = Body(...),
-    current_user: dict = Depends(require_permission("housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.update")),
 ):
     """Update a housekeeping task."""
     from src.database.connection import get_database
@@ -395,6 +416,8 @@ def hk_task_update_api(
         )
     except (InvalidId, Exception):
         before = None
+    if before is not None and query_prop_id is not None and before.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
     try:
         result = update_housekeeping_task(task_id, payload)
     except ValueError as exc:
@@ -422,11 +445,14 @@ def hk_task_update_api(
 @api_router.delete("/tasks/{task_id}")
 def hk_task_delete_api(
     task_id: str,
-    current_user: dict = Depends(require_permission("housekeeping.delete")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.delete")),
 ):
     """Logically delete a housekeeping task."""
     result = delete_housekeeping_task(task_id)
     if result is None:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada o ya eliminada")
+    if query_prop_id is not None and result.get("prop_id") != query_prop_id:
         raise HTTPException(status_code=404, detail="Tarea no encontrada o ya eliminada")
     register_action(
         prop_id=result.get("prop_id", 0),
@@ -448,9 +474,12 @@ def hk_task_delete_api(
 @api_router.post("/maintenance", status_code=201)
 def mt_task_create_api(
     payload: MaintenanceTaskCreate = Body(...),
-    current_user: dict = Depends(require_permission("maintenance.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("maintenance.manage")),
 ):
     """Create a new maintenance task."""
+    if query_prop_id is not None and int(str(payload.prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     try:
         result = create_maintenance_task(payload)
     except ValueError as exc:
@@ -480,7 +509,7 @@ def mt_task_list_api(
     priority: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("maintenance.read")),
+    current_user: dict = Depends(require_prop_permission("maintenance.read")),
 ):
     """List maintenance tasks."""
     result = list_maintenance_tasks(
@@ -505,7 +534,8 @@ def mt_task_list_api(
 @api_router.post("/maintenance/{task_id}/reconcile-no-cost")
 def mt_task_reconcile_no_cost_api(
     task_id: str,
-    current_user: dict = Depends(require_permission("maintenance.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("maintenance.update")),
 ):
     """Explicitly classify a maintenance order with no recorded cost."""
     result = reconcile_no_cost_maintenance(
@@ -514,6 +544,8 @@ def mt_task_reconcile_no_cost_api(
     )
     if result is None:
         raise HTTPException(status_code=409, detail="El mantenimiento tiene evidencia financiera o no existe")
+    if query_prop_id is not None and result.get("propId") != query_prop_id:
+        raise HTTPException(status_code=404, detail="Mantenimiento no encontrado")
     register_action(
         prop_id=result.get("propId", 0),
         entity_type="housekeeping_maintenance",
@@ -530,7 +562,8 @@ def mt_task_reconcile_no_cost_api(
 def mt_task_update_api(
     task_id: str,
     payload: MaintenanceTaskCreate = Body(...),
-    current_user: dict = Depends(require_permission("maintenance.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("maintenance.update")),
 ):
     """Update a maintenance task."""
     from src.database.connection import get_database
@@ -544,6 +577,8 @@ def mt_task_update_api(
         )
     except (InvalidId, Exception):
         before = None
+    if before is not None and query_prop_id is not None and before.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
     try:
         result = update_maintenance_task(task_id, payload)
     except ValueError as exc:
@@ -572,7 +607,8 @@ def mt_task_update_api(
 def mt_task_complete_api(
     task_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("maintenance.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("maintenance.update")),
 ):
     """Mark a maintenance task as completed."""
     from src.database.connection import get_database
@@ -583,6 +619,8 @@ def mt_task_complete_api(
         before = db.maintenance_tasks.find_one({"_id": ObjectId(task_id)}, {"status": 1, "prop_id": 1, "room_label": 1, "title": 1})
     except (InvalidId, Exception):
         before = None
+    if before is not None and query_prop_id is not None and before.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada o ya completada")
     result = complete_maintenance_task(task_id, note=str(payload.get("note", "")))
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada o ya completada")
@@ -604,11 +642,14 @@ def mt_task_complete_api(
 @api_router.delete("/maintenance/{task_id}")
 def mt_task_delete_api(
     task_id: str,
-    current_user: dict = Depends(require_permission("maintenance.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("maintenance.manage")),
 ):
     """Logically delete a maintenance task."""
     result = delete_maintenance_task(task_id)
     if result is None:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada o ya eliminada")
+    if query_prop_id is not None and result.get("prop_id") != query_prop_id:
         raise HTTPException(status_code=404, detail="Tarea no encontrada o ya eliminada")
     register_action(
         prop_id=result.get("prop_id", 0),
@@ -630,9 +671,12 @@ def mt_task_delete_api(
 @api_router.post("/charges", status_code=201)
 def charge_create_api(
     payload: AdditionalChargeCreate = Body(...),
-    current_user: dict = Depends(require_permission("charges.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("charges.manage")),
 ):
     """Register an additional charge against a booking."""
+    if query_prop_id is not None and int(str(payload.prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     result = create_additional_charge(payload)
     if result is None:
         raise HTTPException(status_code=400, detail="No se pudo crear el cargo (booking inválido)")
@@ -660,7 +704,7 @@ def charge_list_api(
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("charges.read")),
+    current_user: dict = Depends(require_prop_permission("charges.read")),
 ):
     """List additional charges."""
     result = list_additional_charges(
@@ -684,7 +728,8 @@ def charge_list_api(
 @api_router.post("/charges/{charge_id}/repair-posting")
 def charge_repair_posting_api(
     charge_id: str,
-    current_user: dict = Depends(require_permission("charges.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("charges.manage")),
 ):
     """Attach a failed charge to its safe folio and post it idempotently."""
     result = repair_failed_charge(
@@ -693,6 +738,8 @@ def charge_repair_posting_api(
     )
     if result is None:
         raise HTTPException(status_code=409, detail="No se pudo reparar el posting del cargo")
+    if query_prop_id is not None and result.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
     register_action(
         prop_id=result.get("prop_id", 0),
         entity_type="housekeeping_charge",
@@ -707,11 +754,14 @@ def charge_repair_posting_api(
 @api_router.post("/charges/{charge_id}/recover")
 def charge_recover_api(
     charge_id: str,
-    current_user: dict = Depends(require_permission("charges.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("charges.manage")),
 ):
     """Recover only an interrupted, already-posted charge mutation."""
     result = recover_additional_charge(charge_id)
     if result is None:
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
+    if query_prop_id is not None and result.get("prop_id") != query_prop_id:
         raise HTTPException(status_code=404, detail="Cargo no encontrado")
     if result.get("postingStatus") in {"updating", "reversing"}:
         raise HTTPException(status_code=409, detail="No existe un posting completo para recuperar todavía")
@@ -729,7 +779,8 @@ def charge_recover_api(
 @api_router.get("/charges/{charge_id}")
 def charge_get_api(
     charge_id: str,
-    current_user: dict = Depends(require_permission("charges.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("charges.read")),
 ):
     """Retrieve a single additional charge by its ObjectId.
 
@@ -738,6 +789,8 @@ def charge_get_api(
     """
     result = get_additional_charge(charge_id)
     if result is None:
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
+    if query_prop_id is not None and result.get("prop_id") != query_prop_id:
         raise HTTPException(status_code=404, detail="Cargo no encontrado")
     register_action(
         prop_id=result.get("prop_id", 0),
@@ -753,7 +806,8 @@ def charge_get_api(
 @api_router.delete("/charges/{charge_id}")
 def charge_delete_api(
     charge_id: str,
-    current_user: dict = Depends(require_permission("charges.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("charges.manage")),
 ):
     """Delete an additional charge (e.g., added by mistake)."""
     result = delete_additional_charge(charge_id)
@@ -764,6 +818,8 @@ def charge_delete_api(
                 status_code=409,
                 detail="El cargo tiene una operación financiera en curso; inténtalo de nuevo.",
             )
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
+    if query_prop_id is not None and result.get("prop_id") != query_prop_id:
         raise HTTPException(status_code=404, detail="Cargo no encontrado")
     register_action(
         prop_id=result.get("prop_id", 0),
@@ -786,7 +842,8 @@ def charge_delete_api(
 def charge_update_api(
     charge_id: str,
     payload: AdditionalChargeUpdate = Body(...),
-    current_user: dict = Depends(require_permission("charges.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("charges.manage")),
 ):
     """Update an additional charge. Only allowed if created today (same calendar day)."""
     result = update_additional_charge(charge_id, payload)
@@ -800,6 +857,8 @@ def charge_update_api(
             status_code=409,
             detail="El cargo tiene una operación financiera en curso; inténtalo de nuevo.",
         )
+    if query_prop_id is not None and result.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
     register_action(
         prop_id=result.get("prop_id", 0),
         entity_type="housekeeping_charge",
@@ -820,7 +879,8 @@ def charge_update_api(
 def room_status_transitions_api(
     request: Request,
     current_status: str | None = Query(default=None),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.read")),
 ):
     """Return valid transitions for the housekeeping cycle.
     If current_status is provided, returns only valid next statuses.
@@ -841,7 +901,8 @@ def room_status_transitions_api(
 @api_router.post("/cleaning/start")
 def cleaning_start_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.update")),
 ):
     """Start a cleaning session. Marks room as cleaning_in_progress.
 
@@ -854,6 +915,8 @@ def cleaning_start_api(
     }
     """
     prop_id, room_label, assigned_to, task_id = extract_cleaning_start_params(payload)
+    if query_prop_id is not None and int(str(prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     from src.database.connection import get_database
     from .service.collections import ROOM_STATUS_COLLECTION
     db = get_database()
@@ -882,7 +945,8 @@ def cleaning_start_api(
 @api_router.post("/cleaning/complete")
 def cleaning_complete_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.update")),
 ):
     """Complete a cleaning session with the housekeeper's report.
 
@@ -904,6 +968,8 @@ def cleaning_complete_api(
     and blocks the room. If lost_object_found → auto-creates Lost & Found entry.
     """
     cp = extract_cleaning_complete_params(payload)
+    if query_prop_id is not None and int(str(cp["prop_id"])) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     from src.database.connection import get_database
     from .service.collections import ROOM_STATUS_COLLECTION
     db = get_database()
@@ -937,7 +1003,8 @@ def cleaning_complete_api(
 @api_router.post("/cleaning/approve")
 def cleaning_approve_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("housekeeping.update")),
 ):
     """Supervisor approves the cleaning → room becomes vacant_clean.
 
@@ -951,6 +1018,8 @@ def cleaning_approve_api(
     }
     """
     prop_id, room_label, inspected_by, note, set_occupied = extract_cleaning_approve_params(payload)
+    if query_prop_id is not None and int(str(prop_id)) != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
     from src.database.connection import get_database
     from .service.collections import ROOM_STATUS_COLLECTION
     db = get_database()
@@ -989,7 +1058,7 @@ def housekeeping_operations_analytics_api(
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
     days: int = Query(default=30, ge=1, le=365),
-    current_user: dict = Depends(require_permission("reports.housekeeping.operations.read")),
+    current_user: dict = Depends(require_prop_permission("reports.housekeeping.operations.read")),
 ):
     """Read the compact ClickHouse operations KPI for the tactical dashboard."""
     try:
@@ -1014,7 +1083,7 @@ def housekeeping_operations_analytics_api(
 def housekeeping_dashboard_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("reports.housekeeping.dashboard.read")),
+    current_user: dict = Depends(require_prop_permission("reports.housekeeping.dashboard.read")),
 ):
     """Return aggregated KPIs for housekeeping efficiency monitoring (CU-E09)."""
     result = get_housekeeping_dashboard(prop_id=prop_id)
@@ -1036,7 +1105,7 @@ def weekly_calendar_api(
     prop_id: int = Query(..., ge=1, description="Property ID"),
     week_start: str = Query(..., description="Start date in YYYY-MM-DD format"),
     assigned_to: str | None = Query(default=None, description="Filter by staff name"),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    current_user: dict = Depends(require_prop_permission("housekeeping.read")),
 ):
     """Return a weekly calendar grid: rooms × days with scheduled tasks and maintenance events.
 
@@ -1064,7 +1133,7 @@ def weekly_calendar_api(
 def housekeeping_staff_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    current_user: dict = Depends(require_prop_permission("housekeeping.read")),
 ):
     """Return staff users assigned to a property who have maintenance/housekeeping roles."""
     staff = query_housekeeping_staff(prop_id=prop_id)
@@ -1085,7 +1154,7 @@ def upcoming_events_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     days: int = Query(default=30, ge=1, le=90),
-    current_user: dict = Depends(require_permission("housekeeping.read")),
+    current_user: dict = Depends(require_prop_permission("housekeeping.read")),
 ):
     """Return upcoming tasks and maintenance events for calendar display."""
     result = list_upcoming_events(prop_id=prop_id, days=days)

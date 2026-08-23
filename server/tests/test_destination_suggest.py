@@ -142,15 +142,19 @@ async def test_suggest_returns_country_matches_typed(db, client):
     assert any(it["type"] == "country" and it["name"] == "Testlandia" for it in items)
 
 
-async def test_suggest_returns_geo_country_matches_typed(db, client):
-    """Geo-catalog country names are also suggested (type 'country')."""
+async def test_suggest_ignores_geo_catalog_countries(db, client):
+    """Los países del catálogo curado (geo_catalog) YA NO se sugieren.
+
+    Opción B: la tabla de países de los hoteles es ``dim_visitor_countries``;
+    ``geo_catalog`` dejó de ser fuente de países para hoteles/sugerencias.
+    """
     _seed_places(db)
     response = await client.get(
         "/api/hotels/destinations/suggest", params={"q": "Terranova"}
     )
     assert response.status_code == 200
     items = response.json()["items"]
-    assert any(it["type"] == "country" and it["name"] == "Terranova" for it in items)
+    assert all(it["name"] != "Terranova" for it in items)
 
 
 async def test_suggest_city_still_typed_city(db, client):
@@ -245,8 +249,12 @@ async def test_search_still_filters_by_city(db, client):
     assert 777002 not in ids  # Quito es ciudad; Testlandia Plaza no está en Quito
 
 
-async def test_search_country_via_geo_code(db, client):
-    """destination=<país geo> matchea por geo_country_code."""
+async def test_search_ignores_geo_country_code(db, client):
+    """Un hotel con SOLO geo_country_code (sin prop_country_id) NO matchea por país.
+
+    Opción B: el país del hotel se resuelve por ``prop_country_id`` →
+    ``dim_visitor_countries``; ``geo_country_code`` dejó de consultarse.
+    """
     _seed_search_hotels(db)
     db.dim_hotels.update_one(
         {"prop_id": 777004},
@@ -270,17 +278,20 @@ async def test_search_country_via_geo_code(db, client):
         "/api/hotels/availability", params={"destination": "Terranova", "page_size": 10}
     )
     assert response.status_code == 200
-    payload = response.json()
-    ids = [item["prop_id"] for item in payload["items"]]
-    assert 777004 in ids
+    ids = [item["prop_id"] for item in response.json()["items"]]
+    assert 777004 not in ids, "geo_country_code ya no debe matchear por país"
     assert 777001 not in ids
 
 
-async def test_suggest_dedups_country_by_name(db, client):
-    """El mismo país en dim_visitor_countries y geo_catalog aparece UNA vez."""
+async def test_suggest_country_comes_only_from_visitor_table(db, client):
+    """El país se sugiere UNA vez y SOLO desde dim_visitor_countries.
+
+    Aunque el mismo nombre exista en geo_catalog (duplicado real históricamente:
+    Bolivia legacy + geo BO), el catálogo curado ya no participa.
+    """
     _seed_places(db)
-    # Testlandia ya está en dim_visitor_countries (id 42); agrégala a geo para
-    # reproducir el duplicado real (Bolivia legacy + geo BO).
+    # Testlandia ya está en dim_visitor_countries (id 42); también la agregamos
+    # a geo_catalog para verificar que se IGNORA (antes era el caso de dedup).
     db.geo_catalog.update_one(
         {"type": "country", "code": "TL"},
         {"$set": {"type": "country", "code": "TL", "name": "Testlandia"}},

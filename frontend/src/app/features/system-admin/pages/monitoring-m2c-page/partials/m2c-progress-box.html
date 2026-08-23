@@ -1,0 +1,57 @@
+<!-- Caja "ETL pipeline progress" — OnPush aislado: solo se re-renderiza cuando
+     cambia el progreso real (polling) de KPIs y pasos del pipeline. -->
+<section class="surface-card accordion-section">
+  <div class="accordion-header" (click)="toggleOpen()">
+    <div>
+      <h2>ETL pipeline progress</h2>
+      <p>{{ progress().message }} ({{ progress().percent }}%)</p>
+    </div>
+    <span class="accordion-chevron">{{ open() ? '▼' : '▶' }}</span>
+  </div>
+  @if (open()) {
+    <div class="accordion-body">
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="progress().percent"></div>
+      </div>
+      <div class="progress-meta">
+        <span>{{ progress().percent }}% — {{ progress().elapsed_ms }} ms</span>
+        <app-status-badge
+          [tone]="statusTone(progress().status)"
+          [label]="progress().status"
+        />
+      </div>
+
+      <div class="step-list">
+        @for (key of stepOrder; track key) {
+          @if (progress().sections[key]; as section) {
+            <div class="step-item">
+              @if (section.complete) {
+                <span class="material-symbols-outlined step-done">check_circle</span>
+              } @else {
+                <span class="material-symbols-outlined step-pending">radio_button_unchecked</span>
+              }
+              <span>{{ section.label }}</span>
+              <small>{{ section.complete ? 'completed' : 'pending' }}</small>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="action-row">
+        <button
+          type="button"
+          class="action-btn"
+          (click)="run.emit()"
+          [disabled]="actionBusy() || isRunning()"
+        >
+          Run pipeline
+        </button>
+        @if (isRunning()) {
+          <button type="button" class="action-btn stop-btn" (click)="stop.emit()" [disabled]="actionBusy()">
+            Stop
+          </button>
+        }
+      </div>
+    </div>
+  }
+</section>

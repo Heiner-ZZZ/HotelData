@@ -602,6 +602,65 @@
                   <span>{{ earlyCheckIn().minutes_before }} minutos antes del horario de check-in ({{ earlyCheckIn().check_in_time }})</span>
                 </div>
 
+                <!-- Room availability status for early check-in -->
+                @if (roomAvailabilityLoading()) {
+                  <div class="ciw-early-dialog-rooms-loading">
+                    <span class="material-symbols-outlined spinning">sync</span>
+                    <span>Validando disponibilidad de habitaciones...</span>
+                  </div>
+                } @else if (roomAvailability(); as availability) {
+                  <div class="ciw-early-dialog-rooms" [class.ciw-rooms-unavailable]="!availability.all_available">
+                    <div class="ciw-early-dialog-rooms-header">
+                      <span class="material-symbols-outlined" aria-hidden="true">{{ availability.all_available ? 'check_circle' : 'warning' }}</span>
+                      <strong>{{ availability.all_available ? 'Habitaciones disponibles' : 'Habitaciones no disponibles' }}</strong>
+                    </div>
+                    <div class="ciw-early-dialog-rooms-list">
+                      @for (room of availability.rooms; track room.hotel_room_id) {
+                        <div class="ciw-early-dialog-room" [class.ciw-room-available]="room.available" [class.ciw-room-blocked]="!room.available">
+                          <span class="material-symbols-outlined ciw-room-icon">
+                            {{ room.available ? 'check_circle' : 'block' }}
+                          </span>
+                          <span class="ciw-room-label">{{ room.room_label || room.hotel_room_id }}</span>
+                          <span class="ciw-room-status" [style.--room-status-color]="roomStatusColor(room.status)">
+                            {{ roomStatusLabel(room.status) }}
+                          </span>
+                          @if (room.overlapping_bookings && room.overlapping_bookings.length > 0) {
+                            <span class="ciw-room-overlap">
+                              Ocupada por: {{ room.overlapping_bookings[0].guest_name }}
+                            </span>
+                          }
+                          @if (room.pending_tasks && room.pending_tasks.length > 0) {
+                            <span class="ciw-room-tasks">
+                              Tareas pendientes: {{ room.pending_tasks.join(', ') }}
+                            </span>
+                          }
+                        </div>
+                      }
+                    </div>
+                    @if (availability.issues.length > 0) {
+                      <div class="ciw-early-dialog-rooms-issues">
+                        @for (issue of availability.issues; track $index) {
+                          <p>{{ issue }}</p>
+                        }
+                        <p class="ciw-early-dialog-rooms-recommendation">
+                          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+                          <strong>Volvé al paso 1</strong> para asignar una habitación con estado <em>Disponible</em> y que no esté ocupada ni en mantenimiento.
+                        </p>
+                        <button type="button" class="ciw-btn ciw-btn-outline ciw-early-dialog-rooms-action"
+                          (click)="goToStep(1); cancelEarlyCheckIn()">
+                          <span class="material-symbols-outlined" aria-hidden="true">bed</span>
+                          Reasignar habitaciones
+                        </button>
+                      </div>
+                    }
+                  </div>
+                } @else if (roomAvailabilityError()) {
+                  <div class="ciw-early-dialog-rooms-error">
+                    <span class="material-symbols-outlined">error</span>
+                    <span>{{ roomAvailabilityError() }}</span>
+                  </div>
+                }
+
                 @if (earlyDialogMode() === 'early_approved') {
                   <label class="ciw-early-dialog-field">
                     <span>Motivo de aprobación <strong aria-hidden="true">*</strong></span>
@@ -629,7 +688,8 @@
 
                 <div class="ciw-early-dialog-actions">
                   <button type="button" class="ciw-btn ciw-btn-outline" (click)="cancelEarlyCheckIn()">Cancelar</button>
-                  <button type="button" class="ciw-btn ciw-btn-success" (click)="confirmEarlyCheckIn()">
+                  <button type="button" class="ciw-btn ciw-btn-success" (click)="confirmEarlyCheckIn()"
+                    [disabled]="roomAvailabilityLoading() || (roomAvailability() !== null && !roomAvailability()!.all_available)">
                     <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
                     {{ earlyDialogMode() === 'early_approved' ? 'Autorizar y hacer check-in' : 'Registrar cortesía y hacer check-in' }}
                   </button>
@@ -678,8 +738,8 @@
                 } @else {
                   <button type="button" class="ciw-btn ciw-btn-success"
                     (click)="completeCheckIn()"
-                    [disabled]="completing() || !allRoomsAvailable() || isFutureDate() || earlyApprovalBlocked()"
-                    [attr.aria-describedby]="isFutureDate() ? 'ciw-future-date-help' : (earlyApprovalBlocked() ? 'ciw-early-approval-help' : (earlyCheckIn().is_early ? 'ciw-early-check-in-help' : null))">
+                    [disabled]="completing() || !allRoomsAvailable() || isFutureDate() || earlyApprovalBlocked() || !keysDelivered() || !documentVerified()"
+                    [attr.aria-describedby]="isFutureDate() ? 'ciw-future-date-help' : (earlyApprovalBlocked() ? 'ciw-early-approval-help' : (earlyCheckIn().is_early ? 'ciw-early-check-in-help' : (!keysDelivered() || !documentVerified() ? 'ciw-checklist-help' : null)))">
                     @if (completing()) {
                       <span class="material-symbols-outlined spinning">sync</span>
                       Procesando...
@@ -688,6 +748,11 @@
                       {{ earlyCheckIn().is_early ? (earlyCheckIn().requires_approval ? 'Autorizar early check-in' : 'Registrar cortesía') : 'Realizar Check-In' }}
                     }
                   </button>
+                  @if (!keysDelivered() || !documentVerified()) {
+                    <span id="ciw-checklist-help" class="visually-hidden">
+                      Registrá la entrega de llaves y el documento verificado para habilitar el check-in.
+                    </span>
+                  }
                 }
               }
             </div>

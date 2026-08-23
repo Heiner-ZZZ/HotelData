@@ -217,18 +217,27 @@
                   @for (item of vm.roomTypes; track item.id; let roomIdx = $index) {
                     <div class="room-card">
                       <div class="room-img">
-                        @if (item.imageUrl && !imageErrors().has('room-' + item.id)) {
-                          <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" />
-                        } @else if (!imageErrors().has('room-' + item.id)) {
-                          @switch (roomIdx % 5) {
-                            @case (0) { <img src="https://loremflickr.com/400/250/hotel,room?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
-                            @case (1) { <img src="https://loremflickr.com/400/250/hotel,bedroom?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
-                            @case (2) { <img src="https://loremflickr.com/400/250/hotel,suite?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
-                            @case (3) { <img src="https://loremflickr.com/400/250/hotel,bathroom?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
-                            @case (4) { <img src="https://loremflickr.com/400/250/hotel,lobby?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
+                        @let roomActive = roomSlide(item.id);
+                        <div class="room-gallery" [style.transform]="roomOffset(item.id, roomActive)">
+                          @for (img of item.images; track $index) {
+                            @if (!imageErrors().has('room-' + item.id + '-' + $index)) {
+                              <img [src]="img" [alt]="item.name + ', foto ' + ($index + 1)" loading="lazy" (error)="onImageError('room-' + item.id + '-' + $index, $event)" />
+                            } @else {
+                              <span class="material-symbols-outlined room-img-placeholder">meeting_room</span>
+                            }
                           }
-                        } @else {
-                          <span class="material-symbols-outlined room-img-placeholder">meeting_room</span>
+                        </div>
+                        @if (item.images.length > 1) {
+                          <!-- Controles compartidos (diseño del comparador):
+                               puntitos píldora + flechas prev/next con wrap. -->
+                          <app-carousel-controls
+                            [count]="item.images.length"
+                            [activeIndex]="roomActive"
+                            [subjectLabel]="item.name"
+                            (navigate)="roomGoTo(item.id, $event)"
+                            (previous)="roomStep(item.id, -1)"
+                            (next)="roomStep(item.id, 1)"
+                          />
                         }
                       </div>
                       <div class="room-body">
@@ -254,12 +263,92 @@
                             }
                           </div>
                         }
+                        <!-- Disponibilidad próximos 7 días — consulta sin adivinar fechas -->
+                        @let snap = roomAvailabilityFor(item.id);
+                        @if (roomAvailabilityLoading()) {
+                          <div class="room-availability loading">
+                            <span class="material-symbols-outlined spin">progress_activity</span>
+                            Cargando disponibilidad...
+                          </div>
+                        } @else if (snap) {
+                          <div class="room-availability">
+                            <div class="avail-head">
+                              <span class="avail-title">
+                                <span class="material-symbols-outlined">calendar_month</span>
+                                Próximos 7 días
+                              </span>
+                              <span class="avail-count avail-count--{{ snap.availability.filter(d=>d.is_available).length > 0 ? 'ok' : 'none' }}">
+                                {{ snap.availability.filter(d=>d.is_available).length }}/7 disponibles
+                              </span>
+                            </div>
+                            <div class="avail-grid">
+                              @for (day of snap.availability; track day.date) {
+                                @let isSelected = isDayInRange(item.id, day.date);
+                                @let isStart = isDayRangeStart(item.id, day.date);
+                                @let isEnd = isDayRangeEnd(item.id, day.date);
+                                <button
+                                  type="button"
+                                  class="avail-chip"
+                                  [class.avail-chip--ok]="day.is_available"
+                                  [class.avail-chip--no]="!day.is_available"
+                                  [class.avail-chip--selected]="isSelected"
+                                  [class.avail-chip--start]="isStart"
+                                  [class.avail-chip--end]="isEnd"
+                                  [disabled]="!day.is_available"
+                                  (click)="selectAvailabilityDay(item.id, day)"
+                                  [attr.aria-pressed]="isSelected"
+                                  [attr.aria-label]="formatDayLabel(day.date) + (day.is_available ? ' disponible desde ' + day.min_rate_label + (isSelected ? ' seleccionado' : '') : ' no disponible')"
+                                  [title]="day.is_available ? day.min_rate_label + ' · ' + day.date + (isSelected ? ' (seleccionado)' : '') : 'No disponible ' + day.date"
+                                >
+                                  <span class="avail-day">{{ formatDayLabel(day.date) }}</span>
+                                  @if (day.is_available) {
+                                    <span class="avail-price">{{ day.min_rate_label }}</span>
+                                    @if (isSelected) {
+                                      <span class="material-symbols-outlined avail-check">check_circle</span>
+                                    } @else {
+                                      <span class="avail-dot"></span>
+                                    }
+                                  } @else {
+                                    <span class="avail-no">—</span>
+                                  }
+                                </button>
+                              }
+                            </div>
+                            @if (snap.availability.filter(d=>d.is_available).length === 0) {
+                              <p class="avail-empty">Sin disponibilidad esta semana — prueba otras fechas.</p>
+                            } @else {
+                              @let selNights = selectedNights(item.id);
+                              @let selTotal = selectedTotal(item.id);
+                              @if (selNights) {
+                                <p class="avail-hint avail-hint--selected">
+                                  <span class="material-symbols-outlined">check_circle</span>
+                                  Seleccionado: {{ selNights }} {{ selNights === 1 ? 'noche' : 'noches' }} · {{ selTotal }} · {{ selectedRanges()[item.id].start }} → {{ selectedRanges()[item.id].end }} (checkout)
+                                </p>
+                              } @else {
+                                <p class="avail-hint">Toca un día verde para iniciar, luego otro para rango (ej. Lun 25 → Mié 27 = 2 noches).</p>
+                              }
+                            }
+                          </div>
+                        }
                         <div class="room-footer">
                           <div class="room-price">
                             <span class="price-label">Precio por noche desde</span>
-                            <span class="price-val">Consultar</span>
+                            @let selTotal = selectedTotal(item.id);
+                            @let selNights = selectedNights(item.id);
+                            @if (selTotal && selNights) {
+                              <span class="price-val price-val--live">{{ selTotal }}</span>
+                              <span class="price-meta">Total {{ selNights }} {{ selNights === 1 ? 'noche' : 'noches' }}</span>
+                            } @else {
+                              @let nextPrice = roomNextPrice(item.id);
+                              @if (nextPrice) {
+                                <span class="price-val price-val--live">{{ nextPrice }}</span>
+                              } @else {
+                                <span class="price-val">Consultar</span>
+                              }
+                            }
                           </div>
-                          <a [routerLink]="['/account/bookings/new']" [queryParams]="{ prop_id: vm.id, room_type: item.id, room_type_name: item.name }" class="btn-reserve">Reservar Ahora</a>
+                          @let rq = roomReserveQuery(item.id, item.name);
+                          <a [routerLink]="['/account/bookings/new']" [queryParams]="rq" class="btn-reserve">Reservar Ahora</a>
                         </div>
                       </div>
                     </div>
@@ -438,7 +527,7 @@
                 <span class="total-unit">/noche</span>
               </div>
 
-              <a [routerLink]="['/account/bookings/new']" [queryParams]="{ prop_id: vm.id }" class="btn-confirm">
+              <a [routerLink]="['/account/bookings/new']" [queryParams]="{ prop_id: vm.id, check_in: inheritedCheckIn() || null, check_out: inheritedCheckOut() || null }" class="btn-confirm">
                 Confirmar y Pagar
               </a>
               <div class="secure-badge">

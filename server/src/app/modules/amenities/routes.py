@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 
 from src.database.connection import get_database
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission
 from .service import (
     get_guest_amenity_catalog,
     list_amenity_stock,
@@ -151,16 +151,24 @@ def stock_list_api(
 @admin_router.put("")
 def stock_set_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("amenities.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("amenities.manage")),
 ):
     """Set stock for an amenity (create or reset).
 
     Body: {"prop_id": 1, "amenity_label": "Spa", "total_stock": 10, "room_type_id": ""}
     When ``room_type_id`` is empty, applies hotel-wide.
+    Migración E: prop_id por QUERY + consistencia query↔body.
     """
+    prop_id = int(payload.get("prop_id") or 0)
+    if query_prop_id is None or prop_id != query_prop_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="prop_id del query y del body no coinciden",
+        )
     try:
         result = set_amenity_stock(
-            int(payload.get("prop_id") or 0),
+            prop_id,
             str(payload.get("amenity_label") or ""),
             total_stock=int(payload.get("total_stock") or 0),
             room_type_id=str(payload.get("room_type_id") or ""),

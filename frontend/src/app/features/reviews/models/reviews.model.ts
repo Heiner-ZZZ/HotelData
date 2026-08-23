@@ -43,6 +43,7 @@ export interface ReviewListItem {
   id: string;
   bookingId: string;
   propId: number;
+  hotelLabel: string;
   userName: string;
   rating: number;
   title: string;
@@ -59,6 +60,7 @@ export interface ReviewDetailViewModel {
   id: string;
   bookingId: string;
   propId: number;
+  hotelLabel: string;
   userId: string;
   userName: string;
   rating: number;

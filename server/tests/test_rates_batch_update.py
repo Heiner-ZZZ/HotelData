@@ -41,7 +41,7 @@ def _seed_plan(db, prop_id: int, plan_id: str = "RP-FLEX") -> None:
 
 def _batch(client: AsyncClient, prop_id: int, **extra) -> dict:
     payload = {"prop_id": prop_id, **extra}
-    return client.post("/api/management/rates/calendar/batch", json=payload)
+    return client.post(f"/api/management/rates/calendar/batch?prop_id={prop_id}", json=payload)
 
 
 async def test_batch_dry_run_counts_without_writing(client: AsyncClient, db, admin_user):

@@ -66,27 +66,38 @@ export class HrApiService {
 
   // ─── Portal ───
 
-  getPortal(employeeId: string, weekStart?: string) {
+  getPortal(employeeId: string, weekStart?: string, propId?: number) {
     let params = new HttpParams();
     if (weekStart) params = params.set('week_start', weekStart);
+    if (propId) params = params.set('prop_id', String(propId));
     return this.http.get<EmployeePortalDto>(
       `${this.apiConfig.baseUrl}/hr/portal/${employeeId}`,
       { params, withCredentials: true },
     ).pipe(map(dto => mapEmployeePortal(dto)));
   }
 
-  shiftCheckIn(shiftId: string, employeeId: string, notes?: string) {
+  /**
+   * Check-in de turno (asistencia). Migración E: el backend exige
+   * ``prop_id`` (query) con gate por-hotel — deny-by-default sin
+   * role_assignment y 404 si el turno pertenece a otro hotel.
+   */
+  shiftCheckIn(shiftId: string, employeeId: string, notes?: string, propId?: number) {
+    let params = new HttpParams();
+    if (propId) params = params.set('prop_id', String(propId));
     return this.http.post(`${this.apiConfig.baseUrl}/hr/shifts/${shiftId}/check-in`, {
       employee_id: employeeId,
       notes: notes || '',
-    }, { withCredentials: true });
+    }, { params, withCredentials: true });
   }
 
-  shiftCheckOut(shiftId: string, employeeId: string, notes?: string) {
+  /** Check-out de turno — mismo gate por-hotel que el check-in. */
+  shiftCheckOut(shiftId: string, employeeId: string, notes?: string, propId?: number) {
+    let params = new HttpParams();
+    if (propId) params = params.set('prop_id', String(propId));
     return this.http.post(`${this.apiConfig.baseUrl}/hr/shifts/${shiftId}/check-out`, {
       employee_id: employeeId,
       notes: notes || '',
-    }, { withCredentials: true });
+    }, { params, withCredentials: true });
   }
 
   // ─── Shift Schedule ───
@@ -126,10 +137,12 @@ export class HrApiService {
 
   // ─── Portal Tasks & Operations ───
 
-  getPortalTasks(employeeId: string) {
+  getPortalTasks(employeeId: string, propId?: number) {
+    let params = new HttpParams();
+    if (propId) params = params.set('prop_id', String(propId));
     return this.http.get<PortalTasksDto>(
       `${this.apiConfig.baseUrl}/hr/portal/${employeeId}/tasks`,
-      { withCredentials: true },
+      { params, withCredentials: true },
     ).pipe(map(dto => mapPortalTasks(dto)));
   }
 

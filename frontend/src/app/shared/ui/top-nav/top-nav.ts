@@ -106,7 +106,7 @@ export class TopNavComponent implements OnInit {
       items.push({ label: 'Sistema', href: '/system/users', icon: 'admin_panel_settings' });
     }
     if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'recepcionista', 'housekeeping', 'concierge'].includes(role)) {
-      items.push({ label: 'Gestión', href: '/management', icon: 'dashboard' });
+      items.push({ label: 'Gestión', href: '/management/informes-estrategicos/h01', icon: 'dashboard' });
     }
     if (role === 'cliente') {
       items.push(
@@ -285,6 +285,31 @@ export class TopNavComponent implements OnInit {
         // Error silencioso: el dot persiste y se puede reintentar.
         error: () => undefined,
       });
+    } else if (n.type !== 'guest_promotional' && n.unread && n.rawId) {
+      this.clientNotifications.markAsRead(n.rawId).subscribe({
+        next: () => {
+          this.notifications.update(prev =>
+            prev.map(it => (it.rawId === n.rawId ? { ...it, unread: false } : it)),
+          );
+        },
+        error: () => undefined,
+      });
+    }
+  }
+
+  /** Icono Material Symbols para cada tipo de notificación. */
+  notificationIcon(type: string): string {
+    switch (type) {
+      case 'guest_confirmed': return 'check_circle';
+      case 'guest_cancelled': return 'cancel';
+      case 'guest_no_show': return 'event_busy';
+      case 'guest_checked_in': return 'hotel';
+      case 'guest_checked_out': return 'logout';
+      case 'guest_modified': return 'edit';
+      case 'guest_promotional': return 'local_activity';
+      case 'guest_payment': return 'payments';
+      case 'guest_message': return 'chat';
+      default: return 'notifications';
     }
   }
 

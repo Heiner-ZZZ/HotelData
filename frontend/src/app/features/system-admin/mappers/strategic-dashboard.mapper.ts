@@ -68,8 +68,32 @@ function mapPosicionamiento(raw: any): Posicionamiento {
     adr: asNum(raw?.adr),
     ratingVariacion: asNum(raw?.rating_variacion),
     adrVariacion: asNum(raw?.adr_variacion),
+    competitors: asNum(raw?.competitors),
+    city: raw?.city ?? '',
+    radioKm: raw?.radio_km ?? null,
+    adrPercentile: raw?.adr_percentile ?? null,
+    ratingPercentile: raw?.rating_percentile ?? null,
+    bandaPrecio: raw?.banda_precio
+      ? {
+          p25: asNum(raw.banda_precio.p25),
+          p50: asNum(raw.banda_precio.p50),
+          p75: asNum(raw.banda_precio.p75),
+        }
+      : null,
+    precioRelativoPct: raw?.precio_relativo_pct ?? null,
     diagnosis: raw?.diagnosis ?? '',
     decision: raw?.decision ?? '',
+    ownLat: raw?.own_lat ?? null,
+    ownLng: raw?.own_lng ?? null,
+    competitorsMarkers: (raw?.competitors_markers ?? []).map((m: any) => ({
+      propId: asNum(m?.prop_id),
+      hotelLabel: m?.hotel_label ?? '',
+      lat: m?.lat ?? null,
+      lng: m?.lng ?? null,
+      adr: asNum(m?.adr),
+      rating: asNum(m?.rating),
+      distanceKm: m?.distance_km ?? null,
+    })),
   };
 }
 

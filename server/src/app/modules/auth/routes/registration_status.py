@@ -21,6 +21,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 
 from src.app.core.outbox import enqueue_audit_log
 from src.app.modules.auth.routes.register_property import (
+    _resolve_coordinates,
     _validate_property_edit_payload,
 )
 from src.app.modules.property_approval.pricing import suggested_band_for
@@ -103,6 +104,9 @@ def registration_status(current_user: dict = Depends(require_login)):
             "total_rooms": hotel.get("total_rooms_declared", 0),
             "currency": hotel.get("currency", ""),
             "contact_phone": hotel.get("contact_phone", ""),
+            "address": hotel.get("address", ""),
+            "latitude": hotel.get("latitude"),
+            "longitude": hotel.get("longitude"),
         },
         "suggested_band": suggested_band_for(db, hotel.get("total_rooms_declared", 0)),
         # Bloque de pago (Fase 3 UI): la pantalla del dueño muestra el
@@ -145,12 +149,23 @@ def patch_register_property_me(
     clean = _validate_property_edit_payload(payload)
     now = utc_now()
 
+    latitude, longitude = _resolve_coordinates(
+        address=clean["address"],
+        city=clean["city"],
+        country_label=str(hotel.get("display_country_label") or ""),
+        latitude=clean["latitude"],
+        longitude=clean["longitude"],
+    )
+
     set_fields: dict[str, Any] = {
         "hotel_name": clean["property_name"],
         "display_name": clean["property_name"],
         "property_type": clean["property_type"],
         "contact_phone": clean["contact_phone"],
         "city": clean["city"],
+        "address": clean["address"],
+        "latitude": latitude,
+        "longitude": longitude,
         "total_rooms_declared": clean["total_rooms"],
         "description": clean["description"],
         "updated_at": now,

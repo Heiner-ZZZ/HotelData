@@ -44,7 +44,7 @@ async def test_create_rate_plan_rejects_base_rate_below_minimum(client: AsyncCli
     _seed_hotel(db, prop_id)
 
     resp = await client.post(
-        "/api/management/rates/plans",
+        f"/api/management/rates/plans?prop_id={prop_id}",
         json={
             "prop_id": prop_id,
             "name": "Plan barato",
@@ -65,7 +65,7 @@ async def test_create_rate_plan_accepts_base_rate_at_minimum(client: AsyncClient
     _seed_hotel(db, prop_id)
 
     resp = await client.post(
-        "/api/management/rates/plans",
+        f"/api/management/rates/plans?prop_id={prop_id}",
         json={
             "prop_id": prop_id,
             "name": "Plan mínimo",
@@ -86,7 +86,7 @@ async def test_update_rate_plan_rejects_base_rate_below_minimum(client: AsyncCli
     _seed_hotel(db, prop_id)
 
     created = await client.post(
-        "/api/management/rates/plans",
+        f"/api/management/rates/plans?prop_id={prop_id}",
         json={
             "prop_id": prop_id,
             "name": "Plan caro",
@@ -99,7 +99,7 @@ async def test_update_rate_plan_rejects_base_rate_below_minimum(client: AsyncCli
     plan_id = created.json()["rate_plan_id"]
 
     resp = await client.put(
-        f"/api/management/rates/plans/{plan_id}",
+        f"/api/management/rates/plans/{plan_id}?prop_id={prop_id}",
         json={
             "name": "Plan caro",
             "base_rate": 9.0,
@@ -120,7 +120,7 @@ async def test_minimum_is_configurable_via_system_config(client: AsyncClient, db
 
     try:
         low = await client.post(
-            "/api/management/rates/plans",
+            f"/api/management/rates/plans?prop_id={prop_id}",
             json={
                 "prop_id": prop_id,
                 "name": "Plan quince",
@@ -133,7 +133,7 @@ async def test_minimum_is_configurable_via_system_config(client: AsyncClient, db
         assert "20" in low.json()["detail"]
 
         ok = await client.post(
-            "/api/management/rates/plans",
+            f"/api/management/rates/plans?prop_id={prop_id}",
             json={
                 "prop_id": prop_id,
                 "name": "Plan veinte",

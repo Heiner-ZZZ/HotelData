@@ -75,6 +75,26 @@ def _seed_shift(db, *, employee: str = "Teller Uno", opened_by: str = "cajero1")
     return str(res.inserted_id)
 
 
+def _seed_open_folio_for_payment(db, booking_id: str, due: float) -> None:
+    """Insert an open guest folio with a positive balance for payment tests."""
+    from datetime import datetime, timezone
+
+    db.guest_folios.insert_one({
+        "booking_id": booking_id,
+        "prop_id": 999,
+        "folio_number": f"FL-PAY-{booking_id}",
+        "status": "open",
+        "total_room": due,
+        "total_charges": due,
+        "total_discounts": 0.0,
+        "total_payments": 0.0,
+        "total_due": due,
+        "postings": [],
+        "posting_count": 0,
+        "created_at": datetime.now(timezone.utc),
+    })
+
+
 # ---------------------------------------------------------------------------
 # GAP-042: Invoice creation uses string booking_id
 # ---------------------------------------------------------------------------
@@ -240,6 +260,52 @@ class TestCreatePayment:
         assert result["amount"] == 495.00
         assert result["status"] == "confirmed"
         assert result["reference"].startswith("PAY-")
+
+    def test_full_payment_marks_folio_settled_when_balance_reaches_zero(self, db, seeded_booking):
+        """Registrar Pago: pagar el saldo completo del folio lo cierra como settled."""
+        _seed_open_folio_for_payment(db, seeded_booking, 120.0)
+
+        result = create_payment(PaymentCreate(
+            booking_id=seeded_booking,
+            amount=120.0,
+            method="card",
+        ))
+
+        assert result is not None
+        assert result["status"] == "confirmed"
+        folio = db.guest_folios.find_one({"booking_id": seeded_booking})
+        assert folio["status"] == "settled"
+        assert folio["total_due"] == 0.0
+        assert folio["settlement_type"] == "payment"
+        assert folio["settled_by"] == "system"
+        payment = db.reservation_payments.find_one({
+            "booking_id": seeded_booking,
+            "status": "confirmed",
+        })
+        assert payment is not None
+        assert folio["settled_at"] == payment["paid_at"]
+        # El pago quedó posteado al folio como evidencia del cierre.
+        assert any(
+            p.get("type") == "payment" and p.get("reference_type") == "payment"
+            for p in folio["postings"]
+        )
+
+    def test_partial_payment_keeps_folio_open_with_remaining_balance(self, db, seeded_booking):
+        """Un pago parcial NO debe cerrar el folio: sigue open con saldo restante."""
+        _seed_open_folio_for_payment(db, seeded_booking, 120.0)
+
+        result = create_payment(PaymentCreate(
+            booking_id=seeded_booking,
+            amount=50.0,
+            method="card",
+        ))
+
+        assert result is not None
+        assert result["status"] == "confirmed"
+        folio = db.guest_folios.find_one({"booking_id": seeded_booking})
+        assert folio["status"] == "open"
+        assert round(folio["total_due"], 2) == 70.0
+        assert "settled_at" not in folio
 
     def test_create_payment_invalid_booking(self):
         payload = PaymentCreate(booking_id="NONEXISTENT", amount=100.0)

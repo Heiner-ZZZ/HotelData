@@ -1,8 +1,10 @@
+import { signal } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 
 import { httpErrorInterceptor } from '../../../../core/api/http-error.interceptor';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -68,6 +70,19 @@ describe('CheckInDetailPageComponent', () => {
       completeCheckInWithDetail: jest.fn(() => of({ booking_id: 'BK-1', stay_status: 'checked_in', folio: 'FOL-1' })),
       declareLateArrival: jest.fn(() => of({ booking_id: 'BK-1', declared_late_arrival: false, estimated_arrival_time: '' })),
       reopenNoShow: jest.fn(() => of({ ok: true, booking_id: 'BK-1', stay_status: 'pending', penalty_amount: 0, folio_number: null, penalty_removed: false })),
+      validateRoomAvailability: jest.fn(() => of({
+        booking_id: 'BK-1', all_available: true, rooms: [], issues: [], validated_at: '2026-08-20',
+      })),
+    };
+    const propCtxMock = {
+      currentPropId: signal(1),
+      currentPropLabel: signal('Hotel Lima Centro'),
+      currentPropLabelShort: signal('Hotel Lima'),
+      ready: signal(true),
+      singleHotelMode: signal(false),
+      defaultPropId: signal(1),
+      mode: signal('all' as const),
+      assignedProperties: signal([{ propId: 1, label: 'Hotel Lima Centro' }]),
     };
     await TestBed.configureTestingModule({
       imports: [CheckInDetailPageComponent],
@@ -77,15 +92,20 @@ describe('CheckInDetailPageComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { paramMap: { get: () => 'BK-1' } },
-            paramMap: of(new Map([['bookingId', 'BK-1']])),
+            snapshot: {
+              paramMap: { get: (k: string) => (k === 'bookingId' ? 'BK-1' : null) } as any,
+              queryParamMap: { get: (k: string) => (k === 'prop_id' ? '1' : null) } as any,
+            },
+            paramMap: of(new Map([['bookingId', 'BK-1']] as any)),
+            queryParamMap: of(new Map([['prop_id', '1']] as any)),
           },
         },
         { provide: Router, useValue: { events: of() } },
         { provide: ToastService, useValue: { error: jest.fn() } },
-        { provide: AuthService, useValue: { hasPermission } },
+        { provide: AuthService, useValue: { hasPermission, isAuthenticated: () => false, sessionLoaded: () => false } },
         { provide: NoShowService, useValue: { markNoShowWithConfirm: jest.fn(), successMessage: jest.fn() } },
         { provide: CheckInsApiService, useValue: checkInApi },
+        { provide: PropertyContextService, useValue: propCtxMock },
       ],
     }).compileComponents();
 
@@ -94,6 +114,8 @@ describe('CheckInDetailPageComponent', () => {
 
     const httpTesting = TestBed.inject(HttpTestingController);
     const req = httpTesting.expectOne((r) => r.url.includes('/management/check-ins/BK-1/detail'));
+    // Verifica que el fix incluye prop_id (evita el 400 original)
+    expect(req.request.url).toContain('prop_id=1');
     req.flush(dto);
 
     await fixture.whenStable();
@@ -105,6 +127,16 @@ describe('CheckInDetailPageComponent', () => {
   }
   async function render403() {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const propCtxMock403 = {
+      currentPropId: signal(1),
+      ready: signal(true),
+      currentPropLabel: signal(''),
+      currentPropLabelShort: signal(''),
+      singleHotelMode: signal(false),
+      defaultPropId: signal(1),
+      mode: signal('all' as const),
+      assignedProperties: signal([]),
+    };
 
     await TestBed.configureTestingModule({
       imports: [CheckInDetailPageComponent],
@@ -116,14 +148,19 @@ describe('CheckInDetailPageComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { paramMap: { get: () => 'BK-1' } },
-            paramMap: of(new Map([['bookingId', 'BK-1']])),
+            snapshot: {
+              paramMap: { get: (k: string) => (k === 'bookingId' ? 'BK-1' : null) } as any,
+              queryParamMap: { get: (k: string) => (k === 'prop_id' ? '1' : null) } as any,
+            },
+            paramMap: of(new Map([['bookingId', 'BK-1']] as any)),
+            queryParamMap: of(new Map([['prop_id', '1']] as any)),
           },
         },
         { provide: Router, useValue: { events: of() } },
         { provide: ToastService, useValue: { error: jest.fn() } },
-        { provide: AuthService, useValue: { hasPermission: jest.fn(() => true) } },
+        { provide: AuthService, useValue: { hasPermission: jest.fn(() => true), isAuthenticated: () => false, sessionLoaded: () => false } },
         { provide: NoShowService, useValue: { markNoShowWithConfirm: jest.fn(), successMessage: jest.fn() } },
+        { provide: PropertyContextService, useValue: propCtxMock403 },
       ],
     }).compileComponents();
 
@@ -133,6 +170,7 @@ describe('CheckInDetailPageComponent', () => {
 
     const httpTesting = TestBed.inject(HttpTestingController);
     const req = httpTesting.expectOne((r) => r.url.includes('/management/check-ins/BK-1/detail'));
+    expect(req.request.url).toContain('prop_id=1');
     req.flush({ detail: 'Permiso requerido: check-ins.read' }, { status: 403, statusText: 'Forbidden' });
 
     // httpResource asienta el error en un microtask (promise interna); esperar
@@ -269,6 +307,7 @@ describe('CheckInDetailPageComponent', () => {
     const { fixture, component, checkInApi } = await renderDetail(dto);
 
     component.keysDelivered.set(true);
+    component.documentVerified.set(true);
     component.goToStep(5);
     component.openEarlyCheckInDialog();
     await Promise.resolve();
@@ -342,6 +381,7 @@ describe('CheckInDetailPageComponent', () => {
     const { fixture, component, checkInApi } = await renderDetail(dto);
 
     component.keysDelivered.set(true);
+    component.documentVerified.set(true);
     component.goToStep(5);
     component.openEarlyCheckInDialog();
     await Promise.resolve();
@@ -449,7 +489,7 @@ describe('CheckInDetailPageComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(noShow.markNoShowWithConfirm).toHaveBeenCalledWith('BK-1', 'Guest Prueba');
+    expect(noShow.markNoShowWithConfirm).toHaveBeenCalledWith('BK-1', 'Guest Prueba', 1);
     expect(component.successMessage()).toContain('No-show registrado');
     expect(component.successMessage()).toContain('94.00');
     expect(component.noShowResult()).toEqual({ folio_number: 'FL-NS-BK-20260', penalty_amount: 94 });
@@ -462,6 +502,7 @@ describe('CheckInDetailPageComponent', () => {
 
     // Tras recargar con stay_status=no_show (estado real en backend) el botón desaparece
     const reloadReq = httpTesting.expectOne((r) => r.url.includes('/management/check-ins/BK-1/detail'));
+    expect(reloadReq.request.url).toContain('prop_id=1');
     reloadReq.flush({ ...pastDetail(), stay_status: 'no_show' });
     await fixture.whenStable();
     await Promise.resolve();
@@ -698,7 +739,7 @@ describe('CheckInDetailPageComponent', () => {
     component.reopenReason.set('El huésped llegó a las 02:00; gerente autorizó la reapertura');
     component.confirmReopenNoShow();
 
-    expect(checkInApi.reopenNoShow).toHaveBeenCalledWith('BK-1', 'El huésped llegó a las 02:00; gerente autorizó la reapertura');
+    expect(checkInApi.reopenNoShow).toHaveBeenCalledWith('BK-1', 'El huésped llegó a las 02:00; gerente autorizó la reapertura', 1);
     expect(component.successMessage()).toContain('Reserva reabierta');
     expect(component.successMessage()).toContain('folio de penalización se eliminó');
     expect(component.successMessage()).not.toContain('sigue en el folio');
@@ -708,6 +749,7 @@ describe('CheckInDetailPageComponent', () => {
     fixture.detectChanges();
     const reloadReqs = httpTesting.match((r) => r.url.includes('/management/check-ins/BK-1/detail'));
     expect(reloadReqs.length).toBe(1);
+    expect(reloadReqs[0].request.url).toContain('prop_id=1');
     reloadReqs[0].flush({ ...noShowDetail(), stay_status: 'pending' });
     await fixture.whenStable();
     fixture.detectChanges();
@@ -733,6 +775,7 @@ describe('CheckInDetailPageComponent', () => {
     component.reopenReason.set('El huésped llegó al día siguiente; el pago de la penalización se gestiona en Facturación');
     component.confirmReopenNoShow();
 
+    expect(checkInApi.reopenNoShow).toHaveBeenCalledWith('BK-1', 'El huésped llegó al día siguiente; el pago de la penalización se gestiona en Facturación', 1);
     expect(component.successMessage()).toContain('Reserva reabierta');
     expect(component.successMessage()).toContain('94.00');
     expect(component.successMessage()).toContain('crédito a favor del huésped');
@@ -743,6 +786,7 @@ describe('CheckInDetailPageComponent', () => {
     fixture.detectChanges();
     const reloadReqs = httpTesting.match((r) => r.url.includes('/management/check-ins/BK-1/detail'));
     expect(reloadReqs.length).toBe(1);
+    expect(reloadReqs[0].request.url).toContain('prop_id=1');
     reloadReqs[0].flush({ ...noShowDetail(), stay_status: 'pending' });
     await fixture.whenStable();
     fixture.detectChanges();
@@ -846,6 +890,7 @@ describe('CheckInDetailPageComponent', () => {
     );
 
     component.keysDelivered.set(true);
+    component.documentVerified.set(true);
     component.goToStep(5);
     component.completeCheckIn();
     await Promise.resolve();
@@ -879,6 +924,7 @@ describe('CheckInDetailPageComponent', () => {
     );
 
     component.keysDelivered.set(true);
+    component.documentVerified.set(true);
     component.goToStep(5);
     component.completeCheckIn();
     await Promise.resolve();
@@ -887,5 +933,45 @@ describe('CheckInDetailPageComponent', () => {
     expect(component.depositGate()).toBeNull();
     expect(component.completeError()).toContain('turno activo');
     expect(fixture.nativeElement.querySelector('.ciw-deposit-banner')).toBeNull();
+  });
+
+  describe('check-in manual: regla alineada con el masivo (llaves + documento)', () => {
+    it('bloquea el check-in si las llaves están entregadas pero el documento NO está verificado', async () => {
+      localStorage.clear();
+      const { component, checkInApi } = await renderDetail(checkinableDetail());
+      component.keysDelivered.set(true);
+      component.documentVerified.set(false);
+      component.goToStep(5);
+      component.completeCheckIn();
+      await Promise.resolve();
+      expect(checkInApi.completeCheckInWithDetail).not.toHaveBeenCalled();
+    });
+
+    it('habilita el check-in solo cuando llaves Y documento están registrados', async () => {
+      localStorage.clear();
+      const { component, checkInApi } = await renderDetail(checkinableDetail());
+      component.keysDelivered.set(true);
+      component.documentVerified.set(true);
+      component.goToStep(5);
+      component.completeCheckIn();
+      await Promise.resolve();
+      expect(checkInApi.completeCheckInWithDetail).toHaveBeenCalled();
+    });
+
+    it('deshabilita el botón de completar hasta que llaves y documento estén registrados', async () => {
+      localStorage.clear();
+      const { fixture, component } = await renderDetail(checkinableDetail());
+      component.goToStep(5);
+      fixture.detectChanges();
+      const button = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
+        (candidate) => (candidate.textContent ?? '').includes('Realizar Check-In'),
+      ) as HTMLButtonElement | undefined;
+      expect(button).toBeDefined();
+      expect(button!.disabled).toBe(true);
+      component.keysDelivered.set(true);
+      component.documentVerified.set(true);
+      fixture.detectChanges();
+      expect(button!.disabled).toBe(false);
+    });
   });
 });

@@ -251,40 +251,60 @@ export function buildColumnDefs(
     },
     {
       headerName: '',
-      width: 70,
+      // Ancho suficiente para dos botones de 2rem + gap 8px + padding de celda,
+      // para que Confirmar/Rechazar no se peguen (queja de UX en la recepción).
+      width: 96,
       sortable: false,
       filter: false,
       resizable: false,
       cellRenderer: (p: any) => {
         if (p.data?.status !== 'pending' || !callbacks.isStaff()) return '';
         const wrap = document.createElement('div');
-        wrap.style.cssText = 'display:flex;align-items:center;gap:4px;justify-content:flex-end';
+        wrap.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end';
 
-        const confirm = document.createElement('button');
-        confirm.style.cssText = 'width:1.6rem;height:1.6rem;border:none;border-radius:6px;background:transparent;cursor:pointer;color:var(--muted-text)';
-        const ciIcon = document.createElement('span');
-        ciIcon.className = 'material-symbols-outlined';
-        ciIcon.style.cssText = 'font-size:1.1rem';
-        ciIcon.textContent = 'check_circle';
-        confirm.appendChild(ciIcon);
-        confirm.title = 'Confirmar';
-        confirm.addEventListener('click', (e: Event) => {
-          e.stopPropagation();
-          callbacks.onConfirm(p.data.bookingId, p.data.guestName);
-        });
+        /** Botón de icono con nombre accesible (aria-label) y hover visible.
+         *  Estilos inline: los SCSS del componente no alcanzan las celdas
+         *  dinámicas de AG Grid (encapsulación), así que el feedback de hover
+         *  se maneja por listener, no por clase CSS. */
+        const buildAction = (
+          iconName: string,
+          label: string,
+          hoverColor: string,
+          onClick: () => void
+        ): HTMLButtonElement => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.style.cssText = `width:2rem;height:2rem;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--app-border);border-radius:6px;background:transparent;color:var(--muted-text);cursor:pointer;transition:background 120ms,border-color 120ms,color 120ms`;
+          btn.setAttribute('aria-label', label);
+          btn.title = label;
+          const icon = document.createElement('span');
+          icon.className = 'material-symbols-outlined';
+          icon.style.cssText = 'font-size:1.15rem';
+          icon.textContent = iconName;
+          btn.appendChild(icon);
+          btn.addEventListener('mouseenter', () => {
+            btn.style.color = hoverColor;
+            btn.style.borderColor = hoverColor;
+            btn.style.background = `color-mix(in srgb, ${hoverColor} 7%, transparent)`;
+          });
+          btn.addEventListener('mouseleave', () => {
+            btn.style.color = 'var(--muted-text)';
+            btn.style.borderColor = 'var(--app-border)';
+            btn.style.background = 'transparent';
+          });
+          btn.addEventListener('click', (e: Event) => {
+            e.stopPropagation();
+            onClick();
+          });
+          return btn;
+        };
 
-        const reject = document.createElement('button');
-        reject.style.cssText = 'width:1.6rem;height:1.6rem;border:none;border-radius:6px;background:transparent;cursor:pointer;color:var(--muted-text)';
-        const rjIcon = document.createElement('span');
-        rjIcon.className = 'material-symbols-outlined';
-        rjIcon.style.cssText = 'font-size:1.1rem';
-        rjIcon.textContent = 'cancel';
-        reject.appendChild(rjIcon);
-        reject.title = 'Rechazar';
-        reject.addEventListener('click', (e: Event) => {
-          e.stopPropagation();
-          callbacks.onReject(p.data.bookingId, p.data.guestName);
-        });
+        const confirm = buildAction('check_circle', 'Confirmar reserva', 'var(--success)', () =>
+          callbacks.onConfirm(p.data.bookingId, p.data.guestName)
+        );
+        const reject = buildAction('cancel', 'Rechazar reserva', 'var(--danger)', () =>
+          callbacks.onReject(p.data.bookingId, p.data.guestName)
+        );
 
         wrap.append(confirm, reject);
         return wrap;

@@ -3,17 +3,23 @@
 El módulo ``property_approval`` (``/api/admin/property-registrations``) gatea
 TODAS sus rutas con ``require_permission("properties.approve")``. El código
 nace en el catálogo canónico y debe ser otorgable desde el editor de roles:
-``super_admin`` (bypass ``*.*``), ``admin_sistema`` (que opera la cola) y
-``gerente_hotel`` (que puede gestionar propiedades). Estos tests mantienen en
-sync el catálogo canónico, los mapas de roles, el tool de sync y la BD dev.
+``super_admin`` (bypass ``*.*``) y ``admin_sistema`` (que opera la cola).
+
+Decisión C 2026-08 (lógica dura): la aprobación/rechazo del ingreso de
+hoteles a la plataforma es una capacidad de PLATAFORMA. ``gerente_hotel``
+YA NO la porta — un gerente de un hotel no debe aprobar ni rechazar el
+registro de otros hoteles (conflicto de interés competitivo). Estos tests
+mantienen en sync el catálogo canónico, los mapas de roles, el tool de sync
+y la BD dev.
 
 Invariants:
 1. ``properties.approve`` existe en el catálogo canónico y super_admin lo
    cubre (via ``*.*`` / la comprensión de PERMISSION_CATALOG).
-2. ``admin_sistema`` y ``gerente_hotel`` lo tienen en ROLE_PERMISSION_CODES y
-   en ROLE_PERMISSIONS (no-regresión: re-seedar con sync_role_permissions.py
-   no debe quitárselo).
-3. TODAS las rutas del módulo property_approval usan SOLO códigos del
+2. ``admin_sistema`` lo tiene en ROLE_PERMISSION_CODES y en ROLE_PERMISSIONS
+   (no-regresión: re-seedar con sync_role_permissions.py no debe quitárselo).
+3. ``gerente_hotel`` NO lo tiene en ninguno de los dos mapas (regresión
+   dura de la decisión C).
+4. TODAS las rutas del módulo property_approval usan SOLO códigos del
    catálogo — concretamente ``properties.approve``.
 """
 
@@ -25,8 +31,8 @@ from scripts.sync_role_permissions import ROLE_PERMISSIONS
 
 APPROVE_CODE = "properties.approve"
 
-# Roles que deben poder aprobar/rechazar la cola de registros.
-APPROVE_HOLDER_ROLES = ("admin_sistema", "gerente_hotel")
+# Roles que deben poder aprobar/rechazar la cola de registros (plataforma).
+APPROVE_HOLDER_ROLES = ("admin_sistema",)
 
 ROUTES_FILE = Path(__file__).resolve().parents[1] / "src/app/modules/property_approval/routes.py"
 
@@ -63,6 +69,18 @@ def test_sync_does_not_regress_approve_for_holder_roles() -> None:
             f"sync_role_permissions.py regresaría {APPROVE_CODE} para {role} "
             f"(código faltante en ROLE_PERMISSIONS)"
         )
+
+
+def test_gerente_hotel_must_not_hold_approve() -> None:
+    """Decisión C 2026-08: la cola de aprobación es de plataforma — el rol
+    global gerente_hotel NO porta properties.approve en ningún mapa canónico.
+    Un gerente no aprueba el ingreso de otros hoteles (conflicto competitivo)."""
+    assert APPROVE_CODE not in set(ROLE_PERMISSION_CODES["gerente_hotel"]), (
+        "gerente_hotel no debe tener properties.approve en ROLE_PERMISSION_CODES"
+    )
+    assert APPROVE_CODE not in set(ROLE_PERMISSIONS["gerente_hotel"]), (
+        "gerente_hotel no debe tener properties.approve en ROLE_PERMISSIONS"
+    )
 
 
 def test_all_property_approval_routes_use_only_catalog_codes() -> None:

@@ -27,19 +27,21 @@ export class ReviewsApiService {
       .pipe(map(dto => mapReviewDetail(dto)));
   }
 
-  moderateReview(reviewId: string, status: string, reason: string) {
+  moderateReview(reviewId: string, status: string, reason: string, propId?: number) {
+    const params = propId ? new HttpParams().set('prop_id', String(propId)) : new HttpParams();
     return this.http.patch<ReviewDetailDto>(
       `${this.apiConfig.baseUrl}/reviews/${reviewId}/moderate`,
       { status, reason },
-      { withCredentials: true },
+      { params, withCredentials: true },
     );
   }
 
-  respondToReview(reviewId: string, response: string) {
+  respondToReview(reviewId: string, response: string, propId?: number) {
+    const params = propId ? new HttpParams().set('prop_id', String(propId)) : new HttpParams();
     return this.http.patch<ReviewDetailDto>(
       `${this.apiConfig.baseUrl}/reviews/${reviewId}/respond`,
       { response },
-      { withCredentials: true },
+      { params, withCredentials: true },
     );
   }
 

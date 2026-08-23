@@ -19,8 +19,12 @@ cache-dir = "../.cache/ruff"
 extend-immutable-calls = [
     "fastapi.Body",
     "fastapi.Depends",
+    "fastapi.File",
     "fastapi.Query",
     "src.app.security.dependencies.require_permission",
+    "src.app.security.dependencies.require_any_permission",
+    "src.app.security.dependencies.require_prop_permission",
+    "src.app.security.dependencies.require_any_prop_permission",
 ]
 
 [tool.ruff.lint.per-file-ignores]

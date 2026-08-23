@@ -5,32 +5,17 @@
         <img [src]="img" [alt]="hotel().name" loading="lazy" (error)="onImgError($any($event.target))" />
       }
     </div>
-    <button
-      class="sc-arrow sc-prev"
-      type="button"
-      aria-label="Imagen anterior"
-      (click)="prevImage(); $event.preventDefault(); $event.stopPropagation()"
-    >
-      <span class="material-symbols-outlined">chevron_left</span>
-    </button>
-    <button
-      class="sc-arrow sc-next"
-      type="button"
-      aria-label="Imagen siguiente"
-      (click)="nextImage(); $event.preventDefault(); $event.stopPropagation()"
-    >
-      <span class="material-symbols-outlined">chevron_right</span>
-    </button>
-    <div class="sc-dots">
-      @for (i of dotIndices(); track i) {
-        <button
-          class="sc-dot"
-          [class.active]="currentImageIdx() === i"
-          (click)="goToImage(i); $event.preventDefault(); $event.stopPropagation()"
-          [attr.aria-label]="'Imagen ' + (i + 1)"
-        ></button>
-      }
-    </div>
+    <!-- Controles compartidos (mismo diseño que el comparador): puntitos
+         píldora + flechas prev/next. La propagación del clic la corta el
+         propio componente. -->
+    <app-carousel-controls
+      [count]="galleryImages().length"
+      [activeIndex]="currentImageIdx()"
+      [subjectLabel]="hotel().name"
+      (navigate)="goToImage($event)"
+      (previous)="prevImage()"
+      (next)="nextImage()"
+    />
   } @else if (galleryImages().length === 1) {
     <img
       class="sc-single"

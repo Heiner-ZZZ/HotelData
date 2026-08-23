@@ -3,7 +3,13 @@ from __future__ import annotations
 from typing import Any
 
 from src.database.connection import get_database
-from src.app.security.permissions import READ_DEP_ACTIONS, ensure_read_dependencies
+from src.app.security.permissions import (
+    GUEST_ROLES,
+    PLATFORM_ROLES,
+    READ_DEP_ACTIONS,
+    ensure_read_dependencies,
+    permission_scope,
+)
 
 from ._helpers import utc_now
 
@@ -45,6 +51,30 @@ def update_role_definition(
             "message": "No se pueden guardar acciones sin un permiso Read disponible: "
             + ', '.join(missing_read),
         }
+    # ── Guard de scope (C 2026-08, lógica dura) ──────────────────────────
+    # El editor global tampoco puede romper el invariante: roles NO-plataforma
+    # no portan códigos system (etl.*, users.*, properties.approve…), y roles
+    # ≠ cliente no portan códigos guest (account.*, search.*).
+    if role_name not in PLATFORM_ROLES:
+        platform_bad = sorted(c for c in normalized_codes if permission_scope(c) == "system")
+        if platform_bad:
+            return {
+                "ok": False,
+                "message": (
+                    "Permisos de plataforma no aplican al rol "
+                    f"{role_name}: {', '.join(platform_bad)}"
+                ),
+            }
+    if role_name not in GUEST_ROLES:
+        guest_bad = sorted(c for c in normalized_codes if permission_scope(c) == "guest")
+        if guest_bad:
+            return {
+                "ok": False,
+                "message": (
+                    "Permisos de huésped no aplican al rol "
+                    f"{role_name}: {', '.join(guest_bad)}"
+                ),
+            }
     valid_codes = sorted(normalized_codes & available_codes)
     role_id = role["_id"]
 

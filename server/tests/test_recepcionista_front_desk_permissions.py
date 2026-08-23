@@ -27,5 +27,10 @@ def test_recepcionista_has_full_front_desk_permissions():
     # facturación (pagar factura, postings de folio, liquidar folio).
     assert "payments.manage" in perms
     assert "billing.manage" in perms
-    # Búsqueda de huéspedes para prefill rápido en recepción.
-    assert "users.read" in perms
+    # Búsqueda de huéspedes para prefill rápido en recepción — cubierta por
+    # reservations.manage (expande a .read; gate de /api/management/users/search).
+    assert "reservations.manage" in perms
+    # Decisión C 2026-08 (lógica dura): users.read (lista GLOBAL de usuarios
+    # del sistema) es de PLATAFORMA y sale del rol de recepción. El prefill de
+    # huéspedes es operación de reservas y se gatea con reservations.*.
+    assert "users.read" not in perms

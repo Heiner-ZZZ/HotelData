@@ -421,7 +421,7 @@ export class ReservationDetailPageComponent {
       name: product.name,
       unit_price: product.unitPrice,
       quantity: this.addProductQty(),
-    }).pipe(
+    }, vm.propId).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => {
@@ -451,7 +451,7 @@ export class ReservationDetailPageComponent {
     if (!ok) return;
     this.productError.set('');
     this.removeItemSaving.set(itemId);
-    this.productsApi.removeLineItem(vm.bookingId, itemId).pipe(
+    this.productsApi.removeLineItem(vm.bookingId, itemId, vm.propId).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => {
@@ -643,7 +643,7 @@ export class ReservationDetailPageComponent {
     this.errorMessage.set('');
     this.operationMode.setMode('delete', current.bookingId);
     try {
-      const result = await this.noShow.markNoShowWithConfirm(current.bookingId, current.guestName);
+      const result = await this.noShow.markNoShowWithConfirm(current.bookingId, current.guestName, current.propId);
       if (!result) return; // cancelado — el finally libera pending + opMode
       this.successMessage.set(this.noShow.successMessage(result));
       this.detailResource.reload();
@@ -712,7 +712,8 @@ export class ReservationDetailPageComponent {
   }
 
   goToInStay(bookingId: string) {
-    this.instayApi.getMyStaySession(bookingId).subscribe({
+    const vm = this.detailResource.value();
+    this.instayApi.getMyStaySession(bookingId, vm?.propId ?? 0).subscribe({
       next: (session) => {
         if (session.token) {
           this.router.navigate(['/stay', session.token]);

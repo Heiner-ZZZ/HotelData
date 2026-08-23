@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 
 from bson import ObjectId
-
 from bson.errors import InvalidId
+
+_AUTO_CLOSE_NOTE = "Cierre automático: turno anterior sin cerrar"
 from fastapi import APIRouter, Body, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.app.core.types import ObjectIdStr
+from src.app.modules.auth.schemas import ModuleStatus
+from src.app.modules.auth.service import module_status
 from src.app.security.rate_limit import limiter
 from src.app.security.role_helpers import get_role_name
 from src.app.security.route_permissions import is_safe_internal_next
@@ -22,9 +26,6 @@ from src.app.security.session import (
 )
 from src.database.connection import get_database
 
-from src.app.modules.auth.schemas import ModuleStatus
-from src.app.modules.auth.service import module_status
-
 from ._helpers import (
     _auth_payload,
     _check_account_locked,
@@ -33,7 +34,6 @@ from ._helpers import (
     _record_failed_attempt,
     _reset_failed_attempts,
 )
-
 
 # ─── Pydantic *Response models (Fase 5/6 API-boundary convention) ───
 # All class declarations BELOW this banner must be on their OWN line.
@@ -161,7 +161,11 @@ def login_submit(
 ):
     db = get_database()
     from src.app.security.approval import maybe_apply_rejection_grace
-    from src.app.security.session import find_user_by_identifier, verify_password, create_user_session
+    from src.app.security.session import (
+        create_user_session,
+        find_user_by_identifier,
+        verify_password,
+    )
     user = find_user_by_identifier(db, identifier)
     if user:
         # Gracia perezosa de rechazo (mismo comportamiento que login_api).
@@ -212,7 +216,11 @@ def login_api(
 
     db = get_database()
     from src.app.security.approval import maybe_apply_rejection_grace
-    from src.app.security.session import find_user_by_identifier, verify_password, create_user_session
+    from src.app.security.session import (
+        create_user_session,
+        find_user_by_identifier,
+        verify_password,
+    )
     user = find_user_by_identifier(db, identifier)
     if user:
         # Gracia perezosa de rechazo: si el registro fue rechazado hace más de
@@ -418,19 +426,39 @@ def logout_guard(request: Request):
             }
         )
 
-    # ── Open attendance shift (employee_shifts, status active) ──
+    # ── Open attendance shift (employee_shifts, status active, HOY) ──
+    # Un turno de un día ANTERIOR que quedó en ``active`` (check-in sin
+    # check-out) es dato stale: se completa aquí (cierre perezoso, SOLO del
+    # empleado dueño) y NO se reporta como abierto. El guard solo avisa del
+    # turno activo de HOY. Cada empleado del usuario se evalúa de forma
+    # independiente (individual por empleado del hotel individual).
+    now = datetime.now(UTC)
+    today = now.strftime("%Y-%m-%d")
     attendance: dict | None = None
-    emp = db.employees.find_one({"user_id": user_oid}, {"_id": 1, "full_name": 1})
-    if emp:
+    employees = list(db.employees.find({"user_id": user_oid}, {"_id": 1, "full_name": 1}))
+    if employees:
+        emp_ids = [e["_id"] for e in employees]
+        db.employee_shifts.update_many(
+            {"employee_id": {"$in": emp_ids}, "status": "active", "date": {"$lt": today}},
+            {"$set": {
+                "status": "completed",
+                "check_out_notes": _AUTO_CLOSE_NOTE,
+                "updated_at": now,
+            }},
+        )
         att = db.employee_shifts.find_one(
-            {"employee_id": emp["_id"], "status": "active"},
+            {"employee_id": {"$in": emp_ids}, "status": "active", "date": today},
             sort=[("date", -1)],
         )
         if att:
+            emp_name = next(
+                (e.get("full_name", "") for e in employees if e["_id"] == att["employee_id"]),
+                "",
+            )
             attendance = {
                 "id": str(att["_id"]),
                 "employee_id": str(att["employee_id"]),
-                "employee_name": emp.get("full_name", ""),
+                "employee_name": emp_name,
                 "date": att.get("date"),
                 "scheduled_start": att.get("scheduled_start"),
                 "scheduled_end": att.get("scheduled_end"),

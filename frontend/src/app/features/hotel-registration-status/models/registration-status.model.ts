@@ -33,6 +33,9 @@ export interface RegistrationProperty {
   totalRooms: number;
   currency: string;
   contactPhone: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface SuggestedBand {

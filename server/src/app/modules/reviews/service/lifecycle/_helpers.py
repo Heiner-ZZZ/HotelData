@@ -39,7 +39,34 @@ def _enrich(doc: dict) -> dict:
         if isinstance(val, datetime):
             doc[field] = val.isoformat()
     _add_user_name(doc)
+    _add_hotel_label(doc)
     return doc
+
+
+def _add_hotel_label(doc: dict) -> None:
+    """Resolve ``prop_id`` → human hotel name for detail views.
+
+    Uses ``dim_hotels.display_name`` → ``hotel_name`` → fallback ``Hotel {prop_id}``,
+    same as ``src.app.core.resolvers.resolve_hotel_name`` but inline to avoid
+    circular import and to keep _enrich self-contained. Never fails the request:
+    on any error keeps ``hotel_label`` as ``Hotel {prop_id}``.
+    """
+    prop_id = doc.get("prop_id")
+    if prop_id is None:
+        doc["hotel_label"] = ""
+        return
+    try:
+        db = get_database()
+        hotel = db.dim_hotels.find_one(
+            {"prop_id": int(prop_id)},
+            {"display_name": 1, "hotel_name": 1, "_id": 0},
+        )
+        if hotel:
+            doc["hotel_label"] = hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel {prop_id}"
+        else:
+            doc["hotel_label"] = f"Hotel {prop_id}"
+    except Exception:
+        doc["hotel_label"] = f"Hotel {prop_id}"
 
 
 def _add_user_name(doc: dict) -> None:

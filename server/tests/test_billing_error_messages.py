@@ -81,7 +81,7 @@ async def _login(client, admin_user) -> None:
 async def _create_invoice(client, booking_id: str, *, prop_id: int = 999) -> str:
     """Create an issued invoice via the API (needs an open shift for prop)."""
     resp = await client.post(
-        "/api/billing/invoices",
+        f"/api/billing/invoices?prop_id={prop_id}",
         json={"booking_id": booking_id, "subtotal": 100.0, "taxes": 10.0},
     )
     assert resp.status_code == 201, resp.text
@@ -96,7 +96,7 @@ async def test_create_invoice_invalid_booking_message(client, admin_user):
     await _login(client, admin_user)
 
     resp = await client.post(
-        "/api/billing/invoices",
+        "/api/billing/invoices?prop_id=999",
         json={"booking_id": "BK-NO-EXISTE", "subtotal": 100.0, "taxes": 10.0},
     )
 
@@ -187,7 +187,7 @@ async def test_link_shift_prop_mismatch_message(client, admin_user, db):
 async def test_get_folio_not_found_message(client, admin_user):
     await _login(client, admin_user)
 
-    resp = await client.get("/api/billing/folios/BK-NO-EXISTE")
+    resp = await client.get("/api/billing/folios/BK-NO-EXISTE?prop_id=999")
 
     assert resp.status_code == 404
     body = resp.json()["detail"]
@@ -200,7 +200,7 @@ async def test_get_folio_not_found_message(client, admin_user):
 async def test_reopen_folio_not_found_message(client, admin_user):
     await _login(client, admin_user)
 
-    resp = await client.post("/api/billing/folios/BK-NO-EXISTE/reopen")
+    resp = await client.post("/api/billing/folios/BK-NO-EXISTE/reopen?prop_id=999")
 
     assert resp.status_code == 409
     body = resp.json()["detail"]

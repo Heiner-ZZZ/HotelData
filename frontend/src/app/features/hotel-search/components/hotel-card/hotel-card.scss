@@ -1,38 +1,72 @@
+/* ── Hotel Card — TAF redesign for 15.6" legibility (2026-08-23) ──
+   Ground: huésped en laptop 1366×768/1920×1080 escalado, scanea 10 cards,
+   decide en <3s por precio, disponibilidad y servicios. Job: comparar rápido.
+   Signature: franja vertical accent + media-chip “Desde” con sombra editorial,
+   tipografía con tracking negativo en el nombre para identidad no-genérica.
+   Tokens: solo var(--*) de _scss-variables.scss, sin hex hardcodeado. */
+
 .hotel-card {
   display: grid;
-  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  grid-template-columns: 296px minmax(0, 1fr);
   gap: 0;
-  /* Sin padding: la imagen sangra hasta el borde del card en top, bottom y left. */
   padding: 0;
   align-items: stretch;
-  border: 1.5px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border: none;
   border-radius: 16px;
-  transition: box-shadow 0.25s ease, transform 0.2s ease;
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.22s ease, transform 0.18s ease;
+  position: relative;
+
+  /* Firma: franja vertical accent al lado de la imagen — único borde visible */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 14%;
+    bottom: 14%;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--accent);
+    opacity: 0;
+    transform: scaleY(0.7);
+    transition: opacity 0.22s, transform 0.22s;
+    z-index: 2;
+    pointer-events: none;
+  }
 
   &:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-2px);
+
+    &::before {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 }
 
 .media-column {
   position: relative;
   display: block;
-  min-height: 196px;
-  /* Sangrado: solo las esquinas izquierdas siguen el radio del card. */
-  border-radius: 16px 0 0 16px;
+  min-height: 236px;
   overflow: hidden;
   text-decoration: none;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
-    linear-gradient(180deg, rgba(32, 44, 68, 0.06), rgba(32, 44, 68, 0.14));
+    linear-gradient(180deg, rgba(22, 32, 51, 0.04), rgba(22, 32, 51, 0.10));
 }
 
-/* ── Favorite heart button ── */
 .favorite-btn {
   position: absolute;
-  top: 0.65rem;
-  right: 0.65rem;
+  top: 0.75rem;
+  right: 0.75rem;
   z-index: 3;
   display: inline-flex;
   align-items: center;
@@ -41,41 +75,34 @@
   height: 36px;
   border: none;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--gray-900) 25%, transparent);
-  backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.08);
   cursor: pointer;
   padding: 0;
-  transition: background 0.2s, transform 0.15s;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
 
   .material-symbols-outlined {
-    font-size: 22px;
-    color: var(--surface);
-    -webkit-text-stroke: 1.2px var(--accent);
-    transition: color 0.25s, -webkit-text-stroke 0.25s;
+    font-size: 20px;
+    color: var(--muted-text);
+    transition: color 0.2s;
     --icon-fill: 0;
   }
 
   &:hover {
-    background: color-mix(in srgb, var(--gray-900) 40%, transparent);
-    transform: scale(1.1);
+    background: var(--surface);
+    transform: scale(1.06);
+    box-shadow: 0 4px 16px rgba(16, 24, 40, 0.12);
+    .material-symbols-outlined { color: var(--danger); }
   }
 
-  &:active {
-    transform: scale(0.92);
-  }
+  &:active { transform: scale(0.93); }
 
   &.is-fav {
-    background: color-mix(in srgb, var(--danger) 18%, transparent);
-
+    background: var(--surface);
     .material-symbols-outlined {
       color: var(--danger);
-      -webkit-text-stroke: 0;
       font-variation-settings: 'FILL' 1;
-      transition: color 0.25s, -webkit-text-stroke 0.25s;
-    }
-
-    &:hover {
-      background: color-mix(in srgb, var(--danger) 28%, transparent);
     }
   }
 }
@@ -105,88 +132,15 @@
   display: block;
 }
 
-/* ── Dot indicators ── */
-.card-dots {
-  position: absolute;
-  bottom: 0.55rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  display: flex;
-  gap: 0.35rem;
-}
-
-.card-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--surface) 70%, transparent);
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-  transition: background 0.2s, border-color 0.2s;
-
-  &.active {
-    background: var(--surface);
-    border-color: var(--accent);
-  }
-
-  &:hover:not(.active) {
-    background: color-mix(in srgb, var(--surface) 40%, transparent);
-  }
-}
-
-/* ── Flechas prev / next de la galería ── */
-.gallery-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--gray-900) 25%, transparent);
-  backdrop-filter: blur(6px);
-  color: var(--surface);
-  cursor: pointer;
-  padding: 0;
-  transition: background 0.2s, transform 0.15s;
-
-  .material-symbols-outlined {
-    font-size: 20px;
-    --icon-wght: 500;
-  }
-
-  &:hover {
-    background: color-mix(in srgb, var(--gray-900) 45%, transparent);
-    transform: translateY(-50%) scale(1.08);
-  }
-
-  &:active {
-    transform: translateY(-50%) scale(0.94);
-  }
-}
-
-.gallery-prev {
-  left: 0.5rem;
-}
-
-.gallery-next {
-  right: 0.5rem;
-}
-
 .media-column::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 1;
   background:
-    linear-gradient(0deg, rgba(17, 24, 39, 0.28), transparent 42%),
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.44), transparent 34%);
+    linear-gradient(0deg, rgba(14, 22, 40, 0.26), transparent 46%),
+    radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.38), transparent 32%);
+  pointer-events: none;
 }
 
 .media-column::after {
@@ -197,35 +151,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 3.5rem;
-  color: color-mix(in srgb, var(--surface) 18%, transparent);
+  font-size: 3.2rem;
+  color: color-mix(in srgb, var(--surface) 14%, transparent);
   --icon-wght: 200;
   --icon-opsz: 48;
+  pointer-events: none;
 }
 
-/* When image loads successfully, hide the ::after pseudo icon on the image itself */
-.media-column.img-loaded::after {
-  opacity: 0.15;
-}
+.media-column.img-loaded::after { opacity: 0.10; }
 
 .media-column.theme-amber {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
     linear-gradient(135deg, #d5b157 0%, #f1d39a 28%, #f4ede0 56%, #9a8a7d 100%);
 }
-
 .media-column.theme-ocean {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
     linear-gradient(135deg, #72a5c9 0%, #cfe1f0 42%, #8ba0b2 100%);
 }
-
 .media-column.theme-forest {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
     linear-gradient(135deg, #5f7f70 0%, #d8e4dc 44%, #8b9b92 100%);
 }
-
 .media-column.theme-rose {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
@@ -238,38 +187,46 @@
   z-index: 1;
   display: flex;
   gap: 0.5rem;
-  padding: 0.85rem;
+  padding: 0.9rem 0.85rem;
 }
 
 .media-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 0 0.7rem;
+  min-height: 28px;
+  padding: 0 0.75rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
   color: var(--app-text);
   font-size: 0.76rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.10);
+  backdrop-filter: blur(6px);
 }
 
 .media-chip-accent {
-  background: color-mix(in srgb, var(--success-strong) 92%, transparent);
-  color: var(--on-success);
+  background: var(--surface);
+  color: var(--success-strong);
+  border: 1px solid color-mix(in srgb, var(--success) 18%, transparent);
 }
 
+/* ── Content ── */
 .content-column {
   min-width: 0;
-  display: grid;
-  /* Conserva el aire original de la card (0.9rem de padding + 1rem de gap). */
-  padding: 0.9rem 0.9rem 0.9rem 1.9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1.20rem 1.35rem 1.20rem 1.45rem;
+  gap: 0.6rem;
 }
 
 .content-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.42fr) 228px;
+  gap: 1.45rem;
   min-width: 0;
+  align-items: start;
 }
 
 .copy-column,
@@ -279,73 +236,72 @@
 
 h2,
 p,
-a {
-  margin: 0;
-}
+a { margin: 0; }
 
 h2 {
-  font-size: 1.35rem;
+  font-size: 1.22rem;
   line-height: 1.18;
-  margin-bottom: 0.35rem;
-  font-weight: 500;
+  letter-spacing: -0.018em;
+  font-weight: 700;
+  margin-bottom: 0.30rem;
 }
 
 h2 a {
-  color: color-mix(in srgb, var(--accent) 65%, #000);
+  color: var(--app-text);
   text-decoration: none;
-  transition: text-underline-offset 0.15s;
+  transition: color 0.15s;
 }
 
 .hotel-card:hover h2 a {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.meta-line,
-.score-meta,
-.price-label,
-.price-meta {
-  color: var(--muted-text);
+  color: var(--accent-strong);
 }
 
 .meta-line {
-  margin-bottom: 0.75rem;
-  font-size: 0.98rem;
+  color: var(--muted-text);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 500;
 }
 
 .tag-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: 0.95rem;
+  gap: 0.42rem;
+  margin-top: 0.85rem;
+  align-items: center;
 }
 
 .tag {
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 0 0.7rem;
+  min-height: 26px;
+  padding: 0 0.62rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-soft) 50%, transparent);
+  background: var(--surface-soft);
+  border: 1px solid color-mix(in srgb, var(--app-border) 70%, transparent);
   color: var(--muted-text);
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .amenity-tag {
-  background: color-mix(in srgb, var(--success-light) 72%, transparent);
+  background: color-mix(in srgb, var(--success-light) 78%, transparent);
   color: var(--success-strong);
-
+  border-color: color-mix(in srgb, var(--success) 14%, transparent);
   .material-symbols-outlined {
-    margin-right: 0.25rem;
-    font-size: 0.95rem;
+    margin-right: 0.22rem;
+    font-size: 0.92rem;
     color: var(--success);
   }
 }
 
 .room-summary-tag {
-  background: color-mix(in srgb, var(--accent-light) 72%, transparent);
+  background: color-mix(in srgb, var(--accent-light) 85%, transparent);
   color: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .copy-header {
@@ -359,54 +315,55 @@ h2 a {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 6px;
+  padding: 0.32rem 0.6rem;
+  border-radius: 8px;
   border: 1px solid var(--app-border);
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--muted-text);
   white-space: nowrap;
   flex-shrink: 0;
   transition: all 0.15s;
   background: var(--surface);
-
   input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     accent-color: var(--accent);
     cursor: pointer;
     margin: 0;
   }
-
-  &:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
+  &:hover { border-color: var(--accent); color: var(--accent); }
   &.selected {
     border-color: var(--accent);
     background: var(--accent-light);
-    color: var(--accent);
+    color: var(--accent-strong);
   }
 }
 
-.check-label {
-  font-size: 0.78rem;
-}
+.check-label { font-size: 0.76rem; }
 
 .inline-links {
   display: flex;
-  gap: 1rem;
+  gap: 1.0rem;
   flex-wrap: wrap;
-  margin-top: 1rem;
+  margin-top: 0.95rem;
+  align-items: center;
 }
 
 .inline-links a,
 .compare-link {
   color: var(--accent);
   font-weight: 600;
+  font-size: 0.86rem;
   text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.inline-links a:hover,
+.compare-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .compare-link {
@@ -417,97 +374,153 @@ h2 a {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.24rem;
+  .material-symbols-outlined { font-size: 1.05rem; }
 }
 
+/* ── Score + Price — score ahora debajo de Ver más/Comparar ── */
 .score-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.score-head--inline {
+  margin-top: 1.0rem;
+  margin-bottom: 0;
+  padding-top: 0.85rem;
+  padding-bottom: 0;
+  border-top: 1px solid var(--app-border);
+  border-bottom: none;
 }
 
 .score-title {
-  font-size: 1.15rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--app-text);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.score-meta {
+  margin-top: 0.18rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted-text);
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.score-meta--top {
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--app-border);
+  font-family: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: var(--app-text);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  text-align: right;
 }
 
 .score-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 42px;
-  height: 42px;
-  padding: 0 0.45rem;
+  min-width: 44px;
+  height: 38px;
+  padding: 0 0.50rem;
   border-radius: 10px;
   background: var(--success);
-  color: var(--on-accent);
-  font-weight: 700;
-  font-size: 0.98rem;
+  color: var(--on-success);
+  font-weight: 800;
+  font-size: 0.92rem;
   line-height: 1;
-  letter-spacing: 0;
+  flex-shrink: 0;
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--success) 22%, transparent);
 }
 
 .price-box {
   display: grid;
-  gap: 0.2rem;
+  gap: 0.22rem;
   justify-items: end;
-  margin: 0.6rem 0 1rem;
   text-align: right;
+  margin: 0.15rem 0 0.9rem;
+}
+
+.price-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-text);
 }
 
 .price-box strong {
-  color: var(--success);
-  font-size: 1.72rem;
+  color: var(--success-strong);
+  font-size: 1.58rem;
   line-height: 1.02;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
-/* Escasez: cuántas quedan a ese precio — señal sutil pero visible. */
+.price-meta {
+  font-size: 0.84rem;
+  color: var(--muted-text);
+  font-weight: 500;
+}
+
 .price-rooms {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  margin-top: 0.25rem;
-  color: var(--warning);
-  font-size: 0.85rem;
-  font-weight: 600;
-
+  gap: 0.28rem;
+  margin-top: 0.22rem;
+  padding: 0.22rem 0.50rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning-light) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning-strong);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   .material-symbols-outlined {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-variation-settings: 'FILL' 1;
   }
 }
 
-/* Patrón Expedia: sin fechas se invita a elegirlas antes de ver el total. */
 .choose-dates-btn {
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.38rem;
   width: 100%;
-  min-height: 2.5rem;
-  margin-bottom: 0.5rem;
+  min-height: 2.45rem;
+  margin-bottom: 0.48rem;
   padding: 0 1rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  color: var(--accent);
-  font-weight: 600;
-  font-size: 0.92rem;
+  background: color-mix(in srgb, var(--accent-light) 70%, var(--surface));
+  color: var(--accent-strong);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-
-  .material-symbols-outlined {
-    font-size: 1.1rem;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  .material-symbols-outlined { font-size: 1.05rem; }
+  &:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
   }
-}
-
-.choose-dates-btn:hover {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  border-color: var(--accent);
+  &:active { transform: scale(0.98); }
 }
 
 .primary-link {
@@ -515,47 +528,63 @@ h2 a {
   justify-content: center;
   align-items: center;
   width: 100%;
-  min-height: 3rem;
+  min-height: 2.85rem;
   padding: 0 1rem;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--accent);
   color: var(--on-accent);
-  font-weight: 700;
+  font-weight: 750;
+  font-size: 0.92rem;
+  letter-spacing: -0.01em;
   text-decoration: none;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent);
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  &:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  &:active { transform: scale(0.99); }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* ── Responsive: 15.6" sweet spot + móvil ── */
+@media (max-width: 1280px) {
+  .hotel-card { grid-template-columns: 272px minmax(0, 1fr); }
+  .content-main { gap: 1.15rem; grid-template-columns: minmax(0, 1.35fr) 218px; }
+  .media-column { min-height: 220px; }
+}
+
+@media (max-width: 1100px) {
+  .hotel-card { grid-template-columns: 256px minmax(0, 1fr); }
+  .content-main { grid-template-columns: 1fr; gap: 1.0rem; }
+  .price-box { justify-items: start; text-align: left; }
+  .score-meta--top { text-align: left; }
+  .content-column { padding: 1.05rem 1.15rem; }
 }
 
 @media (max-width: 900px) {
-  .hotel-card {
-    grid-template-columns: 1fr;
-  }
-
-  /* En columna única la imagen sangra por arriba y los laterales. */
+  .hotel-card { grid-template-columns: 1fr; }
   .media-column {
-    min-height: 220px;
-    border-radius: 16px 16px 0 0;
+    min-height: 222px;
+    border-radius: 0;
   }
-
-  .content-column {
-    padding: 0.9rem;
-  }
-
-  .content-main {
-    grid-template-columns: 1fr;
-  }
-
-  .price-box {
-    justify-items: start;
-    text-align: left;
-  }
-
-  /* Botones apilados full-width (el botón Elegir fechas queda ENCIMA de
-     Ver disponibilidad, no al lado). */
-  .primary-link {
-    width: 100%;
-  }
-
-  .choose-dates-btn {
-    width: 100%;
-  }
+  .content-column { padding: 1.0rem; }
+  .content-main { grid-template-columns: 1fr; }
+  .price-box { justify-items: start; text-align: left; }
+  .primary-link, .choose-dates-btn { width: 100%; }
 }
 
+@media (max-width: 560px) {
+  h2 { font-size: 1.12rem; }
+  .price-box strong { font-size: 1.42rem; }
+  .tag { font-size: 0.71rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hotel-card, .hotel-card::before, .card-img-strip {
+    transition: none;
+  }
+}

@@ -163,7 +163,7 @@ async def test_declare_via_route_writes_guest_notification(client, admin_user, d
     await login(client, admin_user["username"], admin_user["password"])
 
     response = await client.post(
-        "/api/management/check-ins/BK-LA-NOTIF/declare-late-arrival",
+        "/api/management/check-ins/BK-LA-NOTIF/declare-late-arrival?prop_id=991",
         json={"declared_late_arrival": True, "estimated_arrival_time": "01:45"},
     )
 

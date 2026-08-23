@@ -41,6 +41,9 @@ export interface RegistrationPropertyDto {
   total_rooms: number;
   currency: string;
   contact_phone: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface SuggestedBandDto {
@@ -66,6 +69,9 @@ export interface EditPropertyPayloadDto {
   city: string;
   total_rooms: number;
   description: string;
+  address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface PatchPropertyResponseDto {

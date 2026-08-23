@@ -33,7 +33,8 @@
       <form [formGroup]="form" (ngSubmit)="goToReview()" class="booking-form" novalidate>
         <app-rn-planner-section
           [form]="form"
-          [hotelOptions]="hotelOptions()"
+          [selectedPropId]="selectedPropId()"
+          [selectedLabel]="selectedLabel()"
           [selectedHotel]="selectedHotel()"
           [preselectedRoomTypeName]="preselectedRoomTypeName()"
           [preselectedRoomNumber]="preselectedRoomNumber()"
@@ -52,6 +53,7 @@
           (endDateChange)="onEndDateChange($event)"
           (adjust)="handleAdjust($event)"
           (ratePlanSelect)="selectRatePlan($event)"
+          (propertyChange)="onPropertySelected($event)"
         />
 
         <app-rn-guest-section

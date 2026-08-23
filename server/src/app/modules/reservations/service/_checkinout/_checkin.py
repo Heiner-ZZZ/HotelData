@@ -9,10 +9,6 @@ from typing import Any
 
 from bson import ObjectId
 
-from src.app.core.state_machine import (
-    CHECKIN_ALLOWED_ROOM_STATUSES,
-    CHECKIN_REJECTED_ROOM_STATUSES,
-)
 from src.app.core.timezone import local_now, local_today
 from src.app.modules.partner.services.audit import register_action
 from src.app.modules.reservations.service._checkinout._helpers import (
@@ -23,6 +19,9 @@ from src.app.modules.reservations.service._checkinout._helpers import (
 )
 from src.app.modules.reservations.service.lifecycle.create._validation import (
     get_deposit_policy,
+)
+from src.app.modules.reservations.service._room_availability import (
+    validate_room_availability,
 )
 from src.database.connection import get_database
 
@@ -276,7 +275,9 @@ def complete_check_in(
          "check_in_date": 1, "check_out_date": 1, "total_price": 1, "currency": 1, "total_nights": 1,
          "assigned_rooms": 1, "stay_status": 1, "no_show_processed_at": 1,
          "room_type_id": 1, "rate_plan_id": 1, "rooms": 1, "no_show_reopened_at": 1,
-         "inventory_re_deducted_at": 1},
+         "inventory_re_deducted_at": 1,
+         "check_in_keys_delivered": 1, "check_in_document_verified": 1,
+         "check_in_has_companions": 1},
     )
     if not booking:
         raise ValueError("Reserva no encontrada. Verificá el identificador de la reserva.")
@@ -446,7 +447,11 @@ def complete_check_in(
                     paid_total=paid_total,
                 )
 
-    # ── Validate room status before check-in ──
+    # ── Mandatory room availability gate (status + overlap + maintenance) ──
+    # Reuse the real-time availability validator as a hard gate — not just the
+    # informational endpoint. When rooms are assigned (and materialized in
+    # ``hotel_rooms``), a non-vacant status, an overlapping reservation, or an
+    # active maintenance work order all block the check-in before any write.
     assigned_rooms: list[str] = booking.get("assigned_rooms") or []
     _room_docs: list[dict[str, Any]] = []
 
@@ -457,30 +462,12 @@ def complete_check_in(
                 {"_id": 0, "hotel_room_id": 1, "room_label": 1},
             )
         )
-        room_labels = {r["hotel_room_id"]: r.get("room_label", "") for r in _room_docs}
-        status_query_labels = [v for v in room_labels.values() if v]
-        if status_query_labels:
-            status_docs = list(
-                db.room_status_log.find(
-                    {"prop_id": booking["prop_id"], "room_label": {"$in": status_query_labels}},
-                    {"_id": 0, "room_label": 1, "status": 1},
-                )
-            )
-            room_status_map: dict[str, str] = {r["room_label"]: r["status"] for r in status_docs}
-            blocked: list[str] = []
-            for h_id in assigned_rooms:
-                label = room_labels.get(h_id, "")
-                if not label:
-                    continue
-                status = room_status_map.get(label, "unknown")
-                if status not in CHECKIN_ALLOWED_ROOM_STATUSES:
-                    blocked.append(f"{label} ({status})")
-            if blocked:
+        if _room_docs:
+            availability = validate_room_availability(booking_id)
+            if not availability.get("all_available"):
+                issues = availability.get("issues") or ["La habitación no está disponible para check-in."]
                 raise ValueError(
-                    f"No se puede realizar el check-in. Las siguientes habitaciones no están disponibles: "
-                    f"{', '.join(blocked)}. Solo se permite check-in en habitaciones en estado 'vacante_limpia' o 'vacante_sucia'. "
-                    f"Estados rechazados: {', '.join(sorted(CHECKIN_REJECTED_ROOM_STATUSES))}. "
-                    "Liberá la habitación, limpiála o asigná otra disponible."
+                    "No se puede realizar el check-in. " + " ".join(issues)
                 )
 
     if early_mode and (not assigned_rooms or len(_room_docs) < len(assigned_rooms)):
@@ -719,7 +706,20 @@ def complete_check_in(
         except Exception:
             logger.exception("Failed to register shift transaction for check-in %s", booking_id)
 
+    # ── Checklist operativo (para el aviso post-masivo del frontend) ──
+    # El check-in masivo omite el checklist de interacción (llaves,
+    # documento, acompañantes) por diseño. Este resumen le permite a la UI
+    # avisar qué reservas quedaron sin completar y ofrecer el link a su
+    # detalle. ``has_companions`` respondido como False es una respuesta
+    # válida ("sin acompañantes"); solo es incompleto cuando los campos
+    # clave no se registraron (None/ausentes en el booking, como en el
+    # masivo).
+    checklist_complete = bool(booking.get("check_in_keys_delivered")) and bool(
+        booking.get("check_in_document_verified")
+    ) and booking.get("check_in_has_companions") is not None
+
     return {"booking_id": booking_id, "stay_status": "checked_in", "folio": folio,
             "folio_number": folio_id, "invoice_id": invoice_id,
             "check_in_mode": check_in_mode, "early_check_in_mode": early_mode,
-            "early_check_in_fee": early_fee}
+            "early_check_in_fee": early_fee,
+            "checklist": {"complete": checklist_complete}}

@@ -161,40 +161,6 @@
 }
 
 
-/* ─── Toast ─── */
-.toast {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1rem;
-  border-radius: 10px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  animation: toast-in 220ms ease;
-  width: fit-content;
-}
-
-.toast-success {
-  background: var(--success-light);
-  color: var(--success);
-  border: 1px solid color-mix(in srgb, var(--success) 15%, transparent);
-
-  .material-symbols-outlined {
-    font-size: 1.1rem;
-  }
-}
-
-
-.toast-warning {
-  background: color-mix(in srgb, var(--warning) 12%, transparent);
-  color: var(--warning);
-  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
-
-  .material-symbols-outlined {
-    font-size: 1.1rem;
-  }
-}
-
 /* ─── List header ─── */
 .list-header {
   display: flex;
@@ -563,10 +529,172 @@
   }
 }
 
+/* Confirmación masiva: verde éxito para distinguirla del check-in (accent). */
+.bulk-btn-confirm {
+  background: var(--success, #16a34a);
+  border-color: var(--success, #16a34a);
+  color: var(--on-success, #ffffff);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--success, #16a34a) 88%, #000000);
+    border-color: color-mix(in srgb, var(--success, #16a34a) 88%, #000000);
+  }
+}
+
 /* ── Dark theme tuning ── */
 [data-theme='dark'] .bulk-action-bar {
   background: var(--surface-strong, var(--surface));
   border-color: color-mix(in srgb, var(--accent, #2563eb) 35%, var(--app-border));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BANNER 'CHECKLIST PENDIENTE' (post check-in masivo)
+   El masivo es express: omite el checklist operativo (llaves, documento,
+   acompañantes). El banner lista las reservas afectadas con link directo
+   a su detalle de check-in para completarlo (PATCH /check-ins/{id}/detail).
+   Mismo patrón que unpriced-banner pero con accent (acción pendiente de
+   staff, no advertencia de precio).
+   ═══════════════════════════════════════════════════════════════ */
+.checklist-banner {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  animation: toast-in 220ms ease;
+}
+
+.checklist-banner-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.checklist-banner-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 1.25rem;
+  --icon-wght: 500;
+}
+
+.checklist-banner-text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1 1 auto;
+
+  strong {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--app-text);
+  }
+
+  span {
+    font-size: 0.76rem;
+    color: var(--muted-text);
+  }
+}
+
+.checklist-banner-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms;
+
+  &:hover {
+    background: var(--surface-hover);
+    color: var(--app-text);
+    border-color: var(--app-border);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.checklist-banner-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist-banner-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  transition: border-color 120ms ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--app-border));
+  }
+}
+
+.checklist-banner-item-info {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.checklist-banner-guest {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.checklist-banner-meta {
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.checklist-banner-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.15rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 120ms, color 120ms;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    --icon-wght: 500;
+  }
+
+  &:hover {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════

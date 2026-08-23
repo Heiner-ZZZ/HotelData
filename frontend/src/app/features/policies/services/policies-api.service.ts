@@ -43,8 +43,15 @@ export class PoliciesApiService {
       .pipe(catchAuthError(), map((dto) => mapPolicies(dto)));
   }
 
+  /**
+   * Save hotel policies (Migración E): el backend exige ``prop_id`` en el
+   * QUERY (gate por-hotel + consistencia query↔body) — el body solo no
+   * alcanza (400).
+   */
   savePolicies(payload: PoliciesSaveDto) {
+    const params = new HttpParams().set('prop_id', String(payload.prop_id));
     return this.http.put(`${this.apiConfig.baseUrl}/management/policies`, payload, {
+      params,
       withCredentials: true
     });
   }

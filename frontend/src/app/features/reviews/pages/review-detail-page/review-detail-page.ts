@@ -146,7 +146,7 @@ export class ReviewDetailPageComponent {
     this.actionError.set(null);
     this.actionMessage.set(null);
     const reason = action.status === 'rejected' ? this.rejectionReason().trim() : '';
-    this.reviewsApi.moderateReview(this.review()!.id, action.status, reason).subscribe({        next: () => {
+    this.reviewsApi.moderateReview(this.review()!.id, action.status, reason, this.review()!.propId).subscribe({        next: () => {
           this.actionMessage.set(`Reseña ${action.label}da correctamente.`);
           // Refetch detail so backend's new moderationStatus / staff_response
           // propagate to the template via `review()` (computed).
@@ -167,7 +167,7 @@ export class ReviewDetailPageComponent {
     this.actionError.set(null);
     this.actionMessage.set(null);
     if (!this.staffResponseText().trim()) return;
-    this.reviewsApi.respondToReview(this.review()!.id, this.staffResponseText().trim()).subscribe({
+    this.reviewsApi.respondToReview(this.review()!.id, this.staffResponseText().trim(), this.review()!.propId).subscribe({
       next: () => {
         this.actionMessage.set('Respuesta guardada correctamente.');
       },

@@ -55,7 +55,7 @@ async def test_declare_late_arrival_route_sets_flag(client, admin_user, db) -> N
     await login(client, admin_user["username"], admin_user["password"])
 
     response = await client.post(
-        "/api/management/check-ins/BK-DECL-ROUTE/declare-late-arrival",
+        "/api/management/check-ins/BK-DECL-ROUTE/declare-late-arrival?prop_id=991",
         json={"declared_late_arrival": True, "estimated_arrival_time": "01:45"},
     )
 
@@ -74,7 +74,7 @@ async def test_declare_late_arrival_route_can_clear(client, admin_user, db) -> N
     await login(client, admin_user["username"], admin_user["password"])
 
     response = await client.post(
-        "/api/management/check-ins/BK-DECL-CLEAR/declare-late-arrival",
+        "/api/management/check-ins/BK-DECL-CLEAR/declare-late-arrival?prop_id=991",
         json={"declared_late_arrival": False},
     )
 
@@ -90,7 +90,7 @@ async def test_declare_late_arrival_route_rejects_bad_eta(client, admin_user, db
     await login(client, admin_user["username"], admin_user["password"])
 
     response = await client.post(
-        "/api/management/check-ins/BK-DECL-BAD/declare-late-arrival",
+        "/api/management/check-ins/BK-DECL-BAD/declare-late-arrival?prop_id=991",
         json={"declared_late_arrival": True, "estimated_arrival_time": "99:99"},
     )
 
@@ -105,7 +105,7 @@ async def test_declare_late_arrival_route_rejects_no_show(client, admin_user, db
     await login(client, admin_user["username"], admin_user["password"])
 
     response = await client.post(
-        "/api/management/check-ins/BK-DECL-NS/declare-late-arrival",
+        "/api/management/check-ins/BK-DECL-NS/declare-late-arrival?prop_id=991",
         json={"declared_late_arrival": True},
     )
 
@@ -119,7 +119,7 @@ async def test_declare_late_arrival_route_requires_check_ins_manage(client, db) 
     _seed_booking(db, "BK-DECL-DENIED")
 
     response = await client.post(
-        "/api/management/check-ins/BK-DECL-DENIED/declare-late-arrival",
+        "/api/management/check-ins/BK-DECL-DENIED/declare-late-arrival?prop_id=991",
         json={"declared_late_arrival": True},
     )
     assert response.status_code in (303, 401, 403)

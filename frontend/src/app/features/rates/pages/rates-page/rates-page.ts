@@ -723,7 +723,7 @@ readonly sidebarSections: SidebarSection[] = [
       return;
     }
     const obs = this.editingPlan()
-      ? this.api.updateRatePlan(this.editingPlan()!.id, {
+      ? this.api.updateRatePlan(current.propId, this.editingPlan()!.id, {
           name: this.planName(), description: this.planDescription(), baseRate: this.planBaseRate(),
           currency: this.planCurrency(), applicableRoomTypes: this.planApplicableRoomTypes(), isActive: this.planIsActive(),
           includedAmenities: this.planIncludedAmenities(),
@@ -781,7 +781,7 @@ readonly sidebarSections: SidebarSection[] = [
     const planId = this.deleteConfirm(); if (!planId) return;
     this.deleteConfirm.set(null);
     const current = this.ratesResource.value(); if (!current) return;
-    this.api.deleteRatePlan(planId).pipe(
+    this.api.deleteRatePlan(current.propId, planId).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => { this.ratesResource.reload(); this.toast.success('Plan tarifario eliminado'); },
@@ -981,7 +981,7 @@ readonly sidebarSections: SidebarSection[] = [
     const edit = this.editingSeason();
 
     const obs = edit
-      ? this.api.updateSeasonalRule(edit.ruleId, {
+      ? this.api.updateSeasonalRule(current.propId, edit.ruleId, {
           ratePlanId: this.seasonalRatePlanId(),
           name: this.seasonalName(),
           startDate: this.seasonalStartDate(),
@@ -1014,7 +1014,7 @@ readonly sidebarSections: SidebarSection[] = [
     // Borrado directo (sin confirm): mostrar el modo delete durante la petición
     // y volver al modo de la sección al terminar.
     this.opMode.setMode('delete', 'Regla de temporada');
-    this.api.deleteSeasonalRule(ruleId).pipe(
+    this.api.deleteSeasonalRule(current.propId, ruleId).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => { this.ratesResource.reload(); this.toast.success('Regla de temporada eliminada'); this.applyMode(); },

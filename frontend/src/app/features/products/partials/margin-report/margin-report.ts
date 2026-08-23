@@ -1,6 +1,7 @@
 import { CurrencyPipe } from '@angular/common';
 import { httpResource, HttpResourceRef } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -15,6 +16,7 @@ import type { MarginReportDto } from '../../models/products-report.dto';
   standalone: true,
   imports: [
     CurrencyPipe,
+    FormsModule,
     EmptyStateComponent,
     ErrorStateComponent,
     LoadingStateComponent,
@@ -31,20 +33,37 @@ export default class MarginReportComponent {
 
   readonly propId = computed(() => this.propCtx.currentPropId());
 
-  /** Permission gate (forwarded to ProductsAuthService). */
   readonly canSeeCost = this.productsAuth.canSeeCost;
+
+  /** Report-wide search filter. */
+  readonly searchTerm = signal('');
 
   readonly report: HttpResourceRef<MarginReportDto | undefined>;
 
+  /** Filtered items by search term. */
+  readonly filteredItems = computed(() => {
+    const data = this.report.value();
+    if (!data) return [];
+    const term = this.searchTerm().trim().toLowerCase();
+    if (!term) return data.items;
+    return data.items.filter((item) => {
+      const haystack = `${item.name} ${item.category} ${item.product_id}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  });
+
   constructor() {
     this.report = this.api.marginReport(this.propId);
+  }
+
+  onSearchInput(value: string): void {
+    this.searchTerm.set(value);
   }
 
   formatPct(pct: number): string {
     return `${pct.toFixed(1)}%`;
   }
 
-  /** Clamp visual bar width between 0 and 100. */  /** Clamp a percentage into [0, 100] for visual bar widths. */
   barWidth(pct: number): number {
     if (pct < 0) return 0;
     if (pct > 100) return 100;

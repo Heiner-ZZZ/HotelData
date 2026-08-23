@@ -1797,7 +1797,7 @@ async def test_rates_promotion_create_rejects_existing_code(client, db, admin_us
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
 
     resp = await client.post(
-        "/api/management/rates/promotions",
+        "/api/management/rates/promotions?prop_id=1",
         json={
             "prop_id": 1,
             "name": "Otra promo",
@@ -1853,7 +1853,7 @@ async def test_rates_promotion_create_returns_structured_conflict(client, db, ad
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
 
     resp = await client.post(
-        "/api/management/rates/promotions",
+        "/api/management/rates/promotions?prop_id=1",
         json={
             "prop_id": 1,
             "name": "Otra promo",

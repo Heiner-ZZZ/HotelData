@@ -129,7 +129,7 @@ async def test_recalculate_price_backfills_booking_and_folio(client, db, admin_u
     _seed_folio(db, "BK-REC-0001")
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
 
-    resp = await client.post("/api/reservations/BK-REC-0001/recalculate-price", json={})
+    resp = await client.post("/api/reservations/BK-REC-0001/recalculate-price?prop_id=9001", json={})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["total_price"] == 360.0  # 3 noches × $120
@@ -149,7 +149,7 @@ async def test_recalculate_price_already_priced_is_noop(client, db, admin_user):
     _seed_booking(db, "BK-REC-0002", total_price=500.0)
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
 
-    resp = await client.post("/api/reservations/BK-REC-0002/recalculate-price", json={})
+    resp = await client.post("/api/reservations/BK-REC-0002/recalculate-price?prop_id=9001", json={})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body.get("already_priced") is True
@@ -161,7 +161,7 @@ async def test_recalculate_price_unpricable_skips(client, db, admin_user):
     _seed_booking(db, "BK-REC-0003", prop_id=99999)
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
 
-    resp = await client.post("/api/reservations/BK-REC-0003/recalculate-price", json={})
+    resp = await client.post("/api/reservations/BK-REC-0003/recalculate-price?prop_id=99999", json={})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["skipped"] == "unpricable"
@@ -170,7 +170,7 @@ async def test_recalculate_price_unpricable_skips(client, db, admin_user):
 
 async def test_recalculate_price_not_found_404(client, admin_user):
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
-    resp = await client.post("/api/reservations/BK-NO-EXISTE/recalculate-price", json={})
+    resp = await client.post("/api/reservations/BK-NO-EXISTE/recalculate-price?prop_id=9001", json={})
     assert resp.status_code == 404
 
 
@@ -178,7 +178,7 @@ async def test_recalculate_price_requires_staff_permission(client, db, cliente_u
     """El rol cliente no puede recalcular precios."""
     _seed_booking(db, "BK-REC-0004")
     assert await login(client, cliente_user["username"], cliente_user["password"]) == 200
-    resp = await client.post("/api/reservations/BK-REC-0004/recalculate-price", json={})
+    resp = await client.post("/api/reservations/BK-REC-0004/recalculate-price?prop_id=9001", json={})
     assert resp.status_code == 403
 
 
@@ -236,6 +236,20 @@ def _seed_hotel_scoped_user(db, *, username: str, password: str, assigned_hotels
             "created_at": _now(),
         }
     ).inserted_id
+    # Migración E: asignación por-hotel para que el gate prop pase.
+    hotel_role_id = db.hotel_roles.insert_one(
+        {
+            "prop_id": assigned_hotels[0],
+            "name": "gerente_hotel",
+            "display_name": "Gerente de Hotel",
+            "permissions": ["reservations.read", "reservations.update"],
+            "is_active": True,
+            "created_at": _now(),
+        }
+    ).inserted_id
+    db.role_assignments.insert_one(
+        {"user_id": user_id, "role_id": hotel_role_id, "prop_id": assigned_hotels[0]}
+    )
     return {
         "user_id": str(user_id),
         "username": username,
@@ -257,7 +271,7 @@ async def test_recalculate_price_backfills_invoice_too(client, db, admin_user):
     _seed_invoice(db, "BK-REC-0010")
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
 
-    resp = await client.post("/api/reservations/BK-REC-0010/recalculate-price", json={})
+    resp = await client.post("/api/reservations/BK-REC-0010/recalculate-price?prop_id=9001", json={})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["total_price"] == 360.0
@@ -292,7 +306,7 @@ async def test_recalculate_price_keeps_priced_invoice(client, db, admin_user):
     )
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
 
-    resp = await client.post("/api/reservations/BK-REC-0011/recalculate-price", json={})
+    resp = await client.post("/api/reservations/BK-REC-0011/recalculate-price?prop_id=9001", json={})
     assert resp.status_code == 200, resp.text
     assert resp.json().get("invoice_recomputed") is False
     assert db.reservation_invoices.find_one({"booking_id": "BK-REC-0011"})["total"] == 500.0
@@ -301,9 +315,8 @@ async def test_recalculate_price_keeps_priced_invoice(client, db, admin_user):
 async def test_recalculate_price_denied_for_other_hotel(client, db):
     """RED: un gerente de hotel 9001 NO puede recalcular una reserva del 9002.
 
-    El GET /unpriced ya respeta el filtro de hoteles, pero el POST por
-    booking_id no validaba el alcance: un gerente con ``reservations.update``
-    global podía mutar reservas de hoteles que no administra.
+    Migración E: cross-hotel = 404 (sin fuga de existencia, consistente con
+    el resto de rutas por-hotel). El rol del hotel solo alcanza a su hotel.
     """
     _seed_booking(db, "BK-REC-0091", prop_id=9002)
     user = _seed_hotel_scoped_user(
@@ -311,8 +324,8 @@ async def test_recalculate_price_denied_for_other_hotel(client, db):
     )
     assert await login(client, user["username"], user["password"]) == 200
 
-    resp = await client.post("/api/reservations/BK-REC-0091/recalculate-price", json={})
-    assert resp.status_code == 403
+    resp = await client.post("/api/reservations/BK-REC-0091/recalculate-price?prop_id=9001", json={})
+    assert resp.status_code == 404
     # Y no se escribió nada sobre la reserva del otro hotel.
     assert db.booking_orders.find_one({"booking_id": "BK-REC-0091"})["total_price"] is None
 
@@ -326,6 +339,6 @@ async def test_recalculate_price_allowed_for_own_hotel(client, db):
     )
     assert await login(client, user["username"], user["password"]) == 200
 
-    resp = await client.post("/api/reservations/BK-REC-0092/recalculate-price", json={})
+    resp = await client.post("/api/reservations/BK-REC-0092/recalculate-price?prop_id=9001", json={})
     assert resp.status_code == 200, resp.text
     assert resp.json()["total_price"] == 360.0  # 3 noches × $120

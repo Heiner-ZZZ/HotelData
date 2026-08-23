@@ -9,11 +9,12 @@ import {
   isValidImageUrl,
   placeholderImageUrl,
 } from '../../../../shared/utils/placeholder-image.util';
+import { CarouselControlsComponent } from '../../../../shared/ui/carousel-controls/carousel-controls';
 import type { HotelSearchResult } from '../../models/hotel-search.model';
 
 @Component({
   selector: 'app-hotel-card',
-  imports: [RouterLink],
+  imports: [RouterLink, CarouselControlsComponent],
   templateUrl: './hotel-card.html',
   styleUrl: './hotel-card.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -44,8 +45,6 @@ export class HotelCardComponent implements OnInit {
   /** URLs cuya carga falló — se filtran de la galería sin colapsarla. */
   private readonly failedImageSrcs = signal<Set<string>>(new Set());
   private rotationTimer: ReturnType<typeof setInterval> | null = null;
-
-  readonly BASE_GALLERY_COUNT = 3;
 
   /**
    * Request-free gallery for search cards: the availability endpoint already
@@ -99,10 +98,14 @@ export class HotelCardComponent implements OnInit {
     return `S/ ${total.toFixed(2)}`;
   });
 
-  /** Línea de disponibilidad: cuántas quedan a ese precio (solo con fechas). */
+  /** Línea de disponibilidad: cuántas quedan a ese precio (solo con fechas) — ahora explícita con tipo de habitación. */
   readonly availableRoomsLabel = computed<string | null>(() => {
     const remaining = this.hotel().minAvailableRooms;
     if (remaining === null || remaining === undefined || remaining < 1) return null;
+    const rtName = this.hotel().matchedRoomType?.name?.trim();
+    if (rtName) {
+      return remaining === 1 ? `Queda 1 ${rtName} a este precio` : `Quedan ${remaining} ${rtName} a este precio`;
+    }
     return remaining === 1 ? 'Queda 1 a este precio' : `Quedan ${remaining} a este precio`;
   });
 
@@ -114,14 +117,6 @@ export class HotelCardComponent implements OnInit {
 
   /** Total images in the carousel — dynamic based on gallery. */
   readonly totalImages = computed(() => this.galleryImages().length);
-
-  /** Generate dot indices for the carousel indicators. */
-  readonly dotIndices = computed(() => {
-    const count = this.totalImages();
-    if (count <= 1) return [0] as const;
-    if (count <= this.BASE_GALLERY_COUNT) return [0, 1, 2] as const;
-    return Array.from({ length: count }, (_, i) => i);
-  });
 
   ngOnInit() {
     this.destroyRef.onDestroy(() => {

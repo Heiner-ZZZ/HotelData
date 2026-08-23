@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
 import { catchAuthError } from '../../../shared/utils/catch-auth-error';
+import { PropertyContextService } from '../../../shared/services/property-context.service';
 
 export interface DateHistoryEntry {
   date: string;
@@ -13,6 +14,21 @@ export interface DateHistoryEntry {
 @Injectable({ providedIn: 'root' })
 export class CheckInsApiService {
   private readonly http = inject(HttpClient);
+  private readonly propertyCtx = inject(PropertyContextService);
+
+  private propParams(propId?: number): HttpParams {
+    if (propId && propId > 0) return new HttpParams().set('prop_id', String(propId));
+    const ctxPid = this.propertyCtx.currentPropId();
+    if (ctxPid > 0) return new HttpParams().set('prop_id', String(ctxPid));
+    try {
+      const raw = new URLSearchParams(window.location.search).get('prop_id');
+      const urlPid = raw ? Number(raw) : 0;
+      if (urlPid > 0) return new HttpParams().set('prop_id', String(urlPid));
+    } catch {
+      // ignora
+    }
+    return new HttpParams();
+  }
 
   getCheckInDates(propId?: number) {
     let params = new HttpParams();
@@ -23,8 +39,14 @@ export class CheckInsApiService {
       .pipe(catchAuthError());
   }
 
+  /**
+   * Check-in rápido desde el listado: flujo express que omite el checklist
+   * manual (llaves/documento) por diseño — se completa después en el detalle
+   * vía PATCH. Sin express:true el endpoint responde 422 (regla alineada
+   * manual vs masivo).
+   */
   completeCheckIn(bookingId: string) {
-    return this.http.post(`/management/check-ins/${bookingId}/complete`, {});
+    return this.http.post(`/management/check-ins/${bookingId}/complete`, { express: true }, { params: this.propParams() });
   }
 
   /** Update check-in date/time using the shared PATCH /api/reservations/{id} endpoint */
@@ -35,6 +57,7 @@ export class CheckInsApiService {
     return this.http.patch<{ booking_id: string; updated: boolean }>(
       `/reservations/${bookingId}`,
       payload,
+      { params: this.propParams() },
     );
   }
 
@@ -44,6 +67,7 @@ export class CheckInsApiService {
   getCheckInDetail(bookingId: string) {
     return this.http.get<CheckInDetailDto>(
       `/management/check-ins/${bookingId}/detail`,
+      { params: this.propParams() },
     );
   }
 
@@ -52,6 +76,7 @@ export class CheckInsApiService {
     return this.http.patch<{ booking_id: string; updated: boolean; fields_updated: string[] }>(
       `/management/check-ins/${bookingId}/detail`,
       payload,
+      { params: this.propParams() },
     );
   }
 
@@ -70,6 +95,18 @@ export class CheckInsApiService {
     }>(
       `/management/check-ins/${bookingId}/complete`,
       payload,
+      { params: this.propParams() },
+    ).pipe(catchAuthError());
+  }
+
+  /**
+   * Validate real-time room availability for early check-in authorization.
+   * Returns current room status, overlapping reservations, and pending tasks.
+   */
+  validateRoomAvailability(bookingId: string) {
+    return this.http.get<RoomAvailabilityDto>(
+      `/management/check-ins/${bookingId}/room-availability`,
+      { params: this.propParams() },
     ).pipe(catchAuthError());
   }
 
@@ -88,6 +125,7 @@ export class CheckInsApiService {
     }>(
       `/management/check-ins/${bookingId}/declare-late-arrival`,
       payload,
+      { params: this.propParams() },
     ).pipe(catchAuthError());
   }
 
@@ -98,7 +136,7 @@ export class CheckInsApiService {
    * arrastra pagos u otros cargos, la penalización se revierte y el folio
    * se conserva para gestionarlo en Facturación (``reversal_amount``).
    */
-  reopenNoShow(bookingId: string, reason: string) {
+  reopenNoShow(bookingId: string, reason: string, propId?: number) {
     return this.http.post<{
       ok: boolean;
       booking_id: string;
@@ -114,6 +152,7 @@ export class CheckInsApiService {
     }>(
       `/management/bookings/${bookingId}/reopen-no-show`,
       { reason },
+      { params: this.propParams(propId) },
     ).pipe(catchAuthError());
   }
 
@@ -142,6 +181,29 @@ export interface EarlyCheckInSavePayload {
   early_check_in_approved?: boolean;
   early_check_in_reason?: string;
   early_check_in_fee?: number;
+}
+
+export interface RoomAvailabilityDto {
+  booking_id: string;
+  all_available: boolean;
+  rooms: {
+    hotel_room_id: string;
+    room_label: string;
+    floor: string;
+    status: string;
+    is_vacant: boolean;
+    available: boolean;
+    overlapping_bookings?: {
+      booking_id: string;
+      guest_name: string;
+      check_in_date: string;
+      check_out_date: string;
+      stay_status: string;
+    }[];
+    pending_tasks?: string[];
+  }[];
+  issues: string[];
+  validated_at: string;
 }
 
 export interface LateArrivalDto {

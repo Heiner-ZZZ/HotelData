@@ -504,7 +504,7 @@ export class HousekeepingTasksPageComponent {
 
   async completeTask(taskId: string): Promise<void> {
     try {
-      await lastValueFrom(this.api.completeTask(taskId));
+      await lastValueFrom(this.api.completeTask(taskId, this.selectedPropId()));
       this.message.set('✅ Tarea completada');
       this.errorMessage.set('');
       this.tasksResource.reload();
@@ -529,7 +529,7 @@ export class HousekeepingTasksPageComponent {
 
   async deleteTask(taskId: string): Promise<void> {
     try {
-      await lastValueFrom(this.api.deleteTask(taskId));
+      await lastValueFrom(this.api.deleteTask(taskId, this.selectedPropId()));
       this.message.set('🗑️ Tarea eliminada');
       this.errorMessage.set('');
       this.tasksResource.reload();

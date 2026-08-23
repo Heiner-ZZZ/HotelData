@@ -19,6 +19,9 @@ const TYPE_LABELS: Record<string, string> = {
   late_checkout_courtesy: 'Late check-out en cortesía',
   early_checkin_approved: 'Early check-in aprobado',
   early_checkin_courtesy: 'Early check-in en cortesía',
+  shift_expired: 'Turno de caja vencido',
+  shift_open_long: 'Turno de caja abierto por mucho tiempo',
+  role_permissions_changed: 'Permisos del rol actualizados',
 };
 
 const STATUS_MAP: Record<string, { label: string; tone: 'success' | 'warning' | 'danger' }> = {
@@ -30,6 +33,7 @@ const STATUS_MAP: Record<string, { label: string; tone: 'success' | 'warning' | 
 function mapNotificationItem(dto: NotificationLogItemDto): NotificationLogItem {
   const statusConfig = STATUS_MAP[dto.status] || { label: dto.status, tone: 'warning' as const };
   return {
+    id: dto._id || '',
     notificationType: dto.notification_type,
     recipientEmail: dto.recipient_email,
     recipientName: dto.recipient_name,
@@ -37,6 +41,7 @@ function mapNotificationItem(dto: NotificationLogItemDto): NotificationLogItem {
     propId: dto.prop_id,
     status: dto.status,
     errorMessage: dto.error_message || '',
+    message: dto.message || '',
     createdAt: dto.created_at,
     typeLabel: TYPE_LABELS[dto.notification_type] || dto.notification_type,
     statusLabel: statusConfig.label,

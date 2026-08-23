@@ -1,5 +1,5 @@
 <article class="hotel-card surface-card" (mouseenter)="startRotation()" (mouseleave)="stopRotation()">
-  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="galleryImages().length > 0" aria-label="Abrir detalle del hotel" (click)="trackClick()">
+  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [queryParams]="{ check_in: checkIn() || null, check_out: checkOut() || null }" [class]="imageTheme" [class.img-loaded]="galleryImages().length > 0" aria-label="Abrir detalle del hotel" (click)="trackClick()">
     <!-- Favorite button — top-right corner of the image -->
     <button
       class="favorite-btn"
@@ -16,34 +16,17 @@
           <img class="card-bg-img" [src]="img" alt="" loading="lazy" (error)="onImgError($any($event.target))" />
         }
       </div>
-      @if (galleryImages().length > 1) {
-        <button
-          class="gallery-arrow gallery-prev"
-          type="button"
-          aria-label="Imagen anterior"
-          (click)="prevImage(); $event.preventDefault(); $event.stopPropagation()"
-        >
-          <span class="material-symbols-outlined">chevron_left</span>
-        </button>
-        <button
-          class="gallery-arrow gallery-next"
-          type="button"
-          aria-label="Imagen siguiente"
-          (click)="nextImage(); $event.preventDefault(); $event.stopPropagation()"
-        >
-          <span class="material-symbols-outlined">chevron_right</span>
-        </button>
-      }
-      <div class="card-dots">
-        @for (i of dotIndices(); track i) {
-          <button
-            class="card-dot"
-            [class.active]="currentImageIdx() === i"
-            (click)="goToImage(i); $event.preventDefault(); $event.stopPropagation()"
-            [attr.aria-label]="'Imagen ' + (i + 1)"
-          ></button>
-        }
-      </div>
+      <!-- Controles compartidos (mismo código que comparador, welcome,
+           similares y habitaciones): puntitos píldora + flechas prev/next.
+           La propagación del clic la corta el componente (la card es un <a>). -->
+      <app-carousel-controls
+        [count]="totalImages()"
+        [activeIndex]="currentImageIdx()"
+        [subjectLabel]="hotel().name"
+        (navigate)="goToImage($event)"
+        (previous)="prevImage()"
+        (next)="nextImage()"
+      />
     } @else {
       <img class="card-bg-img card-bg-single" [src]="imageUrl()" alt="" loading="lazy" (error)="onImgError($any($event.target))" />
     }
@@ -59,7 +42,7 @@
       <div class="copy-column">
         <div class="copy-header">
           <h2>
-            <a [routerLink]="['/hotels', hotel().id]" (click)="trackClick()">{{ hotel().name }}</a>
+            <a [routerLink]="['/hotels', hotel().id]" [queryParams]="{ check_in: checkIn() || null, check_out: checkOut() || null }" (click)="trackClick()">{{ hotel().name }}</a>
           </h2>
           @if (compareMode()) {
             <label class="compare-check" [class.selected]="hotel().selected">
@@ -95,7 +78,7 @@
         </div>
 
         <div class="inline-links">
-          <a [routerLink]="['/hotels', hotel().id]" (click)="trackClick()">Ver más</a>
+          <a [routerLink]="['/hotels', hotel().id]" [queryParams]="{ check_in: checkIn() || null, check_out: checkOut() || null }" (click)="trackClick()">Ver más</a>
           @if (!compareMode()) {
             <button type="button" class="compare-link" (click)="toggleCompare()">
               <span class="material-symbols-outlined">compare_arrows</span>
@@ -103,16 +86,17 @@
             </button>
           }
         </div>
+
+        <!-- Score: Bueno/4.6 abajo para liberar espacio arriba a la habitación filtrada -->
+        <div class="score-head score-head--inline">
+          <p class="score-title">{{ scoreTitle }}</p>
+          <span class="score-badge">{{ scoreLabel }}</span>
+        </div>
       </div>
 
       <div class="score-column">
-        <div class="score-head">
-          <div>
-            <p class="score-title">{{ scoreTitle }}</p>
-            <p class="score-meta">{{ roomTypeLabel }}</p>
-          </div>
-          <span class="score-badge">{{ scoreLabel }}</span>
-        </div>
+        <!-- Habitación filtrada arriba, como pide el flujo con fechas -->
+        <p class="score-meta score-meta--top">{{ roomTypeLabel }}</p>
 
         @if (hotel().minNightlyRate) {
           <div class="price-box">
@@ -148,7 +132,7 @@
           </button>
         }
 
-        <a [routerLink]="['/hotels', hotel().id]" class="primary-link" (click)="trackClick()">Ver disponibilidad</a>
+        <a [routerLink]="['/hotels', hotel().id]" [queryParams]="{ check_in: checkIn() || null, check_out: checkOut() || null }" class="primary-link" (click)="trackClick()">Ver disponibilidad</a>
       </div>
     </div>
   </div>

@@ -103,6 +103,20 @@ $sc-shadow-md: 0 4px 12px rgba(0,0,0,0.06);
 
 .sc-empty-btn { margin-top: 0.5rem; }
 
+.sc-empty-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: var(--warning-light);
+  color: var(--warning-strong);
+  font-size: 0.82rem;
+  font-weight: 600;
+
+  .material-symbols-outlined { font-size: 1rem; }
+}
+
 /* ═══════════════════════════════════════════════════════════
    Open Shift Form
    ═══════════════════════════════════════════════════════════ */

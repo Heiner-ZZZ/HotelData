@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signa
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CompareMapComponent } from './components/compare-map';
+import { CarouselControlsComponent } from '../../../../shared/ui/carousel-controls/carousel-controls';
 import { amenityIcon, carouselImages, categorizeAmenities, computeComparisonFlags, minRate, policyIcon } from './hotel-compare.helpers';
 import { getErrorStatus } from '../../../../shared/utils/http-error.util';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
@@ -12,7 +13,7 @@ import type { HotelCompareDto } from '../../models/hotel-compare.dto';
 
 @Component({
   selector: 'app-hotel-compare-page',
-  imports: [RouterLink, CompareMapComponent],
+  imports: [RouterLink, CompareMapComponent, CarouselControlsComponent],
   templateUrl: './hotel-compare-page.html',
   styleUrl: './hotel-compare-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -167,6 +168,26 @@ export class HotelComparePageComponent {
       clearInterval(timer);
       this._carouselTimers.delete(propId);
     }
+  }
+
+  // ── Hover del carrusel: autoplay + revelar flechas del carrusel compartido ──
+
+  /** Hoteles con el mouse encima: el componente compartido muestra sus
+   *  flechas (modo reveal) solo mientras el card está hovereado. */
+  readonly hoveredHotels = signal<Set<number>>(new Set());
+
+  onImageEnter(propId: number, total: number): void {
+    this.hoveredHotels.update((s) => new Set(s).add(propId));
+    this.startAutoPlay(propId, total);
+  }
+
+  onImageLeave(propId: number): void {
+    this.hoveredHotels.update((s) => {
+      const next = new Set(s);
+      next.delete(propId);
+      return next;
+    });
+    this.stopAutoPlay(propId);
   }
 
   // ── Display ──

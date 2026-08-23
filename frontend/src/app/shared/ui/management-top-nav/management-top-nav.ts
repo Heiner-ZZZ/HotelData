@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, signal, OnInit, ElementRef } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { API_CONFIG } from '../../../core/api/api.config';
 import { roleLabel } from '../../../core/auth/role-labels';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
@@ -113,6 +115,8 @@ export class ManagementTopNavComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly elementRef = inject(ElementRef);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly http = inject(HttpClient);
+  private readonly apiConfig = inject(API_CONFIG);
   readonly logoutGuard = inject(LogoutGuardService);
 
   readonly theme = this.themeService;
@@ -183,7 +187,7 @@ export class ManagementTopNavComponent implements OnInit {
     return !!role && role !== 'cliente';
   });
 
-  readonly notifications = signal<{ id: number; icon: string; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }[]>([]);
+  readonly notifications = signal<{ id: number; rawId: string; icon: string; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }[]>([]);
 
   /** Icono por tipo de notificación (Material Symbols). */
   notificationIcon(type: string): string {
@@ -270,9 +274,10 @@ export class ManagementTopNavComponent implements OnInit {
           );
           const mapped = filteredItems.map((item, idx) => ({
             id: idx + 1,
+            rawId: item.id || '',
             icon: this.notificationIcon(item.notificationType),
             title: item.typeLabel,
-            description: `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
+            description: item.message || `${item.recipientName || 'Administrador'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
             time: this._timeAgo(item.createdAt),
             unread: item.status === 'sent',
             bookingId: item.bookingId || '',
@@ -345,7 +350,14 @@ export class ManagementTopNavComponent implements OnInit {
   }
 
   markAllRead() {
-    this.notifications.update(list => list.map(n => ({ ...n, unread: false })));
+    const ids = this.notifications().filter(n => n.unread && n.rawId).map(n => n.rawId);
+    if (!ids.length) return;
+    this.http.post(`${this.apiConfig.baseUrl}/admin/notifications/mark-read`, { ids }, { withCredentials: true })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.notifications.update(list => list.map(n => ({ ...n, unread: false }))),
+        error: () => undefined,
+      });
   }
 
   closeNotifications() {

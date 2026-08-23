@@ -1,8 +1,9 @@
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
 import { ToastService } from '../../shared/services/toast.service';
+import { SUPPRESS_ERROR_TOAST } from './api-context.tokens';
 import type { ApiError } from './api-error.model';
 import { httpErrorInterceptor } from './http-error.interceptor';
 
@@ -112,5 +113,25 @@ describe('httpErrorInterceptor', () => {
 
     expect(error?.status).toBe(500);
     expect(spy).toHaveBeenCalledWith('Algo salió mal.');
+  });
+
+  it('no emite toast cuando la request marca SUPPRESS_ERROR_TOAST (flujos que ya reportan)', () => {
+    const { http, httpMock } = setup();
+    const toast = TestBed.inject(ToastService);
+    const spy = jest.spyOn(toast, 'error');
+    let error: ApiError | undefined;
+    http
+      .get('/api/foo', { context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true) })
+      .subscribe({ error: (e: ApiError) => (error = e) });
+
+    httpMock
+      .expectOne('/api/foo')
+      .flush({ detail: 'Algo salió mal.' }, { status: 500, statusText: 'Server Error' });
+
+    // El error sigue tipado (ApiError) para el catch del llamador…
+    expect(error?.status).toBe(500);
+    expect(error?.message).toBe('Algo salió mal.');
+    // …pero sin toast duplicado: el flujo (ej. bulk) ya lo reporta resumido.
+    expect(spy).not.toHaveBeenCalled();
   });
 });

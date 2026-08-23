@@ -119,8 +119,8 @@ describe('TopNavComponent', () => {
     fixture.destroy();
   });
 
-  it('una notificación transaccional mantiene el link a la reserva y no marca nada', async () => {
-    const markRead = jest.fn();
+  it('una notificación transaccional mantiene el link a la reserva y la marca como leída', async () => {
+    const markRead = jest.fn(() => of({ id: 'n2', read: true }));
     const { fixture, clientService } = await render('cliente', null, [
       makeClientNotif({
         notificationType: 'guest_confirmed',
@@ -133,7 +133,7 @@ describe('TopNavComponent', () => {
 
     expect(component.notifHref(n)).toBe('/account/bookings/BK-001');
     component.onNotifClick(n);
-    expect(markRead).not.toHaveBeenCalled();
+    expect(markRead).toHaveBeenCalledWith('n1');
     fixture.destroy();
   });
 

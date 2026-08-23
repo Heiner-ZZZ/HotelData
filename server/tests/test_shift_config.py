@@ -252,6 +252,7 @@ async def test_http_put_config_persists(client, admin_user):
 
     response = await client.put(
         "/api/reception/shifts/config",
+        params={"prop_id": 902},
         json={"prop_id": 902, "windows": CUSTOM_WINDOWS},
     )
 
@@ -271,6 +272,7 @@ async def test_http_put_rejects_overlapping_windows(client, admin_user):
 
     response = await client.put(
         "/api/reception/shifts/config",
+        params={"prop_id": 902},
         json={
             "prop_id": 902,
             "windows": {
@@ -290,6 +292,7 @@ async def test_http_put_requires_shifts_manage(client, cliente_user):
 
     response = await client.put(
         "/api/reception/shifts/config",
+        params={"prop_id": 902},
         json={"prop_id": 902, "windows": CUSTOM_WINDOWS},
     )
 

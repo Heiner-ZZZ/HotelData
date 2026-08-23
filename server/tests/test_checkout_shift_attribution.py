@@ -67,7 +67,7 @@ async def test_check_out_detail_exposes_shift_and_cashier(client, db, admin_user
     shift_id = _seed_shift(db)
     _seed_booking(db, "BK-CO-SHIFT", shift_id=shift_id)
 
-    resp = await client.get("/api/management/check-outs/BK-CO-SHIFT/detail")
+    resp = await client.get("/api/management/check-outs/BK-CO-SHIFT/detail?prop_id=1")
 
     assert resp.status_code == 200
     body = resp.json()
@@ -89,7 +89,7 @@ async def test_check_out_detail_read_logs_shift_attribution_access(client, db, a
     shift_id = _seed_shift(db)
     _seed_booking(db, "BK-CO-TRACE", shift_id=shift_id)
 
-    resp = await client.get("/api/management/check-outs/BK-CO-TRACE/detail")
+    resp = await client.get("/api/management/check-outs/BK-CO-TRACE/detail?prop_id=1")
 
     assert resp.status_code == 200
     entry = db.audit_log.find_one(
@@ -112,7 +112,7 @@ async def test_check_out_detail_without_shift_logs_no_access_trace(client, db, a
     await login(client, admin_user["username"], admin_user["password"])
     _seed_booking(db, "BK-CO-NOTRACE", shift_id=None)
 
-    resp = await client.get("/api/management/check-outs/BK-CO-NOTRACE/detail")
+    resp = await client.get("/api/management/check-outs/BK-CO-NOTRACE/detail?prop_id=1")
 
     assert resp.status_code == 200
     assert (
@@ -128,7 +128,7 @@ async def test_check_out_detail_without_shift_stays_null(client, db, admin_user)
     await login(client, admin_user["username"], admin_user["password"])
     _seed_booking(db, "BK-CO-NOSHIFT", shift_id=None)
 
-    resp = await client.get("/api/management/check-outs/BK-CO-NOSHIFT/detail")
+    resp = await client.get("/api/management/check-outs/BK-CO-NOSHIFT/detail?prop_id=1")
 
     assert resp.status_code == 200
     body = resp.json()

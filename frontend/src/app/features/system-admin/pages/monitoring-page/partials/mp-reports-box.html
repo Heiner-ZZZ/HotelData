@@ -1,0 +1,39 @@
+<!-- Caja "Reportes" — OnPush aislado: su acordeón es estado local. -->
+<section class="surface-card accordion-section">
+  <div class="accordion-header" (click)="toggleOpen()">
+    <div>
+      <h2>Reportes</h2>
+      <p>Evidencia local del proceso ETL GA03.</p>
+    </div>
+    <span class="accordion-chevron">{{ open() ? '▼' : '▶' }}</span>
+  </div>
+  @if (open()) {
+    <div class="accordion-body">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Reporte</th>
+              <th>Estado</th>
+              <th>Ruta</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (report of reports(); track report.name) {
+              <tr>
+                <td><strong>{{ report.label }}</strong></td>
+                <td>
+                  <app-status-badge
+                    [tone]="report.exists ? 'success' : 'warning'"
+                    [label]="report.exists ? 'Disponible' : 'Pendiente'"
+                  />
+                </td>
+                <td><code>{{ report.path }}</code></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</section>

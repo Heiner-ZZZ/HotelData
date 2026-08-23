@@ -18,7 +18,6 @@ import logging
 import secrets
 
 from bson import ObjectId
-
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
@@ -26,6 +25,23 @@ from src.app.security.permissions import user_has_permission
 
 logger = logging.getLogger(__name__)
 
+from src.app.core.resolvers import resolve_hotel_id
+from src.app.modules.instay.routes_impl._event_manager import StayEventManager
+from src.app.modules.instay.routes_impl._helpers import (
+    _iso,
+    get_session_or_404,
+    notify_guest_new_message,
+    notify_guest_request_completed,
+    notify_staff_dnd_toggled,
+    notify_staff_new_message,
+    notify_staff_new_request,
+    notify_staff_request_updated,
+    resolve_hotel_room_id,
+    serialize_session,
+    session_expiry,
+    status_label,
+    type_label,
+)
 from src.app.modules.instay.schemas import (
     SERVICE_REQUEST_STATUSES,
     SERVICE_REQUEST_TYPES,
@@ -46,24 +62,7 @@ from src.app.modules.instay.schemas import (
     ToggleDndResponse,
     utc_now,
 )
-from src.app.modules.instay.routes_impl._helpers import (
-    get_session_or_404,
-    notify_guest_new_message,
-    notify_guest_request_completed,
-    notify_staff_dnd_toggled,
-    notify_staff_new_message,
-    notify_staff_new_request,
-    notify_staff_request_updated,
-    resolve_hotel_room_id,
-    serialize_session,
-    session_expiry,
-    status_label,
-    type_label,
-    _iso,
-)
-from src.app.modules.instay.routes_impl._event_manager import StayEventManager
-from src.app.core.resolvers import resolve_hotel_id
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_prop_permission
 from src.database.connection import get_database
 
 guest_router = APIRouter(prefix="/api/stay/guest", tags=["instay-guest"])
@@ -80,7 +79,8 @@ _TOKEN_BYTES = 32
 @staff_router.post("/my-session", response_model=StaySessionResponse)
 def get_my_stay_session(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     booking_id = (payload.get("booking_id") or "").strip()
     if not booking_id:
@@ -89,6 +89,9 @@ def get_my_stay_session(
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": booking_id})
     if not booking:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada.")
+    # Cross-hotel (Migración E): la reserva debe pertenecer al hotel pedido.
+    if booking.get("prop_id") != query_prop_id:
         raise HTTPException(status_code=404, detail="Reserva no encontrada.")
 
     # ── Ownership (fix 2026-08) ────────────────────────────────────────────
@@ -183,8 +186,14 @@ def get_my_stay_session(
 @staff_router.post("/sessions", status_code=201, response_model=StaySessionResponse)
 def create_stay_session(
     payload: StaySessionCreate = Body(...),
-    current_user: dict = Depends(require_permission("reservations.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.manage")),
 ):
+    # Migración E: prop_id por QUERY + consistencia query↔body.
+    if query_prop_id is None or payload.prop_id != query_prop_id:
+        raise HTTPException(
+            status_code=400, detail="prop_id del query y del body no coinciden"
+        )
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": payload.booking_id})
     if not booking:
@@ -215,16 +224,14 @@ def create_stay_session(
 
 @staff_router.get("/sessions", response_model=StaySessionListResponse)
 def list_stay_sessions(
-    prop_id: int | None = Query(default=None, ge=1),
+    prop_id: int = Query(..., ge=1),
     active_only: bool = Query(default=True),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     db = get_database()
-    query: dict = {}
-    if prop_id:
-        query["prop_id"] = prop_id
+    query: dict = {"prop_id": prop_id}
     if active_only:
         query["active"] = True
     total = db.stay_sessions.count_documents(query)
@@ -239,17 +246,22 @@ def list_stay_sessions(
 @staff_router.post("/sessions/cleanup-expired", response_model=CleanupSessionActionResponse)
 def cleanup_expired_stay_sessions(
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("reservations.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.manage")),
 ):
     """Deactivate stay sessions whose check-out date has already passed.
 
-    Payload: {"prop_id": 1}  (optional; if omitted, cleans all properties)
+    Migración E: prop_id por QUERY obligatorio (por-hotel; ya no limpia
+    todas las propiedades). Si el body trae prop_id debe coincidir.
     """
     db = get_database()
-    match: dict = {"active": True}
-    prop_id = payload.get("prop_id") if payload.get("prop_id") else None
-    if prop_id:
-        match["prop_id"] = prop_id
+    body_prop = payload.get("prop_id")
+    if body_prop is not None and int(body_prop) != query_prop_id:
+        raise HTTPException(
+            status_code=400, detail="prop_id del query y del body no coinciden"
+        )
+    prop_id = query_prop_id
+    match: dict = {"active": True, "prop_id": prop_id}
 
     from src.app.core.timezone import local_today
     today = local_today()
@@ -279,17 +291,20 @@ def cleanup_expired_stay_sessions(
 
 
 @staff_router.get("/sessions/{token}", response_model=StaySessionResponse)
-def get_stay_session(token: str, current_user: dict = Depends(require_permission("reservations.read"))):
+def get_stay_session(token: str, query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"), current_user: dict = Depends(require_prop_permission("reservations.read"))):
     db = get_database()
     session = db.stay_sessions.find_one({"token": token})
-    if not session:
+    if not session or session.get("prop_id") != query_prop_id:
         raise HTTPException(status_code=404, detail="Sesión no encontrada.")
     return StaySessionResponse.model_validate(serialize_session(session))
 
 
 @staff_router.post("/sessions/{token}/deactivate", response_model=ActionResponse)
-def deactivate_stay_session(token: str, current_user: dict = Depends(require_permission("reservations.manage"))):
+def deactivate_stay_session(token: str, query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"), current_user: dict = Depends(require_prop_permission("reservations.manage"))):
     db = get_database()
+    session = db.stay_sessions.find_one({"token": token}, {"prop_id": 1})
+    if not session or session.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada.")
     result = db.stay_sessions.update_one({"token": token}, {"$set": {"active": False, "deactivated_at": utc_now()}})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Sesión no encontrada.")
@@ -303,17 +318,15 @@ def deactivate_stay_session(token: str, current_user: dict = Depends(require_per
 
 @staff_router.get("/requests", response_model=ServiceRequestListResponse)
 def list_service_requests(
-    prop_id: int | None = Query(default=None, ge=1),
+    prop_id: int = Query(..., ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     room_id: str | None = Query(default=None, description="hotel_room_id FK filter"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     db = get_database()
-    query: dict = {}
-    if prop_id:
-        query["prop_id"] = prop_id
+    query: dict = {"prop_id": prop_id}
     if status_filter:
         query["status"] = status_filter
     if room_id:
@@ -348,14 +361,14 @@ def list_service_requests(
 
 @staff_router.get("/requests/analytics")
 def service_requests_analytics(
-    prop_id: int | None = Query(default=None, ge=1),
+    prop_id: int = Query(..., ge=1),
     request_type: str | None = Query(default=None),
     status: str | None = Query(default=None),
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("reports.requests.read")),
+    current_user: dict = Depends(require_prop_permission("reports.requests.read")),
 ):
     """Dashboard simple I1.1: solicitudes de servicio por estado y tipo (Mongo).
 
@@ -482,7 +495,8 @@ def service_requests_analytics(
 @staff_router.post("/requests", status_code=201, response_model=CreateRequestResponse)
 def staff_create_request(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("reservations.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.manage")),
 ):
     """Create a service request from the staff inbox on behalf of a guest."""
     booking_id = (payload.get("booking_id") or "").strip()
@@ -501,6 +515,10 @@ def staff_create_request(
     session = db.stay_sessions.find_one({"booking_id": booking_id, "active": True})
     if not session:
         raise HTTPException(status_code=400, detail="No hay sesión activa para esta reserva.")
+    # Cross-hotel (Migración E): la sesión (y su reserva) deben pertenecer al
+    # hotel pedido.
+    if session.get("prop_id") != query_prop_id:
+        raise HTTPException(status_code=404, detail="No hay sesión activa para esta reserva.")
 
     # ── DND enforcement: auto-deactivate when staff creates a request ──
     # Staff is responding to a direct guest request, so DND is no longer applicable.
@@ -565,8 +583,13 @@ def staff_create_request(
 def update_service_request(
     request_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
+    """Update a service request status.
+
+    Migración E: el request debe pertenecer al hotel pedido (404 cross-hotel).
+    """
     db = get_database()
     # Fetch the request before updating to get its current state
     try:
@@ -575,6 +598,9 @@ def update_service_request(
         raise HTTPException(status_code=400, detail="ID de solicitud inválido.")
     existing = db.stay_service_requests.find_one({"_id": oid})
     if not existing:
+        raise HTTPException(status_code=404, detail="Solicitud no encontrada.")
+    # Cross-hotel (Migración E): el request debe pertenecer al hotel pedido.
+    if existing.get("prop_id") != query_prop_id:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada.")
 
     new_status = (payload.get("status") or "").strip()
@@ -593,7 +619,8 @@ def update_service_request(
     if new_status == "completed" and request_type in ("extend_stay", "early_checkout"):
         try:
             from src.app.modules.instay.routes_impl._midstay_handler import (
-                process_extend_stay, process_early_checkout,
+                process_early_checkout,
+                process_extend_stay,
             )
             if request_type == "extend_stay":
                 if not new_check_out_date:
@@ -662,8 +689,8 @@ def update_service_request(
 
 @staff_router.get("/conversations", response_model=ConversationListResponse)
 def list_conversations(
-    prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    prop_id: int = Query(..., ge=1),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     db = get_database()
     match: dict = {}
@@ -681,10 +708,34 @@ def list_conversations(
     for c in conversations:
         c["last_time"] = _iso(c["last_time"])
     room_labels = [c["_id"] for c in conversations]
-    sessions = list(db.stay_sessions.find({"room_label": {"$in": room_labels}, "active": True}, {"room_label": 1, "guest_name": 1, "_id": 0}))
-    session_map = {s["room_label"]: s.get("guest_name", "") for s in sessions}
+    sessions = list(db.stay_sessions.find({"room_label": {"$in": room_labels}, "active": True}, {"room_label": 1, "guest_name": 1, "check_in": 1, "check_out": 1, "booking_id": 1, "_id": 0}))
+    session_map = {s["room_label"]: s for s in sessions}
     for c in conversations:
-        c["guest_name"] = session_map.get(c["_id"], "")
+        session = session_map.get(c["_id"], {})
+        c["guest_name"] = session.get("guest_name", "")
+        c["check_in"] = str(session.get("check_in", ""))
+        c["check_out"] = str(session.get("check_out", ""))
+        # Look up stay_status + stay dates from booking_orders. The portal
+        # session only exists while the stay is active; once the guest checks
+        # out the session disappears, but the inbox still needs the reservation
+        # dates to classify the chat as "active stay" vs "history" — NOT just
+        # stay_status, which can stay `pending` even after the reservation ended.
+        booking_id = session.get("booking_id") or c.get("booking_id", "")
+        if booking_id:
+            booking = db.booking_orders.find_one(
+                {"booking_id": booking_id},
+                {"_id": 0, "stay_status": 1, "check_in_date": 1, "check_out_date": 1, "guest_name": 1},
+            )
+            if booking:
+                c["stay_status"] = booking.get("stay_status", "")
+                if not c["check_in"]:
+                    c["check_in"] = str(booking.get("check_in_date", "") or "")
+                if not c["check_out"]:
+                    c["check_out"] = str(booking.get("check_out_date", "") or "")
+                if not c["guest_name"]:
+                    c["guest_name"] = str(booking.get("guest_name", "") or "")
+            else:
+                c["stay_status"] = ""
 
     # ── DND status per room ──
     room_labels = [c["_id"] for c in conversations]
@@ -708,12 +759,15 @@ def list_conversations(
             "unread": c.get("unread", 0),
             "guest_name": c.get("guest_name", ""),
             "dnd": c.get("dnd", False),
+            "check_in": c.get("check_in", ""),
+            "check_out": c.get("check_out", ""),
+            "stay_status": c.get("stay_status", ""),
         } for c in conversations],
     })
 
 
 @staff_router.get("/conversations/{room_label}", response_model=ChatMessageListResponse)
-def get_conversation_messages(room_label: str, prop_id: int | None = Query(default=None, ge=1), current_user: dict = Depends(require_permission("reservations.read"))):
+def get_conversation_messages(room_label: str, prop_id: int = Query(..., ge=1), current_user: dict = Depends(require_prop_permission("reservations.read"))):
     db = get_database()
     query: dict = {"room_label": room_label}
     if prop_id:
@@ -743,7 +797,7 @@ def get_conversation_messages(room_label: str, prop_id: int | None = Query(defau
 @staff_router.get("/notifications/stream")
 async def staff_notifications_stream(
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     """Server-Sent Events stream for real-time staff notifications.
 
@@ -784,13 +838,13 @@ async def staff_notifications_stream(
 
 
 @staff_router.post("/conversations/{room_label}/reply", response_model=ActionResponse)
-def staff_reply(room_label: str, payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.manage"))):
+def staff_reply(room_label: str, payload: dict = Body(...), query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"), current_user: dict = Depends(require_prop_permission("reservations.manage"))):
     message = (payload.get("message") or "").strip()
     if not message:
         raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío.")
     db = get_database()
     last_msg = db.stay_messages.find_one({"room_label": room_label}, sort=[("created_at", -1)])
-    if not last_msg:
+    if not last_msg or last_msg.get("prop_id") != query_prop_id:
         raise HTTPException(status_code=404, detail="No hay conversación activa para esta habitación.")
     doc = {
         "booking_id": last_msg.get("booking_id", ""), "prop_id": last_msg.get("prop_id", 0),
@@ -1174,4 +1228,6 @@ def guest_list_lost_items(token: str = Query(..., min_length=1)):
 #    `instay.routes` (as `instay/__init__.py` and `app/main.py` lifespan
 #    do). The canonical home stays in `routes_impl/_helpers.py` — this
 #    is just a re-export for module-level access. ───────────────────────────
-from src.app.modules.instay.routes_impl._helpers import ensure_stay_collections  # noqa: F401
+from src.app.modules.instay.routes_impl._helpers import (
+    ensure_stay_collections,  # noqa: F401
+)

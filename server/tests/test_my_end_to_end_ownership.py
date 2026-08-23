@@ -24,7 +24,12 @@ CLIENT_ROLE_PERMISSIONS = [
     "account.read",
     "account.update",
     "reservations.read",
-    "hr.read",
+    # El persona del test es huésped Y empleado (employees.user_id backlink):
+    # my-portal (auto-servicio del empleado) exige el código GRANULAR
+    # hr.portal.read — heredero del paraguas hr.read eliminado en la
+    # refactorización granular 2026-08. El rol cliente del seed canónico NO
+    # lo lleva (decisión documentada en GUEST_PERMISSION_CODES / ROLE_HR_GRANTS).
+    "hr.portal.read",
 ]
 
 
@@ -144,7 +149,7 @@ async def test_client_b_cannot_see_client_a_through_any_my_endpoint(client, db, 
     owner_portal = await client.get("/api/hr/my-portal")
     assert owner_portal.status_code == 200, owner_portal.text
     assert owner_portal.json()["employee_id"]
-    owner_session = await client.post("/api/stay/my-session", json={"booking_id": booking_id})
+    owner_session = await client.post("/api/stay/my-session", params={"prop_id": 999}, json={"booking_id": booking_id})
     assert owner_session.status_code == 200, owner_session.text
 
     # Switch the same browser session to client B before the negative checks.
@@ -187,6 +192,6 @@ async def test_client_b_cannot_see_client_a_through_any_my_endpoint(client, db, 
     assert portal.json()["employee_id"] == ""
 
     # 6. my-session: the authenticated guest cannot mint A's stay token.
-    session = await client.post("/api/stay/my-session", json={"booking_id": booking_id})
+    session = await client.post("/api/stay/my-session", params={"prop_id": 999}, json={"booking_id": booking_id})
     assert session.status_code == 403, session.text
     assert session.json()["detail"] == "No tienes acceso a esta reserva."

@@ -286,6 +286,9 @@ class ConversationResponse(BaseModel):
     unread: int = 0
     guest_name: str = ""
     dnd: bool = False
+    check_in: str = ""
+    check_out: str = ""
+    stay_status: str = ""
 
 
 class ConversationListResponse(BaseModel):

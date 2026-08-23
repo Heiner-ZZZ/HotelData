@@ -42,6 +42,24 @@
       </article>
     </section>
 
+    <div class="report-toolbar">
+      <div class="report-search">
+        <span class="material-symbols-outlined">search</span>
+        <input
+          type="text"
+          [ngModel]="searchTerm()"
+          (ngModelChange)="onSearchInput($event)"
+          placeholder="Filtrar por nombre, categoría o ID…"
+          aria-label="Filtrar productos del reporte"
+        />
+        @if (searchTerm()) {
+          <button type="button" class="clear-btn" (click)="onSearchInput('')" aria-label="Limpiar filtro">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        }
+      </div>
+    </div>
+
     <section class="data-section">
       <table class="data-table">
         <thead>
@@ -55,7 +73,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (item of data.items; track item.id) {
+          @for (item of filteredItems(); track item.id) {
             <tr>
               <td>
                 <span class="product-name">{{ item.name }}</span>
@@ -81,7 +99,16 @@
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="6" class="empty-row">Sin productos activos</td></tr>
+            @if (data.items.length > 0 && filteredItems().length === 0) {
+              <tr><td colspan="6">
+                <div class="no-results">
+                  <span class="material-symbols-outlined">filter_alt</span>
+                  <p>Ningún producto coincide con "{{ searchTerm() }}".</p>
+                </div>
+              </td></tr>
+            } @else {
+              <tr><td colspan="6" class="empty-row">Sin productos activos</td></tr>
+            }
           }
         </tbody>
       </table>

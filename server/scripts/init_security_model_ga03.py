@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.errors import OperationFailure
-
 
 SERVER_ROOT = Path(__file__).resolve().parents[1]
 if str(SERVER_ROOT) not in sys.path:
@@ -207,6 +206,40 @@ GUEST_PERMISSION_CODES = frozenset({
     "search.read",
 })
 
+# ── Platform-scoped codes (C 2026-08) — solo super admin / plataforma. ──
+# El editor de roles del hotel (``list_hotel_roles``) filtra estos códigos y
+# la API de hotel_permissions los rechaza (400): un gerente creando un rol de
+# empleado no debe ver ni otorgar ETL, gestión de usuarios/roles, auditoría,
+# settings, aprobación de hoteles ni la cartera estratégica.
+# KEEP IN SYNC: src/app/security/permissions.py (SYSTEM_SCOPE_CODES).
+SYSTEM_SCOPE_CODES = frozenset({
+    "users.manage", "users.create", "users.read", "users.update", "users.delete",
+    "roles.manage", "roles.create", "roles.read", "roles.update", "roles.delete",
+    "properties.approve",
+    "settings.manage", "settings.read",
+    "audit.manage", "audit.read",
+    "monitoring.manage", "monitoring.read",
+    "etl.manage", "etl.read", "etl.execute",
+    "reports.strategic.portfolio.read",
+})
+
+# ── Allow-lists de quién puede portar system/guest codes (C 2026-08) ──
+# Lógica dura: roles operativos de hotel NUNCA portan códigos de plataforma
+# ni de huésped. PLATFORM_ROLES pueden portar system; GUEST_ROLES pueden
+# portar guest. super_admin es la excepción implícita (bypass ``*.*``).
+# KEEP IN SYNC: src/app/security/permissions.py (PLATFORM_ROLES/GUEST_ROLES).
+PLATFORM_ROLES = frozenset({"admin_sistema", "operador_datos", "auditor_datos"})
+GUEST_ROLES = frozenset({"cliente"})
+
+
+def _permission_scope(code: str) -> str:
+    """Espejo del runtime: system/guest explícitos, hotel por defecto."""
+    if code in SYSTEM_SCOPE_CODES:
+        return "system"
+    if code in GUEST_PERMISSION_CODES:
+        return "guest"
+    return "hotel"
+
 # ── Role → embedded permissions (CRUD granular, stored directly on roles.permissions) ──
 ROLE_PERMISSION_CODES: dict[str, list[str]] = {
     "super_admin": [
@@ -257,14 +290,19 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
     ],
     "gerente_hotel": [
         "dashboard.read",
-        "hotels.manage", "properties.read", "rooms.read",
+        "hotels.manage", "properties.read",
+        # Operación del hotel (Fase 5 2026-08): el gerente configura SU hotel —
+        # rooms.manage/update, rates.manage/update y amenities.* alimentan los
+        # clones por-hotel (``$addToSet``); sin ellos los gates
+        # ``require_prop_permission`` devolverían 403 en su propio hotel.
+        "rooms.read", "rooms.manage", "rooms.update",
         "reservations.manage",
         "check-ins.manage",
         "check-ins.early_approve",
         "check-ins.no_show_reopen",
         "check-ins.late_checkout_approve",
         "check-outs.manage",
-        "revenue.read", "rates.read",
+        "revenue.read", "rates.read", "rates.manage", "rates.update",
         "inventory.read",
         "inventory.products.cost.read",
         "inventory.products.cost.manage",
@@ -274,7 +312,9 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "hr.portal.read", "hr.directory.read", "hr.directory.manage",
         "hr.onboarding.create", "hr.shifts.read", "hr.shifts.manage",
         "hotel.manage_roles",
-        "properties.approve",
+        # Decisión C 2026-08: properties.approve (cola de aprobación de
+        # hoteles) es de PLATAFORMA — un gerente no aprueba el ingreso de
+        # otros hoteles (conflicto competitivo). Solo admin_sistema/super_admin.
         "reviews.read",
         # Informes: táctico completo + estratégico + descarga (nivel gerencial)
         "reports.tactical.read", "reports.strategic.read", "reports.download",
@@ -286,6 +326,8 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "billing.read", "housekeeping.read",
         "billing.write_off.approve",
         "billing.verify",
+        # Amenities por-hotel (Fase 5 2026-08): catálogo + special-requests
+        "amenities.read", "amenities.manage",
     ],
     "revenue_manager": [
         "dashboard.read",
@@ -335,8 +377,10 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "billing.manage",
         "payments.manage",
         "charges.manage",
-        # Búsqueda de huéspedes para prefill rápido en recepción.
-        "users.read",
+        # Búsqueda de huéspedes para prefill rápido en recepción — cubierta
+        # por reservations.manage (gate de /api/management/users/search).
+        # Decisión C 2026-08: users.read (lista GLOBAL de usuarios) es de
+        # plataforma y sale del rol de recepción.
         "shifts.read",
         "shifts.create",
         "shifts.update",
@@ -385,7 +429,7 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def get_database():
@@ -451,6 +495,7 @@ def upsert_permissions(permissions: Collection) -> dict[str, Any]:
                 "$set": {
                     "permission_code": permission_code,
                     "description": description,
+                    "scope": _permission_scope(permission_code),
                     "is_system": True,
                     "updated_at": utc_now(),
                 },

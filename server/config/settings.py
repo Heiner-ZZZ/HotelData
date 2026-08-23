@@ -62,6 +62,12 @@ class Settings:
     # primera factura y gracia de impago antes de suspender el hotel.
     subscription_initial_grace_days: int
     subscription_suspension_grace_days: int
+    # Geocodificación Nominatim (OpenStreetMap) para lat/lng real por hotel.
+    # Nominatim es gratis pero exige User-Agent identificable, ≤1 req/s y
+    # cachear resultados (la capa geocoding cumple las tres).
+    nominatim_user_agent: str
+    nominatim_base_url: str
+    nominatim_timeout: float
 
 
 def _csv_env(name: str, default: str) -> tuple[str, ...]:
@@ -149,4 +155,7 @@ def get_settings() -> Settings:
         ),
         subscription_initial_grace_days=int(os.getenv("SUBSCRIPTION_INITIAL_GRACE_DAYS", "7")),
         subscription_suspension_grace_days=int(os.getenv("SUBSCRIPTION_SUSPENSION_GRACE_DAYS", "7")),
+        nominatim_user_agent=os.getenv("NOMINATIM_USER_AGENT", "HotelData/1.0 (contacto@hoteldata.local)"),
+        nominatim_base_url=os.getenv("NOMINATIM_BASE_URL", "https://nominatim.openstreetmap.org"),
+        nominatim_timeout=float(os.getenv("NOMINATIM_TIMEOUT", "5.0")),
     )

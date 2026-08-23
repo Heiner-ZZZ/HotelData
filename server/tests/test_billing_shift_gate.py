@@ -90,7 +90,7 @@ async def test_http_card_payment_requires_active_shift(client, admin_user, db):
 
     await _login(client, admin_user)
     response = await client.post(
-        "/api/billing/payments",
+        "/api/billing/payments?prop_id=930",
         json={"booking_id": booking_id, "amount": 50.0, "method": "credit_card"},
     )
 
@@ -105,7 +105,7 @@ async def test_http_card_payment_with_shift_stamps_shift_and_employee(client, ad
 
     await _login(client, admin_user)
     response = await client.post(
-        "/api/billing/payments",
+        "/api/billing/payments?prop_id=930",
         json={"booking_id": booking_id, "amount": 50.0, "method": "credit_card"},
     )
 
@@ -204,7 +204,7 @@ async def test_http_settle_card_requires_active_shift(client, admin_user, db):
 
     await _login(client, admin_user)
     response = await client.post(
-        f"/api/billing/folios/{booking_id}/settle",
+        f"/api/billing/folios/{booking_id}/settle?prop_id=930",
         json={"settlement_type": "payment", "amount": 100.0, "method": "card", "idempotency_key": "gate-settle-1"},
     )
 
@@ -220,7 +220,7 @@ async def test_http_settle_card_with_shift_succeeds(client, admin_user, db):
 
     await _login(client, admin_user)
     response = await client.post(
-        f"/api/billing/folios/{booking_id}/settle",
+        f"/api/billing/folios/{booking_id}/settle?prop_id=930",
         json={"settlement_type": "payment", "amount": 100.0, "method": "card", "idempotency_key": "gate-settle-2"},
     )
 
@@ -238,7 +238,7 @@ async def test_http_folio_post_requires_active_shift(client, admin_user, db):
 
     await _login(client, admin_user)
     response = await client.post(
-        f"/api/billing/folios/{booking_id}/post",
+        f"/api/billing/folios/{booking_id}/post?prop_id=930",
         json={"posting_type": "charge", "category": "Minibar", "concept": "Coca Cola", "amount": 5.0},
     )
 
@@ -254,7 +254,7 @@ async def test_http_folio_post_with_shift_stamps_posting(client, admin_user, db)
 
     await _login(client, admin_user)
     response = await client.post(
-        f"/api/billing/folios/{booking_id}/post",
+        f"/api/billing/folios/{booking_id}/post?prop_id=930",
         json={"posting_type": "charge", "category": "Minibar", "concept": "Coca Cola", "amount": 5.0},
     )
 
@@ -274,7 +274,7 @@ async def test_http_manual_invoice_issuance_requires_active_shift(client, admin_
 
     await _login(client, admin_user)
     response = await client.post(
-        "/api/billing/invoices",
+        "/api/billing/invoices?prop_id=931",
         json={"booking_id": booking_id, "subtotal": 100.0, "taxes": 10.0},
     )
 
@@ -290,7 +290,7 @@ async def test_http_manual_invoice_issuance_with_shift_succeeds(client, admin_us
 
     await _login(client, admin_user)
     response = await client.post(
-        "/api/billing/invoices",
+        "/api/billing/invoices?prop_id=931",
         json={"booking_id": booking_id, "subtotal": 100.0, "taxes": 10.0},
     )
 
@@ -307,7 +307,7 @@ async def test_http_manual_invoice_issuance_stamps_shift_on_doc(client, admin_us
 
     await _login(client, admin_user)
     response = await client.post(
-        "/api/billing/invoices",
+        "/api/billing/invoices?prop_id=935",
         json={"booking_id": booking_id, "subtotal": 100.0, "taxes": 10.0},
     )
 

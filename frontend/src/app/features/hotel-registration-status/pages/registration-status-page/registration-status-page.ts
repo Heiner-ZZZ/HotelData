@@ -21,6 +21,7 @@ import { fromEvent, interval } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { toast } from '../../../../core/toast/toast.service';
+import { LocationPickerComponent } from '../../../map/components/location-picker/location-picker';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
@@ -61,7 +62,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 @Component({
   selector: 'app-registration-status-page',
-  imports: [ReactiveFormsModule, RouterLink, LoadingStateComponent, ErrorStateComponent],
+  imports: [ReactiveFormsModule, RouterLink, LoadingStateComponent, ErrorStateComponent, LocationPickerComponent],
   templateUrl: './registration-status-page.html',
   styleUrl: './registration-status-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -198,7 +199,15 @@ export class RegistrationStatusPageComponent {
     city: ['', [Validators.required, Validators.minLength(2)]],
     total_rooms: [1, [Validators.required, Validators.min(1), Validators.max(10000)]],
     description: ['', [Validators.maxLength(500)]],
+    // Geolocalización (Nivel 2): dirección opcional + lat/lng reales del mapa.
+    address: ['', [Validators.maxLength(200)]],
+    latitude: [null as number | null],
+    longitude: [null as number | null],
   });
+
+  /** Coords elegidas en el mapa (retroalimentan el LocationPicker). */
+  readonly pickedLat = signal<number | null>(null);
+  readonly pickedLng = signal<number | null>(null);
 
   openEdit(): void {
     const property = this.status()?.property;
@@ -210,7 +219,12 @@ export class RegistrationStatusPageComponent {
         city: property.city,
         total_rooms: property.totalRooms,
         description: '',
+        address: property.address ?? '',
+        latitude: property.latitude ?? null,
+        longitude: property.longitude ?? null,
       });
+      this.pickedLat.set(property.latitude ?? null);
+      this.pickedLng.set(property.longitude ?? null);
     }
     this.editError.set('');
     this.editOpen.set(true);
@@ -218,6 +232,16 @@ export class RegistrationStatusPageComponent {
 
   closeEdit(): void {
     this.editOpen.set(false);
+  }
+
+  /** El mapa devuelve coordenadas reales elegidas por el dueño. */
+  onLocationChange(coords: { latitude: number; longitude: number }): void {
+    this.pickedLat.set(coords.latitude);
+    this.pickedLng.set(coords.longitude);
+    this.editForm.patchValue({
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+    });
   }
 
   submitEdit(): void {
@@ -236,6 +260,9 @@ export class RegistrationStatusPageComponent {
         city: raw.city,
         total_rooms: raw.total_rooms,
         description: raw.description,
+        address: raw.address || undefined,
+        latitude: raw.latitude ?? undefined,
+        longitude: raw.longitude ?? undefined,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

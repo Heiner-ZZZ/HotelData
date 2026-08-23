@@ -1,8 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
+
+import { MpCsvUploadBoxComponent } from './partials/mp-csv-upload-box';
 
 import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -149,5 +152,20 @@ describe('MonitoringPageComponent — modo CRUD del nav (execute ETL)', () => {
 
     expect(ctx.mode.mode()).toBe('execute');
     expect(ctx.mode.detail()).toBe('Pipeline GA03');
+  });
+
+  it('recibe el archivo desde la caja de subida (wiring fileSelected)', async () => {
+    const ctx = setup();
+    await seed(ctx, makeConsolidated(false));
+
+    ctx.fixture.detectChanges();
+    const box = ctx.fixture.debugElement.query(By.directive(MpCsvUploadBoxComponent));
+    expect(box).not.toBeNull();
+
+    const file = new File(['a,b\n1,2'], 'reservas_ga03.csv', { type: 'text/csv' });
+    box.componentInstance.fileSelected.emit(file);
+    ctx.fixture.detectChanges();
+
+    expect(ctx.component.selectedFile()).toBe(file);
   });
 });

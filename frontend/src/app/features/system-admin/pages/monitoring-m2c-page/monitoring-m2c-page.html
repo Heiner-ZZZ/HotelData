@@ -168,62 +168,14 @@
           }
         </section>
 
-        <!-- Progreso y control -->
-        <section class="surface-card accordion-section">
-          <div class="accordion-header" (click)="toggleSection('progress')">
-            <div>
-              <h2>ETL pipeline progress</h2>
-              <p>{{ vm.progress.message }} ({{ vm.progress.percent }}%)</p>
-            </div>
-            <span class="accordion-chevron">{{ openSection() === 'progress' ? '▼' : '▶' }}</span>
-          </div>
-          @if (openSection() === 'progress') {
-            <div class="accordion-body">
-              <div class="progress-bar">
-                <div class="progress-fill" [style.width.%]="vm.progress.percent"></div>
-              </div>
-              <div class="progress-meta">
-                <span>{{ vm.progress.percent }}% — {{ vm.progress.elapsed_ms }} ms</span>
-                <app-status-badge
-                  [tone]="statusTone(vm.progress.status)"
-                  [label]="vm.progress.status"
-                />
-              </div>
-
-              <div class="step-list">
-                @for (key of stepOrder; track key) {
-                  @if (vm.progress.sections[key]; as section) {
-                    <div class="step-item">
-                      @if (section.complete) {
-                        <span class="material-symbols-outlined step-done">check_circle</span>
-                      } @else {
-                        <span class="material-symbols-outlined step-pending">radio_button_unchecked</span>
-                      }
-                      <span>{{ section.label }}</span>
-                      <small>{{ section.complete ? 'completed' : 'pending' }}</small>
-                    </div>
-                  }
-                }
-              </div>
-
-              <div class="action-row">
-                <button
-                  type="button"
-                  class="action-btn"
-                  (click)="triggerRun()"
-                  [disabled]="actionBusy() || vm.progress.is_running"
-                >
-                  Run pipeline
-                </button>
-                @if (vm.progress.is_running) {
-                  <button type="button" class="action-btn stop-btn" (click)="triggerStop()" [disabled]="actionBusy()">
-                    Stop
-                  </button>
-                }
-              </div>
-            </div>
-          }
-        </section>
+        <!-- Progreso y control — caja OnPush aislada: KPIs y pasos del pipeline
+             se re-renderizan solo dentro de esta caja cuando llega el polling. -->
+        <app-m2c-progress-box
+          [progress]="vm.progress"
+          [actionBusy]="actionBusy()"
+          (run)="triggerRun()"
+          (stop)="triggerStop()"
+        />
 
         <!-- Última ejecución -->
         @if (vm.execution.exists) {

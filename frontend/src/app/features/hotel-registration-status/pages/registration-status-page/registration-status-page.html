@@ -311,6 +311,29 @@
                 </label>
 
                 <label class="edit-field">
+                  <span class="edit-label">Dirección <span class="optional">(opcional)</span></span>
+                  <input
+                    type="text"
+                    formControlName="address"
+                    placeholder="ej: Av. Amazonas N37-61"
+                    autocomplete="street-address"
+                    maxlength="200"
+                  >
+                </label>
+
+                <div class="edit-field edit-field--full edit-field--map">
+                  <span class="edit-label">
+                    Ubicación en el mapa
+                    <span class="optional">(opcional · define el radio de 5 km)</span>
+                  </span>
+                  <app-location-picker
+                    [lat]="pickedLat()"
+                    [lng]="pickedLng()"
+                    (locationChange)="onLocationChange($event)"
+                  ></app-location-picker>
+                </div>
+
+                <label class="edit-field">
                   <span class="edit-label">Teléfono de contacto</span>
                   <input type="tel" formControlName="contact_phone" placeholder="ej: +51987654321" autocomplete="tel">
                   @if (editForm.controls.contact_phone.touched && editForm.controls.contact_phone.invalid) {

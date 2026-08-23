@@ -129,6 +129,8 @@ describe('FolioDetailPageComponent', () => {
           provide: ActivatedRoute,
           useValue: {
             paramMap: of(convertToParamMap({ bookingId: 'BK-FOLIO' })),
+            queryParamMap: of(convertToParamMap({ prop_id: '1', prop_label: 'Hotel Lima Centro' })),
+            snapshot: { queryParamMap: convertToParamMap({ prop_id: '1', prop_label: 'Hotel Lima Centro' }) },
           },
         },
       ],
@@ -150,7 +152,7 @@ describe('FolioDetailPageComponent', () => {
     dto: unknown = folioDto,
     categories: unknown[] = categoriesResponse,
   ) {
-    ctx.http.expectOne('/api/billing/folios/BK-FOLIO').flush(dto);
+    ctx.http.expectOne('/api/billing/folios/BK-FOLIO?prop_id=1').flush(dto);
     ctx.http.expectOne('/api/billing/folios/categories').flush(categories);
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     ctx.fixture.detectChanges();
@@ -257,14 +259,15 @@ describe('FolioDetailPageComponent', () => {
     expect(button).not.toBeNull();
 
     button?.click();
-    const request = ctx.http.expectOne('/billing/invoices/complement');
+    const request = ctx.http.expectOne('/billing/invoices/complement?prop_id=1');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ booking_id: 'BK-FOLIO', prop_id: 1 });
+    expect(request.request.body).toEqual({ booking_id: 'BK-FOLIO' });
+    expect(request.request.params.get('prop_id')).toBe('1');
     request.flush({ id: 'invoice-2', invoice_number: 'INV-002', status: 'issued', total: 58 });
     ctx.fixture.detectChanges();
 
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    const reload = ctx.http.expectOne('/api/billing/folios/BK-FOLIO');
+    const reload = ctx.http.expectOne('/api/billing/folios/BK-FOLIO?prop_id=1');
     reload.flush({
       ...folioDto,
       has_invoice: true,

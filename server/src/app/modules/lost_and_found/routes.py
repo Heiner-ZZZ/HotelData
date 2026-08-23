@@ -13,7 +13,8 @@ from src.app.modules.lost_and_found.service import (
     module_status,
     update_lost_item,
 )
-from src.app.security.dependencies import require_any_permission, require_permission
+from src.app.security.dependencies import require_any_prop_permission
+from src.database.connection import get_database
 
 router = APIRouter(prefix="/modules/lost-and-found", tags=["modules-lost-and-found"])
 api_router = APIRouter(prefix="/api/lost-and-found", tags=["lost-and-found-api"])
@@ -24,12 +25,37 @@ def lost_and_found_module_status() -> ModuleStatus:
     return module_status()
 
 
+def _require_item_same_hotel(db, item_id: str, prop_id: int | None) -> None:
+    """404 (no 403) si el item pertenece a otro hotel — deny cross-hotel."""
+    from bson import ObjectId
+    from bson.errors import InvalidId
+    try:
+        query = {"_id": ObjectId(item_id)}
+    except InvalidId:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+    doc = db.lost_and_found.find_one(query, {"prop_id": 1})
+    if doc is None or doc.get("prop_id") != prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+
+
+def _check_body_prop_id(query_prop_id: int | None, payload) -> None:
+    """Consistencia gate(query) ↔ body: el prop_id del query es autoritativo."""
+    try:
+        body_prop_id = int(str(payload.prop_id or 0))
+    except (AttributeError, TypeError, ValueError):
+        body_prop_id = 0
+    if query_prop_id is not None and body_prop_id != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
+
+
 @api_router.post("", status_code=status.HTTP_201_CREATED)
 def create_lost_item_api(
     payload: LostItemCreate = Body(...),
-    current_user: dict = Depends(require_any_permission("lost-found.create", "housekeeping.create")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("lost-found.create", "housekeeping.create")),
 ):
     """Register a new lost & found item."""
+    _check_body_prop_id(query_prop_id, payload)
     result = create_lost_item(payload)
     # Push SSE event for staff in the same property
     _push_lost_found_event(
@@ -49,7 +75,7 @@ def list_lost_items_api(
     search: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_any_permission("lost-found.read", "housekeeping.read")),
+    current_user: dict = Depends(require_any_prop_permission("lost-found.read", "housekeeping.read")),
 ):
     """List lost & found items with optional filters."""
     return list_lost_items(
@@ -65,9 +91,11 @@ def list_lost_items_api(
 @api_router.get("/{item_id}")
 def get_lost_item_api(
     item_id: str,
-    current_user: dict = Depends(require_any_permission("lost-found.read", "housekeeping.read")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("lost-found.read", "housekeeping.read")),
 ):
     """Get a single lost & found item."""
+    _require_item_same_hotel(get_database(), item_id, query_prop_id)
     result = get_lost_item(item_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
@@ -78,9 +106,11 @@ def get_lost_item_api(
 def update_lost_item_api(
     item_id: str,
     payload: LostItemUpdate = Body(...),
-    current_user: dict = Depends(require_any_permission("lost-found.update", "housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("lost-found.update", "housekeeping.update")),
 ):
     """Update a lost & found item."""
+    _require_item_same_hotel(get_database(), item_id, query_prop_id)
     result = update_lost_item(item_id, payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
@@ -90,9 +120,11 @@ def update_lost_item_api(
 @api_router.delete("/{item_id}")
 def delete_lost_item_api(
     item_id: str,
-    current_user: dict = Depends(require_any_permission("lost-found.delete", "housekeeping.delete")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("lost-found.delete", "housekeeping.delete")),
 ):
     """Permanently delete a lost & found item."""
+    _require_item_same_hotel(get_database(), item_id, query_prop_id)
     result = delete_lost_item(item_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
@@ -103,9 +135,11 @@ def delete_lost_item_api(
 def claim_lost_item_api(
     item_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_any_permission("lost-found.update", "housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("lost-found.update", "housekeeping.update")),
 ):
     """Mark a lost item as returned to the guest."""
+    _require_item_same_hotel(get_database(), item_id, query_prop_id)
     result = claim_lost_item(
         item_id,
         returned_to=str(payload.get("returned_to", "")),
@@ -127,9 +161,11 @@ def claim_lost_item_api(
 def dispose_lost_item_api(
     item_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_any_permission("lost-found.update", "housekeeping.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_any_prop_permission("lost-found.update", "housekeeping.update")),
 ):
     """Mark a lost item as disposed (donated, thrown away, etc.)."""
+    _require_item_same_hotel(get_database(), item_id, query_prop_id)
     result = dispose_lost_item(
         item_id,
         notes=str(payload.get("notes", "")),

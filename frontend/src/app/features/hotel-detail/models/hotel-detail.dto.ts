@@ -133,3 +133,28 @@ export interface HotelOffersDto {
   hotel_name: string;
   items: HotelOfferDto[];
 }
+
+export interface RoomAvailabilityDayDto {
+  date: string;
+  is_available: boolean;
+  available_rooms: number;
+  min_rate: number | null;
+  min_rate_label: string | null;
+}
+
+export interface RoomAvailabilityDto {
+  room_type_id: string;
+  name: string;
+  is_active: boolean;
+  base_capacity: number | null;
+  max_adults: number | null;
+  max_children: number | null;
+  availability: RoomAvailabilityDayDto[];
+}
+
+export interface RoomAvailabilitySnapshotDto {
+  prop_id: number;
+  start_date: string;
+  end_date: string;
+  rooms: RoomAvailabilityDto[];
+}

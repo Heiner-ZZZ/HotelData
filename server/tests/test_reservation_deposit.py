@@ -133,7 +133,7 @@ async def _create_reservation(client, prop_id: int, **extra) -> object:
         "check_out_time": "12:00",
     }
     payload.update(extra)
-    return await client.post("/api/reservations", json=payload)
+    return await client.post(f"/api/reservations?prop_id={prop_id}", json=payload)
 
 
 @pytest.mark.asyncio

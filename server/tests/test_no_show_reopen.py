@@ -182,9 +182,26 @@ def _seed_receptionist(db) -> dict[str, str]:
             "password_hash": _pwd.hash(password),
             "primary_role": "recepcionista",
             "role_ids": [role_id],
+            "assigned_hotels": [991],
             "is_active": True,
             "created_at": datetime.now(UTC),
         }
+    )
+    # Migración E: asignación por-hotel para que el gate prop pase y la
+    # negación venga de la autorización gerencial (no_show_reopen).
+    user = db.users.find_one({"username": "recepcionista_reopen_test"})
+    hotel_role_id = db.hotel_roles.insert_one(
+        {
+            "prop_id": 991,
+            "name": "recepcionista",
+            "display_name": "Recepcionista",
+            "permissions": ["check-ins.manage"],
+            "is_active": True,
+            "created_at": datetime.now(UTC),
+        }
+    ).inserted_id
+    db.role_assignments.insert_one(
+        {"user_id": user["_id"], "role_id": hotel_role_id, "prop_id": 991}
     )
     return {"username": "recepcionista_reopen_test", "password": password}
 
@@ -196,7 +213,7 @@ def _seed_receptionist(db) -> dict[str, str]:
 async def test_reopen_requires_auth(client, db) -> None:
     _seed_booking(db)
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-1/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-1/reopen-no-show?prop_id=991",
         json={"reason": "El huésped llegó después del cierre del no-show"},
     )
     assert response.status_code in (303, 401, 403)
@@ -212,7 +229,7 @@ async def test_receptionist_cannot_reopen(client, db) -> None:
     assert await login(client, credentials["username"], credentials["password"]) == 200
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-1/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-1/reopen-no-show?prop_id=991",
         json={"reason": "Intento de recepción sin autorización gerencial"},
     )
 
@@ -226,7 +243,7 @@ async def test_receptionist_cannot_reopen(client, db) -> None:
 async def test_reopen_returns_404_for_unknown_booking(client, admin_user) -> None:
     await login(client, admin_user["username"], admin_user["password"])
     response = await client.post(
-        "/api/management/bookings/BK-NOPE/reopen-no-show",
+        "/api/management/bookings/BK-NOPE/reopen-no-show?prop_id=991",
         json={"reason": "Cualquier motivo"},
     )
     assert response.status_code == 404
@@ -238,7 +255,7 @@ async def test_reopen_rejects_booking_not_marked_no_show(client, admin_user, db)
     _seed_booking(db, stay_status="pending")
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-1/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-1/reopen-no-show?prop_id=991",
         json={"reason": "No debería reabrir una reserva pending"},
     )
 
@@ -254,7 +271,7 @@ async def test_reopen_requires_reason(client, admin_user, db) -> None:
     _seed_booking(db)
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-1/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-1/reopen-no-show?prop_id=991",
         json={"reason": "   "},
     )
 
@@ -272,7 +289,7 @@ async def test_reopen_success_restores_pending_and_removes_penalty_folio(client,
     _seed_folio(db)
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-1/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-1/reopen-no-show?prop_id=991",
         json={"reason": "El huésped llegó a las 02:00 tras el cierre; gerente autorizó la reapertura"},
     )
 
@@ -313,7 +330,7 @@ async def test_reopen_reverses_penalty_when_folio_has_payments(client, admin_use
     _seed_folio(db, with_payment=True)
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-1/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-1/reopen-no-show?prop_id=991",
         json={"reason": "El huésped llegó al día siguiente; el pago de la penalización se gestiona en Facturación"},
     )
 
@@ -354,7 +371,7 @@ async def test_reopen_without_folio_still_succeeds(client, admin_user, db) -> No
     _seed_booking(db)
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-1/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-1/reopen-no-show?prop_id=991",
         json={"reason": "El huésped llegó después del cierre; no había folio de penalización"},
     )
 
@@ -382,7 +399,7 @@ async def test_reopen_broadcasts_no_show_reopen_to_team(client, admin_user, db) 
     _seed_booking(db, "BK-REOPEN-NS", is_test=False)
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-NS/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-NS/reopen-no-show?prop_id=991",
         json={"reason": "El huésped avisó que llega tarde; el gerente reabre la estancia"},
     )
 
@@ -419,7 +436,7 @@ async def test_reopen_does_not_broadcast_for_test_booking(client, admin_user, db
     _seed_booking(db, "BK-REOPEN-TEST", is_test=True)
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-TEST/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-TEST/reopen-no-show?prop_id=991",
         json={"reason": "Reserva de prueba reabierta"},
     )
 
@@ -481,7 +498,7 @@ async def test_reopen_rededucts_inventory(client, admin_user, db) -> None:
     _seed_inventory(db, room_type_id="RT-DBL")
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-INV/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-INV/reopen-no-show?prop_id=991",
         json={"reason": "El huésped llegó después del cierre; el gerente reabre la estancia"},
     )
 
@@ -518,7 +535,7 @@ async def test_reopen_fails_when_inventory_insufficient(client, admin_user, db) 
     )
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-NOINV/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-NOINV/reopen-no-show?prop_id=991",
         json={"reason": "Prueba de inventario insuficiente"},
     )
 
@@ -543,7 +560,7 @@ async def test_reopen_fails_when_calendar_rows_missing(client, admin_user, db) -
     _seed_inventory(db, room_type_id="RT-DBL", nights=2)  # la 3ª noche no existe
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-MISSING/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-MISSING/reopen-no-show?prop_id=991",
         json={"reason": "Sin filas de calendario"},
     )
 
@@ -656,7 +673,7 @@ async def test_reopen_allowed_for_yesterday_checkin_with_active_stay(client, adm
     _seed_booking(db, "BK-REOPEN-YEST", check_in_date=_days_from_today(-1), check_out_date=_days_from_today(2))
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-YEST/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-YEST/reopen-no-show?prop_id=991",
         json={"reason": "El huésped llegó esta mañana; la estadía sigue vigente"},
     )
 
@@ -673,7 +690,7 @@ async def test_reopen_blocked_when_checkin_more_than_one_day_late(client, admin_
     _seed_booking(db, "BK-REOPEN-2D", check_in_date=_days_from_today(-2), check_out_date=_days_from_today(1))
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-2D/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-2D/reopen-no-show?prop_id=991",
         json={"reason": "El huésped llegó con dos días de retraso"},
     )
 
@@ -696,7 +713,7 @@ async def test_reopen_blocked_when_stay_ended(client, admin_user, db) -> None:
     _seed_booking(db, "BK-REOPEN-END", check_in_date=_days_from_today(-1), check_out_date=_days_from_today(-1))
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-END/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-END/reopen-no-show?prop_id=991",
         json={"reason": "El huésped llegó tarde pero igual quería alojarse"},
     )
 
@@ -717,7 +734,7 @@ async def test_reopen_blocked_message_guides_to_new_reservation(client, admin_us
     _seed_booking(db, "BK-REOPEN-FAR", check_in_date=_days_from_today(-5), check_out_date=_days_from_today(-3))
 
     response = await client.post(
-        "/api/management/bookings/BK-REOPEN-FAR/reopen-no-show",
+        "/api/management/bookings/BK-REOPEN-FAR/reopen-no-show?prop_id=991",
         json={"reason": "Caso muy antiguo"},
     )
 

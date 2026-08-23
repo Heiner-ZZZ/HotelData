@@ -39,6 +39,9 @@ function mapProperty(dto: RegistrationStatusDto['property']): RegistrationProper
     totalRooms: dto.total_rooms,
     currency: dto.currency,
     contactPhone: dto.contact_phone,
+    address: dto.address ?? '',
+    latitude: dto.latitude ?? null,
+    longitude: dto.longitude ?? null,
   };
 }
 

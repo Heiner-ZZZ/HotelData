@@ -141,7 +141,7 @@ class TestCloseFolioInvoiceIdObjectIdFk:
         _seed_folio(db, booking_id, status="open")
 
         resp = await client.post(
-            f"/api/billing/folios/{booking_id}/close",
+            f"/api/billing/folios/{booking_id}/close?prop_id=1",
             json={
                 "invoice_id": str(inv_id),
                 "close_reason": "approved_external_settlement: test",

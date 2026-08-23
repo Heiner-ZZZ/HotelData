@@ -1,0 +1,45 @@
+<!-- Caja "Última ejecución" — OnPush aislado: su acordeón es estado local. -->
+@if (execution(); as exec) {
+  <section class="surface-card accordion-section">
+    <div class="accordion-header" (click)="toggleOpen()">
+      <div>
+        <h2>Última ejecución</h2>
+        <p>Resumen de la corrida ETL más reciente.</p>
+      </div>
+      <span class="accordion-chevron">{{ open() ? '▼' : '▶' }}</span>
+    </div>
+    @if (open()) {
+      <div class="accordion-body">
+        <div class="exec-grid">
+          <div class="exec-item">
+            <span class="label">ID</span>
+            <strong>{{ exec.executionId }}</strong>
+          </div>
+          <div class="exec-item">
+            <span class="label">Estado</span>
+            <app-status-badge
+              [tone]="statusTone(exec.status)"
+              [label]="exec.status"
+            />
+          </div>
+          <div class="exec-item">
+            <span class="label">Ejecutado</span>
+            <strong>{{ exec.executedAt }}</strong>
+          </div>
+          <div class="exec-item">
+            <span class="label">Registros válidos</span>
+            <strong>{{ exec.validRecords }}</strong>
+          </div>
+          <div class="exec-item">
+            <span class="label">Rechazados</span>
+            <strong>{{ exec.rejectedRecords }}</strong>
+          </div>
+          <div class="exec-item">
+            <span class="label">Filas fuente</span>
+            <strong>{{ exec.sourceRows }}</strong>
+          </div>
+        </div>
+      </div>
+    }
+  </section>
+}

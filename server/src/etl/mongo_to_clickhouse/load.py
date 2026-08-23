@@ -103,7 +103,8 @@ TABLES_DDL: dict[str, tuple[str, str]] = {
         "month Date, prop_id UInt32, hotel_label LowCardinality(String), currency LowCardinality(String), "
         "bookings UInt32, rooms_sold UInt32, room_nights UInt32, revenue Decimal(18, 2), "
         "discount_amount Decimal(18, 2), adults UInt32, children UInt32, cancelled_rooms UInt32, "
-        "total_rooms UInt32",
+        "total_rooms UInt32, city LowCardinality(String), "
+        "city_lat Nullable(Float64), city_lng Nullable(Float64)",
         "(month, prop_id, currency)",
     ),
     "strat_plan_monthly": (
@@ -161,10 +162,23 @@ LABEL_COLUMNS: dict[str, tuple[tuple[str, str], ...]] = {
     "kpi_housekeeping_daily": (("hotel_label", "LowCardinality(String)"),),
     "kpi_invoice_daily": (("hotel_label", "LowCardinality(String)"),),
     "kpi_payment_daily": (("hotel_label", "LowCardinality(String)"),),
-    "strat_hotel_monthly": (("hotel_label", "LowCardinality(String)"),),
+    "strat_hotel_monthly": (("hotel_label", "LowCardinality(String)"), ("city", "LowCardinality(String)")),
     "strat_plan_monthly": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
     "strat_market_monthly": (("visitor_country_label", "LowCardinality(String)"), ("destination_label", "LowCardinality(String)")),
     "strat_reputation_monthly": (("hotel_label", "LowCardinality(String)"),),
+}
+
+
+# Columnas anulables añadidas por evolución de esquema (sin DEFAULT, igual que
+# el DDL base). Se agregan idempotentemente a tablas ya existentes vía
+# ``ALTER TABLE ... ADD COLUMN IF NOT EXISTS``, igual que ``LABEL_COLUMNS``
+# pero sin el ``DEFAULT ''`` (válido solo para String). IE-H02 las usa para las
+# coordenadas reales de ciudad (geo_catalog); ``None`` = sin dato, no fabricado.
+NULLABLE_COLUMNS: dict[str, tuple[tuple[str, str], ...]] = {
+    "strat_hotel_monthly": (
+        ("city_lat", "Nullable(Float64)"),
+        ("city_lng", "Nullable(Float64)"),
+    ),
 }
 
 
@@ -276,6 +290,11 @@ def create_tables(
             client.command(
                 f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS "
                 f"{column_name} {column_type} DEFAULT ''"
+            )
+        for column_name, column_type in NULLABLE_COLUMNS.get(table_name, ()):
+            client.command(
+                f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS "
+                f"{column_name} {column_type}"
             )
         if ttl_months and ttl_months > 0 and table_name not in TTL_EXEMPT_TABLES:
             client.command(

@@ -98,7 +98,7 @@ TABLE_COLUMNS: dict[str, list[str]] = {
     "strat_hotel_monthly": [
         "month", "prop_id", "hotel_label", "currency", "bookings", "rooms_sold",
         "room_nights", "revenue", "discount_amount", "adults", "children",
-        "cancelled_rooms", "total_rooms",
+        "cancelled_rooms", "total_rooms", "city", "city_lat", "city_lng",
     ],
     "strat_plan_monthly": [
         "month", "prop_id", "hotel_label", "room_type_id", "room_type_label", "currency",
@@ -302,6 +302,9 @@ def _strat_hotel_monthly(doc: dict[str, Any]) -> list[Any]:
         _as_int(doc.get("children")),
         _as_int(doc.get("cancelled_rooms")),
         _as_int(doc.get("total_rooms")),
+        _as_str(doc.get("city")),
+        _nullable_float(doc, "city_lat"),
+        _nullable_float(doc, "city_lng"),
     ]
 
 

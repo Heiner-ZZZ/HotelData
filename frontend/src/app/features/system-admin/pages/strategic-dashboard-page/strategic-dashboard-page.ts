@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
@@ -9,6 +9,7 @@ import { HorizontalSubNavComponent } from '../../../../shared/ui/horizontal-sub-
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { csvEscape } from '../../../../shared/utils/csv-export.util';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
@@ -26,6 +27,7 @@ import type {
   StrategicMarkets,
   StrategicPortfolio,
 } from '../../models/strategic-dashboard.model';
+import { CompetitiveMapComponent } from './components/competitive-map';
 import { QUADRANT_META } from '../../models/strategic-dashboard.model';
 import {
   mapStrategicHotel,
@@ -60,6 +62,7 @@ interface CsvSection {
     KpiChartComponent,
     PropertySelectorComponent,
     HorizontalSubNavComponent,
+    CompetitiveMapComponent,
   ],
   templateUrl: './strategic-dashboard-page.html',
   styleUrl: './strategic-dashboard-page.scss',
@@ -69,6 +72,7 @@ export class StrategicDashboardPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly propCtx = inject(PropertyContextService);
   private readonly toast = inject(ToastService);
 
   readonly horizons = HORIZONS;
@@ -133,6 +137,43 @@ export class StrategicDashboardPageComponent {
         takeUntilDestroyed(inject(DestroyRef)),
       )
       .subscribe(() => this.currentUrl.set(this.router.url));
+
+    // Sincroniza selectedLabel con ?prop_label de la URL o con el label del
+    // PropertyContext (para deep-links /management?prop_id=1 sin prop_label,
+    // o navegación vía sidebar que solo inyecta prop_id). Así el header y el
+    // export CSV muestran el nombre real (Hotel Lima Centro) en vez de Hotel #1.
+    // También asegura que la URL final contenga prop_label para bookmark/share.
+    effect(
+      () => {
+        const fromQuery = this.qp()?.get('prop_label');
+        if (fromQuery) {
+          if (this.selectedLabel() !== fromQuery) this.selectedLabel.set(fromQuery);
+          return;
+        }
+        const pid = this.selectedPropId();
+        if (!pid) return;
+        const fromCtx =
+          this.propCtx.currentPropLabel() ||
+          this.propCtx.assignedProperties().find((p) => p.propId === pid)?.label ||
+          '';
+        if (fromCtx && this.selectedLabel() !== fromCtx) this.selectedLabel.set(fromCtx);
+        // Si tenemos label pero la URL aún no lo tiene, inyectarlo para que el
+        // bookmark refleje ...?prop_id=1&prop_label=Hotel%20Lima%20Centro
+        if (fromCtx && !fromQuery && pid) {
+          const currentLabelInUrl = this.qp()?.get('prop_label');
+          if (!currentLabelInUrl) {
+            // replaceUrl para no crear entrada extra en el historial
+            void this.router.navigate([], {
+              relativeTo: this.activatedRoute,
+              queryParams: { prop_label: fromCtx },
+              queryParamsHandling: 'merge',
+              replaceUrl: true,
+            });
+          }
+        }
+      },
+      { allowSignalWrites: true },
+    );
   }
 
   readonly activeHorizon = computed<Horizon | null>(() => {
@@ -268,6 +309,23 @@ export class StrategicDashboardPageComponent {
   });
   readonly posicionamientoRows = computed(() => this.hotel()?.posicionamientoRows ?? []);
 
+  // ── Mapa competitivo (IE-H02) ──
+  readonly mapOpen = signal(false);
+
+  /** Label del hotel propio para el marcador del mapa. */
+  readonly ownHotelLabel = computed(
+    () => this.selectedLabel() || `Hotel #${this.hotel()?.propId ?? ''}`,
+  );
+
+  toggleMap(): void {
+    this.mapOpen.update((open) => !open);
+  }
+
+  /** El mapa solo tiene sentido con coordenadas propias (centro + radio). */
+  hasMapCoords(pos: { ownLat: number | null; ownLng: number | null }): boolean {
+    return pos.ownLat !== null && pos.ownLng !== null;
+  }
+
   /** KPIs del bloque IE-H02 (patrón Z): rating, ADR y respuesta del último mes. */
   readonly posicionamientoKpis = computed(() => {
     const h = this.hotel();
@@ -311,6 +369,56 @@ export class StrategicDashboardPageComponent {
             semaforo: (latest.respuesta >= 80 ? 'green' : 'yellow') as 'green' | 'yellow',
             detail: 'Último mes',
           }]
+        : []),
+      ...(pos.competitors > 0
+        ? [
+            {
+              id: 'pos_competidores',
+              label: 'Competidores',
+              value: pos.competitors,
+              unit: 'hoteles',
+              target: null,
+              pctChange: 0,
+              trend: 'flat' as const,
+              semaforo: 'yellow' as const,
+              detail: pos.city ? `Misma ciudad: ${pos.city}` : 'Misma ciudad',
+            },
+            {
+              id: 'pos_banda_p50',
+              label: 'Banda mediana',
+              value: pos.bandaPrecio?.p50 ?? 0,
+              unit: 'USD',
+              target: null,
+              pctChange: 0,
+              trend: 'flat' as const,
+              semaforo: 'yellow' as const,
+              detail: pos.bandaPrecio
+                ? `P25 ${pos.bandaPrecio.p25} · P75 ${pos.bandaPrecio.p75}`
+                : 'Sin banda',
+            },
+            {
+              id: 'pos_percentil_adr',
+              label: 'Percentil ADR',
+              value: pos.adrPercentile ?? 0,
+              unit: '%',
+              target: null,
+              pctChange: 0,
+              trend: trendOf(pos.adrPercentile ?? 0),
+              semaforo: 'yellow' as const,
+              detail: 'Posición frente a la competencia',
+            },
+            {
+              id: 'pos_precio_relativo',
+              label: 'Precio vs mediana',
+              value: pos.precioRelativoPct ?? 0,
+              unit: '%',
+              target: null,
+              pctChange: pos.precioRelativoPct ?? 0,
+              trend: trendOf(pos.precioRelativoPct ?? 0),
+              semaforo: 'yellow' as const,
+              detail: 'Sobre la mediana de la ciudad',
+            },
+          ]
         : []),
     ];
   });

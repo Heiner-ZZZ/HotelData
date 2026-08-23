@@ -470,6 +470,169 @@
   margin-top: 1.1rem;
 }
 
+/* ═══ Early Check-In Dialog — Room Availability ═══ */
+
+.ciw-early-dialog-rooms-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  margin-top: 0.85rem;
+  border-radius: 0.5rem;
+  background: var(--surface-raised);
+  color: var(--muted-text);
+  font-size: 0.78rem;
+}
+
+.ciw-early-dialog-rooms {
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--success) 20%, transparent);
+  background: color-mix(in srgb, var(--success) 3%, transparent);
+}
+
+.ciw-early-dialog-rooms.ciw-rooms-unavailable {
+  border-color: color-mix(in srgb, var(--danger) 20%, transparent);
+  background: color-mix(in srgb, var(--danger) 3%, transparent);
+}
+
+.ciw-early-dialog-rooms-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.ciw-early-dialog-rooms-header .material-symbols-outlined {
+  font-size: 1.1rem;
+  color: var(--success);
+}
+
+.ciw-rooms-unavailable .ciw-early-dialog-rooms-header .material-symbols-outlined {
+  color: var(--danger);
+}
+
+.ciw-early-dialog-rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ciw-early-dialog-room {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  font-size: 0.78rem;
+}
+
+.ciw-early-dialog-room.ciw-room-available {
+  border-color: color-mix(in srgb, var(--success) 15%, transparent);
+}
+
+.ciw-early-dialog-room.ciw-room-blocked {
+  border-color: color-mix(in srgb, var(--danger) 15%, transparent);
+}
+
+.ciw-early-dialog-room .ciw-room-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.ciw-early-dialog-room .ciw-room-available .ciw-room-icon {
+  color: var(--success);
+}
+
+.ciw-early-dialog-room .ciw-room-blocked .ciw-room-icon {
+  color: var(--danger);
+}
+
+.ciw-early-dialog-room .ciw-room-label {
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.ciw-early-dialog-room .ciw-room-status {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--room-status-color, var(--muted-text)) 8%, transparent);
+  color: var(--room-status-color, var(--muted-text));
+}
+
+.ciw-early-dialog-room .ciw-room-overlap,
+.ciw-early-dialog-room .ciw-room-tasks {
+  font-size: 0.68rem;
+  color: var(--danger);
+  margin-left: 0.25rem;
+}
+
+.ciw-early-dialog-room .ciw-room-tasks {
+  color: var(--warning);
+}
+
+.ciw-early-dialog-rooms-issues {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--danger) 15%, transparent);
+}
+
+.ciw-early-dialog-rooms-issues p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--danger);
+  line-height: 1.4;
+}
+
+.ciw-early-dialog-rooms-error {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  margin-top: 0.85rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--danger) 5%, transparent);
+  color: var(--danger);
+  font-size: 0.78rem;
+}
+
+.ciw-early-dialog-rooms-error .material-symbols-outlined {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.ciw-early-dialog-rooms-recommendation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.65rem !important;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.ciw-early-dialog-rooms-recommendation .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.ciw-early-dialog-rooms-action {
+  margin-top: 0.5rem;
+}
+
 /* ═══ Keys Required Block (complete step) ═══ */
 
 .ciw-keys-block {

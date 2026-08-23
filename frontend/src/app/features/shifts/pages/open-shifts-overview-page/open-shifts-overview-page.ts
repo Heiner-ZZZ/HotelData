@@ -262,6 +262,7 @@ export class OpenShiftsOverviewPageComponent {
       undefined,
       true,
       reason.trim() || 'vencimiento',
+      row.prop_id,
     ).subscribe({
       next: () => {
         this.closingId.set(null);

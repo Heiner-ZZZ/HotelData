@@ -216,3 +216,31 @@ export function getListRowCss(status: string | undefined | null): string | null 
   if (status === BOOKING_PENDING) return 'is-pending';
   return null;
 }
+
+// ── Bulk-action eligibility (reservations list selection column) ────────
+
+/**
+ * Can a reservations-list row participate in bulk actions (the selection
+ * checkboxes)? Only rows with an applicable bulk action are selectable:
+ *
+ * - `pending`   → confirmación masiva
+ * - `confirmed` → check-in masivo
+ *
+ * Everything else is excluded so the checkbox column never offers a
+ * dead-end selection: rejected/cancelled (terminales), checked_in /
+ * checked_out (fases operativas sin acción en lote todavía) y no_show
+ * (su flujo es individual: reabrir o rechazar desde el detalle).
+ *
+ * Convention: in hotel PMS (Opera, Cloudbeds, Mews) multi-select only
+ * appears on rows the bulk actions can act on.
+ */
+export function isBulkSelectable(
+  status: string | undefined | null,
+  stayStatus: string | undefined | null,
+): boolean {
+  if (status !== BOOKING_PENDING && status !== BOOKING_CONFIRMED) return false;
+  if (stayStatus === STAY_NO_SHOW || stayStatus === STAY_CHECKED_IN || stayStatus === STAY_CHECKED_OUT) {
+    return false;
+  }
+  return true;
+}

@@ -303,6 +303,10 @@ export interface HousekeepingDashboard {
 export class HousekeepingApiService {
   private readonly http = inject(HttpClient);
 
+  private _propParams(propId: number): HttpParams {
+    return new HttpParams().set('prop_id', String(propId));
+  }
+
   // ── Room Status ──
 
   getRoomStatus(propId?: number, status?: string, page = 1) {
@@ -313,13 +317,14 @@ export class HousekeepingApiService {
   }
 
   upsertRoomStatus(payload: { prop_id: number; room_type_id: string; room_label: string; status: string; note?: string }) {
-    return this.http.put<RoomStatusItem>('/housekeeping/room-status', payload);
+    return this.http.put<RoomStatusItem>('/housekeeping/room-status', payload, { params: this._propParams(payload.prop_id) });
   }
 
   bulkUpdateRoomStatus(propId: number, roomLabels: string[], status: string, note = '') {
     return this.http.post<{ ok: boolean; updated_count: number }>(
       '/housekeeping/room-status/bulk',
       { prop_id: propId, room_labels: roomLabels, status, note },
+      { params: this._propParams(propId) },
     );
   }
 
@@ -335,19 +340,19 @@ export class HousekeepingApiService {
   }
 
   createTask(payload: { prop_id: number; room_id: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string }) {
-    return this.http.post<HousekeepingTaskItem>('/housekeeping/tasks', payload);
+    return this.http.post<HousekeepingTaskItem>('/housekeeping/tasks', payload, { params: this._propParams(payload.prop_id) });
   }
 
   updateTask(taskId: string, payload: { prop_id: number; room_id: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string; status?: string }) {
-    return this.http.put<HousekeepingTaskItem>(`/housekeeping/tasks/${taskId}`, payload);
+    return this.http.put<HousekeepingTaskItem>(`/housekeeping/tasks/${taskId}`, payload, { params: this._propParams(payload.prop_id) });
   }
 
-  deleteTask(taskId: string) {
-    return this.http.delete<HousekeepingTaskItem>(`/housekeeping/tasks/${taskId}`);
+  deleteTask(taskId: string, propId: number) {
+    return this.http.delete<HousekeepingTaskItem>(`/housekeeping/tasks/${taskId}`, { params: this._propParams(propId) });
   }
 
-  completeTask(taskId: string, note = '') {
-    return this.http.post<HousekeepingTaskItem>(`/housekeeping/tasks/${taskId}/complete`, { note });
+  completeTask(taskId: string, propId: number, note = '') {
+    return this.http.post<HousekeepingTaskItem>(`/housekeeping/tasks/${taskId}/complete`, { note }, { params: this._propParams(propId) });
   }
 
   // ── Maintenance ──
@@ -361,27 +366,27 @@ export class HousekeepingApiService {
   }
 
   createMaintenance(payload: { prop_id: number; room_id: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string; estimated_cost?: number; actual_cost?: number; currency?: string; vendor_name?: string; vendor_id?: string; expense_invoice_id?: string; ledger_journal_id?: string; inventory_consumption_ids?: string[] }) {
-    return this.http.post<MaintenanceTaskItem>('/housekeeping/maintenance', payload);
+    return this.http.post<MaintenanceTaskItem>('/housekeeping/maintenance', payload, { params: this._propParams(payload.prop_id) });
   }
 
   updateMaintenance(taskId: string, payload: { prop_id: number; room_id: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string; estimated_cost?: number; actual_cost?: number; currency?: string; vendor_name?: string; vendor_id?: string; expense_invoice_id?: string; ledger_journal_id?: string; inventory_consumption_ids?: string[] }) {
-    return this.http.put<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}`, payload);
+    return this.http.put<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}`, payload, { params: this._propParams(payload.prop_id) });
   }
 
-  completeMaintenance(taskId: string, note = '') {
-    return this.http.post<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}/complete`, { note });
+  completeMaintenance(taskId: string, propId: number, note = '') {
+    return this.http.post<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}/complete`, { note }, { params: this._propParams(propId) });
   }
 
-  reconcileNoCostMaintenance(taskId: string) {
-    return this.http.post<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}/reconcile-no-cost`, {});
+  reconcileNoCostMaintenance(taskId: string, propId: number) {
+    return this.http.post<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}/reconcile-no-cost`, {}, { params: this._propParams(propId) });
   }
 
-  deleteMaintenance(taskId: string) {
-    return this.http.delete<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}`);
+  deleteMaintenance(taskId: string, propId: number) {
+    return this.http.delete<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}`, { params: this._propParams(propId) });
   }
 
-  recoverCharge(chargeId: string) {
-    return this.http.post<AdditionalChargeItem>(`/housekeeping/charges/${chargeId}/recover`, {});
+  recoverCharge(chargeId: string, propId: number) {
+    return this.http.post<AdditionalChargeItem>(`/housekeeping/charges/${chargeId}/recover`, {}, { params: this._propParams(propId) });
   }
 
   // ── Additional Charges ──
@@ -394,23 +399,23 @@ export class HousekeepingApiService {
   }
 
   createCharge(payload: { booking_id: string; prop_id: number; concept: string; amount: number; quantity?: number; note?: string; charge_date?: string }) {
-    return this.http.post<AdditionalChargeItem>('/housekeeping/charges', payload);
+    return this.http.post<AdditionalChargeItem>('/housekeeping/charges', payload, { params: this._propParams(payload.prop_id) });
   }
 
-  updateCharge(chargeId: string, payload: { concept?: string; amount?: number; quantity?: number; note?: string; charge_date?: string }) {
-    return this.http.put<AdditionalChargeItem>(`/housekeeping/charges/${chargeId}`, payload);
+  updateCharge(chargeId: string, payload: { concept?: string; amount?: number; quantity?: number; note?: string; charge_date?: string }, propId: number) {
+    return this.http.put<AdditionalChargeItem>(`/housekeeping/charges/${chargeId}`, payload, { params: this._propParams(propId) });
   }
 
-  repairChargePosting(chargeId: string) {
+  repairChargePosting(chargeId: string, propId: number) {
     return this.http.post<AdditionalChargeItem>(
       `/housekeeping/charges/${chargeId}/repair-posting`,
       {},
-      { withCredentials: true },
+      { params: this._propParams(propId), withCredentials: true },
     );
   }
 
-  deleteCharge(chargeId: string) {
-    return this.http.delete<{ ok: boolean; deleted_id: string; booking_id: string }>(`/housekeeping/charges/${chargeId}`);
+  deleteCharge(chargeId: string, propId: number) {
+    return this.http.delete<{ ok: boolean; deleted_id: string; booking_id: string }>(`/housekeeping/charges/${chargeId}`, { params: this._propParams(propId) });
   }
 
   // ── Cleaning Actions ──
@@ -419,6 +424,7 @@ export class HousekeepingApiService {
     return this.http.post<{ ok: boolean; room_label: string; new_status: string }>(
       '/housekeeping/cleaning/start',
       { prop_id: propId, room_label: roomLabel, assigned_to: assignedTo },
+      { params: this._propParams(propId) },
     );
   }
 
@@ -437,6 +443,7 @@ export class HousekeepingApiService {
     return this.http.post<{ ok: boolean; room_label: string; new_status: string; maintenance_created?: boolean; maintenance_task_id?: string }>(
       '/housekeeping/cleaning/complete',
       payload,
+      { params: this._propParams(payload.prop_id) },
     );
   }
 
@@ -444,6 +451,7 @@ export class HousekeepingApiService {
     return this.http.post<{ ok: boolean; room_label: string; new_status: string }>(
       '/housekeeping/cleaning/approve',
       { prop_id: propId, room_label: roomLabel, inspected_by: inspectedBy, note, set_occupied: setOccupied },
+      { params: this._propParams(propId) },
     );
   }
 
@@ -511,9 +519,13 @@ export class HousekeepingApiService {
   }
 
   syncRoomStatus(propId: number) {
+    // El backend exige prop_id por QUERY (gate por-hotel + consistencia
+    // query↔body); solo el body daba 400 (mismo contrato que openShift).
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.post<{ synced: boolean; prop_id: number; created: number; total_rooms: number }>(
       '/housekeeping/room-status/sync',
       { prop_id: propId },
+      { params },
     );
   }
 }

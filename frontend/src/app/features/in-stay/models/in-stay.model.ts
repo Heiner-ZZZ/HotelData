@@ -115,4 +115,7 @@ export interface Conversation {
   message_count: number;
   unread: number;
   dnd: boolean;
+  check_in: string;
+  check_out: string;
+  stay_status: string;
 }

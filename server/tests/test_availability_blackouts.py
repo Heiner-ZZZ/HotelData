@@ -32,7 +32,7 @@ async def test_delete_blackout_reverses_inventory_and_returns_success(client, db
         })
 
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
-    response = await client.delete(f"/api/management/availability/blackouts/{blackout_id}")
+    response = await client.delete(f"/api/management/availability/blackouts/{blackout_id}?prop_id=1")
 
     assert response.status_code == 200, response.text
     assert response.json() == {

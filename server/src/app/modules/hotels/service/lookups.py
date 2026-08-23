@@ -38,7 +38,8 @@ def suggest_destinations(query: str, limit: int = 8) -> list[dict[str, Any]]:
 
     - ``dim_destinations.destination_name`` → type ``city``
     - ``dim_hotels`` (``display_name`` / ``hotel_name`` / ``city``) → type ``hotel``
-    - ``dim_visitor_countries`` + ``geo_catalog`` (``type: country``) → type ``country``
+    - ``dim_visitor_countries`` → type ``country`` (tabla de países del dataset;
+      el catálogo curado ``geo_catalog`` ya NO participa — opción B)
 
     Each item: ``{"id", "name", "type"}``. El mezclado es round-robin por
     tipo (fair mix): un prefijo con muchas ciudades no acapara los slots y
@@ -90,16 +91,9 @@ def suggest_destinations(query: str, limit: int = 8) -> list[dict[str, Any]]:
         ).limit(pool_size)
         if c.get("visitor_location_country_id") is not None
     ]
-    for geo in db.geo_catalog.find(
-        {"type": "country", "name": rx},
-        {"_id": 0, "code": 1, "name": 1},
-    ).limit(pool_size):
-        code = geo.get("code")
-        if code:
-            countries.append({"id": code, "name": geo.get("name") or code, "type": "country"})
 
-    # Dedup por nombre DENTRO de cada pool (el legacy int gana sobre el geo
-    # string cuando ambos nombran el mismo país, ej. "Bolivia" x2).
+    # Dedup por nombre DENTRO de cada pool (una sola fuente de países: la del
+    # dataset — no hay duplicados legacy/geo que reconciliar).
     def _dedup(pool: list[dict[str, Any]]) -> list[dict[str, Any]]:
         seen: set[str] = set()
         out: list[dict[str, Any]] = []
@@ -129,29 +123,28 @@ def suggest_destinations(query: str, limit: int = 8) -> list[dict[str, Any]]:
     return out
 
 
-def _prop_ids_for_countries(country_ids: list[int], country_codes: list[str]) -> list[int]:
-    """prop_ids de dim_hotels cuyo país (legacy int o geo code) está en las listas."""
-    if not country_ids and not country_codes:
+def _prop_ids_for_countries(country_ids: list[int]) -> list[int]:
+    """prop_ids de dim_hotels cuyo país (prop_country_id → dim_visitor_countries)
+    está en la lista."""
+    if not country_ids:
         return []
     db = get_database()
-    conds: list[dict[str, Any]] = []
-    if country_ids:
-        conds.append({"prop_country_id": {"$in": country_ids}})
-    if country_codes:
-        conds.append({"geo_country_code": {"$in": country_codes}})
-    docs = db.dim_hotels.find({"$or": conds}, {"_id": 0, "prop_id": 1}).limit(1000)
+    docs = db.dim_hotels.find(
+        {"prop_country_id": {"$in": country_ids}},
+        {"_id": 0, "prop_id": 1},
+    ).limit(1000)
     return [int(doc["prop_id"]) for doc in docs if doc.get("prop_id") is not None]
 
 
 def _resolve_destination(destination: str) -> dict[str, Any]:
     """Resolve free-text destination to city IDs, hotel prop_ids and country keys.
 
-    Returns ``{"destination_ids", "prop_ids", "country_ids", "country_codes"}``
+    Returns ``{"destination_ids", "prop_ids", "country_ids"}``
     so callers can build an OR filter over every place a user may type
     (ciudad, nombre de hotel o país). Each list is empty when nothing matches.
     """
     q = (destination or "").strip()
-    out: dict[str, Any] = {"destination_ids": [], "prop_ids": [], "country_ids": [], "country_codes": []}
+    out: dict[str, Any] = {"destination_ids": [], "prop_ids": [], "country_ids": []}
     if not q:
         return out
     db = get_database()
@@ -172,13 +165,6 @@ def _resolve_destination(destination: str) -> dict[str, Any]:
     ).limit(100):
         if country.get("visitor_location_country_id") is not None:
             out["country_ids"].append(int(country["visitor_location_country_id"]))
-
-    for geo in db.geo_catalog.find(
-        {"type": "country", "name": rx},
-        {"_id": 0, "code": 1},
-    ).limit(100):
-        if geo.get("code"):
-            out["country_codes"].append(geo["code"])
 
     return out
 
@@ -205,18 +191,6 @@ def _country_lookup(country_ids: list[int]) -> dict[int, dict[str, Any]]:
     db = get_database()
     docs = db.dim_visitor_countries.find({"visitor_location_country_id": {"$in": country_ids}}, {"_id": 0})
     return {int(item["visitor_location_country_id"]): item for item in docs if item.get("visitor_location_country_id") is not None}
-
-
-def _geo_country_lookup(country_codes: list[str]) -> dict[str, dict[str, Any]]:
-    """Resolve geo_catalog country codes to their geo_catalog documents."""
-    if not country_codes:
-        return {}
-    db = get_database()
-    docs = db.geo_catalog.find(
-        {"type": "country", "code": {"$in": country_codes}},
-        {"_id": 1, "code": 1, "name": 1},
-    )
-    return {item["code"]: item for item in docs if item.get("code")}
 
 
 def _site_lookup(site_ids: list[int]) -> dict[int, dict[str, Any]]:
@@ -317,10 +291,7 @@ def _build_match(filters: dict[str, Any]) -> dict[str, Any] | None:
     if destination:
         destination_ids = resolved.get("destination_ids", [])
         prop_ids = resolved.get("prop_ids", [])
-        country_prop_ids = _prop_ids_for_countries(
-            resolved.get("country_ids", []),
-            resolved.get("country_codes", []),
-        )
+        country_prop_ids = _prop_ids_for_countries(resolved.get("country_ids", []))
         if not destination_ids and not prop_ids and not country_prop_ids:
             return None
         or_conditions: list[dict[str, Any]] = []

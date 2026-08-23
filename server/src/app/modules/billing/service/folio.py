@@ -1415,7 +1415,9 @@ def close_folio(
     """Close a folio at check-out after invoice and payment are settled.
 
     Sets status=closed, records the invoice_id, and stores the closing
-    timestamp and user.
+    timestamp and user. Acepta folios ``open`` y ``settled`` (pagados en su
+    totalidad): ambos son "no abiertos" una vez liquidados y el check-out
+    con saldo cero debe dejarlos en ``closed``.
     """
     db = get_database()
     now = _now()
@@ -1425,7 +1427,7 @@ def close_folio(
     # approved external settlement). Historical dirty folios remain closed and
     # are handled by reconciliation; this guard applies to new mutations.
     current = db[FOLIO_COLLECTION].find_one(
-        {"booking_id": booking_id, "status": "open"},
+        {"booking_id": booking_id, "status": {"$in": ["open", "settled"]}},
         {"total_due": 1},
     )
     if current is None:
@@ -1444,7 +1446,7 @@ def close_folio(
     invoice_oid = _to_object_id_ref(invoice_id)
 
     result = db[FOLIO_COLLECTION].find_one_and_update(
-        {"booking_id": booking_id, "status": "open"},
+        {"booking_id": booking_id, "status": {"$in": ["open", "settled"]}},
         {
             "$set": {
                 "status": "closed",

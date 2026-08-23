@@ -1,8 +1,9 @@
 import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormGroup } from '@angular/forms';
 import { DateRangePickerComponent } from '../../../../../shared/ui/date-range-picker/date-range-picker';
-import { FormGroup } from '@angular/forms';
+import { GuestsPickerComponent } from '../../../../../shared/ui/guests-picker/guests-picker';
+import { PropertySelectorComponent } from '../../../../../shared/ui/property-selector/property-selector';
 
 import {
   plannerDatesError,
@@ -14,29 +15,25 @@ import {
 @Component({
   selector: 'app-rn-planner-section',
   standalone: true,
-  imports: [CurrencyPipe, ReactiveFormsModule, DateRangePickerComponent],
+  imports: [CurrencyPipe, ReactiveFormsModule, DateRangePickerComponent, GuestsPickerComponent, PropertySelectorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="surface-card planner-section" [formGroup]="form()">
       <div class="planner-grid">
-        <label class="planner-field" [class.field-error]="plannerHotelError(form().get('propId')) !== null">
+        <div class="planner-field" [class.field-error]="plannerHotelError(form().get('propId')) !== null">
           <span class="material-symbols-outlined planner-icon">location_on</span>
           <div class="planner-copy">
             <span class="planner-label">Hotel</span>
-            <div class="select-wrap planner-select-wrap">
-              <select formControlName="propId" aria-label="Hotel">
-                <option [ngValue]="0">¿A dónde quieres ir?</option>
-                @for (option of hotelOptions(); track option.propId) {
-                  <option [ngValue]="option.propId">{{ option.label }}</option>
-                }
-              </select>
-              <span class="material-symbols-outlined select-arrow">expand_more</span>
-            </div>
+            <app-property-selector
+              [selectedPropId]="selectedPropId()"
+              [selectedLabel]="selectedLabel()"
+              (propIdChange)="propertyChange.emit($event)"
+            />
             @if (plannerHotelError(form().get('propId')); as err) {
               <span class="field-error-msg" role="alert">{{ err }}</span>
             }
           </div>
-        </label>
+        </div>
 
         <div class="planner-field planner-field--dates">
           <span class="material-symbols-outlined planner-icon">calendar_month</span>
@@ -88,57 +85,25 @@ import {
           <span class="material-symbols-outlined planner-icon">person</span>
           <div class="planner-copy">
             <span class="planner-label">Huéspedes</span>
-            <strong class="planner-value">
-              {{ adults() + children() }} persona{{ adults() + children() === 1 ? '' : 's' }},
-              {{ rooms() }} habitaci{{ rooms() === 1 ? 'ón' : 'ones' }}
-            </strong>
-            <div class="planner-steppers">
-              <div class="mini-stepper">
-                <span class="mini-stepper-label">Adultos</span>
-                <div class="stepper">
-                  <button type="button" class="stepper-btn" (click)="onAdjust('adults', -1)" [disabled]="adults() <= 1">
-                    <span class="material-symbols-outlined">remove</span>
-                  </button>
-                  <span class="stepper-value">{{ adults() }}</span>
-                  <button type="button" class="stepper-btn" (click)="onAdjust('adults', 1)" [disabled]="adults() >= 20">
-                    <span class="material-symbols-outlined">add</span>
-                  </button>
-                </div>
-                @if (plannerOccupancyError(form().get('adults'), 'adults'); as err) {
-                  <span class="field-error-msg" role="alert">{{ err }}</span>
-                }
-              </div>
-              <div class="mini-stepper">
-                <span class="mini-stepper-label">Niños</span>
-                <div class="stepper">
-                  <button type="button" class="stepper-btn" (click)="onAdjust('children', -1)" [disabled]="children() <= 0">
-                    <span class="material-symbols-outlined">remove</span>
-                  </button>
-                  <span class="stepper-value">{{ children() }}</span>
-                  <button type="button" class="stepper-btn" (click)="onAdjust('children', 1)" [disabled]="children() >= 10">
-                    <span class="material-symbols-outlined">add</span>
-                  </button>
-                </div>
-                @if (plannerOccupancyError(form().get('children'), 'children'); as err) {
-                  <span class="field-error-msg" role="alert">{{ err }}</span>
-                }
-              </div>
-              <div class="mini-stepper">
-                <span class="mini-stepper-label">Habitaciones</span>
-                <div class="stepper">
-                  <button type="button" class="stepper-btn" (click)="onAdjust('rooms', -1)" [disabled]="rooms() <= 1">
-                    <span class="material-symbols-outlined">remove</span>
-                  </button>
-                  <span class="stepper-value">{{ rooms() }}</span>
-                  <button type="button" class="stepper-btn" (click)="onAdjust('rooms', 1)" [disabled]="rooms() >= 10">
-                    <span class="material-symbols-outlined">add</span>
-                  </button>
-                </div>
-                @if (plannerOccupancyError(form().get('rooms'), 'rooms'); as err) {
-                  <span class="field-error-msg" role="alert">{{ err }}</span>
-                }
-              </div>
-            </div>
+            <!-- Mismo widget compartido que /search y /welcome: el popover de
+                 huéspedes y habitaciones (centralización, no dibujo inline). -->
+            <app-guests-picker
+              [adults]="adults()"
+              [children]="children()"
+              [rooms]="rooms()"
+              (adultsChange)="onGuestsChange('adults', $event)"
+              (childrenChange)="onGuestsChange('children', $event)"
+              (roomsChange)="onGuestsChange('rooms', $event)"
+            />
+            @if (plannerOccupancyError(form().get('adults'), 'adults'); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
+            @if (plannerOccupancyError(form().get('children'), 'children'); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
+            @if (plannerOccupancyError(form().get('rooms'), 'rooms'); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
           </div>
         </div>
 
@@ -216,7 +181,8 @@ import {
 })
 export class RnPlannerSectionComponent {
   readonly form = input.required<FormGroup>();
-  readonly hotelOptions = input<{ propId: number; label: string }[]>([]);
+  readonly selectedPropId = input(0);
+  readonly selectedLabel = input('');
   readonly selectedHotel = input<{ propId: number; label: string } | null>(null);
   readonly preselectedRoomTypeName = input<string>('');
   readonly preselectedRoomNumber = input<string>('');
@@ -237,6 +203,7 @@ export class RnPlannerSectionComponent {
   readonly adjust = output<{ field: string; delta: number }>();
   readonly continueClick = output<void>();
   readonly ratePlanSelect = output<string>();
+  readonly propertyChange = output<{ propId: number; label: string }>();
 
   // Helpers de mensajes con acción (expuestos para el template).
   readonly plannerHotelError = plannerHotelError;
@@ -246,5 +213,11 @@ export class RnPlannerSectionComponent {
 
   onAdjust(field: string, delta: number) {
     this.adjust.emit({ field, delta });
+  }
+
+  /** GuestsPicker emite el valor NUEVO (absoluto); lo convertimos a delta. */
+  onGuestsChange(key: 'adults' | 'children' | 'rooms', value: number): void {
+    const current = key === 'adults' ? this.adults() : key === 'children' ? this.children() : this.rooms();
+    this.adjust.emit({ field: key, delta: value - current });
   }
 }

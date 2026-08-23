@@ -122,6 +122,7 @@ async def test_http_put_config_persists_max_open_hours(client, admin_user):
 
     response = await client.put(
         "/api/reception/shifts/config",
+        params={"prop_id": 917},
         json={"prop_id": 917, "windows": _defaults_windows(), "max_open_hours": 4},
     )
 
@@ -159,7 +160,7 @@ async def test_http_cash_payment_blocked_when_shift_expired(client, admin_user, 
     assert await login(client, admin_user["username"], admin_user["password"]) == 200
 
     response = await client.post(
-        "/api/billing/payments",
+        "/api/billing/payments?prop_id=918",
         json={"booking_id": booking_id, "amount": 50.0, "method": "cash"},
     )
 

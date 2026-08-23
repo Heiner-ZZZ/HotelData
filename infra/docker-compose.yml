@@ -44,8 +44,8 @@ x-airflow-common: &airflow-common
     - ../server/tests:/opt/hoteldata/tests
     - ../server/dags:/opt/airflow/dags
     - ../data:/opt/hoteldata/data
-    # Directorio Dato (afuera del proyecto): .parquet Crudo/Procesado/Terminado.
-    - ../../Dato:/opt/hoteldata/dato
+    # Directorio Dato (dentro del proyecto): .parquet Crudo/Procesado/Terminado.
+    - ../Dato:/opt/hoteldata/dato
   networks:
     - default
 
@@ -167,7 +167,7 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
       HOTELDATA_DATO_DIR: /app/dato
       # Ruta del host Windows que muestra la UI de monitoreo (directorio Dato).
-      HOTELDATA_DATO_DIR_HOST: C:\HotelData\Dato
+      HOTELDATA_DATO_DIR_HOST: C:\HotelData\hoteldata_project\Dato
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:4200}
       PEXELS_API_KEY: ${PEXELS_API_KEY:-}
       TZ: ${TZ:-America/Mexico_City}
@@ -186,8 +186,8 @@ services:
       - ../server/scripts:/app/scripts
       - ../server/tests:/app/tests
       - ../data:/app/data
-      # Directorio Dato (afuera del proyecto): .parquet Crudo/Procesado/Terminado.
-      - ../../Dato:/app/dato
+      # Directorio Dato (dentro del proyecto): .parquet Crudo/Procesado/Terminado.
+      - ../Dato:/app/dato
       - /var/run/docker.sock:/var/run/docker.sock
     # --reload-dir limitado a código de la app: los cambios en tests/, dags/ o
     # data/ NO reinician la API (y el pipeline M2C corre en subproceso aislado,

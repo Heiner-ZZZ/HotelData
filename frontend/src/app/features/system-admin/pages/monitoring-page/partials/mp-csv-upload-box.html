@@ -1,0 +1,38 @@
+<!-- Caja "Subir CSV fuente" — OnPush aislado: solo se re-renderiza con su propio estado. -->
+<section class="surface-card accordion-section">
+  <div class="accordion-header" (click)="toggleOpen()">
+    <div>
+      <h2>Subir CSV fuente</h2>
+      <p>Selecciona un archivo CSV con datos de reservas hoteleras para usar como fuente del ETL GA03.</p>
+    </div>
+    <span class="accordion-chevron">{{ open() ? '▼' : '▶' }}</span>
+  </div>
+  @if (open()) {
+    <div class="accordion-body">
+      <div class="upload-row">
+        <div class="file-picker">
+          <input
+            #fileInput
+            type="file"
+            accept=".csv"
+            class="file-input"
+            (change)="onFileSelected($event)"
+            [disabled]="busy()"
+            id="csvFile"
+          />
+          <label for="csvFile" class="file-label">
+            <span>{{ selectedFileName() || 'Seleccionar archivo CSV' }}</span>
+          </label>
+        </div>
+        <button
+          type="button"
+          class="action-btn"
+          (click)="upload.emit()"
+          [disabled]="!selectedFileName() || busy()"
+        >
+          {{ busy() ? 'Subiendo...' : 'Subir CSV' }}
+        </button>
+      </div>
+    </div>
+  }
+</section>

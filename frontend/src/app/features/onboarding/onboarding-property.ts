@@ -2,6 +2,7 @@ import { HttpClient, httpResource } from '@angular/common/http';
 
 import { getErrorMessage } from '../../shared/utils/http-error.util';
 import { TermsDialogComponent } from '../../shared/ui/terms-dialog/terms-dialog';
+import { LocationPickerComponent } from '../map/components/location-picker/location-picker';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -132,7 +133,7 @@ const PAYMENT_METHOD_OPTIONS: readonly PaymentMethodOption[] = [
 
 @Component({
   selector: 'app-onboarding-property',
-  imports: [ReactiveFormsModule, RouterLink, TermsDialogComponent],
+  imports: [ReactiveFormsModule, RouterLink, TermsDialogComponent, LocationPickerComponent],
   templateUrl: './onboarding-property.html',
   styleUrls: [
     '../../../styles/_auth-shell.scss',
@@ -155,6 +156,8 @@ export class OnboardingPropertyComponent {
   // ── Phase state ──
   readonly submitting = signal(false);
   readonly awaitingVerification = signal(false);
+  readonly pickedLat = signal<number | null>(null);
+  readonly pickedLng = signal<number | null>(null);
   readonly verifyingCode = signal(false);
   readonly sendingCode = signal(false);
 
@@ -244,6 +247,10 @@ export class OnboardingPropertyComponent {
     currency: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(3)]],
     total_rooms: [1, [Validators.required, Validators.min(1), Validators.max(10000)]],
     description: ['', [Validators.maxLength(500)]],
+    // Geolocalización (Nivel 2): dirección opcional + lat/lng reales del mapa.
+    address: ['', [Validators.maxLength(200)]],
+    latitude: [null as number | null],
+    longitude: [null as number | null],
     // Ciclo de facturación + método de pago (Fase 6, PLAN §14.1).
     billing_cycle: ['monthly', [Validators.required]],
     payment_method: ['bank_transfer', [Validators.required]],
@@ -513,6 +520,9 @@ export class OnboardingPropertyComponent {
           billing_cycle: raw.billing_cycle,
           payment_method: raw.payment_method,
           description: raw.description || undefined,
+          address: raw.address || undefined,
+          latitude: raw.latitude ?? undefined,
+          longitude: raw.longitude ?? undefined,
           accepted_terms_version: this.termsVersion() ?? undefined
         },
         { withCredentials: true }
@@ -586,6 +596,16 @@ export class OnboardingPropertyComponent {
           );
         }
       });
+  }
+
+  /** El mapa devuelve coordenadas reales elegidas por el dueño. */
+  onLocationChange(coords: { latitude: number; longitude: number }): void {
+    this.pickedLat.set(coords.latitude);
+    this.pickedLng.set(coords.longitude);
+    this.onboardingForm.patchValue({
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+    });
   }
 
   resendCode(): void {

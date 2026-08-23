@@ -64,6 +64,34 @@ NUMBER_FIELDS = {
 EXPECTED_COLUMNS = [*sorted(NUMBER_FIELDS | BOOL_FIELDS | TEXT_FIELDS)]
 OPTIONAL_FIELDS = {"visitor_hist_starrating", "visitor_hist_adr_usd", "prop_review_score"}
 
+# El modo incremental/full lo fija el backend (start_seed_source) via env;
+# este script SOLO inserta filas del CSV (sin dedupe por clave natural), por
+# lo que "incremental" = continuar desde el conteo actual (skiprows) y
+# "full" = recargar desde cero (--reload).
+INCREMENTAL_ENV = "GA03_INCREMENTAL_MODE"
+
+
+def incremental_mode() -> bool:
+    return os.getenv(INCREMENTAL_ENV, "false").strip().lower() in {"1", "true", "yes"}
+
+
+def resolve_load_action(*, current: int, expected: int, incremental: bool) -> str:
+    """Decide el plan de carga según el conteo actual de PocketBase.
+
+    - ``noop``            → ya está completo (current == expected).
+    - ``reload_required`` → hay datos parciales/extra: hace falta --reload
+      (full). Nunca se reanuda sobre datos que no se pueden verificar.
+    - ``resume``          → continuar desde ``current`` (incremental).
+    - ``fresh``           → colección vacía, cargar desde cero.
+    """
+    if current == expected:
+        return "noop"
+    if current > expected:
+        return "reload_required"
+    if current > 0:
+        return "resume" if incremental else "reload_required"
+    return "fresh"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Carga semilla GA03 hacia PocketBase.")
@@ -318,7 +346,12 @@ def main() -> None:
                 csv_path=csv_path,
                 message="Recarga confirmada. Colección limpiada.",
             )
-        if current == expected:
+        action = resolve_load_action(
+            current=current,
+            expected=expected,
+            incremental=incremental_mode(),
+        )
+        if action == "noop":
             write_progress(
                 status="completed",
                 loaded=expected,
@@ -328,9 +361,7 @@ def main() -> None:
             )
             print(f"{COLLECTION_NAME} ya contiene {expected} registros. No se insertan duplicados.")
             return
-        if current > expected:
-            raise RuntimeError(f"{COLLECTION_NAME} tiene {current} registros, supera esperado {expected}. No se borra sin --reload.")
-        if current > 0:
+        if action == "reload_required":
             raise RuntimeError(
                 f"{COLLECTION_NAME} ya tiene {current} registros. "
                 "Para evitar duplicados, use --reload con confirmacion. "
@@ -338,7 +369,8 @@ def main() -> None:
             )
         print(
             "Preparando fuente operacional: "
-            f"task_number={settings.task_number}, collection={COLLECTION_NAME}, actual={current}, target_records={expected}"
+            f"task_number={settings.task_number}, collection={COLLECTION_NAME}, actual={current}, target_records={expected}, "
+            f"modo={'incremental' if action == 'resume' else 'full'}"
         )
         remaining = expected - current
         csv_iter = pd.read_csv(csv_path, chunksize=BATCH_SIZE, skiprows=range(1, current + 1))

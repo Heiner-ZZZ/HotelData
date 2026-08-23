@@ -100,13 +100,21 @@ export class SidebarNavComponent {
   /** Ordered root sections (sistema, gestión, propietario, huésped, …). */
   readonly roots = computed<NavNode[]>(() => buildTree(this.navResource.value()?.items ?? []));
 
-  /** Query params that preserve the current prop_id for hotel-scoped management links. */
+  /** Query params that preserve the current prop_id for hotel-scoped management links.
+   *  Para /management/informes-estrategicos se preserva también prop_label
+   *  (requerido por Vista A: h01/h02) — el label se deriva de currentPropLabel
+   *  o de assignedProperties si el contexto aún no tiene current. */
   getLinkParams(href: string): Params {
     const pid = this.propCtx.currentPropId();
     if (!pid) return {};
     if (!href.startsWith('/management')) return {};
     if (isGlobalManagementPath(href)) return {};
-    return { prop_id: pid };
+    const params: Params = { prop_id: pid };
+    if (href.includes('/informes-estrategicos')) {
+      const label = this.propCtx.currentPropLabel() || this.propCtx.assignedProperties().find(p => p.propId === pid)?.label || '';
+      if (label) params['prop_label'] = label;
+    }
+    return params;
   }
 
   constructor() {

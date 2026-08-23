@@ -77,9 +77,10 @@ async def _login(client, identifier: str, password: str) -> int:
     return resp.status_code
 
 
-async def _request_session(client, booking_id: str) -> tuple[int, dict]:
+async def _request_session(client, booking_id: str, prop_id: int = 999) -> tuple[int, dict]:
     resp = await client.post(
         "/api/stay/my-session",
+        params={"prop_id": prop_id},
         json={"booking_id": booking_id},
     )
     try:
@@ -191,6 +192,24 @@ class TestMySessionOwnership:
             password="Recep123!",
             role="recepcionista",
         )
+        # Migración E: la recepción necesita scope por-hotel (assigned_hotels)
+        # + role_assignment con el rol del hotel que porta reservations.*.
+        db.users.update_one(
+            {"_id": ObjectId(recepcionista["user_id"])},
+            {"$set": {"assigned_hotels": [999]}},
+        )
+        hotel_role_id = db.hotel_roles.insert_one(
+            {
+                "prop_id": 999,
+                "name": "recepcionista",
+                "display_name": "Recepcionista",
+                "permissions": ["reservations.manage", "reservations.read"],
+                "is_active": True,
+            }
+        ).inserted_id
+        db.role_assignments.insert_one(
+            {"user_id": ObjectId(recepcionista["user_id"]), "prop_id": 999, "role_id": hotel_role_id}
+        )
 
         assert await _login(client, recepcionista["username"], recepcionista["password"]) == 200
         status, body = await _request_session(client, booking_id)
@@ -227,7 +246,7 @@ class TestMySessionOwnership:
         )
 
         assert await _login(client, cliente_user["username"], cliente_user["password"]) == 200
-        status, body = await _request_session(client, "BK-MYSESS-LEGACY")
+        status, body = await _request_session(client, "BK-MYSESS-LEGACY", prop_id=998)
 
         assert status == 200, f"owner email fallback must work, got {status}: {body}"
         assert body.get("token"), "owner must receive a session token via the email fallback"

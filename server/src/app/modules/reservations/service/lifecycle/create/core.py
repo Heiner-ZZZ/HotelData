@@ -93,7 +93,14 @@ def create_booking(
     if avail_error:
         raise ValueError(f"No se pudo crear la reserva: {avail_error}")
 
-    coupon_error, discount_percent, coupon_id = validate_coupon_code(payload.coupon_code, payload.prop_id)
+    coupon_error, discount_percent, coupon_id = validate_coupon_code(
+        payload.coupon_code,
+        payload.prop_id,
+        check_in=payload.check_in_date,
+        check_out=payload.check_out_date,
+        rate_plan_id=payload.rate_plan_id,
+        room_type_id=payload.room_type_id,
+    )
     if coupon_error:
         raise ValueError(coupon_error)
 

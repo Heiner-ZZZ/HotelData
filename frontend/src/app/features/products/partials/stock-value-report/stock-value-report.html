@@ -35,6 +35,17 @@
         <span class="hero-card__meta">
           {{ data.summary.total_units | number }} unidades en {{ data.summary.distinct_products }} productos
         </span>
+        <div class="capital-strip" aria-hidden="false">
+          @for (cat of rankedCategories(); track cat.category) {
+            <span
+              class="capital-strip__segment"
+              role="img"
+              [title]="cat.category"
+              [style.width.%]="categorySharePct(cat.total_value, data.summary.total_stock_value)"
+              [attr.aria-label]="cat.category + ': ' + categorySharePct(cat.total_value, data.summary.total_stock_value) + '% del valor total'"
+            ></span>
+          }
+        </div>
       </div>
       <div class="hero-card__timestamp">
         <span class="material-symbols-outlined">schedule</span>
@@ -47,7 +58,7 @@
         <h3>Por categoría</h3>
       </header>
       <div class="category-grid">
-        @for (cat of data.by_category; track cat.category) {
+        @for (cat of rankedCategories(); track cat.category) {
           <article class="category-card">
             <header class="category-card__header">
               <span class="category-card__name">{{ cat.category }}</span>
@@ -70,6 +81,24 @@
       </div>
     </section>
 
+    <div class="report-toolbar">
+      <div class="report-search">
+        <span class="material-symbols-outlined">search</span>
+        <input
+          type="text"
+          [ngModel]="searchTerm()"
+          (ngModelChange)="onSearchInput($event)"
+          placeholder="Filtrar por nombre, categoría o ID…"
+          aria-label="Filtrar productos del stock"
+        />
+        @if (searchTerm()) {
+          <button type="button" class="clear-btn" (click)="onSearchInput('')" aria-label="Limpiar filtro">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        }
+      </div>
+    </div>
+
     <section class="data-section">
       <header class="data-section__header">
         <h3>Por producto</h3>
@@ -86,7 +115,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (item of data.items; track trackByProductId($index, item)) {
+          @for (item of filteredItems(); track trackByProductId($index, item)) {
             <tr>
               <td>
                 <span class="product-name">{{ item.name }}</span>

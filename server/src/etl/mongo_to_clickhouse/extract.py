@@ -1034,6 +1034,56 @@ def _enrich_kpi_labels(db, payload: dict[str, list[dict[str, Any]]]) -> None:
                 row["site_label"] = site_labels.get((_label_key(row["site_id"]),), "")
 
 
+def _enrich_strat_hotel_geo(db, payload: dict[str, list[dict[str, Any]]]) -> None:
+    """Resuelve ciudad y coordenadas REALES para ``strat_hotel_monthly`` (IE-H02).
+
+    ``city`` sale de ``dim_hotels`` (el mismo hotel real que ya aporta
+    ``hotel_label``); ``city_lat``/``city_lng`` salen del catálogo
+    ``geo_catalog`` (entradas ``type=city`` con lat/lng reales, casadas por
+    nombre). Una ciudad sin entrada en geo_catalog queda con coordenadas
+    ``None`` — honesto, nunca coordenadas sintéticas por hash.
+    """
+    rows = payload.get("strat_hotel_monthly")
+    if not rows:
+        return
+    prop_ids = [r.get("prop_id") for r in rows if r.get("prop_id") is not None]
+    hotel_geo: dict[str, dict[str, Any]] = {}
+    if prop_ids:
+        for doc in db.dim_hotels.find(
+            {"prop_id": {"$in": prop_ids}},
+            {"prop_id": 1, "city": 1, "latitude": 1, "longitude": 1},
+        ):
+            pid = _label_key(doc.get("prop_id"))
+            if pid:
+                hotel_geo[pid] = {
+                    "city": str(doc.get("city") or "").strip(),
+                    "latitude": doc.get("latitude"),
+                    "longitude": doc.get("longitude"),
+                }
+    geo_by_city: dict[str, tuple[float, float]] = {}
+    for doc in db.geo_catalog.find(
+        {"type": "city", "latitude": {"$ne": None}, "longitude": {"$ne": None}},
+        {"name": 1, "latitude": 1, "longitude": 1},
+    ):
+        name = str(doc.get("name") or "").strip().lower()
+        if name and doc.get("latitude") is not None and doc.get("longitude") is not None:
+            geo_by_city[name] = (float(doc["latitude"]), float(doc["longitude"]))
+    for row in rows:
+        meta = hotel_geo.get(_label_key(row.get("prop_id")), {})
+        city = meta.get("city", "")
+        row["city"] = city
+        # Coordenada del hotel: la REAL por hotel (dim_hotels.latitude/longitude)
+        # si existe; si no, la del centro de ciudad (geo_catalog). Nada inventado.
+        lat = meta.get("latitude")
+        lng = meta.get("longitude")
+        if lat is None or lng is None:
+            point = geo_by_city.get(city.strip().lower())
+            if point:
+                lat, lng = point
+        row["city_lat"] = lat
+        row["city_lng"] = lng
+
+
 # ── Capa estratégica mensual (TAF14) ────────────────────────────────────
 
 
@@ -1271,6 +1321,7 @@ def extract_all(client, db_name: str) -> dict[str, list[dict[str, Any]]]:
         # la Fact grande una segunda vez).
         payload["strat_market_monthly"] = rollup_market_monthly(payload["kpi_funnel_daily"])
         _enrich_kpi_labels(mongo[db_name], payload)
+        _enrich_strat_hotel_geo(mongo[db_name], payload)
         return payload
     finally:
         if owns:

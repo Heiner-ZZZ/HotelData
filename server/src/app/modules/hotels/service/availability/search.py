@@ -23,6 +23,7 @@ from .helpers import (
     _hotel_display_name,
     _hotel_min_rates_for_properties,
     _hotel_min_rates_from_today_for_properties,
+    _hotel_rate_totals_for_properties,
 )
 
 
@@ -72,7 +73,7 @@ def search_available_hotels(
     # Destino sin match en ninguna fuente (ciudad/hotel/país): vacío con
     # alternativas — NO devolver todos los hoteles como si no hubiera filtro.
     if destination and not amenities and not any(
-        resolved.get(k) for k in ("destination_ids", "prop_ids", "country_ids", "country_codes")
+        resolved.get(k) for k in ("destination_ids", "prop_ids", "country_ids")
     ):
         alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
         return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
@@ -92,7 +93,7 @@ def search_available_hotels(
             alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
             return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
 
-        if destination_ids or amenities_ids or resolved.get("prop_ids") or resolved.get("country_ids") or resolved.get("country_codes"):
+        if destination_ids or amenities_ids or resolved.get("prop_ids") or resolved.get("country_ids"):
             # OR entre fuentes de lugar (ciudad / nombre de hotel / país): el
             # usuario puede tipear cualquiera de las tres. La intersección con
             # amenities (AND) se aplica DESPUÉS sobre el conjunto unido.
@@ -103,10 +104,7 @@ def search_available_hotels(
                 ))
             if resolved.get("prop_ids"):
                 place_prop_ids |= {int(p) for p in resolved["prop_ids"]}
-            country_prop_ids = _prop_ids_for_countries(
-                resolved.get("country_ids", []),
-                resolved.get("country_codes", []),
-            )
+            country_prop_ids = _prop_ids_for_countries(resolved.get("country_ids", []))
             if country_prop_ids:
                 place_prop_ids |= set(country_prop_ids)
             if not place_prop_ids and not amenities_ids:
@@ -191,15 +189,15 @@ def search_available_hotels(
 
         available_room_summaries: dict[int, dict[str, Any]] = {}
         rates_by_property: dict[int, float] = {}
+        totals_by_property: dict[int, float] = {}
         base_rates_by_property: dict[int, float] = {}
         general_amenities = _general_amenities_for_properties(batch_ids)
-        nights = 0
         if has_dates:
             available_room_summaries = _available_room_type_summaries_for_properties(
                 batch_ids, adults, children, check_in, check_out, rooms,
             )
             rates_by_property = _hotel_min_rates_for_properties(batch_ids, check_in, check_out)
-            nights = max((date.fromisoformat(check_out) - date.fromisoformat(check_in)).days, 1)
+            totals_by_property = _hotel_rate_totals_for_properties(batch_ids, check_in, check_out)
         else:
             # Sin fechas la tarjeta muestra el precio base 'desde hoy' (sin
             # total ni conteo, que requieren un rango real).
@@ -211,9 +209,9 @@ def search_available_hotels(
             if has_dates:
                 matched_room_type = available_room_summaries.get(prop_id)
                 min_rate = rates_by_property.get(prop_id)
-                if matched_room_type is None or min_rate is None:
+                total_est = totals_by_property.get(prop_id)
+                if matched_room_type is None or min_rate is None or total_est is None:
                     continue
-                total_est = round(min_rate * nights, 2)
                 batch_items.append(_build_item(
                     hotel, prop_id, image_map, destination_lookup, destination_ids,
                     matched_room_type, min_rate, total_est,

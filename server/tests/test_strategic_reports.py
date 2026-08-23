@@ -136,20 +136,179 @@ def test_hotel_rows_monthly_records_table() -> None:
     assert july["cancelacion_pct"] == 10.0
 
 
-def test_hotel_posicionamiento_diagnosis_and_decision() -> None:
+def test_haversine_km_known_distance() -> None:
+    """Haversine con coordenadas reales (centros de ciudad de geo_catalog):
+    CDMX → Guadalajara ≈ 460 km; el mismo punto da 0 km."""
+    from src.app.modules.strategic.kpi_strategic import haversine_km
+
+    dist = haversine_km(19.4326, -99.1332, 20.6597, -103.3496)
+    assert 440 < dist < 480, dist
+    assert haversine_km(19.4326, -99.1332, 19.4326, -99.1332) == 0.0
+
+
+def test_banda_precio_percentiles() -> None:
+    """Banda de precio por percentiles (interpolación lineal)."""
+    from src.app.modules.strategic.kpi_strategic import _banda_precio
+
+    assert _banda_precio([100.0, 200.0, 300.0, 400.0]) == {
+        "p25": 175.0, "p50": 250.0, "p75": 325.0,
+    }
+    assert _banda_precio([80.0, 120.0]) == {"p25": 90.0, "p50": 100.0, "p75": 110.0}
+    assert _banda_precio([]) is None
+
+
+def test_percentile_rank_of_value() -> None:
+    """Percentil empírico: % de competidores con valor ESTRICTAMENTE menor."""
+    from src.app.modules.strategic.kpi_strategic import _percentile_rank
+
+    values = [50.0, 100.0, 150.0, 200.0]
+    assert _percentile_rank(values, 50.0) == 0.0
+    assert _percentile_rank(values, 100.0) == 25.0
+    assert _percentile_rank(values, 200.0) == 75.0
+    assert _percentile_rank([], 100.0) is None
+
+
+def test_hotel_posicionamiento_competitive_set_by_city() -> None:
+    """IE-H02 Nivel 1: el conjunto competitivo son los hoteles de la MISMA
+    ciudad con datos en la plataforma; el ADR propio se posiciona por
+    percentiles contra su banda de precio (sin diagnóstico enlatado)."""
     from src.app.modules.strategic.kpi_strategic import _build_hotel_posicionamiento
 
-    rows = [_hotel_row(revenue=3000.0, room_nights=30, total_rooms=2)]
-    prev = [_hotel_row(revenue=2000.0, room_nights=40, total_rooms=2)]  # prev ADR 50
-    reps = [_rep_row(reviews=10, avg_rating=4.5, response_rate=80.0)]
-    prev_reps = [_rep_row(reviews=10, avg_rating=4.0, response_rate=60.0)]
+    rows = [_hotel_row(prop_id=1, hotel_label="Hotel Lima", revenue=3000.0, room_nights=30)]
+    prev = [_hotel_row(prop_id=1, revenue=2000.0, room_nights=40)]  # prev ADR 50
+    reps = [_rep_row(prop_id=1, reviews=10, avg_rating=4.5, response_rate=80.0)]
+    prev_reps = [_rep_row(prop_id=1, reviews=10, avg_rating=4.0, response_rate=60.0)]
 
-    p = _build_hotel_posicionamiento(reps, prev_reps, rows, prev)
+    # Competidores: 2 en Lima (ADR 80 y 120) y 1 en Cusco (ADR 200, ~570 km).
+    all_hotels = [
+        _hotel_row(prop_id=2, hotel_label="Hotel B", revenue=2400.0, room_nights=30,
+                   city="Lima", city_lat=-12.0464, city_lng=-77.0428),   # ADR 80
+        _hotel_row(prop_id=3, hotel_label="Hotel C", revenue=3600.0, room_nights=30,
+                   city="Lima", city_lat=-12.0464, city_lng=-77.0428),   # ADR 120
+        _hotel_row(prop_id=4, hotel_label="Hotel D", revenue=6000.0, room_nights=30,
+                   city="Cusco", city_lat=-13.5319, city_lng=-71.9675),  # ADR 200, otra ciudad
+    ]
+    all_reps = [
+        _rep_row(prop_id=2, reviews=10, avg_rating=4.0),
+        _rep_row(prop_id=3, reviews=10, avg_rating=4.2),
+        _rep_row(prop_id=4, reviews=10, avg_rating=4.8),
+    ]
+
+    p = _build_hotel_posicionamiento(
+        reps, prev_reps, rows, prev,
+        city="Lima", city_lat=-12.0464, city_lng=-77.0428,
+        all_hotel_rows=all_hotels, all_rep_rows=all_reps,
+    )
     assert p["rating"] == 4.5
     assert p["adr"] == 100.0
     assert p["adr_variacion"] == 100.0
+    assert p["competitors"] == 2  # solo los 2 de Lima; Cusco queda fuera
+    assert p["city"] == "Lima"
+    assert p["radio_km"] == 5.0
+    assert p["banda_precio"] == {"p25": 90.0, "p50": 100.0, "p75": 110.0}
+    assert p["adr_percentile"] == 50.0   # 100 vs [80,120] → 1 de 2 por debajo
+    assert p["rating_percentile"] == 100.0  # 4.5 vs [4.0,4.2] → todos por debajo
+    assert p["precio_relativo_pct"] == 0.0  # (100/100 − 1)·100
     assert p["diagnosis"]
     assert p["decision"]
+
+
+def test_hotel_posicionamiento_empty_state_honest() -> None:
+    """Sin competidores con datos NO se inventa diagnosis/decision: estado
+    vacío honesto (competitors=0, banda y percentiles None, textos vacíos)."""
+    from src.app.modules.strategic.kpi_strategic import _build_hotel_posicionamiento
+
+    rows = [_hotel_row(prop_id=1, revenue=3000.0, room_nights=30)]
+    p = _build_hotel_posicionamiento(
+        [], [], rows, [],
+        city="Lima", city_lat=None, city_lng=None,
+        all_hotel_rows=[], all_rep_rows=[],
+    )
+    assert p["competitors"] == 0
+    assert p["city"] == "Lima"
+    assert p["banda_precio"] is None
+    assert p["adr_percentile"] is None
+    assert p["rating_percentile"] is None
+    assert p["precio_relativo_pct"] is None
+    assert p["diagnosis"] == ""
+    assert p["decision"] == ""
+    # Sin coords propias ni competidores → sin marcadores para el mapa.
+    assert p["own_lat"] is None
+    assert p["own_lng"] is None
+    assert p["competitors_markers"] == []
+
+
+def test_hotel_posicionamiento_no_fabricated_coords() -> None:
+    """Ciudad sin coordenadas en geo_catalog → ``radio_km`` es None (no se
+    fabrica distancia), pero la agrupación por ciudad sigue funcionando."""
+    from src.app.modules.strategic.kpi_strategic import _build_hotel_posicionamiento
+
+    rows = [_hotel_row(prop_id=1, revenue=3000.0, room_nights=30)]
+    all_hotels = [
+        _hotel_row(prop_id=2, revenue=2400.0, room_nights=30, city="Lima",
+                   city_lat=None, city_lng=None),  # ADR 80, mismo nombre de ciudad
+    ]
+    p = _build_hotel_posicionamiento(
+        [], [], rows, [],
+        city="Lima", city_lat=None, city_lng=None,
+        all_hotel_rows=all_hotels, all_rep_rows=[],
+    )
+    assert p["competitors"] == 1
+    assert p["radio_km"] is None
+    assert p["banda_precio"]["p50"] == 80.0
+
+
+def test_hotel_posicionamiento_radius_literal_with_hotel_coords() -> None:
+    """Con coordenadas POR HOTEL el radio de 5 km es LITERAL: un competidor de
+    la misma ciudad pero a >5 km queda fuera (Haversine, no el nombre de ciudad)."""
+    from src.app.modules.strategic.kpi_strategic import _build_hotel_posicionamiento
+
+    rows = [_hotel_row(prop_id=1, hotel_label="Hotel Lima", revenue=3000.0, room_nights=30)]
+    all_hotels = [
+        _hotel_row(prop_id=2, hotel_label="Hotel Cerca", revenue=2400.0, room_nights=30,
+                   city="Lima", city_lat=-12.06, city_lng=-77.045),  # ~1.5 km → dentro
+        _hotel_row(prop_id=3, hotel_label="Hotel Lejos", revenue=3600.0, room_nights=30,
+                   city="Lima", city_lat=-12.12, city_lng=-77.03),   # ~8 km → fuera
+    ]
+    p = _build_hotel_posicionamiento(
+        [], [], rows, [],
+        city="Lima", city_lat=-12.0464, city_lng=-77.0428,
+        all_hotel_rows=all_hotels, all_rep_rows=[],
+    )
+    assert p["competitors"] == 1  # solo el cercano; el lejano queda fuera del radio
+    assert p["banda_precio"]["p50"] == 80.0  # ADR del único competidor dentro del radio
+
+
+def test_hotel_posicionamiento_exposes_map_markers() -> None:
+    """IE-H02 expone ``own_lat``/``own_lng`` y la lista de competidores con
+    coords para el mapa competitivo, ordenados por distancia ascendente."""
+    from src.app.modules.strategic.kpi_strategic import _build_hotel_posicionamiento
+
+    rows = [_hotel_row(prop_id=1, hotel_label="Hotel Lima", revenue=3000.0, room_nights=30)]
+    all_hotels = [
+        _hotel_row(prop_id=2, hotel_label="Hotel Cerca", revenue=2400.0, room_nights=30,
+                   city="Lima", city_lat=-12.06, city_lng=-77.045),   # ~1.5 km
+        _hotel_row(prop_id=3, hotel_label="Hotel Medio", revenue=3600.0, room_nights=30,
+                   city="Lima", city_lat=-12.08, city_lng=-77.04),    # ~3.7 km
+    ]
+    p = _build_hotel_posicionamiento(
+        [], [], rows, [],
+        city="Lima", city_lat=-12.0464, city_lng=-77.0428,
+        all_hotel_rows=all_hotels, all_rep_rows=[],
+    )
+    assert p["own_lat"] == -12.0464
+    assert p["own_lng"] == -77.0428
+    markers = p["competitors_markers"]
+    assert len(markers) == 2
+    # Ordenados por distancia ascendente (el más cercano primero).
+    assert markers[0]["prop_id"] == 2
+    assert markers[0]["hotel_label"] == "Hotel Cerca"
+    assert markers[0]["lat"] == -12.06
+    assert markers[0]["lng"] == -77.045
+    assert markers[0]["adr"] == 80.0
+    assert markers[0]["distance_km"] is not None
+    assert markers[1]["prop_id"] == 3
+    assert markers[0]["distance_km"] < markers[1]["distance_km"]
 
 
 def test_hotel_serie_monthly_and_planes_paginated() -> None:

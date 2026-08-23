@@ -66,11 +66,11 @@
             @let flags = hotelFlags(hotel.propId);
             <article class="hotel-card surface-card" [style.--card-index]="i">
               <!-- ═══ Carousel ═══ -->
+              @let images = carouselImages(hotel);
+              @let slide = currentSlide(hotel.propId);
               <div class="card-image-wrap"
-                   (mouseenter)="startAutoPlay(hotel.propId, 4)"
-                   (mouseleave)="stopAutoPlay(hotel.propId)">
-                @let images = carouselImages(hotel);
-                @let slide = currentSlide(hotel.propId);
+                   (mouseenter)="onImageEnter(hotel.propId, images.length)"
+                   (mouseleave)="onImageLeave(hotel.propId)">
 
                 <!-- Slides track -->
                 <div class="carousel-track" [style.transform]="carouselTransform(slide)">
@@ -93,25 +93,20 @@
                   }
                 </div>
 
-                <!-- Prev / Next -->
-                <button class="carousel-btn carousel-prev" (click)="$event.stopPropagation(); goToSlide(hotel.propId, slide - 1, 4)" aria-label="Anterior">
-                  <span class="material-symbols-outlined">chevron_left</span>
-                </button>
-                <button class="carousel-btn carousel-next" (click)="$event.stopPropagation(); goToSlide(hotel.propId, slide + 1, 4)" aria-label="Siguiente">
-                  <span class="material-symbols-outlined">chevron_right</span>
-                </button>
-
-                <!-- Dots -->
-                <div class="carousel-dots">
-                  @for (img of images; track $index) {
-                    <button
-                      class="carousel-dot"
-                      [class.is-active]="$index === slide"
-                      (click)="$event.stopPropagation(); goToSlide(hotel.propId, $index, 4)"
-                      [attr.aria-label]="'Ir a foto ' + ($index + 1)">
-                    </button>
-                  }
-                </div>
+                <!-- Controles compartidos (mismo código que welcome, similares
+                     y habitaciones): puntitos píldora + flechas prev/next en
+                     modo reveal — aparecen con el card hovereado o foco por
+                     teclado. La propagación del clic la corta el componente. -->
+                <app-carousel-controls
+                  [count]="images.length"
+                  [activeIndex]="slide"
+                  [revealOnHover]="true"
+                  [class.revealed]="hoveredHotels().has(hotel.propId)"
+                  [subjectLabel]="hotel.hotelName"
+                  (navigate)="goToSlide(hotel.propId, $event, images.length)"
+                  (previous)="goToSlide(hotel.propId, slide - 1, images.length)"
+                  (next)="goToSlide(hotel.propId, slide + 1, images.length)"
+                />
 
                 <!-- Overlay badges + remove (on top of carousel) -->
                 <div class="card-image-overlay">

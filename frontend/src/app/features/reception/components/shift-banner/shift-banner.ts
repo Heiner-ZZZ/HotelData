@@ -198,7 +198,7 @@ export class ShiftBannerComponent {
     this.closing.set(true);
     this.error.set('');
     this.api
-      .closeShift(s.id, { cash_final: this.closeForm().cash_final })
+      .closeShift(s.id, { cash_final: this.closeForm().cash_final }, this.propId())
       .pipe(
         finalize(() => this.closing.set(false)),
         takeUntilDestroyed(this.destroyRef),

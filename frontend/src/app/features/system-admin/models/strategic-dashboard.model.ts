@@ -37,13 +37,39 @@ export interface Paginated<T> {
   hasPrev: boolean;
 }
 
+export interface BandaPrecio {
+  p25: number;
+  p50: number;
+  p75: number;
+}
+
+export interface CompetitorMarker {
+  propId: number;
+  hotelLabel: string;
+  lat: number | null;
+  lng: number | null;
+  adr: number;
+  rating: number;
+  distanceKm: number | null;
+}
+
 export interface Posicionamiento {
   rating: number;
   adr: number;
   ratingVariacion: number;
   adrVariacion: number;
+  competitors: number;
+  city: string;
+  radioKm: number | null;
+  adrPercentile: number | null;
+  ratingPercentile: number | null;
+  bandaPrecio: BandaPrecio | null;
+  precioRelativoPct: number | null;
   diagnosis: string;
   decision: string;
+  ownLat: number | null;
+  ownLng: number | null;
+  competitorsMarkers: CompetitorMarker[];
 }
 
 export interface PosicionamientoRow {

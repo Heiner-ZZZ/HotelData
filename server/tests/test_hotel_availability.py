@@ -89,8 +89,9 @@ def _seed_test_data(db):
             "rate_plan_id": "RP-99999-base",
             "prop_id": 99999,
             "name": "Base Rate",
-            "base_rate": 100.0,
+            "base_rate": 89.50,
             "is_active": True,
+            "applicable_room_types": ["RT-99999-test"],
         }},
         upsert=True,
     )
@@ -115,6 +116,44 @@ def _seed_test_data(db):
         "reserva_bool": 1,
         "promotion_flag": 0,
     })
+
+
+def _seed_rate_with_calendar(
+    db,
+    rate_plan_id: str,
+    rate_amount: float,
+    *,
+    is_active: bool = True,
+    applicable_room_types: list[str] | None = None,
+    room_type_id: str = "",
+    base_rate: float | None = None,
+) -> None:
+    """Upsert a rate plan + 3 calendar days (2026-08-01 → 2026-08-03)."""
+    db.rate_plans.update_one(
+        {"rate_plan_id": rate_plan_id},
+        {"$set": {
+            "rate_plan_id": rate_plan_id,
+            "prop_id": 99999,
+            "name": rate_plan_id,
+            "base_rate": base_rate if base_rate is not None else rate_amount,
+            "is_active": is_active,
+            "applicable_room_types": applicable_room_types or [],
+            "room_type_id": room_type_id,
+        }},
+        upsert=True,
+    )
+    for date_str in ["2026-08-01", "2026-08-02", "2026-08-03"]:
+        db.hotel_rate_calendar.update_one(
+            {"prop_id": 99999, "rate_plan_id": rate_plan_id, "date": date_str},
+            {"$set": {
+                "prop_id": 99999,
+                "rate_plan_id": rate_plan_id,
+                "date": date_str,
+                "rate_amount": rate_amount,
+                "is_closed": False,
+            }},
+            upsert=True,
+        )
 
 
 async def test_check_inventory_full_coverage(db):
@@ -186,6 +225,83 @@ async def test_hotel_min_rate_for_range(db):
     rate = _hotel_min_rate_for_range(99999, "2026-08-01", "2026-08-04")
     assert rate is not None
     assert rate == 89.50
+
+
+async def test_min_rate_excludes_inactive_rate_plan(db):
+    """A deactivated rate plan must not feed the guest-facing min nightly rate."""
+    _seed_test_data(db)
+    _seed_rate_with_calendar(
+        db, "RP-99999-inactive", 2.0, is_active=False,
+        applicable_room_types=["RT-99999-test"],
+    )
+
+    rate = _hotel_min_rate_for_range(99999, "2026-08-01", "2026-08-04")
+    assert rate == 89.50
+
+
+async def test_min_rate_excludes_plan_without_room_type(db):
+    """A rate plan with no room-type association (orphan) must not feed the min rate."""
+    _seed_test_data(db)
+    _seed_rate_with_calendar(
+        db, "RP-99999-orphan", 2.0, is_active=True,
+        applicable_room_types=[], room_type_id="",
+    )
+
+    rate = _hotel_min_rate_for_range(99999, "2026-08-01", "2026-08-04")
+    assert rate == 89.50
+
+
+async def test_search_excludes_rate_from_orphan_plan(db):
+    """search_available_hotels must not show a $2 rate from a plan without a
+    room-type association: the card keeps the real active/associated min."""
+    _seed_test_data(db)
+    _seed_rate_with_calendar(
+        db, "RP-99999-orphan", 2.0, is_active=True,
+        applicable_room_types=[], room_type_id="",
+    )
+
+    result = search_available_hotels(
+        check_in="2026-08-01",
+        check_out="2026-08-04",
+        adults=2,
+        rooms=1,
+    )
+    assert result["total"] >= 1
+    item = next(i for i in result["items"] if i["prop_id"] == 99999)
+    assert item["min_nightly_rate"] == 89.50
+
+
+async def test_min_rate_floors_calendar_below_base_rate(db):
+    """Calendar rows priced below the plan's base_rate are data-sanity outliers
+    and must not surface as the guest-facing min nightly rate."""
+    _seed_test_data(db)
+    _seed_rate_with_calendar(
+        db, "RP-99999-floor", 2.0, is_active=True,
+        applicable_room_types=["RT-99999-test"], base_rate=50.0,
+    )
+
+    rate = _hotel_min_rate_for_range(99999, "2026-08-01", "2026-08-04")
+    assert rate == 89.50
+
+
+async def test_search_floors_rate_below_base_rate(db):
+    """search_available_hotels ignores a calendar $2 on a plan with a higher
+    base_rate (e.g. the stray $2 on a $5 desayuno plan)."""
+    _seed_test_data(db)
+    _seed_rate_with_calendar(
+        db, "RP-99999-floor", 2.0, is_active=True,
+        applicable_room_types=["RT-99999-test"], base_rate=50.0,
+    )
+
+    result = search_available_hotels(
+        check_in="2026-08-01",
+        check_out="2026-08-04",
+        adults=2,
+        rooms=1,
+    )
+    assert result["total"] >= 1
+    item = next(i for i in result["items"] if i["prop_id"] == 99999)
+    assert item["min_nightly_rate"] == 89.50
 
 
 async def test_search_available_hotels_full_flow(db):
@@ -261,6 +377,8 @@ async def test_search_without_dates_returns_base_from_price(db):
     from datetime import date as date_cls
     today = date_cls.fromisoformat(local_today())
     # Tarifa futura: el precio base sin fechas se toma de hotel_rate_calendar hoy+.
+    # Con la regla del floor (B), la tarifa mostrada no puede ser menor al
+    # base_rate del plan (89.50), así que la fila futura se siembra en 95.0.
     for i in range(3):
         day = (today + timedelta(days=1 + i)).isoformat()
         db.hotel_rate_calendar.update_one(
@@ -269,7 +387,7 @@ async def test_search_without_dates_returns_base_from_price(db):
                 "prop_id": 99999,
                 "rate_plan_id": "RP-99999-base",
                 "date": day,
-                "rate_amount": 74.25,
+                "rate_amount": 95.0,
                 "is_closed": False,
             }},
             upsert=True,
@@ -277,8 +395,8 @@ async def test_search_without_dates_returns_base_from_price(db):
     result = search_available_hotels(destination="Test City", adults=2, rooms=1)
     assert result["total"] >= 1
     item = next(item for item in result["items"] if item["prop_id"] == 99999)
-    assert item["min_nightly_rate"] == 74.25
-    assert item["min_nightly_rate_label"] == "$74.25"
+    assert item["min_nightly_rate"] == 95.0
+    assert item["min_nightly_rate_label"] == "$95.00"
     # Sin fechas no hay total ni conteo de habitaciones
     assert "total_estimated" not in item
     assert "min_available_rooms" not in item
@@ -452,6 +570,25 @@ async def test_compare_hotels_returns_up_to_three(db):
     result = compare_hotels([99999])
     assert len(result["items"]) >= 1
     assert result["items"][0]["prop_id"] == 99999
+
+
+async def test_real_coords_uses_content_then_hotel_then_none() -> None:
+    """Las coordenadas de comparación son REALES (hotel_content_pages →
+    dim_hotels) o None. Nunca se fabrican coordenadas sintéticas por hash."""
+    from src.app.modules.hotels.service.compare import _real_coords
+
+    # hotel_content_pages (fuente canónica del detalle) gana sobre dim_hotels.
+    assert _real_coords(
+        {"latitude": 1.0, "longitude": 2.0},
+        {"latitude": 10.0, "longitude": 20.0},
+    ) == (10.0, 20.0)
+    # Sin content, cae a dim_hotels.
+    assert _real_coords({"latitude": 1.0, "longitude": 2.0}, None) == (1.0, 2.0)
+    assert _real_coords({"latitude": 1.0, "longitude": 2.0}, {}) == (1.0, 2.0)
+    # Sin coordenadas reales → (None, None), nunca sintéticas.
+    assert _real_coords({}, None) == (None, None)
+    assert _real_coords({"latitude": None, "longitude": 3.0}, None) == (None, None)
+    assert _real_coords(None, None) == (None, None)
 
 
 async def test_search_endpoint_always_returns_alternative_destinations(db, client):

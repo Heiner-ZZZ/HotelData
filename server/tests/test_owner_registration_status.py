@@ -279,6 +279,10 @@ async def test_registration_status_full_contract(client, db, monkeypatch):
     assert prop["total_rooms"] == 20
     assert prop["currency"] == "USD"
     assert prop["contact_phone"] == "+593999999999"
+    # Geolocalización (Nivel 2): sin dirección/coords en el onboarding base.
+    assert prop["address"] == ""
+    assert prop["latitude"] is None
+    assert prop["longitude"] is None
 
     band = body["suggested_band"]
     assert band["band"] == BAND_B["band"]
@@ -365,6 +369,40 @@ async def test_patch_edits_pending_data_in_place(client, db, monkeypatch):
     assert hotel["property_type"] == "boutique"
     assert hotel["total_rooms_declared"] == 30
     assert hotel["approval_status"] == _PENDING  # el estado NO cambia en pending
+
+
+async def test_patch_stores_address_and_coords(client, db, monkeypatch):
+    result = await _complete_onboarding(
+        client, db, monkeypatch, email="geo@nuevo.hotel", username="geo_dueño"
+    )
+    prop_id = result["prop_id"]
+    await _login(client, "geo_dueño")
+
+    resp = await client.patch(
+        "/api/auth/register-property/me",
+        json={
+            "property_name": "Hotel con mapa",
+            "property_type": "hotel",
+            "contact_phone": "+593999999999",
+            "city": "Quito",
+            "total_rooms": 20,
+            "description": "",
+            "address": "Av. Amazonas N37-61",
+            "latitude": -0.1807,
+            "longitude": -78.4678,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    hotel = db.dim_hotels.find_one({"prop_id": prop_id})
+    assert hotel["address"] == "Av. Amazonas N37-61"
+    assert hotel["latitude"] == -0.1807
+    assert hotel["longitude"] == -78.4678
+
+    status = (await client.get("/api/auth/registration-status")).json()
+    assert status["property"]["address"] == "Av. Amazonas N37-61"
+    assert status["property"]["latitude"] == -0.1807
+    assert status["property"]["longitude"] == -78.4678
 
 
 async def test_patch_from_changes_requested_resubmits(client, db, monkeypatch, admin_user):

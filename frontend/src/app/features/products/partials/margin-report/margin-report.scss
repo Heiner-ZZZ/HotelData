@@ -1,4 +1,6 @@
-// CSS vars (var(--token)) inherit globally from frontend/src/styles.scss; local @use was redundant.
+// Canonic tokens: --surface, --app-border, --accent, --app-text,
+// --muted-text, --surface-soft, --surface-hover, --success, --danger
+
 .report-page {
   display: flex;
   flex-direction: column;
@@ -6,6 +8,69 @@
   padding: 1rem 0;
 }
 
+// ── Filter toolbar ──────────────────────────────────────────────────
+.report-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.report-search {
+  flex: 1 1 280px;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  height: 38px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+
+  .material-symbols-outlined {
+    color: var(--muted-text);
+    font-size: 20px;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 14px;
+    color: var(--app-text);
+
+    &::placeholder {
+      color: var(--muted-text);
+    }
+  }
+
+  .clear-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--muted-text);
+    padding: 0;
+
+    &:hover {
+      color: var(--app-text);
+    }
+  }
+}
+
+// ── KPI cards ───────────────────────────────────────────────────────
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -13,66 +78,80 @@
 }
 
 .kpi-card {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
 
   &__label {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--text-secondary);
-    font-weight: 500;
+    color: var(--muted-text);
+    font-weight: 600;
   }
 
   &__value {
     font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 700;
+    color: var(--app-text);
+    font-variant-numeric: tabular-nums;
   }
 
   &--primary {
-    border-color: var(--color-primary);
+    border-color: var(--accent);
 
     .kpi-card__value {
-      color: var(--color-primary);
+      color: var(--accent);
     }
   }
 }
 
+// ── Data section ────────────────────────────────────────────────────
 .data-section {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
   overflow: hidden;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 14px;
 
   th, td {
     padding: 0.75rem 1rem;
     text-align: left;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--app-border);
   }
 
   th {
-    background: var(--surface-muted);
+    background: var(--surface-soft);
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--text-secondary);
+    color: var(--muted-text);
     font-weight: 600;
   }
 
   td.num, th.num {
     text-align: right;
     font-variant-numeric: tabular-nums;
+  }
+
+  tbody tr {
+    transition: background 120ms ease;
+    &:hover { background: var(--surface-hover); }
   }
 
   tr:last-child td {
@@ -82,30 +161,29 @@
 
 .product-name {
   display: block;
-  font-weight: 500;
-  color: var(--text-primary);
+  font-weight: 600;
+  color: var(--app-text);
 }
 
 .product-id {
   display: block;
   font-size: 0.75rem;
-  color: var(--text-secondary);
+  color: var(--muted-text);
   font-family: monospace;
 }
 
+// ── Category chip (inline badge, not filter) ────────────────────────
 .chip {
   display: inline-block;
   padding: 0.125rem 0.5rem;
-  border-radius: 1rem;
+  border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 500;
-
-  &--neutral {
-    background: var(--surface-muted);
-    color: var(--text-secondary);
-  }
+  background: var(--surface-soft);
+  color: var(--muted-text);
 }
 
+// ── Margin bar chart ────────────────────────────────────────────────
 .margin-bar-cell {
   display: flex;
   align-items: center;
@@ -116,30 +194,60 @@
 .margin-bar {
   height: 0.5rem;
   width: 60px;
-  background: var(--color-success);
-  border-radius: 0.25rem;
+  background: var(--success);
+  border-radius: 999px;
   transition: width 0.2s ease;
 
   &.is-negative {
-    background: var(--color-danger, #dc2626);
+    background: var(--danger);
   }
 }
 
 .margin-bar-label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--app-text);
   min-width: 4rem;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 
   &.is-negative {
-    color: var(--color-danger, #dc2626);
+    color: var(--danger);
   }
 }
 
 .empty-row {
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--muted-text);
   padding: 2rem !important;
   font-style: italic;
+}
+
+// ── No results ──────────────────────────────────────────────────────
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 2.2rem 1rem;
+  text-align: center;
+  color: var(--muted-text);
+
+  .material-symbols-outlined {
+    font-size: 30px;
+    opacity: 0.55;
+  }
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}
+
+// ── Reduced motion ─────────────────────────────────────────────────
+@media (prefers-reduced-motion: reduce) {
+  .margin-bar,
+  .data-table tbody tr,
+  .kpi-card {
+    transition: none;
+  }
 }

@@ -52,7 +52,9 @@ def _request() -> object:
     "handler, kwargs",
     [
         (expenses_dashboard, {"request": _request()}),
-        (list_categories, {"request": _request()}),
+        # ``list_categories`` ya NO rechaza sin prop_id: es excepción global
+        # documentada (catálogo de REFERENCIA compartido entre hoteles;
+        # migración E — ver test_expenses_prop_gates.py).
         (list_budget, {}),
         (list_ledger, {}),
         (list_active_folios, {}),

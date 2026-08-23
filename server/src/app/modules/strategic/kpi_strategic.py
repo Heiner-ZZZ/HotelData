@@ -28,7 +28,8 @@ from config.settings import get_settings
 # Contrato de columnas por tabla (KEEP IN SYNC con transform.TABLE_COLUMNS).
 HOTEL_COLUMNS = (
     "month, prop_id, hotel_label, currency, bookings, rooms_sold, room_nights, "
-    "revenue, discount_amount, adults, children, cancelled_rooms, total_rooms"
+    "revenue, discount_amount, adults, children, cancelled_rooms, total_rooms, "
+    "city, city_lat, city_lng"
 )
 PLAN_COLUMNS = (
     "month, prop_id, hotel_label, room_type_id, room_type_label, currency, "
@@ -44,6 +45,11 @@ REPUTATION_COLUMNS = (
     "month, prop_id, hotel_label, reviews, avg_rating, positive, neutral, "
     "negative, responded, response_rate"
 )
+
+# Radio del conjunto competitivo local (IE-H02, TAF14 §8): 5 km. Con
+# coordenadas a nivel de CIUDAD (geo_catalog) solo es significativo para
+# descartar hoteles de otras ciudades; la agrupación primaria es por ciudad.
+RADIO_KM = 5.0
 
 # ─── Helpers numéricos / rango ───────────────────────────────────────────
 
@@ -327,15 +333,164 @@ def _build_hotel_kpis(
 # ─── Vista A — hotel individual (IE-H01 / IE-H02) ────────────────────────
 
 
+def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Distancia de círculo máximo (km) entre dos puntos, fórmula de Haversine.
+
+    No depende de ninguna API externa: es geometría pura. Con coordenadas
+    reales de ciudad (``geo_catalog``) separa hoteles de distintas ciudades.
+    """
+    radius = 6371.0  # radio medio terrestre en km
+    phi1 = math.radians(float(lat1))
+    phi2 = math.radians(float(lat2))
+    dphi = math.radians(float(lat2) - float(lat1))
+    dlmb = math.radians(float(lng2) - float(lng1))
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlmb / 2) ** 2
+    return round(2 * radius * math.asin(math.sqrt(a)), 3)
+
+
+def _banda_precio(values: list[float]) -> dict[str, float] | None:
+    """Banda de precio por percentiles 25/50/75 (interpolación lineal).
+
+    ``None`` para una lista vacía (sin competidores → sin banda)."""
+    vals = sorted(float(v) for v in values if v is not None)
+    if not vals:
+        return None
+
+    def _p(p: float) -> float:
+        n = len(vals)
+        if n == 1:
+            return vals[0]
+        rank = (n - 1) * p / 100.0
+        lo = int(rank)
+        frac = rank - lo
+        if lo + 1 >= n:
+            return vals[-1]
+        return vals[lo] + frac * (vals[lo + 1] - vals[lo])
+
+    return {"p25": _round2(_p(25)), "p50": _round2(_p(50)), "p75": _round2(_p(75))}
+
+
+def _percentile_rank(values: list[float], value: float) -> float | None:
+    """Percentil empírico: % de valores ESTRICTAMENTE menores que ``value``.
+
+    ``None`` para una lista vacía (no hay distribución contra la que medir)."""
+    vals = sorted(float(v) for v in values if v is not None)
+    if not vals:
+        return None
+    below = sum(1 for v in vals if v < float(value))
+    return round(below / len(vals) * 100.0, 2)
+
+
+def _norm_city(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+def _competitor_pool(
+    hotel_rows: list[dict[str, Any]],
+    rep_rows: list[dict[str, Any]],
+) -> dict[Any, dict[str, Any]]:
+    """Pool de competidores: agrega ``strat_hotel_monthly`` por prop_id (ADR,
+    ciudad y coordenadas de ciudad) y cruza el rating ponderado de
+    ``strat_reputation_monthly``. Nunca incluye datos inventados: la ciudad y
+    las coordenadas vienen resueltas del ETL (dim_hotels + geo_catalog)."""
+    pool: dict[Any, dict[str, Any]] = {}
+    for r in hotel_rows:
+        pid = r.get("prop_id")
+        if pid is None:
+            continue
+        c = pool.setdefault(pid, {
+            "prop_id": pid,
+            "hotel_label": r.get("hotel_label") or f"Hotel #{pid}",
+            "city": "",
+            "city_lat": None,
+            "city_lng": None,
+            "revenue": 0.0,
+            "room_nights": 0,
+            "rating": 0.0,
+        })
+        c["revenue"] += float(r.get("revenue") or 0)
+        c["room_nights"] += int(r.get("room_nights") or 0)
+        if not c["city"]:
+            c["city"] = r.get("city") or ""
+        if c["city_lat"] is None and r.get("city_lat") is not None:
+            c["city_lat"] = r.get("city_lat")
+        if c["city_lng"] is None and r.get("city_lng") is not None:
+            c["city_lng"] = r.get("city_lng")
+
+    rating_by_pid: dict[Any, tuple[float, int]] = {}
+    for r in rep_rows:
+        pid = r.get("prop_id")
+        rev = int(r.get("reviews") or 0)
+        if pid is None or not rev:
+            continue
+        s, n = rating_by_pid.get(pid, (0.0, 0))
+        rating_by_pid[pid] = (s + float(r.get("avg_rating") or 0) * rev, n + rev)
+    for pid, (s, n) in rating_by_pid.items():
+        if pid in pool:
+            pool[pid]["rating"] = s / n if n else 0.0
+
+    for c in pool.values():
+        c["adr"] = c["revenue"] / c["room_nights"] if c["room_nights"] else 0.0
+    return pool
+
+
+def _honest_position(
+    *,
+    competitors: int,
+    city: str,
+    adr_percentile: float | None,
+) -> tuple[str, str]:
+    """Diagnóstico/decisión derivados del percentil REAL del ADR (no enlatados).
+
+    Sin competidores devuelve ("", "") — la UI muestra el estado vacío honesto.
+    """
+    if not competitors:
+        return "", ""
+    city_label = city or "la zona"
+    if adr_percentile is not None:
+        if adr_percentile >= 75:
+            return (
+                f"ADR en el percentil {adr_percentile:.0f} de {city_label}: por encima de la banda central de la competencia.",
+                "Revisar si el precio está respaldado por reputación o servicios; ajustar si la demanda cae.",
+            )
+        if adr_percentile <= 25:
+            return (
+                f"ADR en el percentil {adr_percentile:.0f} de {city_label}: por debajo de la banda central de la competencia.",
+                "Hay margen para subir tarifa si la ocupación y la reputación lo respaldan.",
+            )
+        return (
+            f"ADR en el percentil {adr_percentile:.0f} de {city_label}: dentro de la banda central de la competencia.",
+            "Mantener la tarifa alineada al mercado y monitorear la banda mes a mes.",
+        )
+    return (
+        f"Sin revenue en el período para posicionar la tarifa frente a {competitors} competidores de {city_label}.",
+        "Recuperar ventas antes de evaluar el precio frente a la competencia.",
+    )
+
+
 def _build_hotel_posicionamiento(
     rep_rows: list[dict[str, Any]],
     prev_rep_rows: list[dict[str, Any]],
     rows: list[dict[str, Any]],
     prev_rows: list[dict[str, Any]],
+    *,
+    city: str = "",
+    city_lat: float | None = None,
+    city_lng: float | None = None,
+    all_hotel_rows: list[dict[str, Any]] | None = None,
+    all_rep_rows: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """IE-H02 (posicionamiento) con datos PROPIOS del hotel: rating × precio.
-    No consulta la tabla de mercado (no tiene prop_id) para no filtrar
-    demanda de otros hoteles a un dueño."""
+    """IE-H02 (posicionamiento) con conjunto competitivo REAL por ciudad.
+
+    Nivel 1 (sin Google Maps ni coordenadas inventadas): el ADR/rating propios
+    salen de los datos del hotel; el conjunto competitivo son los OTROS hoteles
+    de la MISMA ciudad con datos en la plataforma. Si hay coordenadas reales de
+    ciudad (``geo_catalog``) se usa Haversine para descartar hoteles de otras
+    ciudades a > ``RADIO_KM``; sin coordenadas solo agrupa por nombre de
+    ciudad. La banda de precio sale de percentiles reales y el ADR propio se
+    posiciona por percentil. Sin competidores → estado vacío honesto (textos
+    vacíos, banda/percentiles ``None``), nunca un diagnóstico enlatado.
+    """
     rating, _ = _weighted_rating(rep_rows)
     prev_rating, _ = _weighted_rating(prev_rep_rows)
     cur = _derive_financials(rows)
@@ -343,26 +498,86 @@ def _build_hotel_posicionamiento(
     adr = cur["adr"]
     prev_adr = prev["adr"]
 
-    if rating >= 4.2 and adr > 0:
-        diagnosis = "Reputación sólida que respalda el precio actual."
-        decision = "Sostener tarifa; probar subidas puntuales en alta demanda."
-    elif rating >= 4.2 and adr == 0:
-        diagnosis = "Buena reputación pero sin revenue en el período."
-        decision = "Verificar disponibilidad y canales activos."
-    elif rating < 4.2 and adr > 0:
-        diagnosis = "El precio no está respaldado por la reputación."
-        decision = "Invertir en calidad/respuesta a reseñas antes de subir tarifa."
-    else:
-        diagnosis = "Sin señal clara de posicionamiento en el período."
-        decision = "Recuperar demanda y construir reputación antes de reposicionar."
+    own_prop_id: Any = None
+    if rows:
+        own_prop_id = rows[0].get("prop_id")
+    if own_prop_id is None and rep_rows:
+        own_prop_id = rep_rows[0].get("prop_id")
+
+    city_norm = _norm_city(city)
+    own_point = (
+        (float(city_lat), float(city_lng))
+        if (city_lat is not None and city_lng is not None)
+        else None
+    )
+
+    comps: list[dict[str, Any]] = []
+    for pid, c in _competitor_pool(all_hotel_rows or [], all_rep_rows or []).items():
+        if pid == own_prop_id:
+            continue
+        c_norm = _norm_city(c["city"])
+        c_point = (
+            (float(c["city_lat"]), float(c["city_lng"]))
+            if (c["city_lat"] is not None and c["city_lng"] is not None)
+            else None
+        )
+        if own_point and c_point:
+            # Con coordenadas (por hotel si existen, si no centro de ciudad) el
+            # radio de 5 km es LITERAL: Haversine decide, sin importar el nombre
+            # de la ciudad.
+            distance = haversine_km(own_point[0], own_point[1], c_point[0], c_point[1])
+            if distance <= RADIO_KM:
+                comps.append({**c, "distance_km": distance})
+        elif city_norm and c_norm == city_norm:
+            # Sin coordenadas para alguno de los dos: fallback por nombre de ciudad.
+            comps.append({**c, "distance_km": None})
+
+    adrs = [c["adr"] for c in comps if c["adr"] > 0]
+    ratings = [c["rating"] for c in comps if c["rating"] > 0]
+    banda = _banda_precio(adrs)
+    adr_percentile = _percentile_rank(adrs, adr) if (adrs and adr > 0) else None
+    rating_percentile = _percentile_rank(ratings, rating) if (ratings and rating > 0) else None
+    precio_relativo = None
+    if banda and banda["p50"] and adr:
+        precio_relativo = _round2((adr / banda["p50"] - 1) * 100)
+
+    diagnosis, decision = _honest_position(
+        competitors=len(comps), city=city, adr_percentile=adr_percentile,
+    )
+
+    markers = sorted(
+        (
+            {
+                "prop_id": c["prop_id"],
+                "hotel_label": c["hotel_label"],
+                "lat": c.get("city_lat"),
+                "lng": c.get("city_lng"),
+                "adr": _round2(c["adr"]),
+                "rating": _round2(c["rating"]),
+                "distance_km": _round2(c["distance_km"]) if c.get("distance_km") is not None else None,
+            }
+            for c in comps
+        ),
+        key=lambda m: (m["distance_km"] is None, m["distance_km"] or 0.0),
+    )
 
     return {
         "rating": _round2(rating),
         "adr": _round2(adr),
         "rating_variacion": _pct_change(rating, prev_rating),
         "adr_variacion": _pct_change(adr, prev_adr),
+        "competitors": len(comps),
+        "city": city,
+        "radio_km": RADIO_KM if own_point is not None else None,
+        "adr_percentile": adr_percentile,
+        "rating_percentile": rating_percentile,
+        "banda_precio": banda,
+        "precio_relativo_pct": precio_relativo,
         "diagnosis": diagnosis,
         "decision": decision,
+        "own_lat": float(city_lat) if city_lat is not None else None,
+        "own_lng": float(city_lng) if city_lng is not None else None,
+        "competitors_markers": markers,
     }
 
 
@@ -1002,21 +1217,35 @@ def get_hotel_dashboard(
                                   "month ASC, prop_id ASC", start, end, prop_id=prop_id)
             prev_rows = _query_prev(client, "strat_hotel_monthly", HOTEL_COLUMNS,
                                     "month ASC, prop_id ASC", start, end, prop_id=prop_id)
+            # Pool competitivo (IE-H02): TODOS los hoteles con datos, no solo
+            # el propio — la agrupación por ciudad + Haversine filtra competidores.
+            all_hotels = _query_monthly(client, "strat_hotel_monthly", HOTEL_COLUMNS,
+                                        "month ASC, prop_id ASC", start, end, prop_id=None)
             plans = _query_monthly(client, "strat_plan_monthly", PLAN_COLUMNS,
                                    "month ASC, prop_id ASC, room_type_id ASC", start, end, prop_id=prop_id)
             reps = _query_monthly(client, "strat_reputation_monthly", REPUTATION_COLUMNS,
                                   "month ASC, prop_id ASC", start, end, prop_id=prop_id)
             prev_reps = _query_prev(client, "strat_reputation_monthly", REPUTATION_COLUMNS,
                                     "month ASC, prop_id ASC", start, end, prop_id=prop_id)
+            all_reps = _query_monthly(client, "strat_reputation_monthly", REPUTATION_COLUMNS,
+                                      "month ASC, prop_id ASC", start, end, prop_id=None)
         finally:
             client.close()
     except Exception as exc:  # noqa: BLE001 - ClickHouse opcional durante desarrollo local.
         return _unavailable(exc, start, end, prop_id, page, page_size)
 
+    own = rows[0] if rows else {}
+    city = str(own.get("city") or "")
+    city_lat = own.get("city_lat")
+    city_lng = own.get("city_lng")
     summary = {
         "kpis": _build_hotel_kpis(rows, prev_rows, reps, prev_reps),
         "hoteles": 1,
-        "posicionamiento": _build_hotel_posicionamiento(reps, prev_reps, rows, prev_rows),
+        "posicionamiento": _build_hotel_posicionamiento(
+            reps, prev_reps, rows, prev_rows,
+            city=city, city_lat=city_lat, city_lng=city_lng,
+            all_hotel_rows=all_hotels, all_rep_rows=all_reps,
+        ),
     }
     return _base_result(
         start, end, prop_id,

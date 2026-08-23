@@ -45,33 +45,33 @@ describe('SimilarCarouselComponent — galería de hoteles similares', () => {
 
   it('renderiza flechas < > y puntitos cuando hay más de una imagen', () => {
     const { fixture } = setup();
-    expect(fixture.debugElement.query(By.css('.sc-prev'))).toBeTruthy();
-    expect(fixture.debugElement.query(By.css('.sc-next'))).toBeTruthy();
-    expect(fixture.debugElement.queryAll(By.css('.sc-dot')).length).toBe(4);
+    expect(fixture.debugElement.query(By.css('.cc-prev'))).toBeTruthy();
+    expect(fixture.debugElement.query(By.css('.cc-next'))).toBeTruthy();
+    expect(fixture.debugElement.queryAll(By.css('.cc-dot')).length).toBe(4);
   });
 
   it('avanzar/retroceder con wrap y clic en puntito', () => {
     const { fixture, comp } = setup();
     fixture.detectChanges();
 
-    fixture.debugElement.query(By.css('.sc-next')).nativeElement.click();
+    fixture.debugElement.query(By.css('.cc-next')).nativeElement.click();
     fixture.detectChanges();
     expect(comp.currentImageIdx()).toBe(1);
 
-    fixture.debugElement.query(By.css('.sc-prev')).nativeElement.click();
+    fixture.debugElement.query(By.css('.cc-prev')).nativeElement.click();
     fixture.detectChanges();
     expect(comp.currentImageIdx()).toBe(0);
 
     // Wrap: desde la primera, prev va a la última
-    fixture.debugElement.query(By.css('.sc-prev')).nativeElement.click();
+    fixture.debugElement.query(By.css('.cc-prev')).nativeElement.click();
     fixture.detectChanges();
     expect(comp.currentImageIdx()).toBe(comp.galleryImages().length - 1);
 
-    const dots = fixture.debugElement.queryAll(By.css('.sc-dot'));
+    const dots = fixture.debugElement.queryAll(By.css('.cc-dot'));
     dots[1].nativeElement.click();
     fixture.detectChanges();
     expect(comp.currentImageIdx()).toBe(1);
-    expect(dots[1].nativeElement.classList.contains('active')).toBe(true);
+    expect(dots[1].nativeElement.classList.contains('is-active')).toBe(true);
   });
 
   it('una imagen que falla se descarta sin colapsar el carrusel', () => {
@@ -86,7 +86,7 @@ describe('SimilarCarouselComponent — galería de hoteles similares', () => {
     comp.galleryImages().forEach((url) => comp.onImgError({ src: url } as HTMLImageElement));
     fixture.detectChanges();
     expect(comp.galleryImages().length).toBe(0);
-    expect(fixture.debugElement.query(By.css('.sc-prev'))).toBeNull();
+    expect(fixture.debugElement.query(By.css('.cc-prev'))).toBeNull();
     expect(fixture.nativeElement.querySelector('.material-symbols-outlined')?.textContent).toBe('hotel');
   });
 });

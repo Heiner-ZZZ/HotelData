@@ -3,6 +3,7 @@ import { DatePipe, CurrencyPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { shiftLimitHint } from '../../../../shared/services/active-turno.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -35,6 +36,12 @@ export class ControlTurnosCajaPageComponent {
   // ── State ──
   readonly loading = signal(true);
   readonly shift = signal<ShiftInfo | null>(null);
+  /** true cuando hay un turno activo pero pertenece a OTRO empleado. */
+  readonly occupiedByOther = signal(false);
+  readonly occupiedOpener = signal('');
+  /** Cuándo el turno ajeno alcanza su límite de apertura (ISO). */
+  readonly occupiedExpiresAt = signal<string | null>(null);
+  readonly occupiedLimitHint = computed(() => shiftLimitHint(this.occupiedExpiresAt()));
   readonly shiftTypeLabels = signal<Record<string, string>>({});
   readonly lastClosedShift = signal<ShiftInfo | null>(null);
 
@@ -223,9 +230,19 @@ export class ControlTurnosCajaPageComponent {
     this.loading.set(true);
     this.loadShiftConfig();
     this.api.getActiveShift(propId).subscribe({
-      next: (res: { shift: ShiftInfo | null; shift_type_labels: Record<string, string> }) => {
+      next: (res: {
+        shift: ShiftInfo | null;
+        shift_type_labels: Record<string, string>;
+        occupied?: boolean;
+        opener_username?: string | null;
+        opener_employee?: string | null;
+        expires_at?: string | null;
+      }) => {
         this.shift.set(res.shift);
         this.shiftTypeLabels.set(res.shift_type_labels);
+        this.occupiedByOther.set(Boolean(res.occupied) && !res.shift);
+        this.occupiedOpener.set(res.opener_employee || res.opener_username || '');
+        this.occupiedExpiresAt.set(res.expires_at ?? null);
         if (res.shift) {
           this.saldoReal.set(res.shift.cash_initial || 0);
         }
@@ -234,6 +251,9 @@ export class ControlTurnosCajaPageComponent {
       error: () => {
         this.loading.set(false);
         this.shift.set(null);
+        this.occupiedByOther.set(false);
+        this.occupiedOpener.set('');
+        this.occupiedExpiresAt.set(null);
       },
     });
   }
@@ -590,6 +610,7 @@ export class ControlTurnosCajaPageComponent {
       undefined,
       this.emergencyClose(),
       this.emergencyReason(),
+      this.selectedPropId(),
     ).subscribe({
       next: (res: { message: string; summary: ShiftCloseSummary }) => {
         this.closingShift.set(false);

@@ -20,7 +20,7 @@ from typing import Any
 from bson import ObjectId
 from pymongo.database import Database
 
-from src.app.security.role_helpers import get_role_name, is_super_admin
+from src.app.security.role_helpers import get_role_name, is_super_admin, is_unfiltered_role
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +82,61 @@ GUEST_PERMISSION_CODES = frozenset({
     "search.manage",
     "search.read",
 })
+
+# ── Platform-scoped codes (solo super admin / plataforma) ─────────────────
+# Permisos que NO son operativos del hotel: gestión de usuarios/roles,
+# ETL, auditoría, monitoreo, settings globales, cola de aprobación de
+# hoteles y la cartera estratégica (Vista B). Un gerente creando un rol de
+# empleado NO debe verlos ni poder otorgarlos — el editor del hotel
+# (``list_hotel_roles``) los filtra y la API los rechaza (400).
+# KEEP IN SYNC: scripts/init_security_model_ga03.py (SYSTEM_SCOPE_CODES).
+SYSTEM_SCOPE_CODES = frozenset({
+    # Usuarios y roles (plataforma)
+    "users.manage", "users.create", "users.read", "users.update", "users.delete",
+    "roles.manage", "roles.create", "roles.read", "roles.update", "roles.delete",
+    # Aprobación de nuevos hoteles (cola del admin)
+    "properties.approve",
+    # Configuración / auditoría / monitoreo / ETL (plataforma)
+    "settings.manage", "settings.read",
+    "audit.manage", "audit.read",
+    "monitoring.manage", "monitoring.read",
+    "etl.manage", "etl.read", "etl.execute",
+    # Cartera estratégica del sistema (Vista B) — solo dirección
+    "reports.strategic.portfolio.read",
+})
+
+
+def permission_scope(code: str) -> str:
+    """Categoría de visibilidad de un código de permiso (C 2026-08).
+
+    - ``system`` → plataforma / super admin (usuarios, roles, ETL, auditoría,
+      settings, properties.approve, cartera estratégica). NO se exponen en el
+      editor de roles del hotel ni se otorgan a roles de hotel.
+    - ``guest`` → auto-servicio del huésped (``GUEST_PERMISSION_CODES``).
+      Tampoco son códigos operativos del hotel.
+    - ``hotel`` → por defecto: operación del hotel (reservas, billing,
+      housekeeping, RRHH, check-ins…). Únicos códigos que el gerente puede
+      otorgar a sus roles de equipo.
+    """
+    if code in SYSTEM_SCOPE_CODES:
+        return "system"
+    if code in GUEST_PERMISSION_CODES:
+        return "guest"
+    return "hotel"
+
+# ── Allow-lists de quién puede portar códigos system/guest (C 2026-08) ──
+# Lógica dura: los roles operativos de hotel (recepcionista, gerente_hotel,
+# housekeeping…) NO portan códigos de plataforma (system) ni de auto-servicio
+# del huésped (guest). Estas allow-lists son las únicas excepciones:
+#   - PLATFORM_ROLES: roles de plataforma que pueden portar system codes
+#     (admin_sistema opera la plataforma; operador_datos/auditor_datos son
+#     roles de datos/ETL). super_admin es la excepción implícita (bypass *.*).
+#   - GUEST_ROLES: el huésped puede portar guest codes.
+# El seed canónico las duplica (KEEP IN SYNC) y el editor global de roles
+# (update_role_definition) las aplica en runtime.
+# KEEP IN SYNC: scripts/init_security_model_ga03.py (PLATFORM_ROLES/GUEST_ROLES).
+PLATFORM_ROLES = frozenset({"admin_sistema", "operador_datos", "auditor_datos"})
+GUEST_ROLES = frozenset({"cliente"})
 
 
 def ensure_read_dependencies(
@@ -189,7 +244,13 @@ def get_user_permission_codes(
         return {"*.*"}
 
     if prop_id is not None:
-        return _get_hotel_scoped_codes(db, user, prop_id)
+        # Unfiltered roles (cliente, admin_sistema) bypass hotel-scoped RBAC.
+        # They don't have role_assignments (guests aren't staff; platform roles
+        # operate across all hotels) — their permissions resolve globally.
+        if is_unfiltered_role(user):
+            prop_id = None  # fall through to global resolution
+        else:
+            return _get_hotel_scoped_codes(db, user, prop_id)
 
     role_ids = _normalize_role_ids(user)
     primary_role = get_role_name(user)

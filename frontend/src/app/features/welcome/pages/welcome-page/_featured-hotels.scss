@@ -84,6 +84,7 @@
   }
 
   &__img {
+    position: relative;
     width: 100%;
     height: 180px;
     overflow: hidden;
@@ -91,16 +92,42 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
 
-    img {
+  /* Mini-galería (3 variantes) — el hover-lift de la card ya da el motion;
+     el zoom de la imagen se reemplaza por el slide del carrusel. */
+  .welcome-gallery {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* El wrap de la auto-rotación no debe animar el salto hacia atrás. */
+    &.no-transition {
+      transition: none;
+    }
+
+    &__img {
+      min-width: 100%;
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 300ms ease;
+      display: block;
+      flex-shrink: 0;
     }
-
-    .hotel-card:hover & img { transform: scale(1.04); }
   }
+
+  /* WCAG 2.3.3: sin movimiento, sin animación de slide. */
+  @media (prefers-reduced-motion: reduce) {
+    .welcome-gallery {
+      transition: none;
+    }
+  }
+
+  /* Los controles (puntitos + flechas) viven en el componente compartido
+     app-carousel-controls con el diseño del comparador: en modo reveal las
+     flechas aparecen solo con la card hovereada (onCardEnter marca
+     `.revealed` en el host) o foco por teclado. */
 
   &__placeholder {
     font-size: 3rem;

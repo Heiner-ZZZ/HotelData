@@ -80,6 +80,22 @@ def run_local_etl() -> dict:
     return _run_script("run_etl_local.py")
 
 
+def _ga03_collection_name() -> str:
+    """Nombre de la colección destino GA03.
+
+    KEEP IN SYNC con ``server/scripts/cargar_reservas_hoteleras_03.py``
+    (misma precedencia de env para ``COLLECTION_NAME``). Se usa para pasar el
+    ``--confirm-reload`` exacto cuando el seed corre en modo full.
+    """
+    ta02 = "hotel_reservation_events__2"
+    generic = os.getenv("POCKETBASE_COLLECTION")
+    return os.getenv("POCKETBASE_COLLECTION_03") or (
+        generic
+        if os.getenv("TASK_NUMBER", "03") == "03" and generic and generic != ta02
+        else "hotel_reservation_events_03"
+    )
+
+
 def run_dataset_validation(target_records: int = 0) -> dict:
     extra_env = {"META_PB": str(target_records)} if target_records > 0 else None
     return _run_script("validar_dataset_reservas_03.py", env=extra_env)
@@ -107,9 +123,13 @@ def start_seed_source(target_records: int = 0, incremental: bool = False) -> dic
         }
     _write_progress_seed("Preparación GA03 solicitada desde /etl-status.", target_records=target_records)
     uploaded_csv = settings.project_root / "data" / "uploads" / "ga03_source.csv"
-    args = ["--csv", str(uploaded_csv)] if uploaded_csv.exists() else None
+    args = ["--csv", str(uploaded_csv)] if uploaded_csv.exists() else []
     extra_env = {"META_PB": str(target_records)} if target_records > 0 else {}
     extra_env["GA03_INCREMENTAL_MODE"] = "true" if incremental else "false"
+    if not incremental:
+        # Modo full: recarga desde cero. El confirm del dialog de la UI es la
+        # confirmación; el script exige el nombre exacto de la colección.
+        args.extend(["--reload", "--confirm-reload", _ga03_collection_name()])
     return _start_script("cargar_reservas_hoteleras_03.py", args=args, env=extra_env)
 
 

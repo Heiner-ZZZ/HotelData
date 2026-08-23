@@ -1,6 +1,9 @@
 .hotel-search-page {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.35rem;
+  max-width: 1320px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .page-header-row {
@@ -37,8 +40,9 @@
 
 .page-grid {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 1rem;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
 }
 
 .results-column {
@@ -48,7 +52,7 @@
 
 .results-grid {
   display: grid;
-  gap: 1rem;
+  gap: 1.15rem;
 }
 
 .compare-toolbar {
@@ -176,6 +180,14 @@
     font-size: 1rem;
     --icon-wght: 300;
   }
+}
+
+@media (max-width: 1220px) {
+  .page-grid {
+    grid-template-columns: 272px minmax(0, 1fr);
+    gap: 1rem;
+  }
+  .hotel-search-page { max-width: 1180px; }
 }
 
 @media (max-width: 920px) {

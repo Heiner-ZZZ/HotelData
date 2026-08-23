@@ -278,7 +278,7 @@
                             <span class="material-symbols-outlined">rate_review</span>
                           </button>
                         }
-                        <a [routerLink]="['/management/check-outs', item.bookingId]" class="btn-icon-only" aria-label="Ver detalle" title="Ver detalle de check-out">
+                        <a [routerLink]="['/management/check-outs', item.bookingId]" [queryParams]="{prop_id: item.propId}" class="btn-icon-only" aria-label="Ver detalle" title="Ver detalle de check-out">
                           <span class="material-symbols-outlined">open_in_new</span>
                         </a>
                       </td>

@@ -85,26 +85,41 @@ export class ReceptionApiService {
   }
 
   /** Open a new reception shift. */
+  /**
+   * Open a new reception shift.
+   *
+   * Migración E: el backend exige ``prop_id`` en el QUERY (gate por-hotel
+   * ``require_prop_permission``) y valida consistencia query↔body — el body
+   * solo no alcanza (400). Se envía en ambos, mismo patrón que
+   * ``shifts-api.service.ts``.
+   */
   openShift(payload: ShiftOpenPayload): Observable<ShiftResponse> {
     return this.http.post<ShiftResponse>(`${this.baseUrl}/shifts/open`, payload, {
+      params: new HttpParams().set('prop_id', String(payload.prop_id)),
       withCredentials: true,
     });
   }
 
   /** Close an active shift. */
-  closeShift(shiftId: string, payload: ShiftClosePayload): Observable<ShiftResponse> {
+  closeShift(shiftId: string, payload: ShiftClosePayload, propId?: number): Observable<ShiftResponse> {
+    const options: Record<string, unknown> = { withCredentials: true };
+    if (propId) {
+      options['params'] = new HttpParams().set('prop_id', String(propId));
+    }
     return this.http.post<ShiftResponse>(
       `${this.baseUrl}/shifts/${shiftId}/close`,
       payload,
-      { withCredentials: true },
+      options,
     );
   }
 
   /** Get detail of a specific shift by ID. */
-  getShift(shiftId: string): Observable<ShiftResponse> {
-    return this.http.get<ShiftResponse>(`${this.baseUrl}/shifts/${shiftId}`, {
-      withCredentials: true,
-    });
+  getShift(shiftId: string, propId?: number): Observable<ShiftResponse> {
+    const options: Record<string, unknown> = { withCredentials: true };
+    if (propId) {
+      options['params'] = new HttpParams().set('prop_id', String(propId));
+    }
+    return this.http.get<ShiftResponse>(`${this.baseUrl}/shifts/${shiftId}`, options);
   }
 
   /** List shifts with optional filters. */

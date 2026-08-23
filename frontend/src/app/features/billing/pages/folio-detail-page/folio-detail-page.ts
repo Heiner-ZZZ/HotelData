@@ -42,12 +42,19 @@ export class FolioDetailPageComponent {
     { initialValue: '' }
   );
 
+  /** prop_id del hotel activo (migración E: el folio gatea por hotel). */
+  private readonly queryParams = toSignal(this.activatedRoute.queryParamMap, {
+    initialValue: this.activatedRoute.snapshot.queryParamMap,
+  });
+  readonly selectedPropId = computed(() => Number(this.queryParams().get('prop_id') ?? '0'));
+
   readonly categoriesResource = httpResource<FolioCategory[]>(() => '/api/billing/folios/categories');
   readonly categories = computed(() => this.categoriesResource.value() ?? []);
 
   readonly folioResource = httpResource<FolioViewModel>(() => {
     const id = this.bookingId();
-    return id ? `/api/billing/folios/${id}` : undefined;
+    const propId = this.selectedPropId();
+    return id && propId ? `/api/billing/folios/${id}?prop_id=${propId}` : undefined;
   }, {
     parse: (dto) => mapFolio(dto as FolioDto),
   });
@@ -322,7 +329,7 @@ export class FolioDetailPageComponent {
     this.postingBusy.set(true);
     this.actionError.set(null);
     this.actionMessage.set(null);
-    this.folioApi.settleFolio(folio.bookingId, payload).subscribe({
+    this.folioApi.settleFolio(folio.bookingId, payload, folio.propId).subscribe({
       next: (updated) => {
         this.folioResource.reload();
         this.settlementMode.set('idle');
@@ -356,7 +363,7 @@ export class FolioDetailPageComponent {
       amount: this.postingMode() === 'discount' ? -Math.abs(form.amount) : form.amount,
       quantity: form.quantity,
       reference_type: 'manual',
-    }).subscribe({
+    }, this.folio()!.propId).subscribe({
       next: () => {
         this.folioResource.reload();
         this.actionMessage.set(this.postingMode() === 'charge' ? 'Cargo registrado en el folio.' : 'Descuento aplicado al folio.');
@@ -376,7 +383,7 @@ export class FolioDetailPageComponent {
     this.postingBusy.set(true);
     this.actionError.set(null);
     this.actionMessage.set(null);
-    this.folioApi.reopenFolio(folio.bookingId).subscribe({
+    this.folioApi.reopenFolio(folio.bookingId, folio.propId).subscribe({
       next: () => {
         this.folioResource.reload();
         this.actionMessage.set('Folio reabierto para cobrar el saldo pendiente.');
@@ -403,7 +410,7 @@ export class FolioDetailPageComponent {
     this.actionMessage.set(null);
     this.postingBusy.set(true);
 
-    this.folioApi.closeFolio(this.folio()!.bookingId).subscribe({
+    this.folioApi.closeFolio(this.folio()!.bookingId, this.folio()!.propId).subscribe({
       next: () => {
         this.folioResource.reload();
         this.actionMessage.set('Folio cerrado correctamente.');

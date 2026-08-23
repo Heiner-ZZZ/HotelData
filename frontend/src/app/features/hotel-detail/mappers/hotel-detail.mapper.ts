@@ -3,6 +3,7 @@ import type { HotelDetailViewModel } from '../models/hotel-detail.model';
 import {
   isValidImageUrl,
   placeholderImageUrl,
+  roomPlaceholderUrl,
 } from '../../../shared/utils/placeholder-image.util';
 
 function displayValue(value: string | number | null | undefined): string {
@@ -10,6 +11,21 @@ function displayValue(value: string | number | null | undefined): string {
     return 'N/D';
   }
   return String(value);
+}
+
+/**
+ * Galería de un tipo de habitación: la foto real (si existe) primero y dos
+ * placeholders deterministas después (seeded por hotel + índice, sin
+ * colisiones entre habitaciones). Mismo patrón híbrido que el bento del
+ * hotel: locales arriba, fallbacks abajo.
+ */
+function roomGalleryImages(propId: number, roomIdx: number, realUrl: string | undefined): string[] {
+  const real = isValidImageUrl(realUrl) ? [realUrl] : [];
+  return [
+    ...real,
+    roomPlaceholderUrl(propId, roomIdx * 10 + 1),
+    roomPlaceholderUrl(propId, roomIdx * 10 + 2),
+  ];
 }
 
 export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewModel {
@@ -68,13 +84,14 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
       floor: item.floor || '',
       isActive: item.is_active,
     })),
-    roomTypes: dto.room_types.map((item) => ({
+    roomTypes: dto.room_types.map((item, roomIdx) => ({
       id: item.room_type_id,
       name: item.name,
       capacityLabel: `${displayValue(item.base_capacity)} base · ${displayValue(item.max_adults)} adultos · ${displayValue(item.max_children)} niños`,
       statusLabel: item.is_active ? 'Activa' : 'Inactiva',
       description: item.description || '',
       imageUrl: item.image_url || '',
+      images: roomGalleryImages(dto.prop_id, roomIdx, item.image_url),
       features: (item.features || []).reduce<string[]>((acc, f) => {
         if (typeof f === 'string') { if (f.trim()) acc.push(f.trim()); return acc; }
         const maybe = f as { label?: unknown } | null;

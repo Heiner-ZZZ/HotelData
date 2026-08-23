@@ -26,8 +26,11 @@ export class InStayApiService {
 
   // ── Authenticated guest endpoint (JWT, no token needed) ──
 
-  getMyStaySession(bookingId: string): Observable<StaySession> {
-    return this.http.post<StaySession>('/api/stay/my-session', { booking_id: bookingId }, { withCredentials: true });
+  getMyStaySession(bookingId: string, propId: number): Observable<StaySession> {
+    return this.http.post<StaySession>('/api/stay/my-session', { booking_id: bookingId }, {
+      params: { prop_id: String(propId) },
+      withCredentials: true,
+    });
   }
 
   // ── Staff endpoints ──
@@ -40,7 +43,9 @@ export class InStayApiService {
     check_in: string;
     check_out: string;
   }): Observable<StaySession> {
-    return this.http.post<StaySession>('/api/stay/sessions', data);
+    return this.http.post<StaySession>('/api/stay/sessions', data, {
+      params: { prop_id: String(data.prop_id) },
+    });
   }
 
   listSessions(propId?: number): Observable<{ items: StaySession[]; total: number }> {
@@ -49,15 +54,17 @@ export class InStayApiService {
     return this.http.get<{ items: StaySession[]; total: number }>('/api/stay/sessions', { params });
   }
 
-  deactivateSession(token: string): Observable<{ ok: boolean }> {
-    return this.http.post<{ ok: boolean }>(`/api/stay/sessions/${token}/deactivate`, {});
+  deactivateSession(token: string, propId: number): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`/api/stay/sessions/${token}/deactivate`, {}, {
+      params: { prop_id: String(propId) },
+    });
   }
 
   // ── Staff: Service Requests ──
 
   /** Simple I1.1 dashboard: solicitudes por estado y tipo (Mongo). */
   getRequestsAnalytics(params: {
-    prop_id?: number;
+    prop_id: number;
     request_type?: string;
     status?: string;
     date_from?: string;
@@ -65,8 +72,7 @@ export class InStayApiService {
     page?: number;
     page_size?: number;
   }): Observable<ServiceRequestsAnalytics> {
-    const q: Record<string, string> = {};
-    if (params.prop_id) q['prop_id'] = String(params.prop_id);
+    const q: Record<string, string> = { prop_id: String(params.prop_id) };
     if (params.request_type) q['request_type'] = params.request_type;
     if (params.status) q['status'] = params.status;
     if (params.date_from) q['date_from'] = params.date_from;
@@ -117,43 +123,46 @@ export class InStayApiService {
     );
   }
 
-  listRequests(propId?: number, status?: string): Observable<PaginatedResponse<ServiceRequest>> {
-    const params: Record<string, string> = {};
-    if (propId) params['prop_id'] = String(propId);
+  listRequests(propId: number, status?: string): Observable<PaginatedResponse<ServiceRequest>> {
+    const params: Record<string, string> = { prop_id: String(propId) };
     if (status) params['status'] = status;
     return this.http.get<PaginatedResponse<ServiceRequest>>('/api/stay/requests', { params });
   }
 
-  updateRequest(requestId: string, status: string, staffResponse = '', newCheckOutDate?: string): Observable<{ ok: boolean }> {
+  updateRequest(requestId: string, status: string, staffResponse = '', newCheckOutDate?: string, propId?: number): Observable<{ ok: boolean }> {
     const body: Record<string, string> = { status, staff_response: staffResponse };
     if (newCheckOutDate) body['new_check_out_date'] = newCheckOutDate;
-    return this.http.put<{ ok: boolean }>(`/api/stay/requests/${requestId}`, body);
+    return this.http.put<{ ok: boolean }>(`/api/stay/requests/${requestId}`, body, {
+      params: propId ? { prop_id: String(propId) } : undefined,
+    });
   }
 
-  staffCreateRequest(bookingId: string, requestType: string, description = ''): Observable<{ ok: boolean; request_id: string }> {
+  staffCreateRequest(bookingId: string, requestType: string, description = '', propId?: number): Observable<{ ok: boolean; request_id: string }> {
     return this.http.post<{ ok: boolean; request_id: string }>('/api/stay/requests', {
       booking_id: bookingId,
       request_type: requestType,
       description,
+    }, {
+      params: propId ? { prop_id: String(propId) } : undefined,
     });
   }
 
   // ── Staff: Chat ──
 
-  listConversations(propId?: number): Observable<{ conversations: Conversation[] }> {
-    const params: Record<string, string> = {};
-    if (propId) params['prop_id'] = String(propId);
+  listConversations(propId: number): Observable<{ conversations: Conversation[] }> {
+    const params: Record<string, string> = { prop_id: String(propId) };
     return this.http.get<{ conversations: Conversation[] }>('/api/stay/conversations', { params });
   }
 
-  getConversationMessages(roomLabel: string, propId?: number): Observable<{ messages: ChatMessage[] }> {
-    const params: Record<string, string> = {};
-    if (propId) params['prop_id'] = String(propId);
+  getConversationMessages(roomLabel: string, propId: number): Observable<{ messages: ChatMessage[] }> {
+    const params: Record<string, string> = { prop_id: String(propId) };
     return this.http.get<{ messages: ChatMessage[] }>(`/api/stay/conversations/${roomLabel}`, { params });
   }
 
-  staffReply(roomLabel: string, message: string): Observable<{ ok: boolean }> {
-    return this.http.post<{ ok: boolean }>(`/api/stay/conversations/${roomLabel}/reply`, { message });
+  staffReply(roomLabel: string, message: string, propId: number): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`/api/stay/conversations/${roomLabel}/reply`, { message }, {
+      params: { prop_id: String(propId) },
+    });
   }
 
   // ── Guest endpoints (token-based) ──

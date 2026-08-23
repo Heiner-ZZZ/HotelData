@@ -101,12 +101,15 @@ def register(
 
     if not send_verification:
         now = _now()
-        user_doc = {
+        cliente_role_id = resolve_role_id("cliente")
+        user_doc: dict = {
             "username": username,
             "email": email,
             "password_hash": password_context.hash(password),
             "display_name": display_name,
-            "primary_role_id": resolve_role_id("cliente"),
+            "primary_role": "cliente",
+            "primary_role_id": cliente_role_id,
+            "role_ids": [cliente_role_id] if cliente_role_id else [],
             "is_active": True,
             "email_verified": True,
             "failed_login_attempts": 0,
@@ -205,13 +208,15 @@ def confirm_code(
         raise HTTPException(status_code=400, detail="Datos de usuario incompletos. Usa el registro completo.")
 
     now = _now()
-    user_doc = {
+    cliente_role_id = resolve_role_id("cliente")
+    user_doc: dict = {
         "username": user_username,
         "email": email,
         "password_hash": user_password_hash,
         "display_name": user_display_name or user_username,
         "primary_role": "cliente",
-        "primary_role_id": resolve_role_id("cliente"),
+        "primary_role_id": cliente_role_id,
+        "role_ids": [cliente_role_id] if cliente_role_id else [],
         "is_active": True,
         "email_verified": True,
         "failed_login_attempts": 0,

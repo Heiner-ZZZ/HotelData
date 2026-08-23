@@ -162,6 +162,20 @@ async def test_staff_with_reviews_read_can_filter_by_moderation(client, db, revi
     marketing = _seed_extra_user(
         db, username="marketing_test", role="marketing_hotelero", assigned_hotels=[TEST_PROP]
     )
+    # Migración E: asignación por-hotel para que el gate prop de reseñas pase.
+    hotel_role_id = db.hotel_roles.insert_one({
+        "prop_id": TEST_PROP,
+        "name": "marketing_hotelero",
+        "display_name": "Marketing Hotelero",
+        "permissions": ["reviews.read", "reviews.moderate"],
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc),
+    }).inserted_id
+    db.role_assignments.insert_one({
+        "user_id": ObjectId(marketing["user_id"]),
+        "role_id": hotel_role_id,
+        "prop_id": TEST_PROP,
+    })
 
     lr = await client.post(
         "/api/auth/login",

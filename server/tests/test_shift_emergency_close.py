@@ -9,6 +9,10 @@ records the action + reason in the audit log.
 Only holders of ``shifts.manage`` (gerente_hotel / super_admin) may close
 in emergency mode; a receptionist (``shifts.update`` only) is rejected
 with 403. The normal close flow keeps working for receptionists.
+
+Migración E (2026-08): reception gatea POR HOTEL (``require_prop_permission``)
+— cada usuario HTTP necesita hotel_roles + role_assignments en el prop del
+test (``_grant_hotel_role``) y las llamadas llevan ``prop_id`` en el query.
 """
 
 from __future__ import annotations
@@ -51,6 +55,26 @@ def _open_shift(db, prop_id: int, *, started_hours_ago: float = 20.0) -> str:
 def _seed_role(db, name: str, permissions: list[str]):
     db.roles.delete_many({"role_name": name})
     db.roles.insert_one({"role_name": name, "permissions": permissions, "is_active": True})
+
+
+def _grant_hotel_role(db, user_id, prop_id: int, permissions: list[str]) -> None:
+    """Migración E: reception gatea por hotel — el usuario necesita un hotel
+    role con los códigos y una role_assignment en el prop del test."""
+    role_id = db.hotel_roles.insert_one(
+        {
+            "prop_id": prop_id,
+            "name": f"test_role_{user_id}",
+            "display_name": "Rol Test",
+            "permissions": permissions,
+            "is_active": True,
+            "created_at": datetime.now(_UTC),
+            "updated_at": datetime.now(_UTC),
+        }
+    ).inserted_id
+    db.role_assignments.insert_one(
+        {"user_id": user_id, "prop_id": prop_id, "role_id": role_id}
+    )
+    db.users.update_one({"_id": user_id}, {"$set": {"assigned_hotels": [prop_id]}})
 
 
 # ── Service level ─────────────────────────────────────────────────────────
@@ -115,14 +139,16 @@ async def test_http_emergency_close_requires_shifts_manage(client, db):
         db,
         username="recep_close_test",
         email="recep_close@example.com",
-        password="Secret123!",
+        password="Pass123!",
         role="recepcionista",
     )
+    _grant_hotel_role(db, ObjectId(user["user_id"]), 955, ["shifts.read", "shifts.update"])
     shift_id = _open_shift(db, 955)
 
-    assert await login(client, user["username"], user["password"]) == 200
+    assert await login(client, user["username"], user["password"])
     response = await client.post(
         f"/api/reception/shifts/{shift_id}/close",
+        params={"prop_id": 955},
         json={"cash_counted": 100.0, "emergency": True},
     )
 
@@ -137,14 +163,16 @@ async def test_http_emergency_close_as_manager_stamps_and_audits(client, db):
         db,
         username="gerente_close_test",
         email="gerente_close@example.com",
-        password="Secret123!",
+        password="Pass123!",
         role="gerente_hotel",
     )
+    _grant_hotel_role(db, ObjectId(user["user_id"]), 956, ["shifts.manage", "shifts.read", "shifts.update"])
     shift_id = _open_shift(db, 956)
 
-    assert await login(client, user["username"], user["password"]) == 200
+    assert await login(client, user["username"], user["password"])
     response = await client.post(
         f"/api/reception/shifts/{shift_id}/close",
+        params={"prop_id": 956},
         json={"cash_counted": 100.0, "emergency": True},
     )
 
@@ -169,14 +197,16 @@ async def test_http_normal_close_still_allowed_for_receptionist(client, db):
         db,
         username="recep_normal_test",
         email="recep_normal@example.com",
-        password="Secret123!",
+        password="Pass123!",
         role="recepcionista",
     )
+    _grant_hotel_role(db, ObjectId(user["user_id"]), 957, ["shifts.read", "shifts.update"])
     shift_id = _open_shift(db, 957)
 
-    assert await login(client, user["username"], user["password"]) == 200
+    assert await login(client, user["username"], user["password"])
     response = await client.post(
         f"/api/reception/shifts/{shift_id}/close",
+        params={"prop_id": 957},
         json={"cash_counted": 100.0},
     )
 

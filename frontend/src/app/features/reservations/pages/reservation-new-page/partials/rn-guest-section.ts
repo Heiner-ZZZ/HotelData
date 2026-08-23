@@ -49,7 +49,7 @@ interface SpecialRequestView {
         <div>
           <h2>Datos del huésped</h2>
           @if (isClient()) {
-            <p>Información de tu perfil (no editable)</p>
+            <p>Información de tu perfil (la cédula puede modificarse)</p>
           } @else { <p>Información de contacto del viajero principal</p> }
         </div>
       </div>

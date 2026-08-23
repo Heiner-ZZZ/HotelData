@@ -4,10 +4,14 @@ import { roleGuard } from '../../core/auth/auth.guard';
 
 export const MANAGEMENT_ROUTES: Routes = [
   {
+    // TAF14 — Management Overview eliminado (2026-08-23): /management?prop_id=1
+    // ya no existe. Entry point de GESTIÓN es Vista A h01 con preservación
+    // automática de ?prop_id & ?prop_label vía redirectTo.
+    // Ej: /management?prop_id=1 → /management/informes-estrategicos/h01?prop_id=1
+    // Carpeta frontend/src/app/features/management/pages/dashboard-page/ borrada.
     path: '',
     pathMatch: 'full',
-    loadComponent: () =>
-      import('./pages/dashboard-page/dashboard-page').then((m) => m.ManagementDashboardPageComponent)
+    redirectTo: 'informes-estrategicos/h01'
   },
   {
     path: 'recepcion',
@@ -162,8 +166,29 @@ export const MANAGEMENT_ROUTES: Routes = [
   },
   {
     path: 'stay-inbox',
-    loadComponent: () =>
-      import('../in-stay/pages/staff-inbox/staff-inbox-page').then((m) => m.StaffInboxPageComponent)
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('../in-stay/pages/staff-inbox/staff-inbox-page').then((m) => m.StaffInboxPageComponent)
+      },
+      {
+        path: 'folios',
+        loadComponent: () =>
+          import('../in-stay/pages/staff-inbox/staff-inbox-page').then((m) => m.StaffInboxPageComponent)
+      },
+      {
+        path: 'sessions',
+        loadComponent: () =>
+          import('../in-stay/pages/staff-inbox/staff-inbox-page').then((m) => m.StaffInboxPageComponent)
+      },
+      {
+        path: 'lost-found',
+        loadComponent: () =>
+          import('../in-stay/pages/staff-inbox/staff-inbox-page').then((m) => m.StaffInboxPageComponent)
+      },
+    ]
   },
   {
     path: 'service-requests',

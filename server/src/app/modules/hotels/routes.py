@@ -9,6 +9,7 @@ from src.app.modules.hotels.service import (
     hotel_detail,
 )
 from src.app.modules.hotels.service.availability import search_available_hotels
+from src.app.modules.hotels.service.availability.snapshot import get_room_availability_snapshot
 from src.app.modules.notifications.promotions import list_public_offers
 from src.app.modules.hotels.service.compare import compare_hotels_with_availability
 from src.app.modules.hotels.service.lookups import suggest_destinations
@@ -139,6 +140,24 @@ def similar_api(
     limit: int = Query(default=6, ge=1, le=12),
 ):
     return similar_hotels(prop_id, limit=limit)
+
+
+@api_router.get("/{prop_id}/availability/snapshot")
+def availability_snapshot_api(
+    prop_id: int,
+    start_date: str | None = Query(default=None, description="YYYY-MM-DD, defaults to today"),
+    days: int = Query(default=7, ge=1, le=14, description="Number of days, 1..14"),
+):
+    """Public: per-room next-N-days availability for hotel detail without dates.
+
+    Sin check_in/out la caja de habitación muestra "Disponible" genérico y
+    "Consultar". Este snapshot da feedback por día (esta semana) sin que el
+    huésped adivine en el calendario, con tarifa válida por habitación.
+    """
+    snapshot = get_room_availability_snapshot(prop_id, start_date=start_date, days=days)
+    if snapshot is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Hotel not found")
+    return snapshot
 
 
 @api_router.get("/{prop_id}")

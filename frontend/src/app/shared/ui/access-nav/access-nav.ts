@@ -112,7 +112,7 @@ export class AccessNavComponent implements AfterViewInit {
     }
 
     if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'recepcionista', 'housekeeping', 'concierge'].includes(role)) {
-      items.push({ label: 'Gestión', href: '/management', icon: 'dashboard' });
+      items.push({ label: 'Gestión', href: '/management/informes-estrategicos/h01', icon: 'dashboard' });
     }
 
     if (role === 'cliente') {
@@ -150,7 +150,7 @@ export class AccessNavComponent implements AfterViewInit {
       icon: 'dashboard',
       allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'recepcionista', 'housekeeping', 'concierge'],
       items: [
-        { label: 'Panel hotelero', href: '/management', icon: 'dashboard', exact: true } as NavMenuItem,
+        { label: 'Panel hotelero', href: '/management/informes-estrategicos/h01', icon: 'dashboard', exact: true } as NavMenuItem,
         {
           label: 'Operación',
           icon: 'assignment',

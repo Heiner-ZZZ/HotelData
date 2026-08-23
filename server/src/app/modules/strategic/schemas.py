@@ -51,14 +51,49 @@ class PaginationResponse(BaseModel):
     has_prev: bool = False
 
 
+class BandaPrecioResponse(BaseModel):
+    """Banda de precio de la competencia (IE-H02): percentiles reales del ADR
+    de los hoteles del mismo conjunto competitivo."""
+    model_config = ConfigDict(populate_by_name=True)
+    p25: float = 0.0
+    p50: float = 0.0
+    p75: float = 0.0
+
+
+class CompetitorMarkerResponse(BaseModel):
+    """Marcador de un competidor para el mapa de IE-H02: coordenadas reales
+    (por hotel si existen, si no centro de ciudad) + ADR/rating + distancia."""
+    model_config = ConfigDict(populate_by_name=True)
+    prop_id: int = 0
+    hotel_label: str = ""
+    lat: float | None = None
+    lng: float | None = None
+    adr: float = 0.0
+    rating: float = 0.0
+    distance_km: float | None = None
+
+
 class PosicionamientoResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     rating: float = 0.0
     adr: float = 0.0
     rating_variacion: float = 0.0
     adr_variacion: float = 0.0
+    competitors: int = 0
+    city: str = ""
+    radio_km: float | None = None
+    adr_percentile: float | None = None
+    rating_percentile: float | None = None
+    banda_precio: BandaPrecioResponse | None = None
+    precio_relativo_pct: float | None = None
     diagnosis: str = ""
     decision: str = ""
+    # Mapa competitivo: coordenadas del propio hotel + marcadores de los
+    # competidores (ordenados por distancia), para la vista "dónde estoy y
+    # dónde está mi competencia en el radio".
+    own_lat: float | None = None
+    own_lng: float | None = None
+    competitors_markers: list[CompetitorMarkerResponse] = []
 
 
 class StrategicSummaryResponse(BaseModel):
@@ -224,6 +259,7 @@ StrategicKpiResponse.model_rebuild()
 SeriesDatasetResponse.model_rebuild()
 SeriesResponse.model_rebuild()
 PaginationResponse.model_rebuild()
+BandaPrecioResponse.model_rebuild()
 PosicionamientoResponse.model_rebuild()
 StrategicSummaryResponse.model_rebuild()
 PlanRowResponse.model_rebuild()

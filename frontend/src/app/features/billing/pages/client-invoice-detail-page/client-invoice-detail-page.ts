@@ -32,7 +32,7 @@ export class ClientInvoiceDetailPageComponent {
 
   readonly invoiceResource = httpResource<InvoiceDetailViewModel>(() => {
     const id = this.invoiceId();
-    return id ? `/api/billing/invoices/${id}` : undefined;
+    return id ? `/api/billing/my-invoices/${id}` : undefined;
   }, {
     parse: (res) => mapInvoiceDetail(res as import('../../models/billing.dto').InvoiceDetailDto),
   });

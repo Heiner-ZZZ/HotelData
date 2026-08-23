@@ -13,8 +13,8 @@ export interface HotelCompareItemDto {
   room_types: HotelCompareRoomTypeDto[];
   policies: Record<string, unknown>;
   destination_labels: string[];
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   min_nightly_rate?: number;
   min_nightly_rate_label?: string;
   total_estimated?: number;

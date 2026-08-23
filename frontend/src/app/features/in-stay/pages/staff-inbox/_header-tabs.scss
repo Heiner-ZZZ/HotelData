@@ -84,6 +84,8 @@
   font-weight: 500;
   transition: all 0.2s;
   font-family: inherit;
+  text-decoration: none;
+  -webkit-text-decoration: none;
 
   &.active {
     color: t.$si-accent;
@@ -92,14 +94,5 @@
 
   &:hover:not(.active) {
     color: t.$si-text;
-  }
-
-  .si-tab-count {
-    background: t.$si-accent;
-    color: white;
-    font-size: 0.6rem;
-    padding: 0.1rem 0.35rem;
-    border-radius: 99px;
-    font-weight: 600;
   }
 }

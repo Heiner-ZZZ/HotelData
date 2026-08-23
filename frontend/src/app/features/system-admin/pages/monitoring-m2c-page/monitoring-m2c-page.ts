@@ -21,6 +21,7 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { M2cConsolidatedDto, M2cActionResponseDto, M2cRefreshMode } from '../../models/monitoring-m2c.dto';
 import { MonitoringM2cApiService } from '../../services/monitoring-m2c-api.service';
+import { M2cProgressBoxComponent } from './partials/m2c-progress-box';
 
 @Component({
   selector: 'app-monitoring-m2c-page',
@@ -30,6 +31,7 @@ import { MonitoringM2cApiService } from '../../services/monitoring-m2c-api.servi
     PageHeaderComponent,
     StatusBadgeComponent,
     DecimalPipe,
+    M2cProgressBoxComponent,
   ],
   templateUrl: './monitoring-m2c-page.html',
   styleUrl: './monitoring-m2c-page.scss',
@@ -93,15 +95,6 @@ export class MonitoringM2cPageComponent {
   readonly scheduleTime = signal('00:00');
   /** Modo de refresco de los KPIs: 'full' (barrido) o 'incremental' (solo cambios). */
   readonly refreshMode = signal<M2cRefreshMode>('full');
-  readonly stepOrder = [
-    'validate_config',
-    'extract_mongo',
-    'transform',
-    'create_tables',
-    'load_clickhouse',
-    'quality_report',
-    'execution_report',
-  ] as const;
   /** Acción ETL pendiente de confirmar — mantiene el modo 'execute' en el nav. */
   private readonly pendingAction = signal<{ title: string } | null>(null);
 

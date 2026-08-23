@@ -7,10 +7,14 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.app.core.types import ObjectIdStr
-from src.app.modules.partner.routes import api_router, legacy_admin_api_router, web_router
+from src.app.modules.partner.routes import (
+    api_router,
+    legacy_admin_api_router,
+    web_router,
+)
 from src.app.modules.partner.services import (
-    list_hotel_changes,
     get_change_detail,
+    list_hotel_changes,
     list_partner_hotels,
     list_property_options,
     partner_hotel_detail,
@@ -20,9 +24,12 @@ from src.app.modules.partner.services import (
     properties_dashboard,
     save_partner_hotel_profile,
 )
-from src.app.security.role_helpers import get_role_name, UNFILTERED_ROLES
-from src.app.security.dependencies import require_permission
-
+from src.app.security.dependencies import (
+    require_login,
+    require_permission,
+    require_prop_permission,
+)
+from src.app.security.role_helpers import UNFILTERED_ROLES, get_role_name
 
 # ─── History: PropertyHistoryListResponse envelope ──────────────────
 
@@ -138,17 +145,19 @@ def properties_api(q: str = "", page: int = Query(default=1, ge=1), current_user
 
 @api_router.get("/properties/context")
 def properties_context_api(
-    current_user: dict = Depends(require_permission("properties.read")),
+    current_user: dict = Depends(require_login),
 ):
     """Return the property context for the current user.
 
-    Determines the access mode:
-    - "all": super_admin, admin_sistema — can browse all hotels
-    - "single": user has exactly 1 assigned hotel → auto-select
-    - "multi": user has 2+ assigned hotels → show limited selector
+    Opción 2 (2026-08): selector de scope → login-only. El modo y el alcance
+    salen de ``assigned_hotels`` (deny-by-default por rol restringido), NO de
+    códigos globales: sin ``properties.read``/``reservations.read`` globales
+    el usuario con hoteles asignados debe poder arrancar la app.
     """
+    from src.app.modules.partner.services.properties.listing import (
+        list_property_options,
+    )
     from src.app.security.hotel_filter import assigned_hotels_for_user
-    from src.app.modules.partner.services.properties.listing import list_property_options
 
     role = get_role_name(current_user or {})
 
@@ -203,8 +212,13 @@ def properties_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
-    current_user: dict = Depends(require_permission("properties.read")),
+    current_user: dict = Depends(require_login),
 ):
+    """Lightweight selector de propiedades: login-only, scope por asignación.
+
+    Opción 2 (2026-08): mismo contrato que ``/properties/context`` — el picker
+    lista SOLO los hoteles asignados del usuario; sin códigos globales.
+    """
     # Lightweight path: the selector only needs id+name; the enriched
     # listing runs per-hotel aggregates (performance/operational) that
     # cost seconds at page_size>=10.
@@ -230,7 +244,7 @@ def properties_dashboard_api(q: str = "", page: int = Query(default=1, ge=1), cu
 
 
 @api_router.get("/properties/{prop_id}/edit")
-def property_edit_api(prop_id: int):
+def property_edit_api(prop_id: int, current_user: dict = Depends(require_prop_permission("properties.read"))):
     detail = partner_hotel_edit_profile(prop_id)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -238,7 +252,7 @@ def property_edit_api(prop_id: int):
 
 
 @api_router.get("/properties/{prop_id}/profile")
-def property_profile_api(prop_id: int):
+def property_profile_api(prop_id: int, current_user: dict = Depends(require_prop_permission("properties.read"))):
     detail = partner_hotel_profile(prop_id)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -249,7 +263,7 @@ def property_profile_api(prop_id: int):
 def property_profile_update_api(
     prop_id: int,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("properties.update")),
+    current_user: dict = Depends(require_prop_permission("properties.update")),
 ):
     saved = save_partner_hotel_profile(
         prop_id,
@@ -272,10 +286,12 @@ def property_operational_calendar_api(
     prop_id: int,
     year: int = Query(default=None),
     month: int = Query(default=None),
-    current_user: dict = Depends(require_permission("properties.read")),
+    current_user: dict = Depends(require_prop_permission("properties.read")),
 ):
-    from src.app.modules.partner.services.properties.operational_calendar import operational_calendar as _oc
     from src.app.core.timezone import local_now
+    from src.app.modules.partner.services.properties.operational_calendar import (
+        operational_calendar as _oc,
+    )
     now_local = local_now()
     y = year or now_local.year
     m = month or now_local.month
@@ -283,11 +299,17 @@ def property_operational_calendar_api(
 
 
 @api_router.get("/properties/{prop_id}")
-def property_detail_api(prop_id: int, current_user: dict = Depends(require_permission("properties.read"))):
+def property_detail_api(prop_id: int, current_user: dict = Depends(require_prop_permission("properties.read"))):
     detail = partner_hotel_detail(prop_id, user=current_user)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
+
+
+# ── History (vista de auditoría — excepción global documentada) ──
+# ``audit.read`` es un código SYSTEM-SCOPE (los roles de hotel no lo portan
+# por diseño): el historial de cambios del perfil es vista de PLATAFORMA, no
+# operación del hotel. Se mantiene GLOBAL (require_permission) a propósito.
 
 
 @api_router.get(

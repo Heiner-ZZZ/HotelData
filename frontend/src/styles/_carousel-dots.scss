@@ -1,0 +1,45 @@
+/* ═══ Puntitos de carrusel — diseño canónico del comparador ═══
+   Única definición de los indicadores de galería: círculo de 7px al 45% de
+   blanco, y el activo crece a una píldora de 18px en --surface (radio 4px).
+   Lo usan el componente compartido app-carousel-controls, el hotel-card de
+   búsqueda/favoritos y el comparador de hoteles — cualquier cambio de diseño
+   se hace acá, no en cada copia.
+
+   Uso:
+     @use '.../styles/carousel-dots' as *;
+     @include carousel-dots('.cc-dots', '.cc-dot');
+
+   $container: selector del contenedor (absolute, bottom center, flex).
+   $dot:       selector del botón puntito — `.is-active` es la píldora. */
+@mixin carousel-dots($container, $dot) {
+  #{$container} {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    display: flex;
+    gap: 5px;
+  }
+
+  #{$dot} {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    padding: 0;
+    transition: all 200ms ease;
+
+    &.is-active {
+      background: var(--surface);
+      width: 18px;
+      border-radius: 4px;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.75);
+    }
+  }
+}

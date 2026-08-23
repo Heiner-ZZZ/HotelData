@@ -101,6 +101,18 @@
   margin-left: 4px;
 }
 
+.location-picker-field {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.5rem;
+
+  .input-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--app-text);
+  }
+}
+
 /* ── Native select shells for country / currency dropdowns ── */
 .select-field {
   grid-column: 1 / -1;

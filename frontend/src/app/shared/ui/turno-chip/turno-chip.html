@@ -67,7 +67,7 @@
           </dl>
         } @else {
           <p class="turno-pop-note">
-            {{ vm.kind === 'caja' ? 'No hay turno de caja abierto para este hotel.' : 'No tenés turno asignado hoy.' }}
+            {{ vm.note || (vm.kind === 'caja' ? 'No hay turno de caja abierto para este hotel.' : 'No tenés turno asignado hoy.') }}
           </p>
         }
 

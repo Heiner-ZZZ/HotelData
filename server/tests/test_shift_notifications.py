@@ -154,6 +154,7 @@ async def test_http_put_config_accepts_notify_manager_hours(client, admin_user, 
 
     response = await client.put(
         "/api/reception/shifts/config",
+        params={"prop_id": 976},
         json={
             "prop_id": 976,
             "windows": {

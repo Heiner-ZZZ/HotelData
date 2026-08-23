@@ -1,4 +1,5 @@
 export interface NotificationLogItemDto {
+  _id: string;
   notification_type: string;
   recipient_email: string;
   recipient_name: string;
@@ -6,6 +7,7 @@ export interface NotificationLogItemDto {
   prop_id: number;
   status: string;
   error_message: string;
+  message?: string;
   created_at: string;
 }
 

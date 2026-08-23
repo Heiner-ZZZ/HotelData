@@ -654,6 +654,48 @@
 }
 
 /* ── Tablas ───────────────────────────────────────────────────────────── */
+.strd-map-card {
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 0;
+
+  .strd-map-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.95rem 1.1rem;
+    border-bottom: 1px solid var(--app-border);
+    background: var(--surface-raised);
+
+    h3 {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin: 0;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--app-text);
+
+      .material-symbols-outlined {
+        font-size: 1.05rem;
+        color: var(--accent);
+      }
+    }
+
+    .strd-meta {
+      margin: 0.1rem 0 0;
+      font-size: 0.74rem;
+      color: var(--muted-text);
+    }
+  }
+
+  app-competitive-map {
+    display: block;
+    padding: 0.9rem;
+  }
+}
+
 .strd-table-card {
   border-radius: 16px;
   overflow: hidden;

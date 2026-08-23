@@ -167,8 +167,13 @@ def require_prop_permission(
     context.
 
     Permission resolution goes through ``user_has_permission(prop_id=...)``
-    which consults ``role_assignments`` → ``hotel_roles`` for the hotel
-    (with the backward-compatible global fallback when no assignment exists).
+    which consults ``role_assignments`` → ``hotel_roles`` for the hotel.
+    **Deny-by-default (Fase 1): sin asignación para el hotel, sin permisos —
+    el rol GLOBAL nunca es fallback en contexto de hotel** (permite que un
+    empleado restringido del hotel A no herede los permisos de su rol global
+    en el hotel B: escalada cross-hotel). ``super_admin`` conserva el bypass
+    ``*.*``. Solo las rutas SIN contexto de hotel (``require_permission``)
+    conservan la resolución global (roles de sistema/legado).
     """
 
     def dependency(request: Request) -> dict[str, Any]:
@@ -237,6 +242,81 @@ def require_prop_permission(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Permiso requerido: {permission_code}",
+        )
+
+    return dependency
+
+
+def require_any_prop_permission(*permission_codes: str) -> Callable[[Request], dict[str, Any]]:
+    """Require at least one permission from a set, scoped to a hotel (E 2026-08).
+
+    Variante por-hotel de ``require_any_permission`` para combos operativos
+    (ej. emitir facturas = ``billing.manage`` O ``check-outs.manage`` en el
+    hotel). Misma semántica que ``require_prop_permission``: prop_id del
+    path/query (400 si falta), gate operativo, ``user_can_access_hotel`` y
+    resolución por-hotel deny-by-default (el rol GLOBAL no es fallback).
+    """
+    if not permission_codes:
+        raise ValueError("At least one permission code is required")
+
+    def dependency(request: Request) -> dict[str, Any]:
+        user = require_login(request)
+        db = get_database()
+        pid = _resolve_prop_id(request, None)
+        if pid is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Contexto de hotel requerido (prop_id).",
+            )
+        if non_operational_hotel(db, pid):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"El hotel {pid} no está operativo.",
+            )
+        if not user_can_access_hotel(user, pid):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Sin acceso al hotel {pid}.",
+            )
+        if any(user_has_permission(db, user, code, prop_id=pid) for code in permission_codes):
+            return user
+
+        username = (user or {}).get("username") or "anonymous"
+        required = " or ".join(permission_codes)
+        try:
+            register_action(
+                prop_id=pid,
+                entity_type="permission",
+                entity_id=f"denied:{required}",
+                action="access_denied",
+                summary=(
+                    f"403: {username} tried {request.method} {request.url.path} "
+                    f"(requires {required} in hotel {pid})"
+                ),
+                changed_by=username,
+                metadata={
+                    "permissions": list(permission_codes),
+                    "prop_id": pid,
+                    "path": request.url.path,
+                    "method": request.method,
+                    "user_id": (user or {}).get("_id"),
+                    "ip": request.client.host if request.client else None,
+                },
+            )
+        except Exception:
+            _logger.warning(
+                "Failed to write access_denied audit for %s on %s %s "
+                "(perms=%s, prop_id=%s); 403 will still fire",
+                username,
+                request.method,
+                request.url.path,
+                required,
+                pid,
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permiso requerido: {required}",
         )
 
     return dependency

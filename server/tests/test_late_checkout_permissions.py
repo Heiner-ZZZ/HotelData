@@ -183,6 +183,25 @@ def _freeze_clock(monkeypatch, *, hour: int, minute: int) -> None:
     monkeypatch.setattr(checkout_module, "local_now", lambda: frozen, raising=False)
 
 
+def _assign_hotel_role(db, username: str, permissions: list[str], *, prop_id: int) -> None:
+    """Asigna un rol de hotel (role_assignment → hotel_roles) a un usuario."""
+    user = db.users.find_one({"username": username})
+    db.users.update_one({"username": username}, {"$set": {"assigned_hotels": [prop_id]}})
+    hotel_role_id = db.hotel_roles.insert_one(
+        {
+            "prop_id": prop_id,
+            "name": username,
+            "display_name": username,
+            "permissions": permissions,
+            "is_active": True,
+            "created_at": datetime.now(UTC),
+        }
+    ).inserted_id
+    db.role_assignments.insert_one(
+        {"user_id": user["_id"], "role_id": hotel_role_id, "prop_id": prop_id}
+    )
+
+
 def _seed_checked_in_booking(db, booking_id: str) -> None:
     db.booking_orders.insert_one(
         {
@@ -211,11 +230,14 @@ async def test_receptionist_cannot_submit_approved_late_checkout(
     """La recepcionista no puede aprobar late check-out vía ruta: 403 antes de escribir."""
     _seed_user(db, "recepcionista_late_route", "recepcionista", ["check-ins.manage", "check-outs.manage"])
     _seed_checked_in_booking(db, "BK-LC-ROUTE-403")
+    # Migración E: asignación por-hotel para que el gate prop pase y la
+    # negación venga de la autorización gerencial (late approve).
+    _assign_hotel_role(db, "recepcionista_late_route", ["check-ins.manage", "check-outs.manage"], prop_id=994)
     _freeze_clock(monkeypatch, hour=14, minute=0)
     assert await login(client, "recepcionista_late_route", "LatePass123!") == 200
 
     response = await client.post(
-        "/api/management/check-outs/BK-LC-ROUTE-403/complete",
+        "/api/management/check-outs/BK-LC-ROUTE-403/complete?prop_id=994",
         json={
             "check_out_keys_returned": True,
             "late_checkout_mode": "late_approved",
@@ -239,6 +261,9 @@ async def test_manager_can_submit_approved_late_checkout(
     """El gerente aprueba el late check-out vía ruta: 200 + modo registrado."""
     _seed_user(db, "gerente_late_route", "gerente_hotel", ROLE_PERMISSION_CODES["gerente_hotel"])
     _seed_checked_in_booking(db, "BK-LC-ROUTE-200")
+    # Migración E: asignación por-hotel del gerente (gate prop + autorización
+    # gerencial resuelta por el rol del hotel).
+    _assign_hotel_role(db, "gerente_late_route", ROLE_PERMISSION_CODES["gerente_hotel"], prop_id=994)
     db.hotel_policies.insert_one(
         {
             "prop_id": 994,
@@ -269,7 +294,7 @@ async def test_manager_can_submit_approved_late_checkout(
     assert await login(client, "gerente_late_route", "LatePass123!") == 200
 
     response = await client.post(
-        "/api/management/check-outs/BK-LC-ROUTE-200/complete",
+        "/api/management/check-outs/BK-LC-ROUTE-200/complete?prop_id=994",
         json={
             "check_out_keys_returned": True,
             "late_checkout_mode": "late_approved",

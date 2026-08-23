@@ -221,10 +221,17 @@ export class ShiftsApiService {
   /** Get currently active shift for a property */
   getActiveShift(propId: number) {
     const params = new HttpParams().set('prop_id', String(propId));
-    return this.http.get<{ shift: ShiftInfo | null; shift_type_labels: Record<string, string> }>(
-      '/api/reception/shifts/active',
-      { params, withCredentials: true },
-    );
+    return this.http.get<{
+      shift: ShiftInfo | null;
+      shift_type_labels: Record<string, string>;
+      /** true cuando hay un turno activo pero pertenece a OTRO empleado. */
+      occupied?: boolean;
+      opener_username?: string | null;
+      opener_employee?: string | null;
+      /** Cuándo el turno ajeno alcanza su límite de apertura (ISO). */
+      expires_at?: string | null;
+      max_open_hours?: number;
+    }>('/api/reception/shifts/active', { params, withCredentials: true });
   }
 
   /**
@@ -262,7 +269,10 @@ export class ShiftsApiService {
     return this.http.post<{ shift: ShiftInfo; message: string }>(
       '/api/reception/shifts/open',
       body,
-      { withCredentials: true },
+      {
+        params: new HttpParams().set('prop_id', String(propId)),
+        withCredentials: true,
+      },
     );
   }
 
@@ -288,6 +298,7 @@ export class ShiftsApiService {
     closedBy?: string,
     emergency?: boolean,
     emergencyReason?: string,
+    propId?: number,
   ) {
     interface ShiftClosePayload {
       cash_counted: number;
@@ -309,18 +320,26 @@ export class ShiftsApiService {
       body.emergency_reason = emergencyReason || 'vencimiento';
     }
 
+    const options: Record<string, unknown> = { withCredentials: true };
+    if (propId) {
+      options['params'] = new HttpParams().set('prop_id', String(propId));
+    }
     return this.http.post<{ shift: ShiftInfo; message: string; summary: ShiftCloseSummary }>(
       `/api/reception/shifts/${shiftId}/close`,
       body,
-      { withCredentials: true },
+      options,
     );
   }
 
   /** Get shift detail by ID */
-  getShift(shiftId: string) {
+  getShift(shiftId: string, propId?: number) {
+    const options: Record<string, unknown> = { withCredentials: true };
+    if (propId) {
+      options['params'] = new HttpParams().set('prop_id', String(propId));
+    }
     return this.http.get<{ shift: ShiftInfo }>(
       `/api/reception/shifts/${shiftId}`,
-      { withCredentials: true },
+      options,
     );
   }
 
@@ -400,7 +419,10 @@ export class ShiftsApiService {
     return this.http.put<{ config: ShiftConfig; message: string }>(
       '/api/reception/shifts/config',
       body,
-      { withCredentials: true },
+      {
+        params: new HttpParams().set('prop_id', String(propId)),
+        withCredentials: true,
+      },
     );
   }
 }

@@ -102,3 +102,80 @@ async def test_onboarding_owner_scoped_to_own_hotel(client, db, monkeypatch):
 
     # El filtro de datos restringe a su hotel (antes era {} = sin filtro).
     assert hotel_filter_from_user(user) == {"prop_id": {"$in": [prop_id]}}
+
+
+async def _send_then_confirm(client, db, monkeypatch, payload) -> dict:
+    _seed_catalogs(db)
+    captured = _capture_code(monkeypatch)
+    resp = await client.post("/api/auth/register-property/send-code", json=payload)
+    assert resp.status_code == 200, resp.text
+    resp = await client.post(
+        "/api/auth/register-property/confirm-code",
+        json={"email": payload["email"], "code": captured["code"]},
+    )
+    assert resp.status_code == 200, resp.text
+    user = db.users.find_one({"email": payload["email"]})
+    return db.dim_hotels.find_one({"prop_id": user["assigned_prop_id"]})
+
+
+async def test_onboarding_stores_address_and_coords(client, db, monkeypatch):
+    """Nivel 2 geolocalización: el dueño aporta dirección + lat/lng reales y
+    quedan en dim_hotels (para el radio de 5 km literal de IE-H02)."""
+    payload = _onboarding_payload("geo1@nuevo.hotel", "geo_uno")
+    payload["address"] = "Av. Amazonas N37-61"
+    payload["latitude"] = -0.1807
+    payload["longitude"] = -78.4678
+
+    hotel = await _send_then_confirm(client, db, monkeypatch, payload)
+    assert hotel["address"] == "Av. Amazonas N37-61"
+    assert hotel["latitude"] == -0.1807
+    assert hotel["longitude"] == -78.4678
+
+
+async def test_onboarding_geocodes_address_when_no_coords(client, db, monkeypatch):
+    """Sin coordenadas pero con DIRECCIÓN, se geocodifica (Nominatim, best-effort)
+    y el resultado se persiste en dim_hotels."""
+    monkeypatch.setattr(
+        rp,
+        "geocode",
+        lambda address, *, city="", country="": {
+            "latitude": -0.1807,
+            "longitude": -78.4678,
+            "display_name": "Quito",
+        },
+    )
+    payload = _onboarding_payload("geo2@nuevo.hotel", "geo_dos")
+    payload["address"] = "Av. Amazonas N37-61"
+
+    hotel = await _send_then_confirm(client, db, monkeypatch, payload)
+    assert hotel["latitude"] == -0.1807
+    assert hotel["longitude"] == -78.4678
+
+
+async def test_onboarding_city_only_does_not_geocode(client, db, monkeypatch):
+    """Con solo ciudad (sin dirección) NO se geocodifica ni se inventa una
+    coordenada por hotel: latitude/longitude quedan None y el ETL cae a
+    geo_catalog (ciudad)."""
+    called: dict = {}
+    monkeypatch.setattr(
+        rp,
+        "geocode",
+        lambda address, *, city="", country="": called.update(called=True)
+        or {"latitude": 0.0, "longitude": 0.0, "display_name": ""},
+    )
+    payload = _onboarding_payload("geo3@nuevo.hotel", "geo_tres")
+
+    hotel = await _send_then_confirm(client, db, monkeypatch, payload)
+    assert hotel.get("latitude") is None
+    assert hotel.get("longitude") is None
+    assert "called" not in called  # geocode nunca se invocó
+
+
+async def test_onboarding_rejects_lat_without_lng(client, db, monkeypatch):
+    _seed_catalogs(db)
+    _capture_code(monkeypatch)
+    payload = _onboarding_payload("geo4@nuevo.hotel", "geo_cuatro")
+    payload["latitude"] = -0.1807  # sin longitude → 400
+
+    resp = await client.post("/api/auth/register-property/send-code", json=payload)
+    assert resp.status_code == 400

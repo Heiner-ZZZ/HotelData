@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
 
 export interface FolioPosting {
@@ -322,38 +322,44 @@ export class FolioApiService {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/billing/folios';
 
-  /** Get the folio for a booking. */
-  getFolio(bookingId: string): Observable<FolioViewModel> {
-    return this.http.get<FolioDto>(`${this.base}/${bookingId}`, { withCredentials: true }).pipe(map(mapFolio));
+  /** Get the folio for a booking (prop-scoped: migración E). */
+  getFolio(bookingId: string, propId: number): Observable<FolioViewModel> {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.get<FolioDto>(`${this.base}/${bookingId}`, { params, withCredentials: true }).pipe(map(mapFolio));
   }
 
-  /** Post a transaction to the guest's folio. */
-  postToFolio(bookingId: string, payload: FolioPostPayload): Observable<FolioViewModel> {
-    return this.http.post<FolioDto>(`${this.base}/${bookingId}/post`, payload, { withCredentials: true }).pipe(map(mapFolio));
+  /** Post a transaction to the guest's folio (prop-scoped: migración E). */
+  postToFolio(bookingId: string, payload: FolioPostPayload, propId: number): Observable<FolioViewModel> {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.post<FolioDto>(`${this.base}/${bookingId}/post`, payload, { params, withCredentials: true }).pipe(map(mapFolio));
   }
 
   /** Emit the complementary invoice for the folio's current unbilled gap. */
   emitComplementInvoice(bookingId: string, propId: number): Observable<FolioComplementInvoiceResponse> {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.post<FolioComplementInvoiceResponse>(
       '/billing/invoices/complement',
-      { booking_id: bookingId, prop_id: propId },
-      { withCredentials: true },
+      { booking_id: bookingId },
+      { params, withCredentials: true },
     );
   }
 
-  /** Reopen a closed folio with a collectible balance. */
-  reopenFolio(bookingId: string): Observable<FolioViewModel> {
-    return this.http.post<FolioDto>(`${this.base}/${bookingId}/reopen`, {}, { withCredentials: true }).pipe(map(mapFolio));
+  /** Reopen a closed folio with a collectible balance (prop-scoped). */
+  reopenFolio(bookingId: string, propId: number): Observable<FolioViewModel> {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.post<FolioDto>(`${this.base}/${bookingId}/reopen`, {}, { params, withCredentials: true }).pipe(map(mapFolio));
   }
 
   /** Resolve a positive balance with an explicit payment or approved exception. */
-  settleFolio(bookingId: string, payload: FolioSettlementPayload): Observable<FolioViewModel> {
-    return this.http.post<FolioDto>(`${this.base}/${bookingId}/settle`, payload, { withCredentials: true }).pipe(map(mapFolio));
+  settleFolio(bookingId: string, payload: FolioSettlementPayload, propId: number): Observable<FolioViewModel> {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.post<FolioDto>(`${this.base}/${bookingId}/settle`, payload, { params, withCredentials: true }).pipe(map(mapFolio));
   }
 
-  /** Close a folio at check-out. */
-  closeFolio(bookingId: string, payload: FolioClosePayload = {}): Observable<FolioViewModel> {
-    return this.http.post<FolioDto>(`${this.base}/${bookingId}/close`, payload, { withCredentials: true }).pipe(map(mapFolio));
+  /** Close a folio at check-out (prop-scoped: migración E). */
+  closeFolio(bookingId: string, propId: number, payload: FolioClosePayload = {}): Observable<FolioViewModel> {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.post<FolioDto>(`${this.base}/${bookingId}/close`, payload, { params, withCredentials: true }).pipe(map(mapFolio));
   }
 
   /** List folios with optional filters. */

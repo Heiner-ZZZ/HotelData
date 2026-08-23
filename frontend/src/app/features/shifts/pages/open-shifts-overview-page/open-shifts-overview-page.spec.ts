@@ -317,6 +317,7 @@ describe('OpenShiftsOverviewPageComponent', () => {
       undefined,
       true,
       'Turno olvidado por gerencia',
+      1, // prop_id (migración E: close gatea por hotel)
     );
     expect(toast.toasts().some((t) => t.message.includes('cerrado forzosamente') && t.type === 'success')).toBe(true);
     // recarga tras el cierre

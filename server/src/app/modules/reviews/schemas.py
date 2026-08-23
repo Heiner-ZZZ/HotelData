@@ -98,6 +98,7 @@ class ReviewResponse(BaseModel):
     )
     booking_id: str = ""
     prop_id: int = 0
+    hotel_label: str = ""
     user_id: ObjectIdStr | None = Field(
         default=None,
         validation_alias="user_id",

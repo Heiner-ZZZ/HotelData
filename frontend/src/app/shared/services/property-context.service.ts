@@ -37,6 +37,9 @@ export const PROPERTY_CONTEXT_ROUTES = [
   '/management',
   '/admin/subscriptions',
   '/informes-estrategicos',
+  // Isolated booking creation flow: the guest uses the shared selector to
+  // choose a hotel, without turning the rest of the account shell global.
+  '/account/bookings/new',
 ] as const;
 
 /** True when the path is one of the routes that consume the property context. */
@@ -113,7 +116,17 @@ export class PropertyContextService {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => {
-        if (!this.ready()) return;
+        // In-app navigation into a property-context route (e.g. a guest going
+        // from hotel detail to /account/bookings/new) never re-fires the auth
+        // effect above, so load the context here instead of leaving the shared
+        // property selector stuck on its loading state.
+        const pathOnly = this.router.url.split('?')[0].split('#')[0];
+        if (!this.ready()) {
+          if (isPropertyContextRoute(pathOnly)) {
+            this.loadContext();
+          }
+          return;
+        }
         if (this.singleHotelMode()) {
           this._ensurePropIdInUrl(this.defaultPropId());
         } else {
@@ -133,13 +146,13 @@ export class PropertyContextService {
 
   private loadContext(): void {
     if (this.loading) return;
-    // Property context is only meaningful on management routes (and the admin
-    // subscription reconciliation screen, which reuses the global property
-    // selector). The DI graph wires PropertyContextService into the root
-    // injector, so any shell that activates (account, system, ownership,
-    // public) would otherwise fire the same /api/management/properties/context
-    // call and produce 401/403 noise on guest-side paths like /account/bookings.
-    // Restrict the call to /management/* + /admin/subscriptions.
+    // Property context is meaningful on management routes, the admin
+    // subscription reconciliation screen, and the isolated booking-creation
+    // flow that reuses the global property selector. The DI graph wires
+    // PropertyContextService into the root injector, so any shell that
+    // activates (account, system, ownership, public) would otherwise fire the
+    // same request and produce 401/403 noise on unrelated guest paths.
+    // Restrict the call to the explicit property-context routes above.
     const url = this.router.url || '/';
     // Strip query string and hash fragment — `router.url` returns the full URL
     // (e.g. `/management?prop_id=1`), so naïve `startsWith('/management/')` misses

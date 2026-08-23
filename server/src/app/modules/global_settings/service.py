@@ -197,18 +197,25 @@ def update_hotel_global_data(
     set_doc: dict[str, Any] = {}
     if country_name is not None:
         set_doc["country_name"] = country_name
-        # Re-resolve geo_country_code + geo_catalog_id from geo_catalog
-        geo = db.geo_catalog.find_one(
-            {"type": "country", "name": {"$regex": f"^{re.escape(country_name.strip())}$", "$options": "i"}},
-            {"code": 1},
+        # Re-resolve prop_country_id (→ dim_visitor_countries). Opción B: el
+        # país del hotel se resuelve en la tabla del dataset; geo_catalog ya no
+        # participa como fuente de país.
+        visitor = db.dim_visitor_countries.find_one(
+            {
+                "$or": [
+                    {"country_name": {"$regex": f"^{re.escape(country_name.strip())}$", "$options": "i"}},
+                    {"country_display_name": {"$regex": f"^{re.escape(country_name.strip())}$", "$options": "i"}},
+                    {"visitor_country_label": {"$regex": f"^{re.escape(country_name.strip())}$", "$options": "i"}},
+                ]
+            },
+            {"visitor_location_country_id": 1},
         )
-        if geo:
-            set_doc["geo_country_code"] = geo.get("code")
-            set_doc["geo_catalog_id"] = geo["_id"]
+        if visitor and visitor.get("visitor_location_country_id") is not None:
+            set_doc["prop_country_id"] = int(visitor["visitor_location_country_id"])
         else:
-            # Country not in geo_catalog — clear geo references to avoid stale data
-            set_doc["geo_country_code"] = None
-            set_doc["geo_catalog_id"] = None
+            # País no encontrado en dim_visitor_countries — limpiar el id para
+            # no dejar una FK huérfana.
+            set_doc["prop_country_id"] = None
     if city is not None:
         set_doc["city"] = city
     if province is not None:

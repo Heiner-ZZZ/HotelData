@@ -1,20 +1,23 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { ServiceStatusCard, MonitoringViewModel } from '../../models/monitoring.model';
+import type { MonitoringViewModel } from '../../models/monitoring.model';
 import type { ConsolidatedMonitoringDto } from '../../models/monitoring.dto';
 import { MonitoringApiService } from '../../services/monitoring-api.service';
 import { mapConsolidatedMonitoringData } from '../../mappers/monitoring.mapper';
+import { MpCsvUploadBoxComponent } from './partials/mp-csv-upload-box';
+import { MpEtlProgressBoxComponent } from './partials/mp-etl-progress-box';
+import { MpExecutionBoxComponent } from './partials/mp-execution-box';
+import { MpReportsBoxComponent } from './partials/mp-reports-box';
+import { MpServicesBoxComponent } from './partials/mp-services-box';
 
 import type { Observable } from 'rxjs';
 import type { ActionResponseDto } from '../../models/monitoring.dto';
@@ -25,8 +28,11 @@ import type { ActionResponseDto } from '../../models/monitoring.dto';
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
-    InfoTooltipComponent,
-    StatusBadgeComponent,
+    MpCsvUploadBoxComponent,
+    MpEtlProgressBoxComponent,
+    MpExecutionBoxComponent,
+    MpReportsBoxComponent,
+    MpServicesBoxComponent,
   ],
   templateUrl: './monitoring-page.html',
   styleUrl: './monitoring-page.scss',
@@ -67,17 +73,10 @@ export class MonitoringPageComponent {
   readonly uploadBusy = signal(false);
   readonly targetPocketbase = signal(300000);
   readonly targetMongodb = signal(300000);
-  readonly openSection = signal<string | null>(null);
   /** Acción ETL pendiente de confirmar — mantiene el modo 'execute' en el nav. */
   private readonly pendingAction = signal<{ title: string } | null>(null);
-  readonly targetOptions = Array.from({ length: 16 }, (_, i) => {
-    const val = (i + 1) * 100000;
-    return { value: val, label: val.toLocaleString('es') };
-  });
 
   readonly incrementalMode = signal(false);
-  readonly etlModeLabel = computed(() => this.incrementalMode() ? 'Incremental' : 'Completo');
-  readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
   /**
    * Modo CRUD de la página de monitoreo: fuera del flujo CRUD normal. Muestra
@@ -138,11 +137,8 @@ export class MonitoringPageComponent {
     }
   }
 
-  onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files?.length) {
-      this.selectedFile.set(input.files[0]);
-    }
+  onFileSelected(file: File) {
+    this.selectedFile.set(file);
   }
 
   uploadCsv() {
@@ -155,8 +151,6 @@ export class MonitoringPageComponent {
       next: (result) => {
         this.uploadBusy.set(false);
         this.selectedFile.set(null);
-        const nativeInput = this.fileInput()?.nativeElement;
-        if (nativeInput) nativeInput.value = '';
         this.actionMessage.set(result.display_message);
         this.toast.show(result.display_message, 'info', 5000);
         setTimeout(() => this.monitoringResource.reload(), 300);
@@ -244,25 +238,10 @@ export class MonitoringPageComponent {
     );
   }
 
-  toggleSection(key: string) {
-    this.openSection.update(v => v === key ? null : key);
-  }
-
   refresh() {
     this.actionMessage.set('');
     this.actionError.set('');
     this.monitoringResource.reload();
-  }
-
-  serviceTone(tone: ServiceStatusCard['tone']): 'success' | 'warning' | 'danger' {
-    return tone === 'muted' || tone === 'error' ? 'warning' : tone;
-  }
-
-  serviceLabel(tone: ServiceStatusCard['tone']): string {
-    return tone === 'success' ? 'Disponible'
-      : tone === 'warning' ? 'Atención'
-      : tone === 'error' ? 'Error'
-      : 'N/D';
   }
 
   private execAction(action: Observable<ActionResponseDto>) {

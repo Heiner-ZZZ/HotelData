@@ -48,6 +48,65 @@ describe('buildColumnDefs — marcador de no-show en la lista', () => {
   });
 });
 
+describe('buildColumnDefs — columna de acciones (confirmar/rechazar)', () => {
+  const callbacks = {
+    onConfirm: jest.fn(),
+    onReject: jest.fn(),
+    isStaff: () => true,
+  };
+
+  function actionsCol() {
+    return buildColumnDefs(callbacks).find((c) => !c.field && !c.headerName && c.sortable === false)!;
+  }
+
+  function renderActions(status: string, staff = true) {
+    callbacks.isStaff = () => staff;
+    const renderer = actionsCol().cellRenderer as (params: any) => HTMLElement;
+    const out = renderer({ value: '', data: { status, bookingId: 'BK-1', guestName: 'Horuz' } });
+    // El renderer devuelve '' (sin acciones) para filas no pendientes o no staff.
+    if (!out) return document.createElement('div');
+    return out;
+  }
+
+  it('da espacio suficiente a la columna para que los dos botones no se peguen', () => {
+    expect(actionsCol().width).toBeGreaterThanOrEqual(88);
+  });
+
+  it('separa los dos botones con un gap de al menos 8px', () => {
+    const wrap = renderActions('pending') as HTMLDivElement;
+    const gap = Number.parseFloat(wrap.style.gap || '0');
+    expect(gap).toBeGreaterThanOrEqual(8);
+  });
+
+  it('da un tamaño de toque cómodo a cada botón (≥ 2rem / 32px)', () => {
+    const wrap = renderActions('pending') as HTMLDivElement;
+    const buttons = [...wrap.querySelectorAll('button')];
+    expect(buttons).toHaveLength(2);
+    for (const btn of buttons) {
+      // Los estilos inline usan rem; 2rem = 32px a font-size raíz 16px.
+      const w = Number.parseFloat(btn.style.width || '0') * 16;
+      const h = Number.parseFloat(btn.style.height || '0') * 16;
+      expect(w).toBeGreaterThanOrEqual(32);
+      expect(h).toBeGreaterThanOrEqual(32);
+    }
+  });
+
+  it('da nombre accesible a cada botón de icono (aria-label, no solo title)', () => {
+    const wrap = renderActions('pending') as HTMLDivElement;
+    const buttons = [...wrap.querySelectorAll('button')];
+    const confirm = buttons.find((b) => b.querySelector('.material-symbols-outlined')?.textContent === 'check_circle')!;
+    const reject = buttons.find((b) => b.querySelector('.material-symbols-outlined')?.textContent === 'cancel')!;
+    expect(confirm.getAttribute('aria-label')).toBe('Confirmar reserva');
+    expect(reject.getAttribute('aria-label')).toBe('Rechazar reserva');
+  });
+
+  it('solo renderiza acciones para filas pendientes y staff', () => {
+    expect((renderActions('pending') as HTMLDivElement).querySelectorAll('button')).toHaveLength(2);
+    expect((renderActions('confirmed') as HTMLDivElement).querySelectorAll('button')).toHaveLength(0);
+    expect((renderActions('pending', false) as HTMLDivElement).querySelectorAll('button')).toHaveLength(0);
+  });
+});
+
 describe('buildColumnDefs — marcador de reapertura (huésped llegó tras el no-show)', () => {
   it('marca con chip Reabierta una reserva reabierta pendiente dentro de la ventana', () => {
     const el = renderCell({ stayStatus: 'pending', reopenWindow: 'open', noShowReopenedAt: '2026-08-15T14:56:25.121000' });

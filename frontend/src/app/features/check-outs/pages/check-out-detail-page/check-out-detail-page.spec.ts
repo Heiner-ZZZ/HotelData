@@ -1,8 +1,10 @@
+import { signal } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 
 import { httpErrorInterceptor } from '../../../../core/api/http-error.interceptor';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -74,6 +76,16 @@ describe('CheckOutDetailPageComponent', () => {
   };
 
   async function renderDetail(dto: CheckOutDetailDto, opts?: { hasPermission?: boolean }) {
+    const propCtxMock = {
+      currentPropId: signal(1),
+      currentPropLabel: signal('Hotel Lima Centro'),
+      currentPropLabelShort: signal('Hotel Lima'),
+      ready: signal(true),
+      singleHotelMode: signal(false),
+      defaultPropId: signal(1),
+      mode: signal('all' as const),
+      assignedProperties: signal([{ propId: 1, label: 'Hotel Lima Centro' }]),
+    };
     await TestBed.configureTestingModule({
       imports: [CheckOutDetailPageComponent],
       providers: [
@@ -82,14 +94,19 @@ describe('CheckOutDetailPageComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { paramMap: { get: () => 'BK-1' } },
-            paramMap: of(new Map([['bookingId', 'BK-1']])),
+            snapshot: {
+              paramMap: { get: (k: string) => (k === 'bookingId' ? 'BK-1' : null) } as any,
+              queryParamMap: { get: (k: string) => (k === 'prop_id' ? '1' : null) } as any,
+            },
+            paramMap: of(new Map([['bookingId', 'BK-1']] as any)),
+            queryParamMap: of(new Map([['prop_id', '1']] as any)),
           },
         },
         { provide: Router, useValue: { events: of() } },
         { provide: ToastService, useValue: { error: jest.fn() } },
-        { provide: AuthService, useValue: { hasPermission: jest.fn(() => opts?.hasPermission ?? true) } },
+        { provide: AuthService, useValue: { hasPermission: jest.fn(() => opts?.hasPermission ?? true), isAuthenticated: () => false, sessionLoaded: () => false } },
         { provide: NoShowService, useValue: { markNoShowWithConfirm: jest.fn(), successMessage: jest.fn() } },
+        { provide: PropertyContextService, useValue: propCtxMock },
       ],
     }).compileComponents();
 
@@ -98,6 +115,7 @@ describe('CheckOutDetailPageComponent', () => {
 
     const httpTesting = TestBed.inject(HttpTestingController);
     const req = httpTesting.expectOne((r) => r.url.includes('/management/check-outs/BK-1/detail'));
+    expect(req.request.url).toContain('prop_id=1');
     req.flush(dto);
 
     await fixture.whenStable();
@@ -110,6 +128,16 @@ describe('CheckOutDetailPageComponent', () => {
 
   async function render403() {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const propCtxMock403 = {
+      currentPropId: signal(1),
+      ready: signal(true),
+      currentPropLabel: signal(''),
+      currentPropLabelShort: signal(''),
+      singleHotelMode: signal(false),
+      defaultPropId: signal(1),
+      mode: signal('all' as const),
+      assignedProperties: signal([]),
+    };
 
     await TestBed.configureTestingModule({
       imports: [CheckOutDetailPageComponent],
@@ -121,14 +149,19 @@ describe('CheckOutDetailPageComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { paramMap: { get: () => 'BK-1' } },
-            paramMap: of(new Map([['bookingId', 'BK-1']])),
+            snapshot: {
+              paramMap: { get: (k: string) => (k === 'bookingId' ? 'BK-1' : null) } as any,
+              queryParamMap: { get: (k: string) => (k === 'prop_id' ? '1' : null) } as any,
+            },
+            paramMap: of(new Map([['bookingId', 'BK-1']] as any)),
+            queryParamMap: of(new Map([['prop_id', '1']] as any)),
           },
         },
         { provide: Router, useValue: { events: of() } },
         { provide: ToastService, useValue: { error: jest.fn() } },
-        { provide: AuthService, useValue: { hasPermission: jest.fn(() => true) } },
+        { provide: AuthService, useValue: { hasPermission: jest.fn(() => true), isAuthenticated: () => false, sessionLoaded: () => false } },
         { provide: NoShowService, useValue: { markNoShowWithConfirm: jest.fn(), successMessage: jest.fn() } },
+        { provide: PropertyContextService, useValue: propCtxMock403 },
       ],
     }).compileComponents();
 
@@ -138,6 +171,7 @@ describe('CheckOutDetailPageComponent', () => {
 
     const httpTesting = TestBed.inject(HttpTestingController);
     const req = httpTesting.expectOne((r) => r.url.includes('/management/check-outs/BK-1/detail'));
+    expect(req.request.url).toContain('prop_id=1');
     req.flush({ detail: 'Permiso requerido: check-outs.read' }, { status: 403, statusText: 'Forbidden' });
 
     await fixture.whenStable();
@@ -310,7 +344,7 @@ describe('CheckOutDetailPageComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(noShow.markNoShowWithConfirm).toHaveBeenCalledWith('BK-1', 'Guest Prueba');
+    expect(noShow.markNoShowWithConfirm).toHaveBeenCalledWith('BK-1', 'Guest Prueba', 1);
     expect(component.noShowResult()).toEqual({ folio_number: 'FL-NS-BK-20260', penalty_amount: 94 });
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('FL-NS-BK-20260');
@@ -689,7 +723,8 @@ describe('CheckOutDetailPageComponent', () => {
     const compReq = httpTesting.expectOne(
       (r) => r.method === 'POST' && r.url.includes('/billing/invoices/complement'),
     );
-    expect(compReq.request.body).toEqual({ booking_id: 'BK-1', prop_id: 1 });
+    expect(compReq.request.body).toEqual({ booking_id: 'BK-1' });
+    expect(compReq.request.params.get('prop_id')).toBe('1');
     compReq.flush({ id: 'inv-2', invoice_number: 'INV-COMP-001', status: 'issued', total: 58 });
 
     // httpResource.reload() dispara el fetch cuando el effect interno del

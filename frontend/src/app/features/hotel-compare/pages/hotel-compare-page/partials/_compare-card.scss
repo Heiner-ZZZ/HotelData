@@ -79,77 +79,10 @@
   --icon-opsz: 40;
 }
 
-.carousel-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border: none;
-  border-radius: 50%;
-  background: var(--overlay);
-  backdrop-filter: blur(4px);
-  color: var(--on-accent);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 200ms ease, background 160ms ease, transform 160ms ease;
-  z-index: 3;
-}
-
-.card-image-wrap:hover .carousel-btn {
-  opacity: 1;
-}
-
-.carousel-btn:hover {
-  background: rgba(0, 0, 0, 0.65);
-  transform: translateY(-50%) scale(1.1);
-}
-
-.carousel-btn .material-symbols-outlined {
-  font-size: 1.1rem;
-  --icon-opsz: 20;
-}
-
-.carousel-prev {
-  left: 6px;
-}
-
-.carousel-next {
-  right: 6px;
-}
-
-.carousel-dots {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 5px;
-  z-index: 3;
-}
-
-.carousel-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.45);
-  cursor: pointer;
-  padding: 0;
-  transition: all 200ms ease;
-}
-
-.carousel-dot.is-active {
-  background: var(--surface);
-  width: 18px;
-  border-radius: 4px;
-}
-
-.carousel-dot:hover {
-  background: rgba(255, 255, 255, 0.75);
-}
+/* Los controles del carrusel (puntitos + flechas) viven en el componente
+   compartido app-carousel-controls. El partial compare-carousel se fusionó
+   acá: este archivo es la única fuente del card, sus slides y el overlay
+   de badges (estrella, puntuación, botón quitar). */
 
 .card-image-overlay {
   position: absolute;
@@ -186,7 +119,7 @@
   gap: 0.15rem;
   padding: 0.08rem 0.4rem;
   border-radius: 4px;
-  background: var(--success-light);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
   color: var(--success);
   font-size: 0.62rem;
   font-weight: 700;
@@ -255,14 +188,20 @@
   cursor: pointer;
   transition: background 160ms ease, transform 160ms ease;
   z-index: 2;
-}
 
-.remove-btn:hover {
-  background: var(--danger);
-  transform: scale(1.1);
-}
+  &:hover:not(:disabled) {
+    background: var(--danger);
+    transform: scale(1.1);
+  }
 
-.remove-btn .material-symbols-outlined {
-  font-size: 1.1rem;
-  --icon-opsz: 20;
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    --icon-wght: 300;
+    --icon-opsz: 20;
+  }
 }

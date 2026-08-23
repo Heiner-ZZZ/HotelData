@@ -89,13 +89,13 @@
          huéspedes con los widgets comunes. valueChange = persistencia en
          vivo; search = navegación a /search. -->
     <app-booking-search-bar
-      [destination]="initialSearch.destination"
-      [checkIn]="initialSearch.checkIn"
-      [checkOut]="initialSearch.checkOut"
-      [adults]="initialSearch.adults"
-      [children]="initialSearch.children"
-      [rooms]="initialSearch.rooms"
-      [minDate]="today"
+      [destination]="initialSearch().destination"
+      [checkIn]="initialSearch().checkIn"
+      [checkOut]="initialSearch().checkOut"
+      [adults]="initialSearch().adults"
+      [children]="initialSearch().children"
+      [rooms]="initialSearch().rooms"
+      [minDate]="today()"
       (valueChange)="onValueChange($event)"
       (search)="onSearch($event)"
     />
@@ -118,12 +118,44 @@
     @if (hotels.length) {
       <div class="welcome-featured__grid">
         @for (h of hotels; track h.id) {
-          <a class="hotel-card" [href]="hotelDetailHref(h.id)" (click)="handleHotelClick(h.id, $event)">
+          <a
+            class="hotel-card"
+            [href]="hotelDetailHref(h.id)"
+            (click)="handleHotelClick(h.id, $event)"
+            (mouseenter)="onCardEnter(h.id)"
+            (mouseleave)="onCardLeave(h.id)"
+          >
             <div class="hotel-card__img">
-              @if (h.imageUrl) {
-                <!-- alt descriptivo: "Foto de X" evita que el lector repita
-                     el nombre del h3 adyacente dos veces seguidas. -->
-                <img [src]="h.imageUrl" [alt]="'Foto de ' + h.name" loading="lazy" />
+              @if (h.images.length) {
+                @let slide = welcomeSlide(h.id);
+                <!-- Track de la mini-galería: 3 variantes deterministas
+                     (hotel / lobby / pool) + puntitos tipo comparador.
+                     Rota sola mientras el mouse está encima (no con
+                     prefers-reduced-motion); el wrap no anima. -->
+                <div
+                  class="welcome-gallery"
+                  [class.no-transition]="welcomeNoTransition(h.id)"
+                  [style.transform]="welcomeOffset(h.id, slide)">
+                  @for (img of h.images; track $index) {
+                    <img class="welcome-gallery__img" [src]="img" [alt]="'Foto de ' + h.name" loading="lazy" />
+                  }
+                </div>
+                @if (h.images.length > 1) {
+                  <!-- Controles compartidos (diseño del comparador): puntitos
+                       píldora + flechas prev/next. Modo reveal: las flechas
+                       aparecen solo con la card hovereada (onCardEnter marca
+                       `.revealed` en el host) o foco por teclado. -->
+                  <app-carousel-controls
+                    [count]="h.images.length"
+                    [activeIndex]="slide"
+                    [revealOnHover]="true"
+                    [class.revealed]="hoveredHotels().has(h.id)"
+                    [subjectLabel]="h.name"
+                    (navigate)="goToSlide(h.id, $event, h.images.length)"
+                    (previous)="stepSlide(h.id, -1)"
+                    (next)="stepSlide(h.id, 1)"
+                  />
+                }
               } @else {
                 <span class="material-symbols-outlined hotel-card__placeholder">hotel</span>
               }

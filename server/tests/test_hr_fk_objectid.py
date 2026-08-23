@@ -104,6 +104,45 @@ class TestEmployeeUserIdObjectIdFk:
         )
 
 
+class TestEmployeePortalSerializesFkObjectIds:
+    """GET /api/hr/portal/{id} must return FK ObjectIds as strings.
+
+    Regression (2026-08): the portal handler passed the raw Mongo employee
+    doc into ``EmployeePortalResponse.employee`` (a permissive
+    ``dict[str, Any]``), so employees carrying ``department_id`` /
+    ``position_id`` / ``user_id`` BSON ObjectId FKs crashed JSON
+    serialization with ``PydanticSerializationError: Unable to serialize
+    unknown type: bson.objectid.ObjectId`` → HTTP 500 on every portal load.
+    """
+
+    @pytest.mark.asyncio
+    async def test_portal_serializes_fk_object_ids_to_strings(self, client, db, admin_user):
+        emp_id = _seed_employee(
+            db,
+            full_name="Con FKs ObjectId",
+            prop_id=1,
+            department_id=ObjectId(),
+            position_id=ObjectId(),
+            user_id=ObjectId(),
+            department_name="Housekeeping",
+        )
+
+        await _login_admin(client, admin_user)
+        resp = await client.get(f"/api/hr/portal/{emp_id}", params={"prop_id": 1})
+
+        assert resp.status_code == 200, (
+            "portal must serialize FK ObjectIds to strings; "
+            f"got HTTP {resp.status_code}: {resp.text}"
+        )
+        emp = resp.json()["employee"]
+        assert emp["id"] == str(emp_id)
+        for field in ("user_id", "department_id", "position_id"):
+            value = emp.get(field)
+            assert isinstance(value, str) and value, (
+                f"employee.{field} must be a non-empty string on the wire, got {value!r}"
+            )
+
+
 class TestEmployeeShiftEmployeeIdObjectIdFk:
     """employee_shifts.employee_id must be a BSON ObjectId FK to employees._id."""
 

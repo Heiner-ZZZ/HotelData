@@ -1,10 +1,12 @@
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -33,6 +35,7 @@ interface TypeFilter {
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    PropertySelectorComponent,
     ProductsRestockModalComponent
   ],
   templateUrl: './products-list-page.html',
@@ -50,8 +53,12 @@ export class ProductsListPageComponent {
 
   readonly PRODUCT_TYPE_LABELS = PRODUCT_TYPE_LABELS;
 
-  /** Current hotel context — drives the httpResource query. */
-  readonly currentPropId = computed(() => this.propCtx.currentPropId());
+  /** Selected hotel — driven by the URL query param (and the single-hotel
+   *  context). Source of truth for the httpResource query. */
+  readonly selectedPropId = signal(0);
+
+  /** Label for the property selector (falls back to the context's current label). */
+  readonly selectedLabel = computed(() => this.propCtx.currentPropLabel());
 
   /** Permission gating: cost is manager-only. Forwarded to ProductsAuthService. */
   readonly canSeeCost = this.productsAuth.canSeeCost;
@@ -72,7 +79,7 @@ export class ProductsListPageComponent {
    *  the raw envelope `{ items: [...] }`; the `products` computed below
    *  unwraps + maps each DTO into a domain HotelProduct. */
   readonly productsResource = httpResource<{ items: any[] }>(() => {
-    const pid = this.currentPropId();
+    const pid = this.selectedPropId();
     return pid ? `/management/products/hotels/${pid}` : undefined;
   });
 
@@ -147,12 +154,48 @@ export class ProductsListPageComponent {
 
   /** View state (loading / error / success / empty). */
   readonly viewState = computed<ViewState>(() => {
+    if (!this.selectedPropId()) return 'empty';
     if (this.productsResource.isLoading()) return 'loading';
     const err = this.productsResource.error();
     if (err) return 'error';
     const list = this.products();
     return list.length > 0 ? 'success' : 'empty';
   });
+
+  constructor() {
+    // Carga por query param (navegación manual con prop_id en URL).
+    this.activatedRoute.queryParamMap
+      .pipe(
+        map((params) => Number(params.get('prop_id') ?? '0')),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((propId) => this.selectedPropId.set(propId));
+
+    // Auto-carga en modo single-hotel: cuando el contexto esté ready,
+    // tomar el hotel asignado sin depender de la navegación inicial.
+    effect(() => {
+      if (this.propCtx.ready() && this.propCtx.singleHotelMode()) {
+        const propId = this.propCtx.currentPropId();
+        if (propId && this.selectedPropId() !== propId) {
+          this.selectedPropId.set(propId);
+        }
+      }
+    });
+  }
+
+  /** Property selector → update the URL so the httpResource refetches. */
+  onPropSelected(event: { propId: number; label: string }): void {
+    if (!event.propId) {
+      this.propCtx.clear();
+    } else {
+      this.propCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
+    }
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { prop_id: event.propId || null }
+    });
+  }
 
   reload(): void {
     this.productsResource.reload();
@@ -203,7 +246,7 @@ export class ProductsListPageComponent {
   }
 
   edit(p: HotelProduct): void {
-    const pid = this.currentPropId();
+    const pid = this.selectedPropId();
     if (!pid) return;
     this.router.navigate(['/management/products', p.productId, 'edit'], {
       queryParams: { prop_id: pid }
@@ -211,7 +254,7 @@ export class ProductsListPageComponent {
   }
 
   create(): void {
-    const pid = this.currentPropId();
+    const pid = this.selectedPropId();
     if (!pid) return;
     this.router.navigate(['/management/products', 'new'], {
       queryParams: { prop_id: pid }
@@ -219,7 +262,7 @@ export class ProductsListPageComponent {
   }
 
   async toggleActive(p: HotelProduct): Promise<void> {
-    const pid = this.currentPropId();
+    const pid = this.selectedPropId();
     if (!pid) return;
     const action = p.isActive ? 'desactivar' : 'activar';
     const ok = await this.confirmDialog.open({

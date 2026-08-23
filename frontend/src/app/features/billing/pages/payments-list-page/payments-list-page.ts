@@ -100,7 +100,7 @@ export class PaymentsListPageComponent implements OnInit {
       amount: payload.amount,
       method: payload.method,
       status: payload.status,
-    }).subscribe({
+    }, this.selectedPropId()).subscribe({
       next: () => {
         this.toast.show('Pago registrado correctamente.', 'info', 4000);
         this.registerSubmitting.set(false);

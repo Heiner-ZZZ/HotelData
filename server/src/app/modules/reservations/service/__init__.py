@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.app.modules.reservations.schemas import ModuleStatus
 
 from ._checkin_detail import get_check_in_detail, save_check_in_detail
+from ._room_availability import validate_room_availability
 from ._checkinout import DepositNotMetError, complete_check_in, complete_check_out
 from ._checkout_detail import get_check_out_detail, save_check_out_detail
 from ._hotel_options import reservation_hotel_options
@@ -86,6 +87,7 @@ __all__ = [
     "room_rate_per_night",
     "save_check_in_detail",
     "save_check_out_detail",
+    "validate_room_availability",
     "save_room_guests",
     "validate_booking_form_requirements",
     "validate_coupon_code",

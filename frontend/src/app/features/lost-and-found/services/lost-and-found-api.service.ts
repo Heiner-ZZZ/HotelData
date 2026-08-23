@@ -13,6 +13,10 @@ export class LostAndFoundApiService {
     return `${this.apiConfig.baseUrl}/lost-and-found`;
   }
 
+  private propParams(propId?: number): HttpParams {
+    return propId && propId > 0 ? new HttpParams().set('prop_id', String(propId)) : new HttpParams();
+  }
+
   listItems(params?: {
     propId?: number;
     status?: string;
@@ -34,35 +38,35 @@ export class LostAndFoundApiService {
     });
   }
 
-  getItem(itemId: string) {
-    return this.http.get<LostItemResponseDto>(`${this.baseUrl}/${itemId}`, { withCredentials: true });
+  getItem(itemId: string, propId: number) {
+    return this.http.get<LostItemResponseDto>(`${this.baseUrl}/${itemId}`, { params: this.propParams(propId), withCredentials: true });
   }
 
-  createItem(payload: LostItemCreateDto) {
-    return this.http.post<LostItemResponseDto>(this.baseUrl, payload, { withCredentials: true });
+  createItem(payload: LostItemCreateDto, propId: number) {
+    return this.http.post<LostItemResponseDto>(this.baseUrl, payload, { params: this.propParams(propId), withCredentials: true });
   }
 
-  updateItem(itemId: string, payload: Partial<LostItemCreateDto>) {
-    return this.http.put<LostItemResponseDto>(`${this.baseUrl}/${itemId}`, payload, { withCredentials: true });
+  updateItem(itemId: string, payload: Partial<LostItemCreateDto>, propId: number) {
+    return this.http.put<LostItemResponseDto>(`${this.baseUrl}/${itemId}`, payload, { params: this.propParams(propId), withCredentials: true });
   }
 
-  deleteItem(itemId: string) {
-    return this.http.delete<LostItemResponseDto>(`${this.baseUrl}/${itemId}`, { withCredentials: true });
+  deleteItem(itemId: string, propId: number) {
+    return this.http.delete<LostItemResponseDto>(`${this.baseUrl}/${itemId}`, { params: this.propParams(propId), withCredentials: true });
   }
 
-  claimItem(itemId: string, returnedTo: string, notes = '') {
+  claimItem(itemId: string, returnedTo: string, propId: number, notes = '') {
     return this.http.post<LostItemResponseDto>(
       `${this.baseUrl}/${itemId}/claim`,
       { returned_to: returnedTo, notes },
-      { withCredentials: true },
+      { params: this.propParams(propId), withCredentials: true },
     );
   }
 
-  disposeItem(itemId: string, notes = '') {
+  disposeItem(itemId: string, propId: number, notes = '') {
     return this.http.post<LostItemResponseDto>(
       `${this.baseUrl}/${itemId}/dispose`,
       { notes },
-      { withCredentials: true },
+      { params: this.propParams(propId), withCredentials: true },
     );
   }
 }

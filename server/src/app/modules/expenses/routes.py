@@ -45,7 +45,7 @@ from src.app.modules.expenses.service.collections import (
 )
 from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.hotel_products import restock_product
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission
 from src.app.core.types import to_json_safe
 
 logger = logging.getLogger(__name__)
@@ -249,6 +249,7 @@ def expenses_module_status():
 def expenses_dashboard(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Return expense KPIs: total, by category, pending approval, budget execution."""
     prop_id = _require_hotel_scope(prop_id)
@@ -340,7 +341,7 @@ def expenses_dashboard(
 @api_router.post("/invoices", status_code=201, response_model=InvoiceResponse)
 def create_invoice(
     payload: InvoiceCreate = Body(...),
-    current_user: dict = Depends(require_permission("revenue.manage")),
+    current_user: dict = Depends(require_prop_permission("revenue.manage")),
 ):
     db = get_database()
     now_dt = datetime.now(timezone.utc)
@@ -487,6 +488,7 @@ def list_invoices(
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     if prop_id is None:
         raise HTTPException(
@@ -554,6 +556,7 @@ def get_invoice(
     request: Request,
     invoice_id: str = Path(...),
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     prop_id = _require_hotel_scope(prop_id)
     db = get_database()
@@ -584,7 +587,7 @@ def pay_expense_invoice(
     payload: InvoicePayCreate | None = Body(default=None),
     method: str | None = None,
     payment_reference: str | None = None,
-    current_user: dict = Depends(require_permission("revenue.manage")),
+    current_user: dict = Depends(require_prop_permission("revenue.manage")),
 ):
     """Settle an approved VendorBill and post DR AP / CR cash-bank once.
 
@@ -709,7 +712,7 @@ def update_invoice(
     invoice_id: str = Path(...),
     prop_id: int | None = Query(default=None, ge=1),
     payload: InvoiceUpdate = Body(...),
-    current_user: dict = Depends(require_permission("revenue.manage")),
+    current_user: dict = Depends(require_prop_permission("revenue.manage")),
 ):
     prop_id = _require_hotel_scope(prop_id)
     db = get_database()
@@ -866,7 +869,7 @@ def update_invoice(
 def delete_invoice(
     invoice_id: str = Path(...),
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("revenue.manage")),
+    current_user: dict = Depends(require_prop_permission("revenue.manage")),
 ):
     """Returns 204 No Content — no response body; do NOT add response_model=."""
     prop_id = _require_hotel_scope(prop_id)
@@ -909,8 +912,12 @@ def delete_invoice(
 def list_categories(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_permission("revenue.read")),
 ):
-    prop_id = _require_hotel_scope(prop_id)
+    # Excepción global documentada (catálogo de REFERENCIA compartido entre
+    # hoteles): el prop_id es opcional y solo acota el cálculo de gasto por
+    # categoría, no la existencia de la categoría.
+    prop_id = _unwrap_query(prop_id)
     db = get_database()
     cursor = db[CATEGORIES_COLLECTION].find().sort("name", 1)
     result: list[dict[str, Any]] = []
@@ -945,7 +952,10 @@ def list_categories(
 
 
 @api_router.post("/categories", status_code=201, response_model=ExpenseCategoryResponse)
-def create_category(payload: ExpenseCategoryCreate = Body(...)):
+def create_category(
+    payload: ExpenseCategoryCreate = Body(...),
+    current_user: dict = Depends(require_permission("revenue.manage")),
+):
     db = get_database()
     existing = db[CATEGORIES_COLLECTION].find_one({"name": payload.name})
     if existing:
@@ -958,7 +968,10 @@ def create_category(payload: ExpenseCategoryCreate = Body(...)):
 
 
 @api_router.post("/budget", status_code=201, response_model=BudgetResponse)
-def create_budget(payload: BudgetCreate = Body(...)):
+def create_budget(
+    payload: BudgetCreate = Body(...),
+    current_user: dict = Depends(require_permission("revenue.manage")),
+):
     db = get_database()
     scope = {"department": payload.department, "period": payload.period}
     if payload.prop_id is not None:
@@ -983,6 +996,7 @@ def create_budget(payload: BudgetCreate = Body(...)):
 def list_budget(
     period: str | None = Query(default=None),
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     prop_id = _require_hotel_scope(prop_id)
     period = _unwrap_query(period)
@@ -1013,6 +1027,7 @@ def list_ledger(
     page_size: int = Query(default=DEFAULT_LEDGER_PAGE_SIZE, ge=1, le=200),
     sort_field: str = Query(default="tx_date"),
     sort_order: str = Query(default="desc"),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Paginated ledger with server-side sorting and filtering for AG Grid."""
     # Belt-and-suspenders: when called from another FastAPI route (e.g.
@@ -1127,11 +1142,14 @@ def list_active_folios(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=50),
     status: str | None = Query(default=None),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Return guest folios with balances for the sidebar panel.
 
-    Defaults to open folios only. Pass status=closed or omit the param
-    (status=null) to see all folios.
+    Defaults to open folios only. ``status`` admite un estado exacto
+    (``open``, ``closed``, ...) o una lista separada por comas que se traduce
+    a ``$in`` — el chip "Cerrados" envía ``closed,settled,written_off`` para
+    mostrar todos los folios no abiertos.
     """
     prop_id = _require_hotel_scope(prop_id)
     page = _unwrap_query(page)
@@ -1140,7 +1158,11 @@ def list_active_folios(
     db = get_database()
     query: dict = {}
     if status:
-        query["status"] = status
+        statuses = [s.strip() for s in status.split(",") if s.strip()]
+        if len(statuses) > 1:
+            query["status"] = {"$in": statuses}
+        else:
+            query["status"] = statuses[0]
     else:
         query["status"] = "open"
     if prop_id:
@@ -1184,6 +1206,7 @@ def list_active_folios(
 def get_folio_postings(
     folio_id: str = Path(...),
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Return the posting history for a guest folio in one hotel."""
     prop_id = _require_hotel_scope(prop_id)
@@ -1233,7 +1256,10 @@ def get_folio_postings(
 
 
 @api_router.get("/ledger/summary", response_model=LedgerSummaryResponse)
-def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
+def ledger_summary(
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
+):
     """Return trial balance + KPI summary for the ledger header."""
     prop_id = _require_hotel_scope(prop_id)
     db = get_database()
@@ -1290,6 +1316,7 @@ def register_folio_payment(
     method: str = Body(default="cash"),
     notes: str = Body(default=""),
     paid_by: str = Body(default="staff"),
+    current_user: dict = Depends(require_prop_permission("revenue.manage")),
 ):
     """Register a payment against a guest folio."""
     from src.app.modules.billing.service.folio import get_folio_by_id, post_to_folio
@@ -1370,6 +1397,7 @@ def transfer_folio_charges(
     target_folio_id: str = Body(...),
     amount: float = Body(..., gt=0),
     notes: str = Body(default=""),
+    current_user: dict = Depends(require_prop_permission("revenue.manage")),
 ):
     """Transfer charges from one folio to another."""
     from src.app.modules.billing.service.folio import get_folio_by_id, post_to_folio
@@ -1444,7 +1472,9 @@ def transfer_folio_charges(
 
 
 @api_router.get("/ledger/accounts", response_model=list[dict[str, Any]])
-def list_chart_of_accounts():
+def list_chart_of_accounts(
+    current_user: dict = Depends(require_permission("revenue.read")),
+):
     """Return the full chart of accounts for the accounting ledger."""
     db = get_database()
     cursor = db[CHART_OF_ACCOUNTS].find().sort("account_code", 1)
@@ -1456,7 +1486,10 @@ def list_chart_of_accounts():
 
 
 @api_router.get("/ledger/periods", response_model=list[str])
-def list_ledger_periods(prop_id: int = Query(default=0, ge=0)):
+def list_ledger_periods(
+    prop_id: int = Query(default=0, ge=0),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
+):
     """Return distinct accounting periods available in the ledger."""
     prop_id = _require_hotel_scope(prop_id)
     db = get_database()
@@ -1469,6 +1502,7 @@ def list_ledger_periods(prop_id: int = Query(default=0, ge=0)):
 def trial_balance(
     prop_id: int = Query(default=0, ge=0),
     accounting_period: str | None = Query(default=None, description="YYYY-MM"),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Balance de Sumas y Saldos: agrupa débitos y créditos por cuenta contable.
 
@@ -1546,6 +1580,7 @@ def trial_balance(
 def income_statement(
     prop_id: int = Query(default=0, ge=0),
     accounting_period: str | None = Query(default=None, description="YYYY-MM"),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Estado de Resultados (P&L): Ingresos - Costos - Descuentos = Resultado Neto."""
     prop_id = _require_hotel_scope(prop_id)
@@ -1638,6 +1673,7 @@ def income_statement(
 def balance_sheet(
     prop_id: int = Query(default=0, ge=0),
     accounting_period: str | None = Query(default=None, description="YYYY-MM"),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Balance General: Activos = Pasivos + Patrimonio + Resultado del Período."""
     prop_id = _require_hotel_scope(prop_id)
@@ -1739,19 +1775,27 @@ def balance_sheet(
 # ═══════════════════════════════════════════════════════════
 
 @api_router.get("/ledger/chart-of-accounts", response_model=list[dict[str, Any]])
-def chart_of_accounts_alias():
+def chart_of_accounts_alias(
+    current_user: dict = Depends(require_permission("revenue.read")),
+):
     """Alias for the chart of accounts endpoint used by the ledger page."""
     return list_chart_of_accounts()
 
 
 @api_router.get("/ledger/{prop_id}/summary", response_model=LedgerSummaryResponse)
-def ledger_summary_by_prop(prop_id: int = Path(..., ge=1)):
+def ledger_summary_by_prop(
+    prop_id: int = Path(..., ge=1),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
+):
     """Return ledger summary for a specific property."""
     return ledger_summary(prop_id=prop_id)
 
 
 @api_router.get("/ledger/{prop_id}/periods", response_model=list[str])
-def ledger_periods_by_prop(prop_id: int = Path(..., ge=1)):
+def ledger_periods_by_prop(
+    prop_id: int = Path(..., ge=1),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
+):
     """Return distinct ledger periods for a specific property."""
     return list_ledger_periods(prop_id=prop_id)
 
@@ -1765,6 +1809,7 @@ def ledger_transactions_by_prop(
     sort_by: str = Query(default="tx_date"),
     sort_dir: str = Query(default="desc"),
     search: str | None = Query(default=None),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Return ledger transactions for a specific property."""
     return list_ledger(
@@ -1782,6 +1827,7 @@ def ledger_transactions_by_prop(
 def trial_balance_by_prop(
     prop_id: int = Path(..., ge=1),
     period: str | None = Query(default=None, description="YYYY-MM"),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Return trial balance for a specific property."""
     return trial_balance(prop_id=prop_id, accounting_period=period)
@@ -1791,6 +1837,7 @@ def trial_balance_by_prop(
 def income_statement_by_prop(
     prop_id: int = Path(..., ge=1),
     period: str | None = Query(default=None, description="YYYY-MM"),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Return income statement for a specific property."""
     return income_statement(prop_id=prop_id, accounting_period=period)
@@ -1800,6 +1847,7 @@ def income_statement_by_prop(
 def balance_sheet_by_prop(
     prop_id: int = Path(..., ge=1),
     period: str | None = Query(default=None, description="YYYY-MM"),
+    current_user: dict = Depends(require_prop_permission("revenue.read")),
 ):
     """Return balance sheet for a specific property."""
     return balance_sheet(prop_id=prop_id, accounting_period=period)

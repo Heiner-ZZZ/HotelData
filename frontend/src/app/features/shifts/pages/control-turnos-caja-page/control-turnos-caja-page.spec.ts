@@ -38,6 +38,9 @@ describe('ControlTurnosCajaPageComponent', () => {
       expired?: boolean;
       openedBy?: string;
       openedAt?: string;
+      /** Turno activo de OTRO empleado (shift oculto + flag occupied). */
+      occupied?: boolean;
+      opener?: string;
       /** Overrides del shift activo (ej. payment_breakdown / stamped_payments_count). */
       shift?: Record<string, unknown>;
     } = {},
@@ -76,7 +79,16 @@ describe('ControlTurnosCajaPageComponent', () => {
                 },
                 shift_type_labels: CUSTOM_CONFIG.labels,
               }
-            : {
+            : opts.occupied
+              ? {
+                  shift: null,
+                  shift_type_labels: CUSTOM_CONFIG.labels,
+                  occupied: true,
+                  opener_employee: opts.opener ?? 'Ana',
+                  opener_username: 'ana',
+                  expires_at: new Date(Date.now() + 3 * 3600_000).toISOString(),
+                }
+              : {
                 shift: opts.openedBy
                   ? {
                       id: 'shift-active',
@@ -132,6 +144,26 @@ describe('ControlTurnosCajaPageComponent', () => {
     fixture.detectChanges();
     return { fixture, component: fixture.componentInstance, toast: TestBed.inject(ToastService), api, auth };
   }
+
+  it('muestra turno de otro empleado (occupied) y no ofrece abrir turno', () => {
+    const { component, fixture } = setup({ occupied: true, opener: 'Ana' });
+
+    expect(component.occupiedByOther()).toBe(true);
+    expect(component.occupiedOpener()).toBe('Ana');
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Turno de otro empleado');
+    expect(el.textContent).not.toContain('Abrir Turno');
+  });
+
+  it('indica cuándo alcanza su límite el turno ajeno (sin exponer sus datos)', () => {
+    const { component, fixture } = setup({ occupied: true, opener: 'Ana' });
+
+    expect(component.occupiedLimitHint()).toContain('Alcanza su límite');
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Alcanza su límite');
+    // No se filtra la caja del compañero.
+    expect(el.textContent).not.toContain('cash_initial');
+  });
 
   it('carga las ventanas configuradas y las usa en el select de tipo de turno', () => {
     const { component } = setup();
@@ -461,6 +493,7 @@ describe('ControlTurnosCajaPageComponent', () => {
       undefined,
       true,
       'Caja desincronizada por corte de luz',
+      1, // prop_id (migración E: close gatea por hotel)
     );
   });
 

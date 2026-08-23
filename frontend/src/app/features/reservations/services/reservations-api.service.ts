@@ -1,6 +1,8 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
+
+import { PropertyContextService } from '../../../shared/services/property-context.service';
 
 export interface DateHistoryEntry {
   date: string;
@@ -178,6 +180,20 @@ function mapReceptionReservation(r: ReceptionCalendarDto['rooms'][number]['reser
 })
 export class ReservationsApiService {
   private readonly http = inject(HttpClient);
+  private readonly propertyCtx = inject(PropertyContextService);
+
+  private propParams(): HttpParams {
+    const ctxPid = this.propertyCtx.currentPropId();
+    if (ctxPid > 0) return new HttpParams().set('prop_id', String(ctxPid));
+    try {
+      const raw = new URLSearchParams(window.location.search).get('prop_id');
+      const urlPid = raw ? Number(raw) : 0;
+      if (urlPid > 0) return new HttpParams().set('prop_id', String(urlPid));
+    } catch {
+      // ignora
+    }
+    return new HttpParams();
+  }
 
   getReservations(page: number, createdDate?: string, status?: string, propId?: number, folio?: string, stayStatus?: string, bookingSource?: string) {
     let params = new HttpParams().set('page', String(page));
@@ -238,7 +254,7 @@ export class ReservationsApiService {
 
   getReservationDetail(bookingId: string) {
     return this.http
-      .get<ReservationDetailDto>(`/reservations/${bookingId}`)
+      .get<ReservationDetailDto>(`/reservations/${bookingId}`, { params: this.propParams() })
       .pipe(map((dto) => mapReservationDetail(dto)));
   }
 
@@ -247,17 +263,19 @@ export class ReservationsApiService {
     return this.http.patch<{ ok: boolean; kind: string; fulfillment: { label: string; status: string; fulfilled_at?: string | null }[] }>(
       `/reservations/${bookingId}/special-requests`,
       { kind, label, status },
+      { params: this.propParams() },
     );
   }
 
   getCancelPreview(bookingId: string): Observable<CancelPreviewDto> {
-    return this.http.get<CancelPreviewDto>(`/reservations/${bookingId}/cancel-preview`);
+    return this.http.get<CancelPreviewDto>(`/reservations/${bookingId}/cancel-preview`, { params: this.propParams() });
   }
 
   cancelReservation(bookingId: string) {
     return this.http.post<ReservationCancelDto>(
       `/reservations/${bookingId}/cancel`,
       {},
+      { params: this.propParams() },
     );
   }
 
@@ -283,26 +301,30 @@ export class ReservationsApiService {
     return this.http.post<RecalculatePriceResult>(
       `/reservations/${bookingId}/recalculate-price`,
       {},
+      { params: this.propParams() },
     );
   }
 
   exportCsv() {
-    return this.http.get('/reservations/export?format=csv', {
-      responseType: 'blob'
+    return this.http.get('/reservations/export', {
+      responseType: 'blob',
+      params: this.propParams().set('format', 'csv'),
     });
   }
 
-  confirmReservation(bookingId: string) {
+  confirmReservation(bookingId: string, context?: HttpContext) {
     return this.http.post<ReservationConfirmRejectDto>(
       `/reservations/${bookingId}/confirm`,
       {},
+      { params: this.propParams(), ...(context ? { context } : {}) },
     );
   }
 
-  rejectReservation(bookingId: string) {
+  rejectReservation(bookingId: string, context?: HttpContext) {
     return this.http.post<ReservationConfirmRejectDto>(
       `/reservations/${bookingId}/reject`,
       {},
+      { params: this.propParams(), ...(context ? { context } : {}) },
     );
   }
 
@@ -310,12 +332,14 @@ export class ReservationsApiService {
     return this.http.patch<ReservationConfirmRejectDto>(
       `/reservations/${bookingId}`,
       payload,
+      { params: this.propParams() },
     );
   }
 
   getRoomGuests(bookingId: string) {
     return this.http.get<Record<string, unknown>[]>(
       `/reservations/${bookingId}/room-guests`,
+      { params: this.propParams() },
     );
   }
 
@@ -323,19 +347,28 @@ export class ReservationsApiService {
     return this.http.put<Record<string, unknown>[]>(
       `/reservations/${bookingId}/room-guests`,
       { room_guests: roomGuests },
+      { params: this.propParams() },
     );
   }
 
   getCheckInStatus(bookingId: string) {
     return this.http.get<Record<string, unknown>>(
       `/reservations/${bookingId}/check-in-status`,
+      { params: this.propParams() },
     );
   }
 
-  validateCoupon(couponCode: string, propId: number) {
+  validateCoupon(couponCode: string, propId: number, extra?: { checkIn?: string; checkOut?: string; ratePlanId?: string; roomTypeId?: string }) {
     return this.http.post<{valid: boolean; message: string; discount_percent: number}>(
       '/reservations/validate-coupon',
-      { coupon_code: couponCode, prop_id: propId },
+      {
+        coupon_code: couponCode,
+        prop_id: propId,
+        check_in: extra?.checkIn,
+        check_out: extra?.checkOut,
+        rate_plan_id: extra?.ratePlanId,
+        room_type_id: extra?.roomTypeId,
+      },
     );
   }
 
@@ -361,7 +394,7 @@ export class ReservationsApiService {
         room_status: string;
       }[];
       assigned_rooms: string[];
-    }>(`/management/bookings/${bookingId}/available-rooms`);
+    }>(`/management/bookings/${bookingId}/available-rooms`, { params: this.propParams() });
   }
 
   /** Assign physical rooms to a booking */
@@ -369,12 +402,13 @@ export class ReservationsApiService {
     return this.http.post<{ booking_id: string; assigned_rooms: string[]; assigned_count: number }>(
       `/management/bookings/${bookingId}/assign-rooms`,
       { room_ids: roomIds },
+      { params: this.propParams() },
     );
   }
 
   /** Search registered users by name or email for quick guest data prefill */
   searchUsers(q: string) {
-    const params = new HttpParams().set('q', q).set('limit', '10');
+    const params = this.propParams().set('q', q).set('limit', '10');
     return this.http.get<{ items: { name: string; email: string; phone: string; cedula: string }[] }>(
       '/management/users/search',
       { params },

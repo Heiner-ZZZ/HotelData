@@ -219,7 +219,7 @@ export class LostAndFoundPageComponent {
 
     this.saving.set(true);
     this.modalError.set('');
-    this.api.createItem(f).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.createItem(f, f.prop_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.saving.set(false);
         this.showCreateModal.set(false);
@@ -246,7 +246,7 @@ export class LostAndFoundPageComponent {
     const returnedTo = prompt('¿Quién recibe el objeto? (nombre del huésped o staff)');
     if (returnedTo === null) return; // cancelled
 
-    this.api.claimItem(item.id, returnedTo).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.claimItem(item.id, returnedTo, item.prop_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.closeDetail();
         this._loadList();
@@ -269,7 +269,7 @@ export class LostAndFoundPageComponent {
     });
     if (!ok) return;
 
-    this.api.disposeItem(item.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.disposeItem(item.id, item.prop_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.closeDetail();
         this._loadList();
@@ -291,7 +291,7 @@ export class LostAndFoundPageComponent {
     });
     if (!ok) return;
 
-    this.api.deleteItem(item.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.deleteItem(item.id, item.prop_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.closeDetail();
         this._loadList();

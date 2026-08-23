@@ -20,15 +20,24 @@ export class AmenitiesApiService {
       .pipe(catchAuthError(), map((dto) => mapAmenitiesOptions(dto)));
   }
 
+  /**
+   * Save hotel amenities (Migración E): el backend exige ``prop_id`` en el
+   * QUERY (gate por-hotel + consistencia query↔body) — el body solo no
+   * alcanza (400).
+   */
   saveAmenities(payload: AmenitiesSaveDto) {
-    return this.http.put<AmenitiesDto>('/management/amenities', payload)
+    const params = new HttpParams().set('prop_id', String(payload.prop_id));
+    return this.http.put<AmenitiesDto>('/management/amenities', payload, { params })
       .pipe(catchAuthError(), map((dto) => mapAmenities(dto)));
   }
 
+  /** Save special requests — mismo gate por-hotel que saveAmenities. */
   saveSpecialRequests(payload: SpecialRequestsSaveDto) {
+    const params = new HttpParams().set('prop_id', String(payload.prop_id));
     return this.http.put<{ special_requests: AmenitiesDto['special_requests']; high_floor_from: number }>(
       '/management/amenities/special-requests',
       payload,
+      { params },
     ).pipe(catchAuthError());
   }
 }

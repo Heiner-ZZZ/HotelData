@@ -43,7 +43,7 @@ from src.app.core.outbox import enqueue_audit_log
 from src.app.modules.hotel_permissions.notifications import (
     notify_role_permissions_changed,
 )
-from src.app.security.permissions import ensure_read_dependencies
+from src.app.security.permissions import ensure_read_dependencies, permission_scope
 
 HOTEL_MANAGE_ROLES = "hotel.manage_roles"
 
@@ -144,7 +144,15 @@ def _available_codes(db) -> set[str]:
 
 
 def _validate_permissions(db, requested: list[str]) -> list[str]:
-    """Normalize a permission list against the catalog (raise ValueError)."""
+    """Normalize a permission list against the catalog (raise ValueError).
+
+    C 2026-08 (scope del catálogo): además de exigir que los códigos existan,
+    los roles del hotel SOLO pueden portar códigos de scope ``hotel``. Los de
+    plataforma (ETL, usuarios, roles, auditoría, settings, properties.approve,
+    cartera estratégica) y los de auto-servicio del huésped (account.*,
+    search.*) se rechazan con 400 — ocultarlos del editor no basta, la API
+    cierra el paso (defensa en profundidad).
+    """
     available = _available_codes(db)
     unknown = [c for c in requested if c not in available]
     if unknown:
@@ -153,6 +161,12 @@ def _validate_permissions(db, requested: list[str]) -> list[str]:
             f"Deben existir en el catálogo."
         )
     normalized = ensure_read_dependencies(set(requested), available)
+    non_hotel = sorted(c for c in normalized if permission_scope(c) != "hotel")
+    if non_hotel:
+        raise ValueError(
+            "Permisos de plataforma o de huésped no aplican a roles del hotel: "
+            + ", ".join(non_hotel)
+        )
     return sorted(c for c in normalized if c in available)
 
 
@@ -269,7 +283,12 @@ def list_hotel_roles(db, prop_id: int) -> dict[str, Any]:
             }
             for t in templates.values()
         ],
-        "permission_codes": sorted(_available_codes(db)),
+        # C 2026-08: el editor del hotel solo muestra códigos de scope HOTEL —
+        # ETL/users/roles/auditoría/settings/properties.approve/cartera (system)
+        # y account.*/search.* (guest) desaparecen de la UI del gerente.
+        "permission_codes": sorted(
+            c for c in _available_codes(db) if permission_scope(c) == "hotel"
+        ),
     }
 
 
@@ -302,10 +321,15 @@ def create_hotel_role(
         if not (template.get("is_template") or template.get("is_system")):
             raise ValueError("La plantilla indicada no es clonable.")
 
-    # Permisos finales: los pedidos; si vienen vacíos y hay plantilla, heredar.
+    # Permisos finales: los pedidos; si vienen vacíos y hay plantilla, heredar
+    # SOLO la tajada hotel — los códigos de plataforma/huésped de una plantilla
+    # global (ej. properties.approve en gerente_hotel) no aplican a roles del
+    # hotel y se descartan en el clon.
     final_codes = list(permissions or [])
     if not final_codes and template:
-        final_codes = list(template.get("permissions", []))
+        final_codes = [
+            c for c in template.get("permissions", []) if permission_scope(c) == "hotel"
+        ]
     validated = _validate_permissions(db, final_codes)
 
     now = _now()
@@ -507,6 +531,58 @@ def delete_hotel_role(
 
 
 # ── Auditoría por rol ──
+
+
+def scrub_hotel_role_scopes(
+    db,
+    *,
+    prop_id: int | None = None,
+    changed_by: str = "system",
+) -> dict[str, Any]:
+    """Depurar hotel_roles históricos: dejar SOLO códigos de scope ``hotel``.
+
+    C 2026-08 (scope del catálogo): los roles del hotel solo pueden portar
+    códigos operativos del hotel. Roles clonados ANTES del scope (o ajustados
+    a mano) pueden arrastrar códigos de plataforma (system: etl.*, users.*,
+    roles.*, audit.*, settings.*, properties.approve, cartera) o de
+    auto-servicio del huésped (guest: account.*, search.*). Este barrido los
+    elimina con un audit entry por rol (entity_type="hotel_role",
+    action="scope_cleanup") y reporta qué se quitó.
+
+    Idempotente: roles sin códigos fuera de scope no se tocan (ni auditan).
+    Se usa para la migración de datos dev/prod y como herramienta de
+    mantenimiento — la API ya rechaza estos códigos en create/update.
+    """
+    query: dict[str, Any] = {"prop_id": prop_id} if prop_id is not None else {}
+    roles = list(db.hotel_roles.find(query))
+    updated = 0
+    removed_by_role: dict[str, list[str]] = {}
+    for role in roles:
+        current = list(role.get("permissions", []))
+        keep = sorted(c for c in current if permission_scope(c) == "hotel")
+        removed = sorted(set(current) - set(keep))
+        if not removed:
+            continue
+        db.hotel_roles.update_one(
+            {"_id": role["_id"]},
+            {"$set": {"permissions": keep, "updated_at": _now()}},
+        )
+        role_name = role.get("name") or str(role["_id"])
+        removed_by_role[role_name] = removed
+        _audit_role(
+            db,
+            prop_id=role.get("prop_id", 0),
+            role_id=role["_id"],
+            action="scope_cleanup",
+            changed_by=changed_by,
+            summary=(
+                f"Limpieza de scope: {len(removed)} códigos no-hoteles eliminados "
+                f"({', '.join(removed)})."
+            ),
+            diff={"permissions": {"old": current, "new": keep}},
+        )
+        updated += 1
+    return {"scanned": len(roles), "updated": updated, "removed_codes": removed_by_role}
 
 
 def get_role_audit(db, prop_id: int, role_id: str) -> dict[str, Any]:

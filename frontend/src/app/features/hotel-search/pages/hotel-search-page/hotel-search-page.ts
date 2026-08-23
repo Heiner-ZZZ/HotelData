@@ -1,5 +1,6 @@
-import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, signal, untracked, ViewChild } from '@angular/core';
+import { HttpClient, httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, OnDestroy, signal, untracked, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -37,6 +38,8 @@ import type { AlternativeDestination, HotelSearchFilters, HotelSearchResult } fr
 export class HotelSearchPageComponent implements OnDestroy {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
+  private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild(BookingSearchBarComponent) private readonly bookingBar?: BookingSearchBarComponent;
 
@@ -201,7 +204,8 @@ export class HotelSearchPageComponent implements OnDestroy {
 
   /** El booking-bar superior (destino/fechas/huéspedes) re-emite la búsqueda
    *  completa: actualiza los query params (URL = fuente de verdad) y el resto
-   *  del pipeline (resource, sidebar, cards) se recomputa solo. */
+   *  del pipeline (resource, sidebar, cards) se recomputa solo.
+   *  Persiste las fechas en Redis para que la página de reserva las recupere. */
   onBookingSearch(values: BookingSearchValues) {
     const current = this.currentFilters();
     this.updateFilters({
@@ -214,6 +218,17 @@ export class HotelSearchPageComponent implements OnDestroy {
       rooms: String(values.rooms),
       page: 1,
     });
+    // Persist search dates to Redis so the booking page can pre-fill them
+    if (values.checkIn || values.checkOut) {
+      this.http.put('/api/guest/session-prefs', {
+        check_in: values.checkIn,
+        check_out: values.checkOut,
+        destination: values.destination,
+        adults: String(values.adults),
+        children: String(values.children),
+        rooms: String(values.rooms),
+      }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+    }
   }
 
   goToPage(page: number) {

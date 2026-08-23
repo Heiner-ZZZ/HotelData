@@ -17,6 +17,9 @@ export function hotelImageUrl(propId: number, variant: 'hotel' | 'lobby' | 'pool
   return placeholderImageUrl(`${propId}-${variant}`, 400, 250);
 }
 
+/** Variantes que forman la mini-galería de cada card destacada. */
+const WELCOME_GALLERY_VARIANTS = ['hotel', 'lobby', 'pool'] as const;
+
 /** Maps the raw availability API response to FeaturedHotel cards. */
 export function mapFeaturedHotels(raw: { items?: FeaturedHotelDto[] }): FeaturedHotel[] {
   return (raw.items ?? []).map((h) => ({
@@ -25,7 +28,7 @@ export function mapFeaturedHotels(raw: { items?: FeaturedHotelDto[] }): Featured
     location: (h.destination_labels ?? [])[0] ?? '',
     stars: h.prop_starrating ?? 0,
     score: h.prop_review_score,
-    imageUrl: hotelImageUrl(h.prop_id, 'hotel'),
+    images: WELCOME_GALLERY_VARIANTS.map((variant) => hotelImageUrl(h.prop_id, variant)),
     rateLabel: h.min_nightly_rate_label,
   }));
 }

@@ -16,8 +16,8 @@ export interface HotelCompareItem {
   mappedPolicies: PolicyItem[];
   cancellationPolicy: string;
   destinationLabels: string[];
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   minNightlyRate?: number;
   minNightlyRateLabel?: string;
   totalEstimated?: number;

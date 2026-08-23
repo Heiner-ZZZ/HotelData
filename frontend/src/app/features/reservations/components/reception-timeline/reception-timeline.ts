@@ -561,9 +561,16 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     this.closeDetail();
     const today = new Date();
     const isTimelineWeek = this.currentView() === 'TimelineWeek';
-    this.viewStartDate.set(isTimelineWeek
-      ? this.toIsoDate(this.weekStart(today))
-      : this.toIsoDate(this.monthStart(today)));
+    const targetDate = isTimelineWeek
+      ? this.weekStart(today)
+      : this.monthStart(today);
+    this.viewStartDate.set(this.toIsoDate(targetDate));
+    // Syncfusion no reacciona automáticamente a cambios posteriores de
+    // [selectedDate] — usar la API pública del componente para forzar la
+    // navegación al mes/semana actual en ambas vistas.
+    if (this.hotelSchedule) {
+      this.hotelSchedule.selectedDate = targetDate;
+    }
     // La vista semanal es por horas: "Hoy" navega a la semana actual y además
     // desplaza el scroll horizontal hasta la hora actual del día, para que
     // (p. ej. un domingo) no quede lejos del primer día de la semana.

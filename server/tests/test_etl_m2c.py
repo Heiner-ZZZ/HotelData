@@ -28,11 +28,53 @@ def test_strat_hotel_monthly_mapper_positions():
         "month": "2026-08-01", "prop_id": 1, "hotel_label": "Hotel Lima", "currency": "PEN",
         "bookings": 10, "rooms_sold": 12, "room_nights": 30, "revenue": 4500.5,
         "discount_amount": 200.0, "adults": 18, "children": 2, "cancelled_rooms": 1,
-        "total_rooms": 50,
+        "total_rooms": 50, "city": "Lima", "city_lat": -12.0464, "city_lng": -77.0428,
     }])
     assert rows[0][0].strftime("%Y-%m-%d") == "2026-08-01"
     assert rows[0][1:4] == [1, "Hotel Lima", "PEN"]
-    assert rows[0][4:] == [10, 12, 30, 4500.5, 200.0, 18, 2, 1, 50]
+    assert rows[0][4:13] == [10, 12, 30, 4500.5, 200.0, 18, 2, 1, 50]
+    assert rows[0][13:] == ["Lima", -12.0464, -77.0428]
+
+
+def test_enrich_strat_hotel_geo_resolves_city_and_coords():
+    """Nivel 1 IE-H02: ``city`` sale de ``dim_hotels`` y ``city_lat/lng`` del
+    catálogo ``geo_catalog`` (coordenadas reales, nunca sintéticas). Ciudad sin
+    entrada en geo_catalog → coordenadas None (honesto, no fabricado)."""
+    from src.etl.mongo_to_clickhouse.extract import _enrich_strat_hotel_geo
+
+    class _FakeCollection:
+        def __init__(self, docs):
+            self._docs = docs
+
+        def find(self, query=None, projection=None):
+            return self._docs
+
+    class _FakeDb:
+        def __init__(self):
+            self.dim_hotels = _FakeCollection([
+                # per-hotel coords REALES ganan sobre el centro de ciudad.
+                {"prop_id": 1, "city": "Cancún", "latitude": 21.1610, "longitude": -86.8510},
+                {"prop_id": 2, "city": "Lima"},
+            ])
+            self.geo_catalog = _FakeCollection([
+                {"type": "city", "name": "Cancún", "latitude": 21.1619, "longitude": -86.8515},
+                {"type": "city", "name": "CDMX", "latitude": 19.4326, "longitude": -99.1332},
+            ])
+
+    payload = {"strat_hotel_monthly": [
+        {"prop_id": 1, "month": "2026-08-01", "revenue": 100.0},
+        {"prop_id": 2, "month": "2026-08-01", "revenue": 200.0},
+        {"prop_id": 3, "month": "2026-08-01", "revenue": 300.0},
+    ]}
+    _enrich_strat_hotel_geo(_FakeDb(), payload)
+    rows = payload["strat_hotel_monthly"]
+    assert rows[0]["city"] == "Cancún"
+    assert rows[0]["city_lat"] == 21.1610  # coordenada POR HOTEL, no la de la ciudad
+    assert rows[0]["city_lng"] == -86.8510
+    assert rows[1]["city"] == "Lima"
+    assert rows[1]["city_lat"] is None  # Lima no está en geo_catalog → sin coords
+    assert rows[2]["city"] == ""  # prop_id sin fila en dim_hotels
+    assert rows[2]["city_lat"] is None
 
 
 def test_strat_plan_monthly_mapper_positions():

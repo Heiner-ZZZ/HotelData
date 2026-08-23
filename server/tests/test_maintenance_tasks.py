@@ -74,7 +74,7 @@ async def test_create_maintenance_with_room_id(logged_client: AsyncClient, room_
         "auto_block": True,
         "status": "scheduled",
     }
-    response = await logged_client.post("/api/housekeeping/maintenance", json=payload)
+    response = await logged_client.post("/api/housekeeping/maintenance?prop_id=1", json=payload)
     assert response.status_code == 201
 
     data = response.json()
@@ -95,13 +95,13 @@ async def test_create_maintenance_rejects_unknown_room_id(logged_client: AsyncCl
         "task_type": "preventive",
         "title": "Revisión HVAC",
     }
-    response = await logged_client.post("/api/housekeeping/maintenance", json=payload)
+    response = await logged_client.post("/api/housekeeping/maintenance?prop_id=1", json=payload)
     assert response.status_code == 400
     assert "Habitación no encontrada" in response.json().get("detail", "")
 
 
 async def test_list_maintenance_returns_room_id(logged_client: AsyncClient, room_id: str):
-    await logged_client.post("/api/housekeeping/maintenance", json={
+    await logged_client.post("/api/housekeeping/maintenance?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "preventive",
@@ -122,7 +122,7 @@ async def test_list_maintenance_returns_room_id(logged_client: AsyncClient, room
 async def test_update_maintenance_changes_room_id(
     logged_client: AsyncClient, room_id: str, other_room_id: str
 ):
-    create_response = await logged_client.post("/api/housekeeping/maintenance", json={
+    create_response = await logged_client.post("/api/housekeeping/maintenance?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "preventive",
@@ -141,7 +141,7 @@ async def test_update_maintenance_changes_room_id(
         "auto_block": False,
         "status": "in_progress",
     }
-    response = await logged_client.put(f"/api/housekeeping/maintenance/{task_id}", json=update_payload)
+    response = await logged_client.put(f"/api/housekeeping/maintenance/{task_id}?prop_id=1", json=update_payload)
     assert response.status_code == 200
 
     data = response.json()
@@ -155,7 +155,7 @@ async def test_update_maintenance_changes_room_id(
 async def test_update_maintenance_rejects_invalid_room_id(
     logged_client: AsyncClient, room_id: str
 ):
-    create_response = await logged_client.post("/api/housekeeping/maintenance", json={
+    create_response = await logged_client.post("/api/housekeeping/maintenance?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "preventive",
@@ -163,7 +163,7 @@ async def test_update_maintenance_rejects_invalid_room_id(
     })
     task_id = create_response.json()["id"]
 
-    response = await logged_client.put(f"/api/housekeeping/maintenance/{task_id}", json={
+    response = await logged_client.put(f"/api/housekeeping/maintenance/{task_id}?prop_id=1", json={
         "prop_id": 1,
         "room_id": "HR-1-999",
         "task_type": "preventive",
@@ -175,7 +175,7 @@ async def test_update_maintenance_rejects_invalid_room_id(
 
 
 async def test_complete_maintenance(logged_client: AsyncClient, room_id: str):
-    create_response = await logged_client.post("/api/housekeeping/maintenance", json={
+    create_response = await logged_client.post("/api/housekeeping/maintenance?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "preventive",
@@ -183,7 +183,7 @@ async def test_complete_maintenance(logged_client: AsyncClient, room_id: str):
     })
     task_id = create_response.json()["id"]
 
-    response = await logged_client.post(f"/api/housekeeping/maintenance/{task_id}/complete", json={"note": "Done"})
+    response = await logged_client.post(f"/api/housekeeping/maintenance/{task_id}/complete?prop_id=1", json={"note": "Done"})
     assert response.status_code == 200
 
     data = response.json()
@@ -192,7 +192,7 @@ async def test_complete_maintenance(logged_client: AsyncClient, room_id: str):
 
 
 async def test_delete_maintenance(logged_client: AsyncClient, room_id: str):
-    create_response = await logged_client.post("/api/housekeeping/maintenance", json={
+    create_response = await logged_client.post("/api/housekeeping/maintenance?prop_id=1", json={
         "prop_id": 1,
         "room_id": room_id,
         "task_type": "preventive",
@@ -200,7 +200,7 @@ async def test_delete_maintenance(logged_client: AsyncClient, room_id: str):
     })
     task_id = create_response.json()["id"]
 
-    response = await logged_client.delete(f"/api/housekeeping/maintenance/{task_id}")
+    response = await logged_client.delete(f"/api/housekeeping/maintenance/{task_id}?prop_id=1")
     assert response.status_code == 200
     assert response.json()["status"] == "deleted"
 

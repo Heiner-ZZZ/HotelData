@@ -16,7 +16,7 @@ from src.app.modules.partner.services import (
     update_room_type,
 )
 from src.app.modules.partner.services.properties.listing import list_property_options
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission
 
 
 @web_router.get("/hotels/{prop_id}/rooms")
@@ -69,8 +69,28 @@ def rooms_new_submit(
     return JSONResponse({"ok": True, "message": "Tipo de habitacion registrado"})
 
 
+def _check_body_prop_id(query_prop_id: int | None, payload: dict) -> None:
+    """Consistencia gate(query) ↔ body: el prop_id del query es autoritativo."""
+    try:
+        body_prop_id = int(str(payload.get("prop_id") or 0))
+    except (TypeError, ValueError):
+        body_prop_id = 0
+    if query_prop_id is not None and body_prop_id != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
+
+
+def _require_room_type_same_hotel(db, room_type_id: str, prop_id: int | None) -> None:
+    """404 (no 403) si el room type pertenece a otro hotel — deny cross-hotel."""
+    doc = db.room_types.find_one({"room_type_id": room_type_id}, {"prop_id": 1})
+    if doc is None or doc.get("prop_id") != prop_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tipo de habitación no encontrado")
+
+
 @api_router.get("/rooms")
-def rooms_api(prop_id: int = Query(..., ge=1)):
+def rooms_api(
+    prop_id: int = Query(..., ge=1),
+    current_user: dict = Depends(require_prop_permission("rooms.read")),
+):
     detail = partner_hotel_rooms(require_prop_id(prop_id))
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -79,6 +99,9 @@ def rooms_api(prop_id: int = Query(..., ge=1)):
 
 @api_router.get("/rooms/options")
 def rooms_options_api(current_user: dict = Depends(require_permission("rooms.read"))):
+    """Vista MULTI-HOTEL del picker de Habitaciones (excepción global
+    documentada): lista los hoteles accesibles del usuario, no opera uno
+    concreto."""
     # Lightweight path: only id+name needed; enriched listing cost ~9s at
     # page_size=200 (per-hotel performance/operational aggregates).
     properties = list_property_options("", page=1, page_size=200, user=current_user)
@@ -96,8 +119,10 @@ def rooms_options_api(current_user: dict = Depends(require_permission("rooms.rea
 @api_router.post("/rooms", status_code=201)
 def rooms_create_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("rooms.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("rooms.manage")),
 ):
+    _check_body_prop_id(query_prop_id, payload)
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
         saved = create_room_type(
@@ -126,8 +151,8 @@ def rooms_create_api(
 @api_router.get("/rooms/{room_type_id}")
 def rooms_get_api(
     room_type_id: str,
-    prop_id: int = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("rooms.read")),
+    prop_id: int = Query(..., ge=1),
+    current_user: dict = Depends(require_prop_permission("rooms.read")),
 ):
     """Get a single room type by ID."""
     from src.app.modules.partner.services.rooms.types import _room_type_by_id
@@ -141,8 +166,11 @@ def rooms_get_api(
 def rooms_update_api(
     room_type_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("rooms.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("rooms.update")),
 ):
+    from src.database.connection import get_database
+    _require_room_type_same_hotel(get_database(), room_type_id, query_prop_id)
     try:
         saved = update_room_type(
             room_type_id,
@@ -172,9 +200,12 @@ def rooms_update_api(
 def rooms_create_hotel_room_api(
     room_type_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("rooms.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("rooms.manage")),
 ):
     """Create a hotel_room (physical room) linked to an existing room type."""
+    from src.database.connection import get_database
+    _require_room_type_same_hotel(get_database(), room_type_id, query_prop_id)
     from src.app.modules.partner.services.rooms import create_hotel_room_for_type
     try:
         result = create_hotel_room_for_type(
@@ -197,9 +228,11 @@ def rooms_create_hotel_room_api(
 @api_router.post("/rooms/roh", status_code=201)
 def rooms_roh_create_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("rooms.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("rooms.manage")),
 ):
     """Create or get the Run Of House (ROH) room type for a property."""
+    _check_body_prop_id(query_prop_id, payload)
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
         saved = create_roh_room_type(
@@ -213,17 +246,20 @@ def rooms_roh_create_api(
     return saved
 
 
-@api_router.delete("/rooms/{room_type_id}")
 @api_router.post("/rooms/{room_type_id}/image", status_code=200)
 async def rooms_image_upload_api(
     room_type_id: str,
     file: UploadFile,
-    current_user: dict = Depends(require_permission("rooms.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("rooms.update")),
 ):
     """Upload an image for a room type. Saves to disk and updates the room_type's image_url."""
     from pathlib import Path
     from src.app.modules.partner.services._common import now_utc
     from src.database.connection import get_database
+
+    db = get_database()
+    _require_room_type_same_hotel(db, room_type_id, query_prop_id)
 
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo se permiten archivos de imagen.")
@@ -240,7 +276,6 @@ async def rooms_image_upload_api(
     image_url = f"/uploads/{filename}"
 
     # Update only image_url — direct $set to avoid overwriting other fields
-    db = get_database()
     result = db.room_types.update_one(
         {"room_type_id": room_type_id},
         {"$set": {"image_url": image_url, "updated_at": now_utc()}},
@@ -251,10 +286,14 @@ async def rooms_image_upload_api(
     return {"image_url": image_url}
 
 
+@api_router.delete("/rooms/{room_type_id}")
 def rooms_delete_api(
     room_type_id: str,
-    current_user: dict = Depends(require_permission("rooms.manage")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("rooms.manage")),
 ):
+    from src.database.connection import get_database
+    _require_room_type_same_hotel(get_database(), room_type_id, query_prop_id)
     try:
         saved = delete_room_type(room_type_id, changed_by=current_user.get("username", "system"))
     except ValueError as exc:

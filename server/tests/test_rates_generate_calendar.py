@@ -43,7 +43,7 @@ def _seed_plan(db, prop_id: int, plan_id: str = "RP-FLEX") -> None:
 
 def _generate(client: AsyncClient, prop_id: int, **extra) -> dict:
     payload = {"prop_id": prop_id, **extra}
-    return client.post("/api/management/rates/calendar/generate", json=payload)
+    return client.post(f"/api/management/rates/calendar/generate?prop_id={prop_id}", json=payload)
 
 
 async def test_generate_requires_start_and_end_dates(client: AsyncClient, db, admin_user):

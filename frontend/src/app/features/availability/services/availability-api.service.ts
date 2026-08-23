@@ -60,13 +60,17 @@ export class AvailabilityApiService {
   }
 
   saveInventory(payload: AvailabilitySaveInventoryDto) {
+    const params = new HttpParams().set('prop_id', String(payload.prop_id ?? ''));
     return this.http.patch(`${this.apiConfig.baseUrl}/management/availability`, payload, {
+      params,
       withCredentials: true
     });
   }
 
   createBlackout(payload: AvailabilitySaveBlackoutDto) {
+    const params = new HttpParams().set('prop_id', String(payload.prop_id ?? ''));
     return this.http.post(`${this.apiConfig.baseUrl}/management/availability/blackouts`, payload, {
+      params,
       withCredentials: true
     });
   }  /** Fetch all hotel rooms for a property (for calendar room-number display). */
@@ -88,10 +92,11 @@ export class AvailabilityApiService {
     );
   }
 
-  deleteBlackout(blackoutId: string) {
+  deleteBlackout(propId: number, blackoutId: string) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/availability/blackouts/${blackoutId}`,
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
@@ -111,14 +116,16 @@ export class AvailabilityApiService {
   }
 
   /** Update a future blackout block */
-  updateBlackout(blackoutId: string, payload: {
+  updateBlackout(propId: number, blackoutId: string, payload: {
     start_date?: string;
     end_date?: string;
     reason?: string;
     room_numbers?: string[];
     blocked_rooms?: number;
   }) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.put(`${this.apiConfig.baseUrl}/management/availability/blackouts/${blackoutId}`, payload, {
+      params,
       withCredentials: true
     });
   }

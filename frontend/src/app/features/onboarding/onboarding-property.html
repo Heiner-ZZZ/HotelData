@@ -240,6 +240,32 @@
             </label>
 
             <label class="input-field">
+              <span class="material-symbols-outlined input-icon">signpost</span>
+              <span class="input-label">
+                Dirección
+                <span class="optional">(opcional)</span>
+              </span>
+              <input
+                type="text"
+                formControlName="address"
+                placeholder="ej: Av. Tulum 5, Zona Hotelera"
+                autocomplete="street-address"
+              >
+            </label>
+
+            <div class="location-picker-field">
+              <span class="input-label">
+                Ubicación en el mapa
+                <span class="optional">(opcional · define el radio de 5 km)</span>
+              </span>
+              <app-location-picker
+                [lat]="pickedLat()"
+                [lng]="pickedLng()"
+                (locationChange)="onLocationChange($event)"
+              ></app-location-picker>
+            </div>
+
+            <label class="input-field">
               <span class="material-symbols-outlined input-icon">call</span>
               <span class="input-label">Teléfono de contacto</span>
               <input

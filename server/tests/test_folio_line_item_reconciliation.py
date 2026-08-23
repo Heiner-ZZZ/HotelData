@@ -90,7 +90,8 @@ class TestManualFolioChargeMirrorsToBooking:
         assert items[0]["type"] == "folio_charge"
         assert items[0]["name"] == "Masaje relajante"
         assert items[0]["total"] == 40.0
-        assert items[0]["category"] == "restaurante"
+        # post_to_folio resuelve el id del catálogo al label canónico.
+        assert items[0]["category"] == "Restaurante"
 
     def test_manual_charge_syncs_into_issued_invoice(self, db):
         from src.app.modules.billing.service.folio import post_to_folio

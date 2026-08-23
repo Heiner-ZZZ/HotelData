@@ -1,6 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
+import { PropertyContextService } from '../../../shared/services/property-context.service';
+
 export interface DateHistoryEntry {
   date: string;
   count: number;
@@ -22,6 +24,20 @@ export interface BookingCharge {
 @Injectable({ providedIn: 'root' })
 export class CheckOutsApiService {
   private readonly http = inject(HttpClient);
+  private readonly propertyCtx = inject(PropertyContextService);
+
+  private propParams(): HttpParams {
+    const ctxPid = this.propertyCtx.currentPropId();
+    if (ctxPid > 0) return new HttpParams().set('prop_id', String(ctxPid));
+    try {
+      const raw = new URLSearchParams(window.location.search).get('prop_id');
+      const urlPid = raw ? Number(raw) : 0;
+      if (urlPid > 0) return new HttpParams().set('prop_id', String(urlPid));
+    } catch {
+      // ignora
+    }
+    return new HttpParams();
+  }
 
   getCheckOutDates(propId?: number) {
     let params = new HttpParams();
@@ -32,8 +48,8 @@ export class CheckOutsApiService {
   }
 
   /** Fetch additional charges (consumptions) for a booking before checkout. */
-  getBookingCharges(bookingId: string) {
-    const params = new HttpParams().set('booking_id', bookingId);
+  getBookingCharges(bookingId: string, propId: number) {
+    const params = new HttpParams().set('booking_id', bookingId).set('prop_id', String(propId));
     return this.http.get<{
       items: BookingCharge[];
       total: number;
@@ -50,18 +66,20 @@ export class CheckOutsApiService {
     return this.http.post<BookingCharge>(
       '/housekeeping/charges',
       { booking_id: bookingId, prop_id: propId, concept, amount, quantity, note, category },
+      { params: new HttpParams().set('prop_id', String(propId)) },
     );
   }
 
   /** Delete an additional charge by its ID. */
-  deleteCharge(chargeId: string) {
+  deleteCharge(chargeId: string, propId: number) {
     return this.http.delete<{ ok: boolean; deleted_id: string; booking_id: string }>(
       `/housekeeping/charges/${chargeId}`,
+      { params: new HttpParams().set('prop_id', String(propId)) },
     );
   }
 
   completeCheckOut(bookingId: string) {
-    return this.http.post(`/management/check-outs/${bookingId}/complete`, {});
+    return this.http.post(`/management/check-outs/${bookingId}/complete`, {}, { params: this.propParams() });
   }
 
   /** ═══ Check-Out Detail Page ═══ */
@@ -69,6 +87,7 @@ export class CheckOutsApiService {
   getCheckOutDetail(bookingId: string) {
     return this.http.get<CheckOutDetailDto>(
       `/management/check-outs/${bookingId}/detail`,
+      { params: this.propParams() },
     );
   }
 
@@ -76,6 +95,7 @@ export class CheckOutsApiService {
     return this.http.patch<{ booking_id: string; updated: boolean; fields_updated: string[] }>(
       `/management/check-outs/${bookingId}/detail`,
       payload,
+      { params: this.propParams() },
     );
   }
 
@@ -83,30 +103,37 @@ export class CheckOutsApiService {
     return this.http.post<{ booking_id: string; stay_status: string; check_out_mode?: string; late_checkout_fee?: number }>(
       `/management/check-outs/${bookingId}/complete`,
       payload,
+      { params: this.propParams() },
     );
   }
 
   /** Emit (generate) an invoice for a booking. */
   emitInvoice(bookingId: string, propId: number, subtotal: number, taxes: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.post<{ id: string; invoice_number: string; status: string; total: number }>(
       '/billing/invoices',
-      { booking_id: bookingId, prop_id: propId, subtotal, taxes, notes: '' },
+      { booking_id: bookingId, subtotal, taxes, notes: '' },
+      { params },
     );
   }
 
   /** Send an existing invoice to the guest by email. */
-  sendInvoiceEmail(invoiceId: string) {
+  sendInvoiceEmail(invoiceId: string, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.post<{ ok: boolean; message: string }>(
       `/billing/invoices/${invoiceId}/email`,
       {},
+      { params },
     );
   }
 
   /** Emit a complementary invoice for the un-invoiced gap (factura corta). */
   emitComplementInvoice(bookingId: string, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.post<{ id: string; invoice_number: string; status: string; total: number }>(
       '/billing/invoices/complement',
-      { booking_id: bookingId, prop_id: propId },
+      { booking_id: bookingId },
+      { params },
     );
   }
 }

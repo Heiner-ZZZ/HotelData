@@ -379,7 +379,7 @@ class TestNoShowReturnsFolio:
         )
         await login(client, admin_user["username"], admin_user["password"])
 
-        response = await client.get(f"/api/billing/folios/{booking_id}")
+        response = await client.get(f"/api/billing/folios/{booking_id}?prop_id=991")
 
         assert response.status_code == 200
         body = response.json()
@@ -388,7 +388,7 @@ class TestNoShowReturnsFolio:
         assert body["total_due"] == 55.59
         assert db.guest_folios.count_documents({"booking_id": booking_id}) == 1
 
-        detail_response = await client.get(f"/api/management/check-ins/{booking_id}/detail")
+        detail_response = await client.get(f"/api/management/check-ins/{booking_id}/detail?prop_id=991")
         assert detail_response.status_code == 200
         detail = detail_response.json()
         assert detail["folio"] == body["folio_number"]
@@ -421,7 +421,7 @@ async def test_check_in_detail_exposes_reopen_marker_when_reopened(client, admin
     assert result["ok"] is True
 
     await login(client, admin_user["username"], admin_user["password"])
-    response = await client.get(f"/api/management/check-ins/{booking_id}/detail")
+    response = await client.get(f"/api/management/check-ins/{booking_id}/detail?prop_id=991")
 
     assert response.status_code == 200
     detail = response.json()
@@ -444,7 +444,7 @@ async def test_check_in_detail_has_empty_reopen_marker_without_reopen(client, ad
         stay_status="pending",
     )
     await login(client, admin_user["username"], admin_user["password"])
-    response = await client.get(f"/api/management/check-ins/{booking_id}/detail")
+    response = await client.get(f"/api/management/check-ins/{booking_id}/detail?prop_id=991")
 
     assert response.status_code == 200
     detail = response.json()

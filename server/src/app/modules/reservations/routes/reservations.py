@@ -49,7 +49,7 @@ from src.app.modules.reservations.service.pricing_backfill import (
     backfill_single_booking,
     list_unpriced_bookings,
 )
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission
 from src.app.security.hotel_filter import user_can_access_hotel
 from src.app.security.role_helpers import get_role_name
 from src.database.connection import get_database
@@ -68,6 +68,44 @@ def module_status_endpoint() -> ModuleStatus:
     )
 
 
+def _require_booking_same_hotel(db, booking_id: str, prop_id: int | None) -> None:
+    """404 (no 403) si la reserva pertenece a otro hotel — deny cross-hotel.
+
+    Usa el mensaje amigable canónico del módulo (contrato de UX).
+    """
+    doc = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1})
+    if doc is None or doc.get("prop_id") != prop_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la reserva. Verificá el número de reserva e intentá de nuevo.",
+        )
+
+
+def _require_staff_prop_permission(db, current_user: dict, permission_code: str, prop_id: int | None) -> None:
+    """Gate por-hotel INLINE para rutas mixtas (huésped/staff) de reservas.
+
+    Flujo mixto: el huésped (``cliente``) accede a SUS reservas por ownership;
+    el staff en contexto de hotel (``prop_id``) debe tener el permiso RESUELTO
+    POR HOTEL (deny-by-default: el rol global no basta). Sin ``prop_id`` el
+    staff conserva la vista multi-hotel global (super_admin/plataforma).
+    """
+    from src.app.security.permissions import user_has_permission
+    from src.app.modules.hotels.service.operational import non_operational_hotel
+
+    if get_role_name(current_user) == "cliente":
+        return
+    if prop_id is not None:
+        if non_operational_hotel(db, prop_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"El hotel {prop_id} no está operativo.")
+        if not user_can_access_hotel(current_user, prop_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Sin acceso al hotel {prop_id}.")
+        if not user_has_permission(db, current_user, permission_code, prop_id=prop_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permiso requerido: {permission_code}",
+            )
+
+
 @api_router.get("", response_model=BookingListResponse)
 def reservations_list_api(
     page: int = Query(default=1, ge=1),
@@ -81,13 +119,14 @@ def reservations_list_api(
     current_user: dict = Depends(require_permission("reservations.read")),
 ):
     from src.app.modules.reservations.service.queries import list_bookings as _list
+    _require_staff_prop_permission(get_database(), current_user, "reservations.read", prop_id)
     return BookingListResponse.model_validate(to_json_safe(_list(page=page, page_size=20, created_date=created_date, status=status, prop_id=prop_id, guest_name=guest_name, folio=folio, stay_status=stay_status, booking_source=booking_source, user=current_user)))
 
 
 @api_router.get("/dates")
 def reservation_dates_api(
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     return list_reservation_dates(prop_id=prop_id, user=current_user)
 
@@ -102,7 +141,7 @@ def reservation_availability_check_api(
     prop_id: int = Query(..., ge=1),
     check_in: str = Query(...),
     check_out: str = Query(...),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     """Check if a hotel has room types and inventory available for a given date range."""
     return check_hotel_availability(prop_id, check_in, check_out)
@@ -114,20 +153,30 @@ def available_rate_plans_api(
     check_in: str = Query(...),
     check_out: str = Query(...),
     room_type_id: str = Query(default=""),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     """Return available rate plans for a hotel + date range + optional room type."""
     return list_rate_plans_with_rates(prop_id, check_in, check_out, room_type_id)
 
 
 @api_router.post("/preview")
-def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.read"))):
+def reservation_preview_api(
+    payload: dict = Body(...),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
+):
+    _check_body_prop_id(query_prop_id, payload)
     return preview_reservation(payload)
 
 
 @api_router.post("", status_code=status.HTTP_201_CREATED, response_model=ReservationCreatedResponse)
-def reservations_create_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.create"))):
+def reservations_create_api(
+    payload: dict = Body(...),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.create")),
+):
     try:
+        _check_body_prop_id(query_prop_id, payload)
         user_role = get_role_name(current_user)
         elig_error = validate_rate_plan_eligibility(payload, user_role)
         if elig_error:
@@ -234,7 +283,12 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
 
 
 @api_router.post("/validate-coupon")
-def validate_coupon_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.read"))):
+def validate_coupon_api(
+    payload: dict = Body(...),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
+):
+    _check_body_prop_id(query_prop_id, payload)
     coupon_code = payload.get("coupon_code") or payload.get("promo_code")
     prop_id = payload.get("prop_id")
     if not coupon_code:
@@ -247,7 +301,19 @@ def validate_coupon_api(payload: dict = Body(...), current_user: dict = Depends(
             status_code=400,
             detail="El hotel es obligatorio para validar el código. Seleccioná un hotel e intentá de nuevo.",
         )
-    error, discount, _ = validate_coupon_code(coupon_code, int(prop_id))
+    # Campos opcionales para validación de relación correcta (tarifa/habitación/fechas)
+    check_in = payload.get("check_in") or payload.get("checkInDate")
+    check_out = payload.get("check_out") or payload.get("checkOutDate")
+    rate_plan_id = payload.get("rate_plan_id") or payload.get("ratePlanId")
+    room_type_id = payload.get("room_type_id") or payload.get("room_type")
+    error, discount, _ = validate_coupon_code(
+        coupon_code,
+        int(prop_id),
+        check_in=check_in,
+        check_out=check_out,
+        rate_plan_id=rate_plan_id,
+        room_type_id=room_type_id,
+    )
     return {"valid": error is None, "message": error or "Código válido", "discount_percent": discount or 0}
 
 
@@ -261,7 +327,7 @@ def reservation_export_api(
     format: str = Query(default="csv"),
     status_filter: str | None = Query(default=None, alias="status"),
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     output, raw_date = export_reservations_csv(status_filter=status_filter, prop_id=prop_id)
     return StreamingResponse(
@@ -287,18 +353,32 @@ def reservations_unpriced_api(
     return list_unpriced_bookings(db, user=current_user, limit=50)
 
 
-@api_router.get("/{booking_id}", response_model=BookingResponse)
-def reservation_detail_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
-    """Booking detail with embedded reservation history (``history: list[BookingHistoryResponse]``).
+def _check_body_prop_id(query_prop_id: int | None, payload: dict) -> None:
+    """Consistencia gate(query) ↔ body: el prop_id del query es autoritativo."""
+    try:
+        body_prop_id = int(str(payload.get("prop_id") or 0))
+    except (TypeError, ValueError):
+        body_prop_id = 0
+    if query_prop_id is not None and body_prop_id != query_prop_id:
+        raise HTTPException(status_code=400, detail="prop_id del query y del body no coinciden")
 
-    The history is surfaced by ``get_booking_detail``
-    (queries.py:401) and validated under the BookingResponse's nested
-    ``BookingHistoryResponse`` items. Client reads are scoped to their
-    canonical ``booking_orders.user_id`` ObjectId; staff keeps the existing
-    reservation-read behavior.
+
+@api_router.get("/{booking_id}", response_model=BookingResponse)
+def reservation_detail_api(
+    booking_id: str,
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_permission("reservations.read")),
+):
+    """Booking detail with embedded reservation history.
+
+    Flujo MIXTO (migración E): el huésped (``cliente``) lee su propia reserva
+    (check de ownership inline); el staff en contexto de hotel (``prop_id``)
+    pasa por el gate por-hotel INLINE (``reservations.read`` resuelto por
+    role_assignment → hotel_roles) + 404 si la reserva es de otro hotel.
     """
+    from src.app.security.permissions import user_has_permission
+    db = get_database()
     if get_role_name(current_user) == "cliente":
-        db = get_database()
         booking = db.booking_orders.find_one({"booking_id": booking_id}, {"user_id": 1})
         user_id = current_user.get("_id")
         if isinstance(user_id, str) and ObjectId.is_valid(user_id):
@@ -308,6 +388,22 @@ def reservation_detail_api(booking_id: str, current_user: dict = Depends(require
             booking_user_id = ObjectId(booking_user_id)
         if booking is None or user_id is None or booking_user_id != user_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes acceso a esta reserva.")
+    else:
+        # Staff: deny-by-default por hotel. Con prop_id → el rol del hotel
+        # (role_assignment → hotel_roles) debe portar reservations.read; la
+        # reserva debe pertenecer al hotel pedido (404 cross-hotel). Sin
+        # prop_id (super_admin/plataforma multi-hotel) conserva la vista global.
+        if query_prop_id is not None:
+            from src.app.modules.hotels.service.operational import non_operational_hotel as _non_op
+            if _non_op(db, query_prop_id):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"El hotel {query_prop_id} no está operativo.")
+            if not user_can_access_hotel(current_user, query_prop_id):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Sin acceso al hotel {query_prop_id}.")
+            if not user_has_permission(db, current_user, "reservations.read", prop_id=query_prop_id):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permiso requerido: reservations.read")
+            booking = db.booking_orders.find_one({"booking_id": booking_id}, {"prop_id": 1})
+            if booking is None or booking.get("prop_id") != query_prop_id:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
 
     detail = get_booking_detail(booking_id)
     if detail is None:
@@ -325,7 +421,8 @@ def reservation_detail_api(booking_id: str, current_user: dict = Depends(require
 def reservation_special_request_status_api(
     booking_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("reservations.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
 ):
     """Flip one checklist item's fulfillment status (pending ↔ fulfilled).
 
@@ -334,6 +431,7 @@ def reservation_special_request_status_api(
     backward compatibility. Returns the normalized fulfillment list after the
     update, with the ``fulfilled_at`` date on fulfilled entries.
     """
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     from src.app.modules.reservations.service.special_request_fulfillment import (
         update_amenity_fulfillment,
         update_special_request_fulfillment,
@@ -355,8 +453,13 @@ def reservation_special_request_status_api(
 
 
 @api_router.get("/{booking_id}/cancel-preview")
-def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
+def reservation_cancel_preview_api(
+    booking_id: str,
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
+):
     """Preview cancellation penalty without actually cancelling."""
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     from src.app.core.timezone import local_today
     from src.app.modules.reservations.service.cleanup import (
         _calculate_cancellation_penalty,
@@ -411,7 +514,13 @@ def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends
 
 
 @api_router.post("/{booking_id}/cancel")
-def reservation_cancel_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.delete"))):
+def reservation_cancel_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.delete")),
+):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     try:
         return cancel_booking(booking_id, reason=str(payload.get("reason") or "cancelled_by_user"),
             changed_by=str(payload.get("changed_by") or current_user.get("username", "web")))
@@ -420,7 +529,13 @@ def reservation_cancel_api(booking_id: str, payload: dict = Body(default={}), cu
 
 
 @api_router.post("/{booking_id}/confirm")
-def reservation_confirm_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.update"))):
+def reservation_confirm_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
+):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     role = get_role_name(current_user)
     if role not in ("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el staff del hotel puede confirmar reservas.")
@@ -432,7 +547,13 @@ def reservation_confirm_api(booking_id: str, payload: dict = Body(default={}), c
 
 
 @api_router.post("/{booking_id}/reject")
-def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.update"))):
+def reservation_reject_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
+):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     role = get_role_name(current_user)
     if role not in ("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el staff del hotel puede rechazar reservas.")
@@ -446,7 +567,8 @@ def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), cu
 @api_router.post("/{booking_id}/recalculate-price")
 def reservation_recalculate_price_api(
     booking_id: str,
-    current_user: dict = Depends(require_permission("reservations.update")),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
 ):
     """Recalcula el precio de una reserva sin ``total_price`` (botón del admin).
 
@@ -461,6 +583,7 @@ def reservation_recalculate_price_api(
     - 403 → la reserva pertenece a un hotel fuera del alcance del usuario
       (``user_can_access_hotel``) — mismo hardening que el GET /unpriced.
     """
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     db = get_database()
     booking = db.booking_orders.find_one(
         {"booking_id": booking_id},
@@ -487,7 +610,13 @@ def reservation_recalculate_price_api(
 
 
 @api_router.patch("/{booking_id}", response_model=BookingResponse)
-def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.update"))):
+def reservation_modify_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
+):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     try:
         return BookingResponse.model_validate(to_json_safe(modify_booking(booking_id,
             check_in_date=str(payload["check_in_date"]) if payload.get("check_in_date") else None,
@@ -503,12 +632,23 @@ def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), cu
 
 
 @api_router.get("/{booking_id}/room-guests")
-def room_guests_get_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
+def room_guests_get_api(
+    booking_id: str,
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
+):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     return get_room_guests(booking_id)
 
 
 @api_router.put("/{booking_id}/room-guests")
-def room_guests_put_api(booking_id: str, payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.update"))):
+def room_guests_put_api(
+    booking_id: str,
+    payload: dict = Body(...),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.update")),
+):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     try:
         return save_room_guests(booking_id, payload.get("room_guests", []))
     except ValueError as exc:
@@ -516,5 +656,10 @@ def room_guests_put_api(booking_id: str, payload: dict = Body(...), current_user
 
 
 @api_router.get("/{booking_id}/check-in-status")
-def check_in_status_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
+def check_in_status_api(
+    booking_id: str,
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("reservations.read")),
+):
+    _require_booking_same_hotel(get_database(), booking_id, query_prop_id)
     return get_check_in_status(booking_id)

@@ -331,6 +331,10 @@
 
 .notif-body-sm {
   display: grid;
+  max-height: 360px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted-text) 30%, transparent) transparent;
 }
 
 .notif-row-sm {
@@ -391,6 +395,15 @@
       background: var(--accent-light);
     }
   }
+}
+
+.notif-item-icon-sm {
+  font-size: 1.15rem;
+  --icon-wght: 350;
+  --icon-opsz: 20;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--accent);
 }
 
 .notif-item-body-sm {

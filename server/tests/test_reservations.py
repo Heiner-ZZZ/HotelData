@@ -259,7 +259,7 @@ class TestBookingUserIdObjectIdFk:
         )
         assert lr.status_code == 200, lr.text
         resp = await client.post(
-            "/api/reservations",
+            f"/api/reservations?prop_id={seeded_hotel}",
             json={
                 "prop_id": seeded_hotel,
                 "guest_name": "Api Owner",
@@ -1297,7 +1297,7 @@ class TestNoPriceGuard:
         )
         assert lr.status_code == 200, lr.text
 
-        resp = await client.post("/api/reservations", json={
+        resp = await client.post(f"/api/reservations?prop_id={pid}", json={
             "prop_id": pid,
             "guest_name": "Web Sin Precio",
             "guest_email": "webnoprice@test.com",
@@ -1680,7 +1680,7 @@ class TestReservationErrorMessages:
     async def test_cancel_preview_not_found_message_with_action(self, client, admin_user):
         from tests.conftest import login
         assert await login(client, admin_user["username"], admin_user["password"]) == 200
-        resp = await client.get("/api/reservations/BK-NO-EXISTE/cancel-preview")
+        resp = await client.get("/api/reservations/BK-NO-EXISTE/cancel-preview?prop_id=1")
         assert resp.status_code == 404
         assert "No se encontró la reserva. Verificá el número de reserva e intentá de nuevo." in resp.json()["detail"]
 

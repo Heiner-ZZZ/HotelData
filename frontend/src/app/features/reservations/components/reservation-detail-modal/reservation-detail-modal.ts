@@ -9,6 +9,7 @@ import type { ReservationDetailDto } from '../../models/reservations.dto';
 import type { ReservationDetailViewModel } from '../../models/reservations.model';
 import { mapReservationDetail } from '../../mappers/reservations.mapper';
 import { InStayApiService } from '../../../in-stay/services/in-stay-api.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CHECK_INS_NO_SHOW_REOPEN } from '../../../../core/auth/permission.constants';
@@ -24,6 +25,7 @@ import { CheckInsApiService } from '../../../check-ins/services/check-ins-api.se
 export class ReservationDetailModalComponent {
   private readonly router = inject(Router);
   private readonly instayApi = inject(InStayApiService);
+  private readonly propCtx = inject(PropertyContextService);
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
   private readonly checkInsApi = inject(CheckInsApiService);
@@ -246,7 +248,7 @@ export class ReservationDetailModalComponent {
     }
     this.reopenPending.set(true);
     this.reopenError.set('');
-    this.checkInsApi.reopenNoShow(this.reservation().bookingId, reason)
+    this.checkInsApi.reopenNoShow(this.reservation().bookingId, reason, this.propCtx.currentPropId() || undefined)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
@@ -276,7 +278,7 @@ export class ReservationDetailModalComponent {
   goToStay(): void {
     const bookingId = this.reservation().bookingId;
     if (!bookingId) return;
-    this.instayApi.getMyStaySession(bookingId).pipe(
+    this.instayApi.getMyStaySession(bookingId, this.propCtx.currentPropId()).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: (session) => {

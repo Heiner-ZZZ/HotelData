@@ -172,9 +172,27 @@ def _seed_receptionist(db) -> dict[str, str]:
             "password_hash": _pwd.hash(password),
             "primary_role": "recepcionista",
             "role_ids": [role_id],
+            "assigned_hotels": [991],
             "is_active": True,
             "created_at": datetime.now(UTC),
         }
+    ).inserted_id
+    # Migración E: asignación por-hotel para que el gate prop pase y la
+    # negación venga de la autorización gerencial (early approve), no del 403
+    # deny-by-default por falta de asignación.
+    user = db.users.find_one({"username": "recepcionista_early_test"})
+    hotel_role_id = db.hotel_roles.insert_one(
+        {
+            "prop_id": 991,
+            "name": "recepcionista",
+            "display_name": "Recepcionista",
+            "permissions": ["check-ins.manage"],
+            "is_active": True,
+            "created_at": datetime.now(UTC),
+        }
+    ).inserted_id
+    db.role_assignments.insert_one(
+        {"user_id": user["_id"], "role_id": hotel_role_id, "prop_id": 991}
     )
     return {"username": "recepcionista_early_test", "password": password}
 
@@ -201,7 +219,7 @@ async def test_receptionist_cannot_submit_approved_early_check_in(
     assert await login(client, credentials["username"], credentials["password"]) == 200
 
     response = await client.post(
-        "/api/management/check-ins/BK-EARLY-AUTH-ROUTE/complete",
+        "/api/management/check-ins/BK-EARLY-AUTH-ROUTE/complete?prop_id=991",
         json={
             "early_check_in_mode": "early_approved",
             "early_check_in_approved": True,

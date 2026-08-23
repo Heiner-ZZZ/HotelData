@@ -54,9 +54,13 @@ export class CompareMapComponent implements AfterViewInit {
 
     const bounds = new maplibregl.LngLatBounds();
     const colours = ['#1463FF', '#059669', '#D97706'];
+    let hasMarkers = false;
 
     for (let i = 0; i < items.length; i++) {
       const h = items[i];
+      // Sin coordenadas reales el hotel no se marca: nunca se dibuja un
+      // punto falso (la API ya no fabrica coordenadas sintéticas).
+      if (h.latitude == null || h.longitude == null) continue;
       const colour = colours[i % colours.length];
 
       const markerEl = document.createElement('div');
@@ -80,7 +84,12 @@ export class CompareMapComponent implements AfterViewInit {
 
       this._hotelMarkers.push(marker);
       bounds.extend([h.longitude, h.latitude]);
+      hasMarkers = true;
     }
+
+    const fit = () => {
+      if (hasMarkers) this._map?.fitBounds(bounds, { padding: 60, maxZoom: 10 });
+    };
 
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -91,12 +100,10 @@ export class CompareMapComponent implements AfterViewInit {
           bounds.extend([lng, lat]);
           this._map?.fitBounds(bounds, { padding: 60, maxZoom: 10 });
         },
-        () => {
-          this._map?.fitBounds(bounds, { padding: 60, maxZoom: 10 });
-        },
+        () => fit(),
       );
     } else {
-      this._map?.fitBounds(bounds, { padding: 60, maxZoom: 10 });
+      fit();
     }
   }
 
@@ -126,9 +133,14 @@ export class CompareMapComponent implements AfterViewInit {
     const items = this.hotels();
     if (!items.length || !this._map) return;
     const bounds = new maplibregl.LngLatBounds();
+    let extended = false;
     for (const h of items) {
+      if (h.latitude == null || h.longitude == null) continue;
       bounds.extend([h.longitude, h.latitude]);
+      extended = true;
     }
-    this._map.fitBounds(bounds, { padding: 60, maxZoom: 10 });
+    if (extended) {
+      this._map.fitBounds(bounds, { padding: 60, maxZoom: 10 });
+    }
   }
 }

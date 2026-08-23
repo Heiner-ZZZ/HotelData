@@ -1,8 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { OperationModeService } from '../../../../core/services/operation-mode.service';
@@ -15,6 +15,9 @@ describe('ReservationNewPageComponent — peticiones especiales activas', () => 
   function setup() {
     const authService = {
       currentUser: signal<unknown>(null),
+      isAuthenticated: signal(false),
+      sessionLoaded: signal(true),
+      invalidateSession: jest.fn(),
     } as unknown as AuthService;
 
     TestBed.configureTestingModule({
@@ -40,7 +43,6 @@ describe('ReservationNewPageComponent — peticiones especiales activas', () => 
 
     const fixture = TestBed.createComponent(ReservationNewPageComponent);
     fixture.detectChanges();
-    TestBed.inject(HttpTestingController).expectOne('/reservations/options').flush({ hotel_options: [] });
     return { fixture, component: fixture.componentInstance };
   }
 
@@ -48,6 +50,28 @@ describe('ReservationNewPageComponent — peticiones especiales activas', () => 
     const { component } = setup();
     component.specialRequestsCatalog.set([]);
     expect(component.specialRequestOptions()).toEqual([]);
+  });
+
+  it('renderiza el selector global y elimina el select local de hoteles', () => {
+    const { fixture } = setup();
+
+    expect(fixture.nativeElement.querySelector('app-property-selector')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('select[formcontrolname="propId"]')).toBeNull();
+  });
+
+  it('usa el evento del selector global como única fuente para el hotel elegido', () => {
+    const { component } = setup();
+
+    // The real Router would try to resolve the (mock) ActivatedRoute relative
+    // to empty commands; spy on navigate so the unit test asserts the signal
+    // side effects without exercising URL serialization.
+    jest.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    component.onPropertySelected({ propId: 2, label: 'Resort Cancún Playa' });
+
+    expect(component.form.controls.propId.value).toBe(2);
+    expect(component.selectedPropId()).toBe(2);
+    expect(component.selectedHotel()).toEqual({ propId: 2, label: 'Resort Cancún Playa' });
   });
 
   it('ofrece solo las peticiones activas devueltas por el catálogo del hotel', () => {

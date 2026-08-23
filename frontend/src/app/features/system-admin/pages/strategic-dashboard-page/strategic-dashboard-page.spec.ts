@@ -141,6 +141,19 @@ describe('StrategicDashboardPageComponent (gate de exportación)', () => {
     expect(ctx.component.posicionamientoSerieDatasets()).toEqual([]);
   });
 
+  it('toggleMap y hasMapCoords controlan el mapa competitivo de IE-H02', () => {
+    const ctx = setup(true);
+
+    expect(ctx.component.mapOpen()).toBe(false);
+    expect(ctx.component.hasMapCoords({ ownLat: null, ownLng: null })).toBe(false);
+    expect(ctx.component.hasMapCoords({ ownLat: -12.0464, ownLng: -77.0428 })).toBe(true);
+
+    ctx.component.toggleMap();
+    expect(ctx.component.mapOpen()).toBe(true);
+    ctx.component.toggleMap();
+    expect(ctx.component.mapOpen()).toBe(false);
+  });
+
   // ── Exportación por informe seccionado (g01..g05 / h01/h02) ────────────
 
   it.each([

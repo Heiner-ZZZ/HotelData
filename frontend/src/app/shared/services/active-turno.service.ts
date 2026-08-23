@@ -29,6 +29,13 @@ export interface TurnoCajaShift {
 export interface TurnoCajaResponse {
   shift: TurnoCajaShift | null;
   shift_type_labels?: Record<string, string>;
+  /** true cuando hay un turno activo pero pertenece a OTRO empleado. */
+  occupied?: boolean;
+  opener_username?: string | null;
+  opener_employee?: string | null;
+  /** Cuándo el turno ajeno alcanza su límite de apertura (ISO). */
+  expires_at?: string | null;
+  max_open_hours?: number;
 }
 
 export interface TurnoPersonalShift {
@@ -67,6 +74,8 @@ export interface TurnoChipViewModel {
   statusTone: TurnoStatusTone;
   operatorLabel: string;
   hasShift: boolean;
+  /** Texto extra para el popover cuando no hay shift propio (ej. turno ajeno). */
+  note?: string;
   cta: { label: string; href: string } | null;
 }
 
@@ -91,6 +100,19 @@ function formatDate(value: string): string {
   if (Number.isNaN(d.getTime())) return '';
   const text = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(d);
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** Horas restantes hasta que el turno ajeno alcanza su límite de apertura.
+ *  Sin exponer datos del compañero (solo el límite absoluto). */
+export function shiftLimitHint(expiresAt: string | null | undefined): string {
+  if (!expiresAt) return '';
+  const at = new Date(expiresAt).getTime();
+  if (Number.isNaN(at)) return '';
+  const diffMs = at - Date.now();
+  if (diffMs <= 0) return 'Turno vencido: requiere cierre de gerencia';
+  const hours = diffMs / 3_600_000;
+  if (hours < 1) return 'Alcanza su límite en menos de 1 h';
+  return `Alcanza su límite en ~${Math.round(hours)} h`;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -169,6 +191,28 @@ export class ActiveTurnoService {
   private cajaViewModel(res: TurnoCajaResponse | undefined): TurnoChipViewModel {
     const shift = res?.shift ?? null;
     const labels = res?.shift_type_labels ?? {};
+    if (res?.occupied && !shift) {
+      // Hay un turno activo, pero es de OTRO empleado: no se muestran sus
+      // datos ni se ofrece abrir otro (el backend lo rechazaría con 409).
+      const opener = res.opener_employee || res.opener_username || 'otro empleado';
+      return {
+        kind: 'caja',
+        icon: 'point_of_sale',
+        title: 'Turno actual',
+        chipLabel: 'Turno ocupado',
+        typeLabel: 'Caja',
+        dateLabel: '',
+        windowLabel: '',
+        startLabel: '—',
+        endLabel: '—',
+        statusLabel: 'Turno de otro empleado',
+        statusTone: 'warn',
+        operatorLabel: opener,
+        hasShift: false,
+        note: `Turno de ${opener}. ${shiftLimitHint(res.expires_at)}`,
+        cta: null,
+      };
+    }
     if (!shift) {
       return {
         kind: 'caja',

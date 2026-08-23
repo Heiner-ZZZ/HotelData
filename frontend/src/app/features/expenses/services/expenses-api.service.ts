@@ -56,7 +56,9 @@ export class ExpensesApiService {
   }
 
   createInvoice(payload: any) {
-    return this.http.post(`${this.apiConfig.baseUrl}/expenses/invoices`, payload, { withCredentials: true });
+    let params = new HttpParams();
+    if (payload?.prop_id) params = params.set('prop_id', String(payload.prop_id));
+    return this.http.post(`${this.apiConfig.baseUrl}/expenses/invoices`, payload, { params, withCredentials: true });
   }
 
   updateInvoice(id: string, payload: any, propId: number) {

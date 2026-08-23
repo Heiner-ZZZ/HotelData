@@ -12,7 +12,7 @@ from src.app.modules.partner.services import (
     save_partner_hotel_policies,
 )
 from src.app.modules.partner.services.rooms import _room_types_for_prop
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission
 
 
 @web_router.get("/hotels/{prop_id}/policies")
@@ -67,7 +67,7 @@ def policies_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
-    current_user: dict = Depends(require_permission("properties.read")),  # noqa: B008
+    current_user: dict = Depends(require_permission("properties.read")),
 ):
     results = list_partner_hotels(q, page=page, page_size=page_size, user=current_user)
     return {
@@ -87,10 +87,22 @@ def policies_options_api(
 
 @api_router.put("/policies")
 def policies_update_api(
-    payload: dict = Body(...),  # noqa: B008
-    current_user: dict = Depends(require_permission("properties.update")),  # noqa: B008
+    payload: dict = Body(...),
+    query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
+    current_user: dict = Depends(require_prop_permission("properties.update")),
 ):
-    prop_id = require_prop_id(int(payload.get("prop_id") or 0))
+    """Update hotel policies (Migración E: prop_id por QUERY + consistencia).
+
+    El rol GLOBAL ya no basta (deny-by-default sin role_assignment); el body
+    debe coincidir con el query (el body solo era el hueco del middleware).
+    """
+    prop_id = require_prop_id(query_prop_id)
+    body_prop_id = int(payload.get("prop_id") or 0)
+    if body_prop_id != prop_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="prop_id del query y del body no coinciden",
+        )
     try:
         saved = save_partner_hotel_policies(
             prop_id,

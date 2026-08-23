@@ -12,14 +12,18 @@ from src.app.modules.partner.services.rooms.features import (
     get_room_type_features,
     update_room_type_features,
 )
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_prop_permission
 
 
 @api_router.get("/room-features")
 def room_features_list_api(
     current_user: dict = Depends(require_permission("rooms.read")),
 ):
-    """Return the master catalog of available features, grouped by category."""
+    """Return the master catalog of available features, grouped by category.
+
+    Catálogo MAESTRO global (sin prop_id; compartido entre hoteles) —
+    excepción global documentada de la Migración E.
+    """
     return {"features": get_all_features()}
 
 
@@ -27,7 +31,7 @@ def room_features_list_api(
 def room_features_get_api(
     room_type_id: str,
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_permission("rooms.read")),
+    current_user: dict = Depends(require_prop_permission("rooms.read")),
 ):
     """Return feature tags for a specific room type."""
     features = get_room_type_features(require_prop_id(prop_id), room_type_id)
@@ -39,7 +43,7 @@ def room_features_update_api(
     room_type_id: str,
     prop_id: int = Query(..., ge=1),
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("rooms.update")),
+    current_user: dict = Depends(require_prop_permission("rooms.update")),
 ):
     """Set feature tags for a room type. Accepts a list of strings (legacy) or
     list of objects with ``label`` and optional ``unit_price``."""
@@ -64,7 +68,10 @@ def room_features_add_custom_api(
     payload: dict = Body(...),
     current_user: dict = Depends(require_permission("rooms.update")),
 ):
-    """Add a custom feature to the master catalog."""
+    """Add a custom feature to the master catalog.
+
+    Catálogo MAESTRO global (sin prop_id) — excepción global documentada.
+    """
     try:
         result = add_custom_feature(
             label=str(payload.get("label", "")),

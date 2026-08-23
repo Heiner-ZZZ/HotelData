@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Any
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, Depends, Form, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
@@ -381,12 +381,17 @@ def notifications_list_api(
             match["created_at"] = date_filter
 
         total = db.notification_log.count_documents(match)
-        items = list(
-            db.notification_log.find(match, {"_id": 0})
+        raw_items = list(
+            db.notification_log.find(match)
             .sort([("created_at", -1)])
             .skip((page - 1) * page_size)
             .limit(page_size)
         )
+        # Include _id as string so frontend can call mark-read per item.
+        items = []
+        for item in raw_items:
+            item["_id"] = str(item["_id"])
+            items.append(item)
 
         stats_pipeline: list[dict[str, Any]] = []
         if match:
@@ -429,6 +434,52 @@ def notifications_list_api(
                 "error": "Failed to load notifications",
             },
         )
+
+
+@api_router.post("/notifications/mark-read")
+def notifications_mark_read_api(
+    body: dict,
+    current_user: dict = Depends(require_login),
+):
+    """Mark one or more notifications as read (bell "Marcar todo como leído").
+
+    Accepts ``{"ids": ["id1", "id2"]}``. Broadcast notifications (empty
+    recipient_email) can be marked by any staff user; personal notifications
+    still require the recipient email to match."""
+    try:
+        from src.database.connection import get_database
+
+        db = get_database()
+        ids = body.get("ids", [])
+        if not isinstance(ids, list) or not ids:
+            return {"ok": False, "message": "ids debe ser una lista no vacía"}
+
+        from bson import ObjectId
+        from src.app.security.permissions import user_has_permission
+
+        user_email = (current_user.get("email") or current_user.get("username") or "").strip()
+        is_admin = user_has_permission(db, current_user, "users.manage")
+        now = datetime.now(timezone.utc)
+        updated = 0
+
+        for raw_id in ids:
+            try:
+                oid = ObjectId(raw_id)
+            except Exception:
+                continue
+            match: dict[str, Any] = {"_id": oid}
+            if not is_admin:
+                match["recipient_email"] = {"$regex": f"^{re.escape(user_email)}$", "$options": "i"}
+            result = db.notification_log.update_one(
+                match,
+                {"$set": {"status": "read", "read_at": now}},
+            )
+            updated += result.modified_count
+
+        return {"ok": True, "updated": updated}
+    except Exception:
+        _logger.exception("Failed to mark notifications as read")
+        return {"ok": False, "message": "Error interno"}
 
 
 @api_router.get("/ownership/users")

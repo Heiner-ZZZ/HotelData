@@ -271,8 +271,8 @@
               <section class="strd-ie-h02" aria-label="Posicionamiento competitivo local (IE-H02)">
                 <div class="strd-report-head">
                   <span class="strd-report-code">IE-H02</span>
-                  <h2>Posicionamiento competitivo local (~5 km)</h2>
-                  <p class="strd-section-sub">Rating × precio — diferenciación y banda defendible.</p>
+                  <h2>Posicionamiento competitivo local (por ciudad)</h2>
+                  <p class="strd-section-sub">Banda de precio real frente a hoteles de la misma ciudad con datos en la plataforma.</p>
                 </div>
 
                 <!-- Z-1 · KPIs de posicionamiento (cajas separadas) -->
@@ -299,6 +299,52 @@
                   }
                 </section>
 
+                @if (pos.competitors === 0) {
+                  <app-empty-state
+                    title="Sin competidores con datos"
+                    [description]="'No hay otros hoteles de ' + (pos.city || 'esta ciudad') + ' con datos en la plataforma para este período. La banda de precio se calculará cuando existan competidores.'"
+                  />
+                }
+
+                <!-- Z-1.5 · Mapa competitivo (tu hotel + competencias en el radio) -->
+                <section class="strd-card strd-map-card" aria-label="Mapa competitivo">
+                  <div class="strd-map-head">
+                    <div>
+                      <h3>
+                        <span class="material-symbols-outlined" aria-hidden="true">map</span>
+                        Mapa competitivo
+                      </h3>
+                      <p class="strd-meta">
+                        @if (pos.radioKm) {
+                          Tu hotel y las competencias dentro de un radio de {{ pos.radioKm }} km.
+                        } @else {
+                          Sin coordenadas de tu hotel: no se puede dibujar el radio.
+                        }
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      class="strd-export-btn"
+                      (click)="toggleMap()"
+                      [disabled]="!hasMapCoords(pos)"
+                      [title]="hasMapCoords(pos) ? (mapOpen() ? 'Ocultar mapa' : 'Ver mapa') : 'Sin coordenadas de tu hotel'"
+                      [attr.aria-expanded]="mapOpen()"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">{{ mapOpen() ? 'expand_less' : 'map' }}</span>
+                      {{ mapOpen() ? 'Ocultar mapa' : 'Ver mapa' }}
+                    </button>
+                  </div>
+                  @if (mapOpen() && hasMapCoords(pos)) {
+                    <app-competitive-map
+                      [ownLat]="pos.ownLat"
+                      [ownLng]="pos.ownLng"
+                      [ownLabel]="ownHotelLabel()"
+                      [radioKm]="pos.radioKm"
+                      [markers]="pos.competitorsMarkers"
+                    ></app-competitive-map>
+                  }
+                </section>
+
                 <!-- Z-2 · Serie mensual rating × ADR -->
                 <div class="strd-chart-row">
                   <app-kpi-chart
@@ -312,11 +358,13 @@
                     exportFilename="posicionamiento-hotel-{{ h.propId }}"
                     [borderless]="true"
                   />
-                  <aside class="strd-card strd-pos">
-                    <h3><span class="material-symbols-outlined" aria-hidden="true">stars</span> Diagnosis</h3>
-                    <p class="strd-pos-diagnosis">{{ pos.diagnosis }}</p>
-                    <span class="strd-pos-decision">{{ pos.decision }}</span>
-                  </aside>
+                  @if (pos.competitors > 0) {
+                    <aside class="strd-card strd-pos">
+                      <h3><span class="material-symbols-outlined" aria-hidden="true">stars</span> Diagnosis</h3>
+                      <p class="strd-pos-diagnosis">{{ pos.diagnosis }}</p>
+                      <span class="strd-pos-decision">{{ pos.decision }}</span>
+                    </aside>
+                  }
                 </div>
 
                 <!-- Z-3 · Tabla de registros mensuales -->

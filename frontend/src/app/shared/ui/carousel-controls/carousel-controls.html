@@ -1,0 +1,32 @@
+@if (count() > 1) {
+  <button
+    type="button"
+    class="cc-arrow cc-prev"
+    [attr.aria-label]="prevLabel()"
+    (click)="onPrevious($event)"
+  >
+    <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+  </button>
+
+  <div class="cc-dots">
+    @for (i of dotIndices(); track i) {
+      <button
+        type="button"
+        class="cc-dot"
+        [class.is-active]="i === activeIndex()"
+        [attr.aria-label]="dotLabel(i)"
+        [attr.aria-current]="i === activeIndex() ? 'true' : null"
+        (click)="onNavigate(i, $event)"
+      ></button>
+    }
+  </div>
+
+  <button
+    type="button"
+    class="cc-arrow cc-next"
+    [attr.aria-label]="nextLabel()"
+    (click)="onNext($event)"
+  >
+    <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+  </button>
+}

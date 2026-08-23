@@ -71,7 +71,7 @@ def test_all_reviews_api_required_codes_exist_in_catalog() -> None:
     """
     route_text = ROUTES_FILE.read_text(encoding="utf-8")
     required = set(
-        re.findall(r'require_permission\("([^"]+)"\)', route_text)
+        re.findall(r'require_(?:prop_)?permission\("([^"]+)"\)', route_text)
     )
     assert required, "No se encontraron require_permission en reviews/routes.py"
     catalog_codes = {code for code, _ in PERMISSION_CATALOG}

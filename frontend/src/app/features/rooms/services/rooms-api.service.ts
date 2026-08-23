@@ -55,7 +55,7 @@ export class RoomsApiService {
     ).pipe(catchAuthError());
   }
 
-  updateRoomType(roomTypeId: string, payload: {
+  updateRoomType(propId: number, roomTypeId: string, payload: {
     name: string;
     description: string;
     maxAdults: number;
@@ -70,6 +70,7 @@ export class RoomsApiService {
     smoking?: boolean;
     accessible?: boolean;
   }) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}`,
       {
@@ -87,11 +88,11 @@ export class RoomsApiService {
         accessible: payload.accessible ?? false,
         image_url: payload.imageUrl || '',
       },
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
-  createHotelRoomForType(roomTypeId: string, payload: {
+  createHotelRoomForType(propId: number, roomTypeId: string, payload: {
     roomNumber: string;
     floor?: string;
     view?: string;
@@ -99,6 +100,7 @@ export class RoomsApiService {
     accessible?: boolean;
     isActive?: boolean;
   }) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.post(
       `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}/rooms`,
       {
@@ -109,24 +111,26 @@ export class RoomsApiService {
         accessible: payload.accessible ?? false,
         is_active: payload.isActive ?? true,
       },
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
-  deleteRoomType(roomTypeId: string) {
+  deleteRoomType(propId: number, roomTypeId: string) {
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}`,
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 
-  uploadRoomImage(roomTypeId: string, file: File) {
+  uploadRoomImage(propId: number, roomTypeId: string, file: File) {
+    const params = new HttpParams().set('prop_id', String(propId));
     const formData = new FormData();
     formData.append('file', file);
     return this.http.post<{ image_url: string }>(
       `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}/image`,
       formData,
-      { withCredentials: true }
+      { params, withCredentials: true }
     );
   }
 

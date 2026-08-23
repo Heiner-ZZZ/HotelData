@@ -1,0 +1,36 @@
+// ═══════════════════════════════════════════════
+// Caja "Reportes" — estilos encapsulados
+// (antes en el monitoreo: _mp-actions.scss)
+// ═══════════════════════════════════════════════
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.85rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+th {
+  color: var(--muted-text);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+td code {
+  font-size: 0.85em;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  word-break: break-all;
+}
