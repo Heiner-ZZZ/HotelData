@@ -248,6 +248,23 @@ def process_no_show(
         logger.exception("Failed to post no-show penalty to folio for %s", booking_id)
         folio_number = None
 
+    # La estadía NO ocurrió: anular la factura de estadía emitida al confirmar
+    # (si no tiene pagos). El cobrable pasa al folio de penalización; la
+    # factura no debe seguir mostrándose como "pendiente de pago".
+    try:
+        from src.app.modules.billing.service.lifecycle.invoices import cancel_stay_invoice_for_no_stay
+        cancel_stay_invoice_for_no_stay(
+            booking_id,
+            reason=(
+                f"No-show — penalización ${penalty_amount:.2f} "
+                f"({penalty_pct}% de 1 noche); folio {folio_number or 'N/A'} — "
+                "la estadía no se factura."
+            ),
+            cancelled_by=changed_by,
+        )
+    except Exception:
+        logger.exception("Failed to cancel stay invoice for no-show %s", booking_id)
+
     # Log in history
     reason_detail = (
         f"No-show — penalización: ${penalty_amount:.2f} "

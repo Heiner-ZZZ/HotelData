@@ -194,6 +194,25 @@ describe('TopNavComponent', () => {
     fixture.destroy();
   });
 
+  it('para el huésped el menú de sesión incluye Mis facturas (/account/billing)', async () => {
+    const { fixture } = await render('cliente');
+    const items = fixture.componentInstance.sessionMenuItems();
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain('Mis facturas');
+    const item = items.find((i) => i.label === 'Mis facturas');
+    expect(item?.href).toBe('/account/billing');
+    fixture.destroy();
+  });
+
+  it('para el huésped el nav directo incluye Mis facturas (/account/billing)', async () => {
+    const { fixture } = await render('cliente');
+    const labels = fixture.componentInstance.guestNavItems.map((i) => i.label);
+    expect(labels).toContain('Mis facturas');
+    const item = fixture.componentInstance.guestNavItems.find((i) => i.label === 'Mis facturas');
+    expect(item?.href).toBe('/account/billing');
+    fixture.destroy();
+  });
+
   it('no muestra el dropdown de Explorar con su botón desplegable', async () => {
     const { fixture } = await render('cliente');
     const buttons = [...fixture.nativeElement.querySelectorAll('.primary-nav button')];

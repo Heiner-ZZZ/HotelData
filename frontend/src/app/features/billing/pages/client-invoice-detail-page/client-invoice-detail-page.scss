@@ -273,6 +273,101 @@ code {
   }
 }
 
+/* Card form state */
+.payment-card-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.card-form-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+
+  h3 { margin: 0 0 2px; font-size: 0.95rem; font-weight: 600; }
+
+  p {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--muted-text);
+  }
+}
+
+.card-form-icon {
+  font-size: 1.5rem;
+  color: var(--accent);
+  --icon-wght: 250;
+}
+
+.card-form-row {
+  display: grid;
+  gap: 1rem;
+}
+
+.card-form-row--split {
+  grid-template-columns: 1fr 1fr;
+}
+
+.card-field {
+  display: grid;
+  gap: 0.35rem;
+
+  > span {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    color: var(--muted-text);
+  }
+
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--app-border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--app-text);
+    font-size: 0.9rem;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    letter-spacing: 0.02em;
+    outline: none;
+    transition: border-color 120ms, box-shadow 120ms;
+
+    &::placeholder {
+      color: color-mix(in srgb, var(--muted-text) 60%, transparent);
+    }
+
+    &:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+    }
+  }
+}
+
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--danger);
+
+  .material-symbols-outlined {
+    font-size: 0.85rem;
+  }
+}
+
+.card-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.confirm-card {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
 /* Processing state */
 .payment-processing {
   text-align: center;
@@ -503,6 +598,14 @@ code {
   }
 
   .confirm-actions {
+    flex-direction: column;
+  }
+
+  .card-form-row--split {
+    grid-template-columns: 1fr;
+  }
+
+  .card-form-actions {
     flex-direction: column;
   }
 }

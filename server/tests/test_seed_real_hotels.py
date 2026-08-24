@@ -4,10 +4,11 @@ Fija el comportamiento del dataset de 15 hoteles reales mexicanos:
 
 - Cada hotel se crea en ``dim_hotels`` con los campos que el perfil y las
   hotel-cards consumen (nombre, descripción, rating, coordenadas, moneda…).
-- La relación geográfica es SIEMPRE contra entradas EXISTENTES de
-  ``geo_catalog``: país ``MX`` (``geo_country_code`` + ``geo_catalog_id``)
-  y una ciudad existente (``geo_city_code`` + ``geo_city_id`` — los dos
-  campos de relación a ciudad que hoy no existen en el esquema).
+- La relación geográfica es SIEMPRE contra las tablas del DATASET: país
+  ``dim_visitor_countries`` (``prop_country_id`` = 148 México) y ciudad
+  ``dim_destinations`` (``srch_destination_id``). Opción B: el hotel NO lleva
+  campos del catálogo curado (``geo_country_code``/``geo_catalog_id``/
+  ``geo_city_*``).
 - Las coordenadas del hotel caen cerca del centro de su ciudad.
 - La descripción se espeja a ``hotel_content_pages`` (fuente canónica de
   la descripción larga, igual que el flujo ``save_partner_hotel_profile``).
@@ -159,7 +160,7 @@ def test_hotels_relate_to_visitor_country_and_destination(db, _geo_catalog):
     """El hotel se vincula a las tablas del dataset: país → dim_visitor_countries
     y ciudad → dim_destinations (srch_destination_id). Los hoteles cuya ciudad no
     existe en dim_destinations (Puerto Vallarta, San José del Cabo) NO llevan
-    srch_destination_id, pero sí su geo_city_code del catálogo curado."""
+    srch_destination_id."""
     mx = db.dim_visitor_countries.find_one({"visitor_location_country_id": 148})
     assert mx is not None
     seed(db)
@@ -231,12 +232,12 @@ def test_seed_refuses_to_overwrite_existing_hotel(db, _geo_catalog):
         seed(db)
 
 
-def test_seed_fails_loudly_when_city_missing(db, _geo_catalog):
-    # Quitamos UNA ciudad que el dataset usa → el seed debe abortar sin escribir nada.
-    used_city = FEATURED_HOTELS[0]["geo_city_code"]
-    db.geo_catalog.delete_one({"type": "city", "code": used_city})
+def test_seed_fails_when_visitor_country_missing(db, _geo_catalog):
+    """Si México (148) no existe en dim_visitor_countries, el seed aborta
+    ANTES de escribir (sin relaciones huérfanas de país)."""
+    db.dim_visitor_countries.delete_one({"visitor_location_country_id": 148})
 
-    with pytest.raises(ValueError, match=used_city):
+    with pytest.raises(ValueError, match="148"):
         seed(db)
 
     assert db.dim_hotels.count_documents({"prop_id": {"$gte": 900000}}) == 0

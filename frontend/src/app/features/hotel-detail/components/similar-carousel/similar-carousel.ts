@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
 import {
-  isValidImageUrl,
-  placeholderImageUrl,
+  hotelGalleryImages,
 } from '../../../../shared/utils/placeholder-image.util';
 import { CarouselControlsComponent } from '../../../../shared/ui/carousel-controls/carousel-controls';
 import type { SimilarHotel } from '../../models/hotel-detail.model';
@@ -22,17 +21,13 @@ export class SimilarCarouselComponent {
   /** URLs cuya carga falló — se filtran de la galería sin colapsarla. */
   private readonly failedImageSrcs = signal<Set<string>>(new Set());
 
-  /** Galería request-free: imagen primaria + 3 placeholders loremflickr por hotel. */
+  /** Galería centralizada — mismo `hotelGalleryImages` que `/welcome` y `/search`. */
   readonly galleryImages = computed(() => {
     const h = this.hotel();
     const failed = this.failedImageSrcs();
-    const primaryImage = h.imageUrl && isValidImageUrl(h.imageUrl) ? [h.imageUrl] : [];
-    return [
-      ...primaryImage,
-      placeholderImageUrl(`${h.id}1`),
-      placeholderImageUrl(`${h.id}2`),
-      placeholderImageUrl(`${h.id}3`),
-    ].filter((url) => !failed.has(this.resolveUrl(url)));
+    return hotelGalleryImages(h.id, h.imageUrl, 3).filter(
+      (url) => !failed.has(this.resolveUrl(url)),
+    );
   });
 
   readonly stripOffset = computed(() => {

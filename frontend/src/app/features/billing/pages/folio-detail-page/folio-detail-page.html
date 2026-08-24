@@ -359,6 +359,9 @@
                           <input class="fl-input" type="text" [ngModel]="settlementForm().reason" (ngModelChange)="settlementForm.update(v => ({...v, reason: $event}))" placeholder="Motivo documentado" />
                         </label>
                         <label class="fl-label">Referencia de aprobación
+                          <app-info-tooltip
+                            title="Referencia de aprobación"
+                            text="Código que respalda la excepción y la deja auditable: el nro. de autorización que dio el gerente, el mail/mensaje de aprobación, un ticket interno o la orden de pago del convenio. Pedilo a quien autorizó el write-off o la liquidación externa antes de confirmar." />
                           <input class="fl-input" type="text" [ngModel]="settlementForm().approvalReference" (ngModelChange)="settlementForm.update(v => ({...v, approvalReference: $event}))" placeholder="AUTH-..." />
                         </label>
                         @if (settlementMode() === 'external_settlement') {

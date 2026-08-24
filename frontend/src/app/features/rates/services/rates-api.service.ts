@@ -35,6 +35,7 @@ export class RatesApiService {
     date_to?: string;
     room_type_id?: string;
     channel?: string;
+    only_profitable?: boolean;
     page?: number;
     page_size?: number;
   }) {
@@ -44,6 +45,7 @@ export class RatesApiService {
     if (params.date_to) hp = hp.set('date_to', params.date_to);
     if (params.room_type_id) hp = hp.set('room_type_id', params.room_type_id);
     if (params.channel) hp = hp.set('channel', params.channel);
+    if (params.only_profitable) hp = hp.set('only_profitable', '1');
     if (params.page) hp = hp.set('page', String(params.page));
     if (params.page_size) hp = hp.set('page_size', String(params.page_size));
     return this.http

@@ -17,6 +17,9 @@ export interface StrategicKpi {
   unit: string;
   target: number | null;
   pctChange: number;
+  /** True si existe un período anterior que comparar; si es false, la UI
+   * muestra "sin comparación" en vez de un 0.0% que sugiera "sin cambio". */
+  hasPrev: boolean;
   trend: Trend;
   semaforo: Semaforo;
   detail: string;

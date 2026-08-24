@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { BILLING_WRITE_OFF_APPROVE } from '../../../../core/auth/permission.constants';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { FolioDetailPageComponent } from './folio-detail-page';
 
 const categoriesResponse = [
@@ -117,6 +118,12 @@ describe('FolioDetailPageComponent', () => {
     const auth = {
       hasPermission: jest.fn(() => options.canApproveWriteOff ?? true),
     };
+    const toast = {
+      success: jest.fn(),
+      error: jest.fn(),
+      warning: jest.fn(),
+      info: jest.fn(),
+    };
 
     TestBed.configureTestingModule({
       imports: [FolioDetailPageComponent],
@@ -125,6 +132,7 @@ describe('FolioDetailPageComponent', () => {
         provideHttpClientTesting(),
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
+        { provide: ToastService, useValue: toast },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -142,6 +150,7 @@ describe('FolioDetailPageComponent', () => {
       fixture,
       component: fixture.componentInstance,
       auth,
+      toast,
       http: TestBed.inject(HttpTestingController),
     };
   }
@@ -280,7 +289,7 @@ describe('FolioDetailPageComponent', () => {
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     ctx.fixture.detectChanges();
 
-    expect(ctx.component.actionMessage()).toContain('Factura complementaria INV-002 emitida');
+    expect(ctx.toast.success).toHaveBeenCalledWith(expect.stringContaining('Factura complementaria INV-002 emitida'));
     expect(ctx.component.reconcileNote()).toBeNull();
   });
 
@@ -431,11 +440,11 @@ describe('FolioDetailPageComponent', () => {
     ctx.component.closeFolio();
     ctx.fixture.detectChanges();
 
-    const el = ctx.fixture.nativeElement as HTMLElement;
     // Criterio de mensaje con acción: además del estado, dice QUÉ hacer.
-    expect(el.textContent).toContain('No se puede cerrar');
-    expect(el.textContent).toContain('registrá el pago del saldo');
-    expect(el.textContent).toContain('write-off / liquidación externa aprobado');
+    // El feedback sale por el toast global, no por el toast local de la página.
+    expect(ctx.toast.error).toHaveBeenCalledWith(expect.stringContaining('No se puede cerrar el folio'));
+    expect(ctx.toast.error).toHaveBeenCalledWith(expect.stringContaining('registrá el pago del saldo'));
+    expect(ctx.toast.error).toHaveBeenCalledWith(expect.stringContaining('write-off / liquidación externa aprobado'));
   });
 
   it('muestra las acciones de excepción cuando el catálogo otorga billing.write_off.approve', async () => {
@@ -462,6 +471,23 @@ describe('FolioDetailPageComponent', () => {
 
     ctx.component.startSettlement('write_off');
     expect(ctx.component.settlementMode()).toBe('idle');
-    expect(ctx.component.actionError()).toContain('requiere aprobación del gerente');
+    expect(ctx.toast.error).toHaveBeenCalledWith(expect.stringContaining('requiere aprobación del gerente'));
+  });
+
+  it('la referencia de aprobación explica con un (i) qué pegar y de dónde obtenerlo', async () => {
+    const ctx = setup({ canApproveWriteOff: true });
+    await seedFolio(ctx);
+
+    ctx.component.startSettlement('external_settlement');
+    ctx.fixture.detectChanges();
+
+    const el = ctx.fixture.nativeElement as HTMLElement;
+    // El formulario de liquidación está visible junto a su tooltip.
+    expect(el.textContent).toContain('Referencia de aprobación');
+    const tooltip = el.querySelector('.fl-settlement-form app-info-tooltip .info-tooltip');
+    expect(tooltip).not.toBeNull();
+    // El popover orienta: qué es y quién lo provee.
+    expect(el.querySelector('app-info-tooltip')?.textContent).toContain('auditable');
+    expect(el.querySelector('app-info-tooltip')?.textContent).toContain('quien autorizó');
   });
 });

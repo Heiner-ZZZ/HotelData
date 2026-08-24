@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
@@ -18,7 +18,6 @@ import type { RoomPerformanceDashboard } from '../../models/room-performance.mod
 @Component({
   selector: 'app-rates-dashboard-page',
   imports: [
-    RouterLink,
     DecimalPipe,
     PropertySelectorComponent,
     PageHeaderComponent,
@@ -46,6 +45,8 @@ export class RatesDashboardPageComponent {
   readonly currentPage = computed(() => Math.max(1, Number(this.qp()?.get('page') ?? '1')));
   readonly roomTypeFilter = computed(() => this.qp()?.get('room_type_id') ?? '');
   readonly channelFilter = computed(() => this.qp()?.get('channel') ?? '');
+  /** Filtro de grilla: solo filas con revenue > 0 (días/tipos con ganancias). */
+  readonly onlyProfitable = computed(() => this.qp()?.get('only_profitable') === '1');
   readonly dateFrom = computed(() => this.qp()?.get('date_from') ?? '');
   readonly dateTo = computed(() => this.qp()?.get('date_to') ?? '');
 
@@ -58,6 +59,7 @@ export class RatesDashboardPageComponent {
         page: this.currentPage(),
         roomTypeId: this.roomTypeFilter() || undefined,
         channel: this.channelFilter() || undefined,
+        onlyProfitable: this.onlyProfitable(),
         dateFrom: this.dateFrom() || undefined,
         dateTo: this.dateTo() || undefined,
       };
@@ -67,6 +69,7 @@ export class RatesDashboardPageComponent {
       page: (params as any).page,
       room_type_id: (params as any).roomTypeId,
       channel: (params as any).channel,
+      only_profitable: (params as any).onlyProfitable,
       date_from: (params as any).dateFrom,
       date_to: (params as any).dateTo,
     }),
@@ -104,7 +107,7 @@ export class RatesDashboardPageComponent {
     return diff === 7 ? '7' : diff === 30 ? '30' : diff === 90 ? '90' : null;
   });
 
-  readonly hasFilters = computed(() => Boolean(this.roomTypeFilter() || this.channelFilter() || this.dateFrom() || this.dateTo()));
+  readonly hasFilters = computed(() => Boolean(this.roomTypeFilter() || this.channelFilter() || this.onlyProfitable() || this.dateFrom() || this.dateTo()));
 
   // ── Helpers ──
 
@@ -156,9 +159,14 @@ export class RatesDashboardPageComponent {
   clearAllFilters(): void {
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
-      queryParams: { room_type_id: null, channel: null, date_from: null, date_to: null, page: null },
+      queryParams: { room_type_id: null, channel: null, only_profitable: null, date_from: null, date_to: null, page: null },
       queryParamsHandling: 'merge',
     });
+  }
+
+  /** Activa/desactiva el filtro de grilla "solo con ganancias" (URL-driven). */
+  toggleOnlyProfitable(): void {
+    this.navigate({ only_profitable: this.onlyProfitable() ? null : '1', page: null });
   }
 
   goToPage(page: number): void {

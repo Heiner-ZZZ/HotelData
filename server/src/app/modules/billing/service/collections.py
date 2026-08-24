@@ -68,5 +68,5 @@ def module_status() -> ModuleStatus:
     return ModuleStatus(
         module="billing",
         status="active",
-        description="Facturación/comprobantes (CU-O24) y pagos simulados (CU-O25).",
+        description="Facturación/comprobantes (CU-O24) y pagos en línea (CU-O25).",
     )

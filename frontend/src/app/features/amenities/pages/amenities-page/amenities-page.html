@@ -338,64 +338,6 @@
           </section>
         }
 
-        <!-- Room-type image management -->
-        @if (vm.roomTypes.length) {
-          <section class="surface-card photo-panel">
-            <div class="panel-header">
-              <span class="material-symbols-outlined icon-blue">meeting_room</span>
-              <div>
-                <h3>Fotos de habitaciones</h3>
-                <p>Sube imágenes por tipo de habitación. Aparecerán en la galería del hotel-card después de las fotos del hotel.</p>
-              </div>
-            </div>
-            <div class="photo-controls">
-              <div class="field">
-                <span class="field-label">Selecciona un tipo de habitación</span>
-                <div class="select-wrap">
-                  <select [value]="roomPhotoRoomType()" (change)="onRoomPhotoRoomTypeChange(($any($event.target).value))" aria-label="Tipo de habitación para foto">
-                    <option value="">-- Elige un tipo --</option>
-                    @for (rt of vm.roomTypes; track rt.roomTypeId) {
-                      <option [value]="rt.roomTypeId">{{ rt.name }}</option>
-                    }
-                  </select>
-                  <span class="material-symbols-outlined select-arrow">expand_more</span>
-                </div>
-              </div>
-              @if (roomPhotoRoomType()) {
-                <div class="field">
-                  <span class="field-label">Subir imagen (JPG, PNG, WebP, máx 10 por tipo)</span>
-                  <label class="file-upload-label" [class.disabled]="roomPhotoUploading()">
-                    <span class="material-symbols-outlined">upload</span>
-                    <span>{{ roomPhotoUploading() ? 'Subiendo...' : 'Seleccionar archivo' }}</span>
-                    <input type="file" accept="image/jpeg,image/png,image/webp" (change)="onRoomPhotoFileSelected($event)" [disabled]="roomPhotoUploading()" hidden />
-                  </label>
-                </div>
-                @if (roomPhotoLoading()) {
-                  <p class="photo-loading">Cargando fotos...</p>
-                } @else if (filteredRoomPhotos().length) {
-                  <div class="photo-thumb-grid">
-                    @for (p of filteredRoomPhotos(); track p.image_url) {
-                      <div class="photo-thumb">
-                        <img [src]="p.image_url" alt="Foto de habitacion" loading="lazy" />
-                        <button class="photo-delete-btn" type="button" (click)="deleteRoomPhoto(p.image_url)" title="Eliminar foto">
-                          <span class="material-symbols-outlined">delete</span>
-                        </button>
-                      </div>
-                    }
-                  </div>
-                } @else {
-                  <p class="photo-empty">Sin fotos aún para este tipo de habitación.</p>
-                }
-              }
-              @if (roomPhotoMessage()) {
-                <p class="photo-msg" [class.msg-success]="roomPhotoMsgType() === 'success'" [class.msg-error]="roomPhotoMsgType() === 'error'">
-                  <span class="material-symbols-outlined msg-icon">{{ roomPhotoMsgType() === 'success' ? 'check_circle' : 'error' }}</span>
-                  {{ roomPhotoMessage() }}
-                </p>
-              }
-            </div>
-          </section>
-        }
 
 
         }

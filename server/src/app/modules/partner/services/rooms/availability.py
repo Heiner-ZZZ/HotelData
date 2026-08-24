@@ -239,8 +239,12 @@ def delete_blackout_block(blackout_id: str, *, changed_by: str = "system") -> di
     if existing is None:
         return None
 
-    prop_id = existing["prop_id"]
-    room_type_id = existing["room_type_id"]
+    # blackout_dates hosts two writers: room-type blocks (this module) and
+    # housekeeping maintenance rows keyed by hotel_room_id with no
+    # room_type_id/blocked_rooms. Access fields defensively so deleting a
+    # maintenance row never leaks a KeyError as an HTTP 500.
+    prop_id = int(existing.get("prop_id", 0) or 0)
+    room_type_id = existing.get("room_type_id") or ""
     start_date = existing.get("start_date", "")
     end_date = existing.get("end_date", "")
     # Legacy blackout documents may have persisted numeric fields as strings.
@@ -248,21 +252,23 @@ def delete_blackout_block(blackout_id: str, *, changed_by: str = "system") -> di
     # TypeError as an HTTP 500.
     blocked_rooms = safe_positive_int(existing.get("blocked_rooms", 0), default=0)
 
-    if blocked_rooms > 0 and start_date and end_date:
+    if room_type_id and blocked_rooms > 0 and start_date and end_date:
         _apply_blackout_to_calendar(db, prop_id, room_type_id, start_date, end_date, blocked_rooms, increment=-1)
 
     db.blackout_dates.delete_one({"_id": obj_id})
-    db.room_availability_blocks.delete_one({
-        "prop_id": prop_id, "room_type_id": room_type_id,
-        "start_date": start_date, "end_date": end_date,
-    })
+    if room_type_id:
+        db.room_availability_blocks.delete_one({
+            "prop_id": prop_id, "room_type_id": room_type_id,
+            "start_date": start_date, "end_date": end_date,
+        })
+    label = room_type_id or existing.get("room_label") or existing.get("reason") or blackout_id
     diff = _build_blackout_diff(existing, None)
     register_action(
         prop_id=prop_id,
         entity_type="blackout_block",
         entity_id=blackout_id,
         action="delete",
-        summary=f"Blackout eliminado: {room_type_id} ({start_date} → {end_date})",
+        summary=f"Blackout eliminado: {label} ({start_date} → {end_date})",
         changed_by=changed_by,
         diff=diff,
         metadata={"room_type_id": room_type_id, "start_date": start_date, "end_date": end_date, "blocked_rooms": blocked_rooms},

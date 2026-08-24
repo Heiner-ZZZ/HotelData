@@ -36,6 +36,7 @@ from .queries import (
     get_reservation_stats,
     hotel_booking_context,
     list_bookings,
+    list_past_stays,
     list_reservation_dates,
 )
 from .validation import (
@@ -73,6 +74,7 @@ __all__ = [
     "get_room_guests",
     "hotel_booking_context",
     "list_bookings",
+    "list_past_stays",
     "list_check_in_dates",
     "list_check_ins",
     "list_check_out_dates",

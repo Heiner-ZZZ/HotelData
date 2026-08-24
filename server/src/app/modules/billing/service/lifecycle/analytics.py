@@ -35,7 +35,7 @@ _PAYMENT_METHOD_LABELS: dict[str, str] = {
     "credit_card": "Tarjeta crédito",
     "cash": "Efectivo",
     "bank_transfer": "Transferencia",
-    "simulated": "Simulado",
+    "simulated": "En línea",
     "": "Sin método",
 }
 

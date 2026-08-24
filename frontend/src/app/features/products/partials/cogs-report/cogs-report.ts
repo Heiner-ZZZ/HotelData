@@ -8,6 +8,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ProductsAuthService } from '../../services/products-auth.service';
 import { ReportApiService } from '../../services/report-api.service';
+import { ProductsSectionNavComponent } from '../products-section-nav/products-section-nav';
 import {
   COGS_METHODS,
   type CogsMethod,
@@ -34,6 +35,7 @@ const PERIOD_OPTIONS: { key: StockValueReportPeriod; label: string }[] = [
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    ProductsSectionNavComponent,
   ],
   templateUrl: './cogs-report.html',
   styleUrl: './cogs-report.scss',

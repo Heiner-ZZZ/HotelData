@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { HttpResourceRef } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ProductsAuthService } from '../../services/products-auth.service';
@@ -59,6 +60,7 @@ describe('StockValueReportComponent', () => {
     TestBed.configureTestingModule({
       imports: [StockValueReportComponent],
       providers: [
+        provideRouter([]),
         {
           provide: PropertyContextService,
           useValue: { currentPropId: signal(1) },

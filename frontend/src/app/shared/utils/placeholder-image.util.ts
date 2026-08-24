@@ -119,3 +119,41 @@ export function placeholderOrFallback(
   }
   return placeholderImageUrl(seed, width, height);
 }
+
+/**
+ * Galería centralizada para cards de hotel — usada por `/welcome`
+ * (featured) y `/search` (hotel-card). Garantiza que el mismo hotel
+ * siempre muestre las mismas 3 imágenes placeholder en ambas vistas,
+ * sin duplicar la lógica de semillas en cada mapper/componente.
+ *
+ * Antes cada feature generaba sus placeholders con semillas distintas
+ * (`${id}1` vs `${id}-hotel`) y con lógica dispersa; `/welcome` llegó
+ * a consultar 3 veces la misma URL (sin variación de lock). Centralizar
+ * aquí hace que `/welcome` y `/search` compartan exactamente el mismo
+ * `hotel,room?lock=` y que la variación sea determinista.
+ *
+ * @param propId Hotel id (o clave compuesta) — fija el lock base.
+ * @param imageUrl URL real del hotel (si existe) — se antepone sin mutar.
+ * @param placeholderCount Cuántos placeholders generar (default 3).
+ * @param width Ancho del placeholder.
+ * @param height Alto del placeholder.
+ * @returns Array con 0..1 URL real + `placeholderCount` URLs loremflickr
+ *          distintas (`hotel,room` con locks `${propId}-1`, `${propId}-2`…).
+ */
+export function hotelGalleryImages(
+  propId: number | string,
+  imageUrl: string | null | undefined,
+  placeholderCount = 3,
+  width = 400,
+  height = 250,
+): string[] {
+  const primary = isValidImageUrl(imageUrl) ? [imageUrl as string] : [];
+  // Variedad visual real: cada placeholder usa un tag distinto (room→bedroom→living…)
+  // igual que `roomPlaceholderUrl`. Con el bug anterior los 3 usaban `hotel,room`
+  // con locks distintos pero la misma foto; ahora cada índice cambia de tag y
+  // de lock, garantizando 3 fotos distintas y compartidas entre /welcome y /search.
+  const placeholders = Array.from({ length: placeholderCount }, (_, i) =>
+    roomPlaceholderUrl(propId, i, width, height),
+  );
+  return [...primary, ...placeholders];
+}

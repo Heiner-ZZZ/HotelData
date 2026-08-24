@@ -124,10 +124,10 @@ export function cellLabel(roomType: CalendarRoomTypeCell): string {
   return `${roomType.availableRooms}/${roomType.totalRooms}`;
 }
 
-/** Tooltip text for a cell */
-export function cellTooltip(roomType: CalendarRoomTypeCell, date: string): string {
+/** Tooltip text for a cell — para noches pasadas no se informa SIN TARIFA (ya no vendible). */
+export function cellTooltip(roomType: CalendarRoomTypeCell, date: string, isPast = false): string {
   const base = `${date} · ${roomType.roomTypeName}: ${roomType.availableRooms}/${roomType.totalRooms} disponibles (${roomType.occupancyPct}% ocupado)`;
-  if (roomType.availableRooms > 0 && roomType.hasRate === false) {
+  if (!isPast && roomType.availableRooms > 0 && roomType.hasRate === false) {
     return `${base} · SIN TARIFA — no vendible`;
   }
   return base;

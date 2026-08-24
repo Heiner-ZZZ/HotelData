@@ -111,6 +111,7 @@ export class TopNavComponent implements OnInit {
     if (role === 'cliente') {
       items.push(
         { label: 'Mis reservas', href: '/account/bookings', icon: 'book_online' },
+        { label: 'Mis facturas', href: '/account/billing', icon: 'receipt_long' },
         { label: 'Mis Favoritos', href: '/search/favorites', icon: 'favorite' },
         { label: 'Perfil', href: '/account/profile', icon: 'person' }
       );
@@ -128,7 +129,6 @@ export class TopNavComponent implements OnInit {
       icon: 'explore',
       items: [
         { label: 'Buscar hoteles', href: '/search', icon: 'search' },
-        { label: 'Hotel destacado', href: '/hotels/partner-1', icon: 'star' },
         { label: 'Reservas del viajero', href: '/account/bookings', icon: 'book_online', allowedRoles: ['cliente'] },
         { label: 'Mis Favoritos', href: '/search/favorites', icon: 'favorite' }
       ]
@@ -138,9 +138,9 @@ export class TopNavComponent implements OnInit {
   /** En la vista de huésped las opciones de Explorar se reparten como enlaces directos en el nav. */
   readonly guestNavItems: TopNavItem[] = [
     { label: 'Buscar hoteles', href: '/search', icon: 'search' },
-    { label: 'Hotel destacado', href: '/hotels/partner-1', icon: 'star' },
     { label: 'Mis Favoritos', href: '/search/favorites', icon: 'favorite' },
-    { label: 'Reservas del viajero', href: '/account/bookings', icon: 'book_online' }
+    { label: 'Reservas del viajero', href: '/account/bookings', icon: 'book_online' },
+    { label: 'Mis facturas', href: '/account/billing', icon: 'receipt_long' }
   ];
 
   readonly isGuest = computed(() => this.currentUser()?.primaryRole === 'cliente');

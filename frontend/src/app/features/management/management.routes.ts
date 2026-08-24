@@ -5,13 +5,18 @@ import { roleGuard } from '../../core/auth/auth.guard';
 export const MANAGEMENT_ROUTES: Routes = [
   {
     // TAF14 — Management Overview eliminado (2026-08-23): /management?prop_id=1
-    // ya no existe. Entry point de GESTIÓN es Vista A h01 con preservación
-    // automática de ?prop_id & ?prop_label vía redirectTo.
-    // Ej: /management?prop_id=1 → /management/informes-estrategicos/h01?prop_id=1
-    // Carpeta frontend/src/app/features/management/pages/dashboard-page/ borrada.
+    // ya no existe. Entry point de GESTIÓN es dinámico según permisos del
+    // usuario (no estático a h01). Si tiene reports.strategic.read → h01,
+    // si no → primera ruta de /management que sí tiene permitido
+    // (housekeeping → /management/housekeeping, maintenance → housekeeping, etc.).
+    // Preserva ?prop_id & ?prop_label. Evita el 403 que veía housekeeping
+    // (Carlos) al caer siempre en el estratégico sin permiso.
     path: '',
     pathMatch: 'full',
-    redirectTo: 'informes-estrategicos/h01'
+    loadComponent: () =>
+      import('./pages/management-redirect/management-redirect.component').then(
+        (m) => m.ManagementRedirectComponent,
+      ),
   },
   {
     path: 'recepcion',

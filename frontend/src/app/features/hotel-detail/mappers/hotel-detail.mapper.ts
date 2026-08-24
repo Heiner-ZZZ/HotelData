@@ -1,8 +1,8 @@
 import type { HotelDetailDto } from '../models/hotel-detail.dto';
 import type { HotelDetailViewModel } from '../models/hotel-detail.model';
 import {
+  hotelGalleryImages,
   isValidImageUrl,
-  placeholderImageUrl,
   roomPlaceholderUrl,
 } from '../../../shared/utils/placeholder-image.util';
 
@@ -124,9 +124,7 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
       ...(dto.hotel_images || [])
         .map((img) => img.image_url)
         .filter(isValidImageUrl),
-      placeholderImageUrl(`${dto.prop_id}1`, 800, 400),
-      placeholderImageUrl(`${dto.prop_id}2`, 800, 400),
-      placeholderImageUrl(`${dto.prop_id}3`, 800, 400),
+      ...hotelGalleryImages(dto.prop_id, null, 3, 800, 400),
     ],
     description: dto.hotel_content?.description || '',
     highlights: dto.hotel_content?.highlights || '',
@@ -145,11 +143,25 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
     latitude: dto.hotel_content?.latitude ?? 0,
     longitude: dto.hotel_content?.longitude ?? 0,
     reviewCount: dto.review_count ?? 0,
-    reviews: (dto.reviews || []).map((r) => ({
-      reviewerName: r.reviewer_name || 'Anónimo',
-      score: r.review_score || 0,
-      text: r.review_text || '',
-      date: r.created_at || ''
-    }))
+    reviews: (dto.reviews || []).map((r) => {
+      // Compatibilidad: backend histórico usaba reviewer_name/review_score/review_text,
+      // la ficha pública enriquecida expone rating/comment/user_display_name/title.
+      const reviewerName =
+        (r.reviewer_name && r.reviewer_name.trim()) ||
+        (r.user_display_name && r.user_display_name.trim()) ||
+        'Anónimo';
+      const score = r.review_score ?? (r as { rating?: number }).rating ?? 0;
+      const text = r.review_text ?? (r as { comment?: string }).comment ?? '';
+      const title = (r as { title?: string }).title ?? '';
+      const staffResponse = (r as { staff_response?: string | null }).staff_response ?? null;
+      return {
+        reviewerName,
+        score: typeof score === 'number' ? score : Number(score) || 0,
+        text: text || title || '',
+        title: title || '',
+        date: r.created_at || '',
+        staffResponse,
+      };
+    })
   };
 }

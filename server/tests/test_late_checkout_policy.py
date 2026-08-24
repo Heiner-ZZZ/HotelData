@@ -336,7 +336,9 @@ async def test_put_policies_saves_late_checkout_fields(client: AsyncClient, admi
     _seed_hotel(db)
     await login(client, admin_user["username"], admin_user["password"])
 
-    response = await client.put("/api/management/policies", json=_policies_payload())
+    response = await client.put(
+        "/api/management/policies?prop_id=802", json=_policies_payload()
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -384,7 +386,7 @@ async def test_put_policies_room_type_scope_ignores_late_checkout_fields(
     )
 
     response = await client.put(
-        "/api/management/policies",
+        "/api/management/policies?prop_id=802",
         json=_policies_payload(room_type_id="RT-STD", late_checkout_enabled=True, late_checkout_courtesy_minutes=180),
     )
 
@@ -409,7 +411,7 @@ async def test_put_policies_clamps_courtesy_and_fee(client: AsyncClient, admin_u
     await login(client, admin_user["username"], admin_user["password"])
 
     response = await client.put(
-        "/api/management/policies",
+        "/api/management/policies?prop_id=802",
         json=_policies_payload(late_checkout_courtesy_minutes=9999, late_checkout_default_fee=-10),
     )
 

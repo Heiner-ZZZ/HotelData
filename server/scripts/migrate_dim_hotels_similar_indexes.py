@@ -28,10 +28,9 @@ from pymongo import ASCENDING, DESCENDING, MongoClient
 from config.settings import get_settings
 
 INDEXES = [
-    # Path legacy: prop_country_id (todos los hoteles lo tienen).
+    # El país del hotel se resuelve por prop_country_id (→ dim_visitor_countries).
+    # Opción B: geo_country_code ya no es fuente de país para hoteles.
     ([("prop_country_id", ASCENDING), ("prop_starrating", ASCENDING), ("prop_review_score", DESCENDING)], "idx_dim_hotels_country_star_review"),
-    # Path geo: geo_country_code (la mayoría de los hoteles migrados).
-    ([("geo_country_code", ASCENDING), ("prop_starrating", ASCENDING), ("prop_review_score", DESCENDING)], "idx_dim_hotels_geo_star_review"),
 ]
 
 

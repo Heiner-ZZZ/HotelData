@@ -191,12 +191,26 @@
   border-radius: 10px;
   background: var(--surface-soft);
   transition: background 0.12s;
+  position: relative;
 
   &:hover { background: var(--surface-hover); }
 
-  &.tx-charge { border-left: 3px solid var(--danger); }
-  &.tx-payment { border-left: 3px solid var(--success); }
-  &.tx-discount { border-left: 3px solid var(--warning); }
+  // Left marker as a straight pseudo-element strip: a real border-left on a
+  // rounded box follows the curve, which reads as a "curved" edge.
+  &.tx-charge::before,
+  &.tx-payment::before,
+  &.tx-discount::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+
+  &.tx-charge::before { background: var(--danger); }
+  &.tx-payment::before { background: var(--success); }
+  &.tx-discount::before { background: var(--warning); }
 }
 
 .tx-row-icon {

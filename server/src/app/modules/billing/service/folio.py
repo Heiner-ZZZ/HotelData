@@ -676,7 +676,9 @@ def get_folio(booking_id: str) -> dict | None:
 
     updates: dict = {}
 
-    # Re-resolve hotel_label if missing
+    # Re-resolve hotel_label if missing. hotel_booking_context wins; legacy
+    # folios (no-show penalties seeded before the dimension existed) fall back
+    # to dim_hotels.display_name — the same source create_folio uses.
     if not doc.get("hotel_label"):
         prop_id = int(doc.get("prop_id", 0))
         if prop_id:
@@ -685,6 +687,12 @@ def get_folio(booking_id: str) -> dict | None:
             )
             if ctx and ctx.get("hotel_label"):
                 updates["hotel_label"] = ctx["hotel_label"]
+            else:
+                dim = db.dim_hotels.find_one(
+                    {"prop_id": prop_id}, {"_id": 0, "display_name": 1}
+                )
+                if dim and dim.get("display_name"):
+                    updates["hotel_label"] = dim["display_name"]
 
     # Fetch booking for times (if any field missing)
     if not doc.get("check_in_time") or not doc.get("check_out_time") or not doc.get("hotel_label"):

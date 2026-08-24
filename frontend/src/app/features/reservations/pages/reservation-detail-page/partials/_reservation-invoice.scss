@@ -252,3 +252,24 @@
   margin-top: 2px;
 }
 
+/* ── Penalización por no-show (fuente de verdad del importe a cobrar) ── */
+.penalty-panel {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--app-border));
+  background: color-mix(in srgb, var(--warning) 4%, var(--surface));
+}
+
+.penalty-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted-text);
+  padding-top: 0.6rem;
+  border-top: 1px solid color-mix(in srgb, var(--warning) 20%, var(--app-border));
+}
+
+.inv-value-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+

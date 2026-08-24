@@ -170,7 +170,7 @@ export class ReservationDetailPageComponent {
   readonly lineItemsResource = httpResource<BookingLineItem[]>(() => {
     const vm = this.detailResource.value();
     if (!vm || this.reservationsAuth.isClient()) return undefined;
-    return `/management/products/bookings/${vm.bookingId}/line-items`;
+    return `/management/products/bookings/${vm.bookingId}/line-items?prop_id=${vm.propId}`;
   }, {
     parse: (raw: any) => (raw?.items ?? []).map(mapLineItem),
   });
@@ -183,10 +183,13 @@ export class ReservationDetailPageComponent {
     return this.productsResource.value() ?? [];
   });
   readonly productsState = computed<ViewState>(() => {
-    // Huéspedes: el request nunca se dispara (ver productsResource) → el
-    // recurso queda idle; reportar 'forbidden' para mostrar el estado
-    // "sin permiso" en la sección en vez de "no hay productos".
-    if (this.reservationsAuth.isClient()) return 'forbidden';
+    // Huéspedes: el request nunca se dispara (ver productsResource) y la
+    // sección de servicios NO se muestra en su detalle (reportar 'idle'
+    // oculta el panel por completo). El huésped gestiona sus servicios
+    // desde su catálogo de amenities propio (/account/bookings/:id/amenities)
+    // — antes 'forbidden' pintaba un bloque "Sin permiso para ver servicios
+    // adicionales / properties.read" incomprensible en su propia reserva.
+    if (this.reservationsAuth.isClient()) return 'idle';
     if (this.productsResource.isLoading()) return 'loading';
     const err = this.productsResource.error();
     if (err) {
@@ -202,7 +205,7 @@ export class ReservationDetailPageComponent {
     return this.lineItemsResource.value() ?? [];
   });
   readonly lineItemsState = computed<ViewState>(() => {
-    if (this.reservationsAuth.isClient()) return 'forbidden';
+    if (this.reservationsAuth.isClient()) return 'idle';
     if (this.lineItemsResource.isLoading()) return 'loading';
     const err = this.lineItemsResource.error();
     if (err) {

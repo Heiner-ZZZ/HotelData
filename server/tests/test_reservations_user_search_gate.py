@@ -55,6 +55,22 @@ def _seed_recepcionista(db) -> dict[str, str]:
             "created_at": _now(),
         }
     ).inserted_id
+    # RBAC por hotel (Migración E): la búsqueda de usuarios es operación de
+    # RESERVAS — el recepcionista necesita el rol asignado en el hotel (1).
+    role_id = db.hotel_roles.insert_one(
+        {
+            "prop_id": 1,
+            "name": "rol_hotel_recepcion",
+            "display_name": "Recepción",
+            "permissions": ["reservations.read", "reservations.manage"],
+            "is_active": True,
+            "created_at": _now(),
+            "updated_at": _now(),
+        }
+    ).inserted_id
+    db.role_assignments.insert_one(
+        {"user_id": user_id, "prop_id": 1, "role_id": role_id}
+    )
     return {"user_id": str(user_id), "username": "recepcion_prefill", "password": "Pass123!"}
 
 
@@ -81,12 +97,13 @@ async def test_prefill_works_with_reservations_read_and_without_users_read(
             "username": "ana_guest",
             "email": "ana@test.com",
             "display_name": "Ana Huesped",
+            "primary_role": "cliente",
             "is_active": True,
             "created_at": _now(),
         }
     )
     resp = await logged_recepcionista.get(
-        "/api/management/users/search", params={"q": "ana", "limit": 10}
+        "/api/management/users/search", params={"q": "ana", "limit": 10, "prop_id": 1}
     )
     assert resp.status_code == 200, resp.text
     items = resp.json()["items"]

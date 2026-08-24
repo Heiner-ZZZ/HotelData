@@ -530,6 +530,23 @@ def complete_check_out(
         except Exception:
             logger.exception("Failed to settle additional charges on check-out for booking %s", booking_id)
 
+    # ── Complemento fiscal de postings de folio (decisión B) ──
+    # Los postings de extensión / salida anticipada / late check-out viven en
+    # el folio pero no en la factura principal: al cierre del checkout se emite
+    # la complementaria (charges-only) que los cubre con total EXACTO al folio,
+    # para que la factura del huésped siempre coincida con lo cobrado.
+    if booking and not booking.get("is_test"):
+        try:
+            from src.app.modules.billing.service.lifecycle.invoices import create_folio_postings_complement_invoice
+            comp = create_folio_postings_complement_invoice(booking_id, changed_by=changed_by)
+            if comp:
+                logger.info(
+                    "Folio-postings complement invoice %s emitted at check-out for booking %s",
+                    comp.get("invoice_number"), booking_id,
+                )
+        except Exception:
+            logger.exception("Failed to emit folio-postings complement at check-out for booking %s", booking_id)
+
     # ── Mark rooms as dirty + auto-create cleaning tasks ──
     if booking:
         try:

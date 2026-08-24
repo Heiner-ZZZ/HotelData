@@ -1,11 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { catchError, map, of, tap } from 'rxjs';
 
 import { toast } from '../toast/toast.service';
 import { API_CONFIG } from '../api/api.config';
 import type { AuthMeDto, AuthState } from './auth.models';
 import { SUPERUSER_WILDCARD, type PermissionCode } from './permission.constants';
+import { pickAccessibleDestination } from './route-access';
 
 /**
  * Re-export `AuthUser` as a named type so feature services can do
@@ -21,6 +23,7 @@ export type AuthUser = NonNullable<AuthState['user']>;
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
+  private readonly router = inject(Router);
 
   private readonly SESSION_FLAG_KEY = 'hoteldata_session';
 
@@ -185,15 +188,21 @@ export class AuthService {
    * Resolve where an authenticated user should land after entering a public
    * entry route (login, welcome, future marketing pages).
    * Priority: explicit user override (saved dashboard) → server-supplied
-   * homeHref → public search fallback. Shared by `LoginPageComponent` and
-   * `WelcomePageComponent` so the redirect behavior stays consistent.
+   * homeHref → public search fallback. The override — y el homeHref cuando
+   * viene de un `?next=` de una redirección previa — se validan contra los
+   * permisos del usuario actual (mismas reglas que roleGuard): un huésped
+   * nunca aterriza en una sección que el guard rechazaría (antes eso
+   * disparaba "No tienes permiso para acceder a esta sección." justo al
+   * iniciar sesión, p.ej. con un override guardado por otra sesión).
+   * Shared by `LoginPageComponent` and `WelcomePageComponent` so the
+   * redirect behavior stays consistent.
    */
   resolveDefaultDestination(defaultHref: string | null): string {
+    let savedOverride: string | null = null;
     try {
-      const saved = localStorage.getItem('hoteldata-default-dashboard');
-      if (saved) return saved;
+      savedOverride = localStorage.getItem('hoteldata-default-dashboard');
     } catch { /* localStorage unavailable */ }
-    return defaultHref || '/search';
+    return pickAccessibleDestination(this.authStateSignal(), this.router, defaultHref, savedOverride);
   }
 
   ensureSessionLoaded() {

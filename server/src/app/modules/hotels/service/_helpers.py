@@ -57,7 +57,6 @@ def _metric_projection() -> dict[str, Any]:
         "prop_starrating": {"$max": "$prop_starrating"},
         "prop_review_score": {"$avg": "$prop_review_score"},
         "prop_country_id": {"$first": "$prop_country_id"},
-        "geo_country_code": {"$first": "$geo_country_code"},
         "destinations": {"$addToSet": "$srch_destination_id"},
     }
 
@@ -96,7 +95,7 @@ def _destination_display_name(destination: dict[str, Any], destination_id: int) 
     return destination.get("destination_name") or f"Destino {destination_id}"
 
 def _country_display_name(country: dict[str, Any], country_id: Any) -> str:
-    """Resolve country display name from dim_visitor_countries (int id) or geo_catalog (str code)."""
+    """Resolve country display name from dim_visitor_countries (int id)."""
     return country.get("country_name") or country.get("name") or f"Mercado visitante {country_id}"
 
 def _site_display_name(site: dict[str, Any], site_id: int) -> str:

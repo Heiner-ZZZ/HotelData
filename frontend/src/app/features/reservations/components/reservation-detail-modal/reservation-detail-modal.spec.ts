@@ -156,7 +156,7 @@ describe('ReservationDetailModalComponent — ventana de reapertura de no-show',
     findButton(fixture, 'Reabrir reserva')!.click();
     fixture.detectChanges();
 
-    expect(api).toHaveBeenCalledWith('BK-CAL-1', 'El huésped llegó tras el cierre del no-show');
+    expect(api).toHaveBeenCalledWith('BK-CAL-1', 'El huésped llegó tras el cierre del no-show', undefined);
     expect(reopened).toHaveBeenCalledTimes(1);
     expect(toast.success).toHaveBeenCalledWith('Reserva reabierta — el huésped puede hacer check-in.');
   });

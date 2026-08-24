@@ -298,5 +298,74 @@
         }
       }
     }
+
+    <!-- ═══ Estadías pasadas del huésped (zona de solo lectura) ═══ -->
+    @if (isClient() && pastStaysResource.value(); as pastStays) {
+      @if (pastStays.length > 0) {
+        <section class="past-stays" aria-label="Estadías pasadas (solo lectura)">
+          <div class="past-stays-head">
+            <span class="material-symbols-outlined past-stays-icon" aria-hidden="true">history</span>
+            <h2>Estadías pasadas</h2>
+            <span class="past-stays-count">{{ pastStays.length }} estadía{{ pastStays.length === 1 ? '' : 's' }}</span>
+          </div>
+          <p class="past-stays-note">
+            Historial de solo lectura: estas estadías ya finalizaron, por lo que no ofrecen acciones.
+          </p>
+          <div class="past-stays-grid">
+            @for (item of pastStays; track item.bookingId) {
+              <article class="past-stay-card" [class.is-no-show]="item.readOnlyReason === 'no_show'">
+                <header class="past-stay-head">
+                  <span class="past-stay-hotel">{{ item.hotelLabel || ('Hotel #' + item.propId) }}</span>
+                  @if (item.readOnlyReason === 'no_show') {
+                    <span class="past-stay-badge badge-no-show">
+                      <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+                      No Show
+                    </span>
+                  } @else {
+                    <span class="past-stay-badge badge-past">
+                      <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                      Finalizada
+                    </span>
+                  }
+                </header>
+                <dl class="past-stay-meta">
+                  <div class="past-stay-meta-row">
+                    <dt>Reserva</dt>
+                    <dd class="mono">{{ item.bookingId }}</dd>
+                  </div>
+                  <div class="past-stay-meta-row">
+                    <dt>Fechas</dt>
+                    <dd>{{ item.checkInDate }} → {{ item.checkOutDate }}</dd>
+                  </div>
+                  @if (item.totalPrice != null) {
+                    <div class="past-stay-meta-row">
+                      <dt>Total</dt>
+                      <dd>${{ item.totalPrice.toFixed(2) }} {{ item.currency }}</dd>
+                    </div>
+                  }
+                  @if (item.readOnlyReason === 'no_show') {
+                    <div class="past-stay-reason reason-no-show">
+                      <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                      Marcada como No Show: no se presentó en la fecha de check-in, así que la estadía quedó cerrada sin acciones disponibles.@if (item.noShowPenaltyAmount != null) {
+                        <span> Penalización registrada: ${{ item.noShowPenaltyAmount.toFixed(2) }}.</span>
+                      }
+                    </div>
+                  } @else {
+                    <div class="past-stay-reason reason-past">
+                      <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                      Las fechas ya pasaron: esta estadía se conserva únicamente como registro de lectura.
+                    </div>
+                  }
+                </dl>
+                <footer class="past-stay-footer past-stay-lock">
+                  <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+                  Solo lectura
+                </footer>
+              </article>
+            }
+          </div>
+        </section>
+      }
+    }
   }
 </div>

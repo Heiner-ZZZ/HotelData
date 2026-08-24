@@ -153,10 +153,10 @@
                           [class.cell-editing]="editing"
                           [class.cell-current-week]="viewMode() === 'month' && day.isCurrentWeek && !editing"
                           [class.cell-clickable]="true"
-                          [class.cell-no-rate]="cell && !editing && cell.availableRooms > 0 && cell.hasRate === false"
+                          [class.cell-no-rate]="cell && !editing && !day.isPast && cell.availableRooms > 0 && cell.hasRate === false"
                           [class.cell-multi-selected]="multiSelectMode() && isMultiSelected(day.date, rt.name)"
                           [class.cell-highlight]="!editing && highlightedCell()?.key === (day.date + '|' + rt.name)"
-                          [title]="editing ? '' : (cell ? cellTooltip(cell, day.date) : (day.date + ' — Sin datos'))"
+                          [title]="editing ? '' : (cell ? cellTooltip(cell, day.date, day.isPast) : (day.date + ' — Sin datos'))"
                           (click)="!editing && !saving() && onCellClick($event, day.date, rt.name)">
                           @if (editing && cell) {
                             <div class="cell-editor">
@@ -183,7 +183,7 @@
                           } @else {
                             <span class="cell-val cell-val-na">—</span>
                           }
-                          @if (cell && !editing && cell.availableRooms > 0 && cell.hasRate === false) {
+                          @if (cell && !editing && !day.isPast && cell.availableRooms > 0 && cell.hasRate === false) {
                             <span class="cell-no-rate-dot"
                                   [attr.aria-label]="'Sin tarifa abierta para ' + day.date + ' — no vendible'"></span>
                           }
@@ -227,10 +227,10 @@
                                [class.cell-na]="!cell"
                                [class.cell-selected]="isSelected(day.date, rt.name)"
                                [class.cell-clickable]="true"
-                               [class.cell-no-rate]="cell && !editing && cell.availableRooms > 0 && cell.hasRate === false"
+                               [class.cell-no-rate]="cell && !editing && !day.isPast && cell.availableRooms > 0 && cell.hasRate === false"
                                [class.cell-multi-selected]="multiSelectMode() && isMultiSelected(day.date, rt.name)"
                                [class.cell-highlight]="!editing && highlightedCell()?.key === (day.date + '|' + rt.name)"
-                               [title]="cell ? cellTooltip(cell, day.date) : (day.date + ' — Sin datos')"
+                               [title]="cell ? cellTooltip(cell, day.date, day.isPast) : (day.date + ' — Sin datos')"
                                (click)="!saving() && onCellClick($event, day.date, rt.name)">
                             @if (editing && cell) {
                               <div class="cal-week-editor">
@@ -258,7 +258,7 @@
                               } @else {
                                 <span class="cal-week-val cal-week-na">—</span>
                               }
-                              @if (cell && !editing && cell.availableRooms > 0 && cell.hasRate === false) {
+                              @if (cell && !editing && !day.isPast && cell.availableRooms > 0 && cell.hasRate === false) {
                                 <span class="cell-no-rate-dot"
                                       [attr.aria-label]="'Sin tarifa abierta para ' + day.date + ' — no vendible'"></span>
                               }

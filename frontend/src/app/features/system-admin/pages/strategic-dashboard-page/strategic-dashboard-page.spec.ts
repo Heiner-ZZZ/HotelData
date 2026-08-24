@@ -1,7 +1,8 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpBackend, HttpResponse, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ToastService } from '../../../../shared/services/toast.service';
@@ -203,5 +204,137 @@ describe('StrategicDashboardPageComponent (gate de exportación)', () => {
 
     expect(() => ctx.component.exportCsv()).not.toThrow();
     expect(ctx.toast.show).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Layout IE-H01 en pantallas 15.6" (patrón Z) ─────────────────────────
+// El dueño pidió: KPIs arriba, DOS gráficos lado a lado y las DOS tablas de
+// registros al final, APILADAS una debajo de la otra (con mínimo 5 filas por
+// página para que la última tabla no quede oculta). Antes el gráfico de la
+// serie iba solo (dejaba un hueco 1fr) y la tabla de planes quedaba
+// comprimida a 1fr junto al gráfico de planes → caja "Rentabilidad por plan"
+// ajustadísima.
+
+describe('StrategicDashboardPageComponent (layout IE-H01, 15.6")', () => {
+  function layoutBackend() {
+    const emptyPlanes = { rows: [], total: 0, page: 1, page_size: 20, total_pages: 1, has_next: false, has_prev: false };
+    const hotelDto = {
+      available: true,
+      source: 'clickhouse',
+      date_from: '2026-06-01',
+      date_to: '2026-08-24',
+      prop_id: 1,
+      summary: {
+        kpis: [{
+          id: 'revenue', label: 'Revenue neto', value: 2943.4, unit: 'USD',
+          target: null, pct_change: 85.15, has_prev: true, trend: 'up',
+          semaforo: 'green', detail: '12 reservas en el período',
+        }],
+        hoteles: 1,
+        posicionamiento: null,
+      },
+      serie: { labels: ['jun 2026', 'jul 2026', 'ago 2026'], datasets: [] },
+      posicionamiento_serie: { labels: [], datasets: [] },
+      posicionamiento_rows: [],
+      // El backend manda ``rows`` como ARRAY + paginación top-level, y ``planes``
+      // como objeto paginado con filas anidadas (shape real del contrato).
+      rows: [],
+      total: 0, page: 1, page_size: 20, total_pages: 1, has_next: false, has_prev: false,
+      planes: emptyPlanes,
+    };
+    return {
+      handle: (req: HttpRequest<unknown>) => {
+        const url = String(req.url);
+        if (url.includes('/management/properties/context')) {
+          return of(new HttpResponse({ status: 200, body: { mode: 'all', assigned_properties: [], default_prop_id: 0 } }));
+        }
+        if (url.includes('/api/strategic/hotel/')) {
+          return of(new HttpResponse({ status: 200, body: hotelDto }));
+        }
+        // Cualquier otra petición (ej. property-selector) con forma vacía segura.
+        return of(new HttpResponse({ status: 200, body: { properties: [] } }));
+      },
+    };
+  }
+
+  function setupLayout() {
+    // jsdom no expone matchMedia; ThemeService (inyectado por app-kpi-chart) lo necesita.
+    window.matchMedia = (window.matchMedia ??
+      (() => ({
+        matches: false, media: '', onchange: null,
+        addListener: () => {}, removeListener: () => {},
+        addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+      }))) as unknown as typeof window.matchMedia;
+
+    const auth = {
+      hasPermission: jest.fn(() => true),
+      currentUser: jest.fn(() => ({ primaryRole: 'super_admin' })),
+      isAuthenticated: () => false,
+      sessionLoaded: () => false,
+      invalidateSession: jest.fn(),
+    } as unknown as AuthService;
+    const toast = { show: jest.fn() } as unknown as ToastService;
+
+    TestBed.configureTestingModule({
+      imports: [StrategicDashboardPageComponent],
+      providers: [
+        provideHttpClient(),
+        provideRouter([
+          { path: 'management/informes-estrategicos/:report', component: StrategicDashboardPageComponent },
+          { path: '**', component: StrategicDashboardPageComponent },
+        ]),
+        { provide: HttpBackend, useValue: layoutBackend() },
+        { provide: AuthService, useValue: auth },
+        { provide: ToastService, useValue: toast },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(StrategicDashboardPageComponent);
+    const router = TestBed.inject(Router);
+    return { fixture, router };
+  }
+
+  it('IE-H01: los dos gráficos van lado a lado (serie + revenue por plan)', async () => {
+    const { fixture, router } = setupLayout();
+    await router.navigateByUrl('/management/informes-estrategicos/h01?prop_id=1&prop_label=Hotel');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.hotel()).not.toBeNull();
+
+    const el: HTMLElement = fixture.nativeElement;
+    const chartsRow = el.querySelector('.strd-chart-row.charts');
+    expect(chartsRow).not.toBeNull();
+    expect(chartsRow!.querySelectorAll('app-kpi-chart').length).toBe(2);
+  });
+
+  it('IE-H01: las dos tablas de registros van al final, apiladas una debajo de la otra', async () => {
+    const { fixture, router } = setupLayout();
+    await router.navigateByUrl('/management/informes-estrategicos/h01?prop_id=1&prop_label=Hotel');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.hotel()).not.toBeNull();
+
+    const el: HTMLElement = fixture.nativeElement;
+    const tableGrid = el.querySelector('.strd-table-grid');
+    expect(tableGrid).not.toBeNull();
+    expect(tableGrid!.querySelectorAll('.strd-table-card').length).toBe(2);
+  });
+
+  it('IE-H01: los gráficos se renderizan antes que las tablas (patrón Z)', async () => {
+    const { fixture, router } = setupLayout();
+    await router.navigateByUrl('/management/informes-estrategicos/h01?prop_id=1&prop_label=Hotel');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.hotel()).not.toBeNull();
+
+    const el: HTMLElement = fixture.nativeElement;
+    const sections = Array.from(el.querySelectorAll('section'));
+    const chartsIdx = sections.findIndex((s) => s.classList.contains('strd-chart-row'));
+    const tablesIdx = sections.findIndex((s) => s.classList.contains('strd-table-grid'));
+    expect(chartsIdx).toBeGreaterThanOrEqual(0);
+    expect(tablesIdx).toBeGreaterThan(chartsIdx);
   });
 });

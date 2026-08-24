@@ -262,9 +262,10 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "reports.strategic.read", "reports.strategic.portfolio.read", "reports.download",
     ],
     "operador_datos": [
-        "dashboard.read",
-        "etl.read", "etl.execute",
-        "audit.read", "monitoring.read",
+        # Corrección 2026-08: rol de PLATAFORMA con acceso SOLO a monitoreo.
+        # El ETL (etl.execute/etl.read) lo ejecuta la administración; el
+        # operador solo observa. Se retira audit.read y dashboard.read.
+        "monitoring.read",
     ],
     "auditor_datos": [
         "dashboard.read",

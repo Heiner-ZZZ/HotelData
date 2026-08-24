@@ -220,7 +220,7 @@
                   <span class="material-symbols-outlined">meeting_room</span>
                 </div>
                 <div>
-                  <div class="si-chat-room">Hab. {{ selectedRoom() }}</div>
+                  <div class="si-chat-room">Hab. {{ selectedRoom() }}@if (selectedGuestName()) {<span class="si-chat-guest"> · {{ selectedGuestName() }}</span>}</div>
                   <div class="si-chat-status">
                     <span class="si-chat-dot"></span>
                     Huésped Conectado
@@ -257,6 +257,9 @@
                   <div class="si-msg-bubble">
                     @if (msg.sender === 'staff' && msg.staff_name) {
                       <div class="si-msg-author">{{ msg.staff_name }}</div>
+                    }
+                    @if (msg.sender === 'guest' && msg.guest_name) {
+                      <div class="si-msg-author">{{ msg.guest_name }}</div>
                     }
                     <div class="si-msg-text">{{ msg.message }}</div>
                     <div class="si-msg-time">{{ msg.created_at | date:'HH:mm' }}</div>

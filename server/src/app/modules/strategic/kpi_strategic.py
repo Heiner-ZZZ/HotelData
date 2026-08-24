@@ -70,20 +70,50 @@ def _validate_range(
     date_to: str | None,
     days: int,
 ) -> tuple[date, date]:
-    """Resuelve el rango: date_from/date_to explícitos o últimos ``days`` días."""
+    """Resuelve el rango: date_from/date_to explícitos o últimos ``days`` días.
+
+    El fallback se alinea al primer día del mes: los datos ``strat_*`` son de
+    granularidad mensual (``month`` = primer día), así que una ventana que
+    arranca a mitad de mes hace que su ventana anterior no calce con la fila
+    del mes previo y toda comparación dé "sin comparación" aunque existan
+    datos."""
     end = datetime.now(UTC).date()
-    fallback_from = end - timedelta(days=days - 1)
-    start = date.fromisoformat(date_from) if date_from else fallback_from
+    if date_from:
+        start = date.fromisoformat(date_from)
+    else:
+        months = max(1, round(days / 30))
+        start = _add_months(end.replace(day=1), -(months - 1))
     end = date.fromisoformat(date_to) if date_to else end
     if end < start:
         raise ValueError("date_to debe ser igual o posterior a date_from")
     return start, end
 
 
+def _add_months(d: date, delta: int) -> date:
+    """Suma/resta ``delta`` meses a una fecha, recortando el día al fin de mes
+    si hiciera falta (p.ej. 31-ene + 1 mes → 28-feb)."""
+    index = d.year * 12 + (d.month - 1) + delta
+    year, month0 = divmod(index, 12)
+    month = month0 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
 def _prev_window(start: date, end: date) -> tuple[date, date]:
-    """Ventana anterior de la misma longitud, inmediatamente previa al rango."""
-    length = end - start
-    return start - length - timedelta(days=1), start - timedelta(days=1)
+    """Ventana anterior de la misma duración en meses, alineada a meses.
+
+    Los datos ``strat_*`` son de granularidad mensual (``month`` = primer día
+    del mes). La versión anterior restaba días exactos (para un rango que
+    arranca el 01-ago buscaba 09-jul→31-jul) y perdía la fila del mes previo
+    (2026-07-01), por lo que toda comparación quedaba vacía → "sin
+    comparación" aunque hubiera datos. Ahora la ventana previa cubre los
+    mismos meses calendario cerrados al mes del inicio: para
+    [2026-08-01, 2026-08-23] → [2026-07-01, 2026-07-31].
+    """
+    n_months = (end.year - start.year) * 12 + (end.month - start.month) + 1
+    prev_end = start - timedelta(days=1)
+    prev_start = _add_months(prev_end, -(n_months - 1)).replace(day=1)
+    return prev_start, prev_end
 
 
 def _month_days(month: Any) -> int:
@@ -206,9 +236,20 @@ def _semaforo(cur: float, prev: float, *, lower_is_better: bool = False) -> str:
 
 def _kpi(kid: str, label: str, value: float, unit: str, prev: float,
          good_direction: str = "up", target: float | None = None,
-         lower_is_better: bool = False, detail: str = "") -> dict[str, Any]:
-    """KPI con meta, variación vs período anterior, tendencia y semáforo."""
-    variation = _pct_change(value, prev)
+         lower_is_better: bool = False, detail: str = "",
+         has_prev: bool | None = None, pct: float | None = None) -> dict[str, Any]:
+    """KPI con meta, variación vs período anterior, tendencia y semáforo.
+
+    ``has_prev`` indica si EXISTE un período anterior que comparar (para que
+    el frontend muestre la variación o un estado honesto "sin comparación"
+    en vez de un engañoso 0.0%). Por defecto se deriva de ``bool(prev)``,
+    la misma semántica que ``_pct_change`` usa para decidir si hay base.
+    ``pct`` permite forzar la variación cuando el ``value`` del KPI ya ES
+    una variación (p.ej. Crecimiento de revenue): su chip debe espejar ese
+    valor en vez de recalcular contra un ``prev`` inexistente.
+    """
+    variation = _pct_change(value, prev) if pct is None else round(float(pct), 2)
+    has = has_prev if has_prev is not None else bool(prev)
     t = target if target is not None else (prev * (1 + _TARGETS.get(kid, 0)) if prev else 0.0)
     if lower_is_better:
         ok = value <= t
@@ -223,6 +264,7 @@ def _kpi(kid: str, label: str, value: float, unit: str, prev: float,
         "unit": unit,
         "target": _round2(t) if t else None,
         "pct_change": variation,
+        "has_prev": has,
         "trend": _trend(variation, good_direction),
         "semaforo": "green" if ok else ("yellow" if warn else "red"),
         "detail": detail,
@@ -284,10 +326,10 @@ def _financial_kpis(cur: dict[str, float], prev: dict[str, float],
         _kpi("revpar", "RevPAR", cur["revpar"], "USD", prev["revpar"], detail="Ingreso por habitación disponible"),
         _kpi("ocupacion", "Ocupación", cur["ocupacion"], "%", prev["ocupacion"],
              target=_TARGETS["ocupacion"] * 100, detail="Noches / capacidad del mes"),
-        _kpi("cancelacion", "Cancelaciones", cur["cancelacion"], "%", 0.0,
+        _kpi("cancelacion", "Cancelaciones", cur["cancelacion"], "%", prev["cancelacion"],
              good_direction="down", target=_TARGETS["cancelacion"] * 100,
              lower_is_better=True, detail="Habitaciones canceladas / vendidas"),
-        _kpi("descuento", "Descuento aplicado", cur["descuento_pct"], "%", 0.0,
+        _kpi("descuento", "Descuento aplicado", cur["descuento_pct"], "%", prev["descuento_pct"],
              good_direction="down", target=_TARGETS["descuento"] * 100,
              lower_is_better=True, detail="Descuento / revenue bruto"),
         _kpi("bookings", "Reservas", float(cur["bookings"]), "unid.", float(prev["bookings"]),
@@ -295,7 +337,7 @@ def _financial_kpis(cur: dict[str, float], prev: dict[str, float],
         _kpi("room_nights", "Noches ocupadas", float(cur["room_nights"]), "noches", float(prev["room_nights"]),
              detail="Noches estancia"),
         _kpi("revenue_growth", "Crecimiento de revenue", growth, "%", 0.0,
-             target=0.0, detail="vs período anterior"),
+             has_prev=bool(prev["revenue"]), pct=growth, target=0.0, detail="vs período anterior"),
     ]
 
 

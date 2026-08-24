@@ -192,6 +192,8 @@ export interface ReservationDetailDto {
     cancellation_free?: boolean;
     cancellation_penalty_percent?: number;
     cancellation_penalty_amount?: number;
+    no_show_penalty_amount?: number | null;
+    no_show_penalty_percent?: number | null;
   };
   guest: {
     guest_name: string;
@@ -219,6 +221,8 @@ export interface ReservationDetailDto {
     issued_at: string | null;
     paid_at: string | null;
   } | null;
+  /** Folio de penalización del no-show (fuente de verdad del importe a cobrar). */
+  no_show_folio_number?: string | null;
   room_type: RoomTypeInfoDto | null;
   price_breakdown: PriceBreakdownDto | null;
   cancellation_policy: string | null;

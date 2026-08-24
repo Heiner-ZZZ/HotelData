@@ -274,6 +274,9 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     cancellation_free?: boolean;
     cancellation_penalty_percent?: number;
     cancellation_penalty_amount?: number;
+    no_show_penalty_amount?: number | null;
+    no_show_penalty_percent?: number | null;
+    no_show_folio_number?: string | null;
     cedula?: string;
     can_cancel?: boolean;
     amenities_count?: number;
@@ -404,5 +407,10 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     // The frontend should use `effectiveStayStatus()` from reservation-status.util
     // when it needs a combined fallback value.
     stayStatus: booking.stay_status ?? undefined,
+    // Fuente de verdad del importe a cobrar en no-show: la penalización de la
+    // primera noche (folio de penalización), NO la factura de la estadía.
+    noShowPenaltyAmount: booking.no_show_penalty_amount ?? null,
+    noShowPenaltyPercent: booking.no_show_penalty_percent ?? null,
+    noShowFolioNumber: wire.no_show_folio_number ?? null,
   };
 }

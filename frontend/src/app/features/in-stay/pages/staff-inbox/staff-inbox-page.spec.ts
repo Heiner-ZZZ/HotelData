@@ -165,6 +165,26 @@ describe('StaffInboxPageComponent — filtros de chat', () => {
     component = TestBed.createComponent(StaffInboxPageComponent).componentInstance;
   });
 
+  it('no dispara conversaciones/solicitudes con prop_id=0 (el backend responde 422 con ge=1)', () => {
+    // Contexto aún sin hidratar: currentPropId arranca en 0.
+    (component as any).propCtx.currentPropId.set(0);
+    const fresh = TestBed.createComponent(StaffInboxPageComponent);
+    fresh.detectChanges();
+
+    // El burst inicial del constructor NO debe golpear la API sin propiedad.
+    expect(mockApi.listConversations).not.toHaveBeenCalledWith(0);
+    expect(mockApi.listRequests).not.toHaveBeenCalledWith(0);
+
+    // Al seleccionar una propiedad sí carga con el id real (el servicio real
+    // actualiza la signal en setProperty; el mock es pasivo).
+    (component as any).propCtx.currentPropId.set(3);
+    (fresh.componentInstance as any).loadData();
+    expect(mockApi.listConversations).toHaveBeenCalledWith(3);
+    expect(mockApi.listRequests).toHaveBeenCalledWith(3, undefined);
+    expect(mockApi.listConversations).not.toHaveBeenCalledWith(0);
+    expect(mockApi.listRequests).not.toHaveBeenCalledWith(0);
+  });
+
   it('agrupa conversaciones en los 3 buckets según la fecha de la reserva', () => {
     const active = makeConversation({ _id: 'HR-1-101', stay_status: 'checked_in', check_in: yesterday, check_out: tomorrow });
     const hoy = makeConversation({ _id: 'HR-1-102', stay_status: 'pending', check_in: today, check_out: tomorrow });
@@ -328,6 +348,121 @@ describe('StaffInboxPageComponent — template', () => {
     const chips = fixture.nativeElement.querySelectorAll('.si-chat-filter .si-chip');
     // 3 buckets + "Todas"
     expect(chips.length).toBe(CHAT_BUCKET_META.length + 1);
+  });
+});
+
+describe('StaffInboxPageComponent — nombre del huésped en el chat', () => {
+  let navigate: jest.Mock;
+  let mockApi: Record<string, jest.Mock>;
+
+  beforeEach(async () => {
+    navigate = jest.fn();
+    mockApi = {
+      listConversations: jest.fn().mockReturnValue(of({ conversations: [] })),
+      listRequests: jest.fn().mockReturnValue(of({ items: [], total: 0, page: 1, page_size: 20, total_pages: 1 })),
+      getConversationMessages: jest.fn().mockReturnValue(of({ messages: [] })),
+      listSessions: jest.fn().mockReturnValue(of({ items: [] })),
+      listLostFound: jest.fn().mockReturnValue(of({ items: [] })),
+    };
+
+    TestBed.overrideComponent(PropertySelectorComponent, {
+      set: { template: '<span>selector-stub</span>' },
+    });
+
+    await TestBed.configureTestingModule({
+      imports: [StaffInboxPageComponent],
+      providers: [
+        provideHttpClient(withInterceptors([httpErrorInterceptor])),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { url: [], paramMap: { get: () => null } }, paramMap: of(new Map()) } },
+        { provide: Router, useValue: { events: of(), navigate } },
+        { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn(), warning: jest.fn(), info: jest.fn() } },
+        { provide: AuthService, useValue: { hasPermission: () => true } },
+        {
+          provide: PropertyContextService,
+          useValue: {
+            currentPropId: signal(1),
+            currentPropLabel: signal(''),
+            mode: signal('all'),
+            ready: signal(true),
+            assignedProperties: signal([]),
+            defaultPropId: signal(0),
+            singleHotelMode: signal(false),
+            setProperty: jest.fn(),
+            clear: jest.fn(),
+          },
+        },
+        { provide: InStayApiService, useValue: mockApi },
+        { provide: StaySseService, useValue: { connect: () => of(), disconnect: jest.fn() } },
+        { provide: ExpensesApiService, useValue: { getLedgerFolios: jest.fn().mockReturnValue(of({ items: [] })), postFolioPayment: () => of({}), transferFolioCharges: () => of({}) } },
+      ],
+    }).compileComponents();
+  });
+
+  function makeMessage(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      _id: 'M-1',
+      booking_id: 'BK-1',
+      prop_id: 1,
+      room_label: 'HR-1-101',
+      sender: 'guest',
+      staff_name: '',
+      guest_name: '',
+      message: 'Hola hotel',
+      created_at: `${today}T10:00:00`,
+      read: false,
+      ...overrides,
+    };
+  }
+
+  function renderWithConversation() {
+    const conv = makeConversation({ _id: 'HR-1-101', guest_name: 'Juan Pérez' });
+    mockApi.listConversations.mockReturnValue(of({ conversations: [conv] }));
+    const fixture = TestBed.createComponent(StaffInboxPageComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('la burbuja de un mensaje de huésped muestra su nombre como autor', () => {
+    mockApi.getConversationMessages.mockReturnValue(of({
+      messages: [makeMessage({ sender: 'guest', guest_name: 'Juan Pérez' })],
+    }));
+    const fixture = renderWithConversation();
+    fixture.componentInstance.selectConversation('HR-1-101');
+    fixture.detectChanges();
+
+    const authors = Array.from(fixture.nativeElement.querySelectorAll('.si-msg-author'))
+      .map((n) => (n as HTMLElement).textContent?.trim());
+    expect(authors).toContain('Juan Pérez');
+  });
+
+  it('el header del chat muestra el nombre del huésped junto a la habitación', () => {
+    mockApi.getConversationMessages.mockReturnValue(of({ messages: [] }));
+    const fixture = renderWithConversation();
+    fixture.componentInstance.selectConversation('HR-1-101');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.si-chat-room')?.textContent).toContain('Juan Pérez');
+  });
+
+  it('la burbuja staff sigue mostrando staff_name y no el nombre del huésped', () => {
+    mockApi.getConversationMessages.mockReturnValue(of({
+      messages: [
+        makeMessage({ sender: 'staff', staff_name: 'Recepción' }),
+        makeMessage({ sender: 'guest', guest_name: 'Juan Pérez', message: 'ok' }),
+      ],
+    }));
+    const fixture = renderWithConversation();
+    fixture.componentInstance.selectConversation('HR-1-101');
+    fixture.detectChanges();
+
+    const authors = Array.from(fixture.nativeElement.querySelectorAll('.si-msg-author'))
+      .map((n) => (n as HTMLElement).textContent?.trim());
+    expect(authors).toContain('Recepción');
+    // El autor del huésped solo va en SU burbuja; la de staff no lo repite.
+    const staffBubble = fixture.nativeElement.querySelector('.si-msg.staff .si-msg-bubble');
+    expect(staffBubble?.textContent).toContain('Recepción');
+    expect(staffBubble?.textContent).not.toContain('Juan Pérez');
   });
 });
 

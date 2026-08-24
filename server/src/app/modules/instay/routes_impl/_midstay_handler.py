@@ -270,6 +270,20 @@ def process_early_checkout(
     except Exception:
         logger.exception("Failed to settle charges on early checkout %s", booking_id)
 
+    # Complemento fiscal de postings de folio (decisión B): la penalización de
+    # salida anticipada (y cualquier extensión previa) se factura al cierre del
+    # checkout con total EXACTO al folio — nunca un tercer número.
+    try:
+        from src.app.modules.billing.service.lifecycle.invoices import create_folio_postings_complement_invoice
+        comp = create_folio_postings_complement_invoice(booking_id, changed_by=changed_by)
+        if comp:
+            logger.info(
+                "Folio-postings complement invoice %s emitted on early check-out for booking %s",
+                comp.get("invoice_number"), booking_id,
+            )
+    except Exception:
+        logger.exception("Failed to emit folio-postings complement on early check-out for %s", booking_id)
+
     # Mark rooms as dirty + create cleaning tasks
     try:
         assigned_rooms: list[str] = booking.get("assigned_rooms") or []

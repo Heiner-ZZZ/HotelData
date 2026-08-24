@@ -202,9 +202,11 @@ export class StrategicDashboardPageComponent {
     if (this.dateFrom()) params.set('date_from', this.dateFrom());
     if (this.dateTo()) params.set('date_to', this.dateTo());
     if (this.selectedPropId()) params.set('prop_id', String(this.selectedPropId()));
-    if (endpoint === 'portfolio') params.set('page', String(this.currentPage()));
+    params.set('page', String(this.currentPage()));
     if (endpoint === 'markets') params.set('page', String(this.marketsPage()));
-    params.set('page_size', '20');
+    // Mínimo 5 elementos por página: páginas cortas para que la última tabla
+    // de registros no quede oculta.
+    params.set('page_size', '5');
     return `/api/strategic/${endpoint}?${params.toString()}`;
   }
 
@@ -219,7 +221,8 @@ export class StrategicDashboardPageComponent {
     if (this.dateTo()) params.set('date_to', this.dateTo());
     params.set('page', String(this.currentPage()));
     params.set('ppage', String(this.planesPage()));
-    params.set('page_size', '20');
+    // Mínimo 5 elementos por página (mismo criterio que las demás tablas).
+    params.set('page_size', '5');
     return `/api/strategic/hotel/${pid}?${params.toString()}`;
   }
 
@@ -342,6 +345,7 @@ export class StrategicDashboardPageComponent {
         unit: '★',
         target: 4.2,
         pctChange: pos.ratingVariacion,
+        hasPrev: Boolean(pos.ratingVariacion),
         trend: trendOf(pos.ratingVariacion),
         semaforo: semaforoOf(pos.ratingVariacion, pos.rating >= 4.2),
         detail: 'Reseñas aprobadas',
@@ -353,6 +357,7 @@ export class StrategicDashboardPageComponent {
         unit: 'USD',
         target: null,
         pctChange: pos.adrVariacion,
+        hasPrev: Boolean(pos.adrVariacion),
         trend: trendOf(pos.adrVariacion),
         semaforo: semaforoOf(pos.adrVariacion, pos.adr > 0),
         detail: 'Tarifa media por noche',
@@ -365,6 +370,7 @@ export class StrategicDashboardPageComponent {
             unit: '%',
             target: 80,
             pctChange: 0,
+            hasPrev: false,
             trend: 'flat' as const,
             semaforo: (latest.respuesta >= 80 ? 'green' : 'yellow') as 'green' | 'yellow',
             detail: 'Último mes',
@@ -379,6 +385,7 @@ export class StrategicDashboardPageComponent {
               unit: 'hoteles',
               target: null,
               pctChange: 0,
+              hasPrev: false,
               trend: 'flat' as const,
               semaforo: 'yellow' as const,
               detail: pos.city ? `Misma ciudad: ${pos.city}` : 'Misma ciudad',
@@ -390,6 +397,7 @@ export class StrategicDashboardPageComponent {
               unit: 'USD',
               target: null,
               pctChange: 0,
+              hasPrev: false,
               trend: 'flat' as const,
               semaforo: 'yellow' as const,
               detail: pos.bandaPrecio
@@ -403,6 +411,7 @@ export class StrategicDashboardPageComponent {
               unit: '%',
               target: null,
               pctChange: 0,
+              hasPrev: false,
               trend: trendOf(pos.adrPercentile ?? 0),
               semaforo: 'yellow' as const,
               detail: 'Posición frente a la competencia',
@@ -414,6 +423,7 @@ export class StrategicDashboardPageComponent {
               unit: '%',
               target: null,
               pctChange: pos.precioRelativoPct ?? 0,
+              hasPrev: pos.precioRelativoPct != null,
               trend: trendOf(pos.precioRelativoPct ?? 0),
               semaforo: 'yellow' as const,
               detail: 'Sobre la mediana de la ciudad',

@@ -111,6 +111,65 @@ def test_respuesta_rate_is_percentage_not_fraction() -> None:
     assert kpis["respuesta"]["value"] < 100  # una tasa real nunca excede 100%
 
 
+def test_kpi_exposes_has_prev_flag() -> None:
+    """El KPI distingue "sin cambio real" de "sin período anterior para
+    comparar". Con ``prev`` presente → ``has_prev`` True y variación real;
+    sin datos previos → ``has_prev`` False y ``pct_change`` 0 (el frontend
+    mostrará "sin comparación" en vez de un engañoso 0.0%)."""
+    from src.app.modules.strategic.kpi_strategic import _build_hotel_kpis
+
+    rows = [_hotel_row(revenue=3000.0, room_nights=30, bookings=10, total_rooms=2)]
+    prev = [_hotel_row(revenue=2500.0, room_nights=25, bookings=9, total_rooms=2)]
+    kpis = {k["id"]: k for k in _build_hotel_kpis(rows, prev, [], [])}
+    assert kpis["revenue"]["has_prev"] is True
+    assert kpis["revenue"]["pct_change"] == 20.0  # (3000-2500)/2500*100
+
+    kpis_sin_prev = {k["id"]: k for k in _build_hotel_kpis(rows, [], [], [])}
+    assert kpis_sin_prev["revenue"]["has_prev"] is False
+    assert kpis_sin_prev["revenue"]["pct_change"] == 0.0
+
+
+def test_cancelacion_y_descuento_comparan_vs_periodo_anterior() -> None:
+    """Regresión: Cancelaciones y Descuento pasaban ``prev=0.0`` fijo, así que
+    su variación era SIEMPRE 0.0% aunque hubiera datos previos. Ahora comparan
+    contra la tasa real del período anterior (cancelación y descuento)."""
+    from src.app.modules.strategic.kpi_strategic import _build_hotel_kpis
+
+    rows = [_hotel_row(revenue=3000.0, room_nights=30, bookings=10, total_rooms=2,
+                       cancelled_rooms=1, discount_amount=300.0)]
+    prev = [_hotel_row(revenue=3000.0, room_nights=30, bookings=10, total_rooms=2,
+                       cancelled_rooms=3, discount_amount=150.0)]
+    kpis = {k["id"]: k for k in _build_hotel_kpis(rows, prev, [], [])}
+
+    # Cancelación actual = 1/10·100 = 10%; previa = 3/10·100 = 30% → -66.67%
+    assert kpis["cancelacion"]["has_prev"] is True
+    assert kpis["cancelacion"]["pct_change"] == round((10 - 30) / 30 * 100, 2)
+    # Descuento actual = 300/3300·100 = 9.09%; previo = 150/3150·100 = 4.76%
+    desc_actual = 300 / 3300 * 100
+    desc_prev = 150 / 3150 * 100
+    assert kpis["descuento"]["has_prev"] is True
+    assert kpis["descuento"]["pct_change"] == round((desc_actual - desc_prev) / desc_prev * 100, 2)
+
+
+def test_revenue_growth_mirrors_growth_and_has_prev() -> None:
+    """Crecimiento de revenue: su ``value`` YA es la variación vs período
+    anterior; su propio ``pct_change`` debe espejarla (no quedar fijo en 0.0)
+    y ``has_prev`` refleja si existe revenue previo."""
+    from src.app.modules.strategic.kpi_strategic import _build_hotel_kpis
+
+    rows = [_hotel_row(revenue=3000.0, room_nights=30, bookings=10, total_rooms=2)]
+    prev = [_hotel_row(revenue=2500.0, room_nights=25, bookings=9, total_rooms=2)]
+    kpis = {k["id"]: k for k in _build_hotel_kpis(rows, prev, [], [])}
+    assert kpis["revenue_growth"]["value"] == 20.0
+    assert kpis["revenue_growth"]["pct_change"] == 20.0
+    assert kpis["revenue_growth"]["has_prev"] is True
+
+    kpis_sin_prev = {k["id"]: k for k in _build_hotel_kpis(rows, [], [], [])}
+    assert kpis_sin_prev["revenue_growth"]["value"] == 0.0
+    assert kpis_sin_prev["revenue_growth"]["pct_change"] == 0.0
+    assert kpis_sin_prev["revenue_growth"]["has_prev"] is False
+
+
 def test_hotel_rows_monthly_records_table() -> None:
     """Tabla de registros (patrón compuesto): una fila por mes del hotel con
     bruto/neto/descuento, ADR, ocupación, RevPAR y cancelación."""
@@ -701,6 +760,50 @@ def test_validate_range_defaults_to_days() -> None:
     assert end >= start
 
 
+def test_default_range_is_month_aligned() -> None:
+    """El rango por defecto (sin date_from/date_to) debe alinearse al primer
+    día del mes: los datos strat_* son de granularidad mensual, así que una
+    ventana empezada a mitad de mes hace que su ventana anterior no calce con
+    la fila del mes previo y toda comparación dé "sin comparación" aunque
+    existan datos."""
+    from src.app.modules.strategic.kpi_strategic import _validate_range
+
+    start, _ = _validate_range(None, None, 30)
+    assert start.day == 1
+
+
+def test_prev_window_aligns_to_months() -> None:
+    """La ventana anterior debe cubrir los MISMOS meses calendario, cerrados
+    al mes del inicio. La versión previa restaba días exactos (para un rango
+    que arranca 01-ago buscaba 09-jul→31-jul) y perdía la fila del mes
+    anterior (2026-07-01), por lo que toda comparación quedaba vacía."""
+    from datetime import date
+    from src.app.modules.strategic.kpi_strategic import _prev_window
+
+    # Mensual: [01-ago → hoy] compara contra julio completo [01-07 → 31-07]
+    assert _prev_window(date(2026, 8, 1), date(2026, 8, 23)) == (date(2026, 7, 1), date(2026, 7, 31))
+    # Trimestral: [01-jun → hoy] compara contra [01-mar → 31-may]
+    assert _prev_window(date(2026, 6, 1), date(2026, 8, 23)) == (date(2026, 3, 1), date(2026, 5, 31))
+    # Anual: [01-sep-25 → hoy] compara contra [01-sep-24 → 31-ago-25]
+    assert _prev_window(date(2025, 9, 1), date(2026, 8, 23)) == (date(2024, 9, 1), date(2025, 8, 31))
+
+
+def test_month_aligned_prev_yields_real_comparison() -> None:
+    """Regresión del caso real del hotel: con filas mensuales del mes actual y
+    del mes anterior, la comparación debe ser real (has_prev True, variación
+    ≠ 0) — es lo que hace que el KPI deje de mostrar "sin comparación"."""
+    from src.app.modules.strategic.kpi_strategic import _build_hotel_kpis
+
+    current = [_hotel_row(month="2026-08-01", revenue=1504.0, room_nights=16,
+                          bookings=3, total_rooms=2)]
+    prev = [_hotel_row(month="2026-07-01", revenue=812.3, room_nights=6,
+                       bookings=6, total_rooms=2)]
+    kpis = {k["id"]: k for k in _build_hotel_kpis(current, prev, [], [])}
+    assert kpis["revenue"]["has_prev"] is True
+    assert kpis["revenue"]["pct_change"] == round((1504.0 - 812.3) / 812.3 * 100, 2)
+    assert kpis["bookings"]["has_prev"] is True
+
+
 # ─── Gate de permiso (frontera de seguridad) ──────────────────────────────
 
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -765,6 +868,29 @@ async def test_strategic_fine_permission_grants_access_and_response_models(clien
     resp = await client.get("/api/strategic/markets")
     assert resp.status_code == 200, resp.text
     StrategicMarketsResponse.model_validate(resp.json())
+
+
+@pytest.mark.asyncio
+async def test_strategic_page_size_minimum_5(client, db) -> None:
+    """Mínimo de 5 elementos por página en las tablas estratégicas: pedir
+    ``page_size`` menor que 5 es rechazado (422), y 5 (o más) responde 200.
+    Así la última tabla de registros no termina oculta en una página minúscula."""
+    db.roles.insert_one(
+        {"role_name": "role_strategic_pagesize", "display_name": "PageSize",
+         "permissions": ["reports.strategic.portfolio.read"], "is_system": True}
+    )
+    _make_user(db, "user_strategic_pagesize", "role_strategic_pagesize")
+    resp = await client.post(
+        "/api/auth/login",
+        json={"identifier": "user_strategic_pagesize", "password": "TestPass123!"},
+    )
+    assert resp.status_code == 200, resp.text
+
+    resp = await client.get("/api/strategic/portfolio?page_size=2")
+    assert resp.status_code == 422, resp.text  # por debajo del mínimo 5
+
+    resp = await client.get("/api/strategic/portfolio?page_size=5")
+    assert resp.status_code == 200, resp.text
 
 
 @pytest.mark.asyncio

@@ -12,11 +12,6 @@
     />
   </app-page-header>
 
-  <nav class="rpd-nav" aria-label="Tarifas">
-    <a routerLink="/management/rates/dashboard" class="rpd-nav-link active">Dashboard ADR</a>
-    <a routerLink="/management/rates" class="rpd-nav-link">Tarifas</a>
-  </nav>
-
   @if (selectedPropId()) {
     <!-- ═══ Filter bar ═══ -->
     <section class="surface-card rpd-filters" aria-label="Filtros del dashboard">
@@ -54,6 +49,15 @@
               (click)="toggleFilter('channel', opt.channel, channelFilter())"
             >{{ opt.label }}</button>
           }
+        </div>
+        <div class="rpd-select-chips">
+          <span class="rpd-filter-label">Ganancias</span>
+          <button
+            type="button"
+            class="rpd-chip"
+            [class.active]="onlyProfitable()"
+            (click)="toggleOnlyProfitable()"
+          >Solo con ganancias</button>
         </div>
         @if (hasFilters()) {
           <button type="button" class="rpd-clear-btn" (click)="clearAllFilters()">
@@ -194,7 +198,7 @@
                 </thead>
                 <tbody>
                   @for (row of rows(); track row.date + row.propId + row.roomTypeId + row.currency + row.bookingSource) {
-                    <tr>
+                    <tr [class.has-revenue]="row.revenue > 0">
                       <td>{{ formatDate(row.date) }}</td>
                       <td>{{ row.hotelLabel || ('Hotel #' + row.propId) }}</td>
                       <td>{{ row.roomTypeLabel || shortRoomType(row.roomTypeId) }}</td>

@@ -24,6 +24,9 @@ class StrategicKpiResponse(BaseModel):
     unit: str = ""
     target: float | None = None
     pct_change: float = 0.0
+    # True si existe un período anterior que comparar; si es False, el frontend
+    # muestra "sin comparación" en vez de un 0.0% que sugiera "sin cambio".
+    has_prev: bool = False
     trend: str = "flat"
     semaforo: str = "yellow"
     detail: str = ""

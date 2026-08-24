@@ -6,7 +6,7 @@ import { FavoritesService } from '../../../../core/favorites/favorites.service';
 import { toast } from '../../../../core/toast/toast.service';
 import { TrackingService } from '../../../../core/tracking/tracking.service';
 import {
-  isValidImageUrl,
+  hotelGalleryImages,
   placeholderImageUrl,
 } from '../../../../shared/utils/placeholder-image.util';
 import { CarouselControlsComponent } from '../../../../shared/ui/carousel-controls/carousel-controls';
@@ -47,22 +47,18 @@ export class HotelCardComponent implements OnInit {
   private rotationTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
-   * Request-free gallery for search cards: the availability endpoint already
-   * includes the first hotel image, and deterministic loremflickr placeholders
-   * (seeded by hotel id) fill the rest so every card has a navigable carousel
-   * (arrows + dots) without extra API calls. Detail pages remain the place
-   * for the full gallery.
+   * Galería centralizada — mismo `hotelGalleryImages` que `/welcome`
+   * (featured). El endpoint de availability ya trae la primera foto real;
+   * los placeholders loremflickr (`hotel,room?lock=${id}-1…`) rellenan el
+   * resto sin llamadas extra. El filtrado de fallos (`failedImageSrcs`)
+   * mantiene el carrusel navegable.
    */
   readonly galleryImages = computed(() => {
     const h = this.hotel();
     const failed = this.failedImageSrcs();
-    const primaryImage = h.imageUrl && isValidImageUrl(h.imageUrl) ? [h.imageUrl] : [];
-    return [
-      ...primaryImage,
-      placeholderImageUrl(`${h.id}1`),
-      placeholderImageUrl(`${h.id}2`),
-      placeholderImageUrl(`${h.id}3`),
-    ].filter((url) => !failed.has(this.resolveUrl(url)));
+    return hotelGalleryImages(h.id, h.imageUrl, 3).filter(
+      (url) => !failed.has(this.resolveUrl(url)),
+    );
   });
 
   /** Noches entre check-in y check-out (null si el rango es inválido o vacío). */

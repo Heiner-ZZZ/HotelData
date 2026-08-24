@@ -773,6 +773,17 @@ def get_conversation_messages(room_label: str, prop_id: int = Query(..., ge=1), 
     if prop_id:
         query["prop_id"] = prop_id
     messages = list(db.stay_messages.find(query).sort("created_at", 1))
+    # Resolve each message's guest from ITS OWN booking: a room hosts
+    # different guests over time, so per-message attribution (real-chat style)
+    # must follow the booking that was active when the message was written.
+    booking_ids = {m.get("booking_id") for m in messages if m.get("booking_id")}
+    booking_ids.discard("")
+    guest_map: dict[str, str] = {}
+    if booking_ids:
+        for b in db.booking_orders.find(
+            {"booking_id": {"$in": list(booking_ids)}}, {"booking_id": 1, "guest_name": 1}
+        ):
+            guest_map[b["booking_id"]] = str(b.get("guest_name", "") or "")
     db.stay_messages.update_many({"room_label": room_label, "sender": "guest", "read": False}, {"$set": {"read": True}})
     return ChatMessageListResponse.model_validate({
         "messages": [{
@@ -782,6 +793,7 @@ def get_conversation_messages(room_label: str, prop_id: int = Query(..., ge=1), 
             "room_label": m.get("room_label", ""),
             "sender": m.get("sender", ""),
             "staff_name": m.get("staff_name", ""),
+            "guest_name": guest_map.get(m.get("booking_id", ""), "") if m.get("sender") == "guest" else "",
             "message": m.get("message", ""),
             "created_at": _iso(m.get("created_at")),
             "read": bool(m.get("read", False)),

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, DestroyRef, effect, inject, NgZone, signal, ViewEncapsulation } from '@angular/core';
-import { httpResource } from '@angular/common/http';
+import { httpResource, HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -274,6 +274,32 @@ export class RoomsPageComponent {
   readonly createImagePreviewUrl = signal('');
   readonly createSelectedFile = signal<File | null>(null);
 
+  // ── Fotos por tipo de habitación (migrado desde amenities/servicios) ──
+  // Sube imágenes reales por room_type_id. Se muestran en hotel-card después de las fotos del hotel.
+  readonly roomPhotoRoomType = signal('');
+  readonly roomPhotoUploading = signal(false);
+  readonly roomPhotoMessage = signal('');
+  readonly roomPhotoMsgType = signal<'success' | 'error' | ''>('');
+  readonly roomPhotoList = signal<{ image_url: string; title: string; room_type_id: string }[]>([]);
+
+  private readonly http = inject(HttpClient);
+
+  private readonly roomPhotoListRes = httpResource<
+    { ok: boolean; images: { image_url: string; title: string; room_type_id: string }[] }
+  >(() => {
+    const propId = this.selectedPropId();
+    if (!propId) return undefined;
+    return `/api/public/hotels/${propId}/room-images`;
+  });
+
+  readonly filteredRoomPhotos = computed(() => {
+    const rt = this.roomPhotoRoomType();
+    if (!rt) return [];
+    return this.roomPhotoList().filter((p) => p.room_type_id === rt);
+  });
+
+  readonly roomPhotoLoading = computed(() => this.roomPhotoListRes.isLoading());
+
   /** Bound function reference for passing to partial components */
   readonly isFeatureSelectedFn = (label: string) => this.isFeatureSelected(label);
 
@@ -325,6 +351,21 @@ export class RoomsPageComponent {
     });
 
     // Top hotels KPI and feature catalog are now loaded declaratively via httpResource.
+    // Sincroniza fotos por habitación desde httpResource → signal escribible (optimistic delete)
+    effect(() => {
+      const data = this.roomPhotoListRes.value();
+      if (data?.images) {
+        this.roomPhotoList.set(data.images);
+      }
+    });
+    // Limpia selección y mensaje al cambiar de propiedad
+    effect(() => {
+      // track propId para invalidar selección obsoleta
+      const _ = this.selectedPropId();
+      this.roomPhotoRoomType.set('');
+      this.roomPhotoMessage.set('');
+      this.roomPhotoMsgType.set('');
+    });
   }
 
   onCreateImageUrlChange(url: string) {
@@ -620,5 +661,62 @@ export class RoomsPageComponent {
         this.toast.error(error.message || 'No fue posible registrar.');
       }
     });
+  }
+
+  // ── Fotos por tipo de habitación ──
+
+  onRoomPhotoRoomTypeChange(roomTypeId: string): void {
+    this.roomPhotoRoomType.set(roomTypeId);
+    this.roomPhotoMessage.set('');
+    this.roomPhotoMsgType.set('');
+  }
+
+  deleteRoomPhoto(imageUrl: string): void {
+    const prev = this.roomPhotoList();
+    this.roomPhotoList.update((list) => list.filter((p) => p.image_url !== imageUrl));
+    this.http
+      .delete(`/api/management/properties/${this.selectedPropId()}/room-types/images?image_url=${encodeURIComponent(imageUrl)}`, { withCredentials: true })
+      .subscribe({
+        error: (err) => {
+          this.roomPhotoList.set(prev);
+          this.roomPhotoMessage.set(err.error?.message || err.error?.detail || 'Error al eliminar la foto.');
+          this.roomPhotoMsgType.set('error');
+        },
+      });
+  }
+
+  onRoomPhotoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || !this.roomPhotoRoomType() || !this.selectedPropId()) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    this.roomPhotoUploading.set(true);
+    this.roomPhotoMessage.set('');
+    this.roomPhotoMsgType.set('');
+
+    this.http
+      .post<{ ok?: boolean; image_url?: string; detail?: string }>(
+        `/api/management/properties/${this.selectedPropId()}/room-types/images/upload?room_type_id=${encodeURIComponent(this.roomPhotoRoomType())}`,
+        formData,
+        { withCredentials: true },
+      )
+      .subscribe({
+        next: (resp) => {
+          const ok = !resp.detail;
+          this.roomPhotoMessage.set(ok ? 'Foto subida correctamente.' : (resp.detail || 'Error.'));
+          this.roomPhotoMsgType.set(ok ? 'success' : 'error');
+          this.roomPhotoUploading.set(false);
+          input.value = '';
+          if (ok) this.roomPhotoListRes.reload();
+        },
+        error: (err) => {
+          this.roomPhotoMessage.set(err.error?.detail || err.error?.message || 'Error al subir la foto.');
+          this.roomPhotoMsgType.set('error');
+          this.roomPhotoUploading.set(false);
+          input.value = '';
+        },
+      });
   }
 }

@@ -82,9 +82,9 @@ def _dashboard_or_400(
 def portfolio_dashboard_api(
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
-    days: int = Query(default=180, ge=30, le=730),
+    days: int = Query(default=30, ge=30, le=730),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=5, ge=5, le=100),
     prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(VISTA_B_GATE),
 ) -> StrategicPortfolioResponse:
@@ -110,9 +110,9 @@ def hotel_dashboard_api(
     prop_id: int,
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
-    days: int = Query(default=180, ge=30, le=730),
+    days: int = Query(default=30, ge=30, le=730),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=5, ge=5, le=100),
     planes_page: int = Query(default=1, ge=1, alias="ppage"),
     current_user: dict = Depends(VISTA_A_GATE),
 ) -> StrategicHotelResponse:
@@ -137,9 +137,9 @@ def hotel_dashboard_api(
 def markets_dashboard_api(
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
-    days: int = Query(default=180, ge=30, le=730),
+    days: int = Query(default=30, ge=30, le=730),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=5, ge=5, le=100),
     current_user: dict = Depends(VISTA_B_GATE),
 ) -> StrategicMarketsResponse:
     """Vista B — mapa de mercados (IE-G04): matriz crecimiento × posición."""

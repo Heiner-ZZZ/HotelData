@@ -88,10 +88,18 @@ export interface HotelDetailDto {
   review_count: number;
   reviews: {
     review_id?: string;
+    // Campos canónicos (ficha pública enriquecida)
     reviewer_name?: string;
+    user_display_name?: string;
     review_score?: number;
+    rating?: number;
     review_text?: string;
+    comment?: string;
+    title?: string;
     created_at?: string;
+    updated_at?: string;
+    staff_response?: string | null;
+    moderation_status?: string;
   }[];
 }
 

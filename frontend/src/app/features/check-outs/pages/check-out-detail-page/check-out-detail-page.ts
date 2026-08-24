@@ -96,8 +96,7 @@ export class CheckOutDetailPageComponent {
     if (!id) return undefined;
     const propId = this.effectivePropId();
     if (propId > 0) return `/management/check-outs/${id}/detail?prop_id=${propId}`;
-    if (!this.propertyCtx.ready()) return undefined;
-    return `/management/check-outs/${id}/detail`;
+    return undefined;
   });
 
   /**

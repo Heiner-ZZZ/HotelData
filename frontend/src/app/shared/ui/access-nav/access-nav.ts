@@ -118,6 +118,7 @@ export class AccessNavComponent implements AfterViewInit {
     if (role === 'cliente') {
       items.push(
         { label: 'Mis reservas', href: '/account/bookings', icon: 'book_online' },
+        { label: 'Mis facturas', href: '/account/billing', icon: 'receipt_long' },
         { label: 'Perfil', href: '/account/profile', icon: 'person' }
       );
     }
@@ -140,7 +141,6 @@ export class AccessNavComponent implements AfterViewInit {
       icon: 'explore',
       items: [
         { label: 'Buscar hoteles', href: '/search', icon: 'search' },
-        { label: 'Hotel destacado', href: '/hotels/partner-1', icon: 'star' },
         { label: 'Reservas del viajero', href: '/account/bookings', icon: 'book_online', allowedRoles: ['cliente'] }
       ]
     },

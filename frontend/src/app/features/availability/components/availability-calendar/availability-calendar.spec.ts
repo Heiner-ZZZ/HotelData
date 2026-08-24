@@ -106,4 +106,51 @@ describe('AvailabilityCalendarComponent — contador de noches sin tarifa', () =
     ]);
     expect(summary(fixture)!.textContent).toContain('1 noche disponible sin tarifa');
   });
+
+  it('no cuenta noches pasadas sin tarifa — solo actuales y futuras (TDD)', () => {
+    // Hoy es 2026-08-23. Usamos agosto 2026 para tener pasado (20) y futuro (25).
+    // Este test necesita un calendario de agosto, no septiembre.
+    TestBed.configureTestingModule({ imports: [AvailabilityCalendarComponent] });
+    const fixture = TestBed.createComponent(AvailabilityCalendarComponent);
+    fixture.componentRef.setInput('calendar', buildCalendarMonth(2026, 7, [
+      inv({ date: '2026-08-20', hasRate: false }),
+      inv({ date: '2026-08-25', hasRate: false }),
+    ]));
+    fixture.componentRef.setInput('roomTypes', ROOM_TYPES);
+    fixture.componentRef.setInput('viewMode', 'month');
+    fixture.componentRef.setInput('layoutMode', 'scroll');
+    fixture.detectChanges();
+    const summ = (fixture.nativeElement as HTMLElement).querySelector('.cal-summary') as HTMLElement;
+    // Con el bug actual cuenta 2 (incluye pasado); debe ser 1
+    expect(summ.textContent).toContain('1 noche disponible sin tarifa');
+    expect(summ.textContent).not.toContain('2 noches');
+  });
+});
+
+describe('AvailabilityCalendarComponent — noches sin tarifa excluyen pasado (TDD visual)', () => {
+  function setup(items: AvailabilityInventoryItem[]) {
+    TestBed.configureTestingModule({ imports: [AvailabilityCalendarComponent] });
+    const fixture = TestBed.createComponent(AvailabilityCalendarComponent);
+    // Usamos agosto 2026 para tener días pasados (20) y futuros (25) respecto a hoy 2026-08-23
+    fixture.componentRef.setInput('calendar', buildCalendarMonth(2026, 7, items));
+    fixture.componentRef.setInput('roomTypes', ROOM_TYPES);
+    fixture.componentRef.setInput('viewMode', 'month');
+    fixture.componentRef.setInput('layoutMode', 'scroll');
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('no marca con cell-no-rate una noche pasada aunque tenga disponibilidad sin tarifa', () => {
+    const fixture = setup([
+      inv({ date: '2026-08-20', hasRate: false }),
+      inv({ date: '2026-08-25', hasRate: false }),
+    ]);
+    const cells = fixture.nativeElement.querySelectorAll('td.cal-td-cell');
+    const pastCell = [...cells].find((c) => (c as HTMLElement).getAttribute('title')?.startsWith('2026-08-20'));
+    const futureCell = [...cells].find((c) => (c as HTMLElement).getAttribute('title')?.startsWith('2026-08-25'));
+    expect(pastCell?.classList.contains('cell-no-rate')).toBe(false);
+    expect(pastCell?.querySelector('.cell-no-rate-dot')).toBeFalsy();
+    expect(futureCell?.classList.contains('cell-no-rate')).toBe(true);
+    expect(futureCell?.querySelector('.cell-no-rate-dot')).toBeTruthy();
+  });
 });

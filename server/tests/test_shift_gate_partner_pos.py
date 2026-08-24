@@ -110,6 +110,10 @@ def _seed_booking_hotel(db, prop_id: int, *, check_in: str, check_out: str) -> N
 
 
 def _seed_checked_in_booking(db, booking_id: str, prop_id: int) -> None:
+    # El gate prop-scoped resuelve el hotel por prop_id — la fila debe existir.
+    db.dim_hotels.insert_one(
+        {"prop_id": prop_id, "hotel_name": "Gate Hotel", "display_name": "Gate Hotel"}
+    )
     db.booking_orders.insert_one(
         {
             "booking_id": booking_id,
@@ -148,9 +152,9 @@ async def _post_partner_manual_reservation(client, prop_id: int):
     )
 
 
-async def _post_pos_charge(client, booking_id: str):
+async def _post_pos_charge(client, booking_id: str, prop_id: int):
     return await client.post(
-        f"/api/management/bookings/{booking_id}/pos-charge",
+        f"/api/management/bookings/{booking_id}/pos-charge?prop_id={prop_id}",
         json={"concept": "Minibar", "amount": 12.5},
     )
 
@@ -214,7 +218,7 @@ async def test_pos_charge_requires_shift(client, db, admin_user):
     booking_id = "BK-GATE-POS-1"
     _seed_checked_in_booking(db, booking_id, prop_id=983)
 
-    resp = await _post_pos_charge(client, booking_id)
+    resp = await _post_pos_charge(client, booking_id, prop_id=983)
 
     assert resp.status_code == 409, resp.text
     assert "turno de caja activo" in resp.json()["detail"]
@@ -227,7 +231,7 @@ async def test_pos_charge_blocked_with_expired_shift(client, db, admin_user):
     _seed_checked_in_booking(db, booking_id, prop_id=984)
     _open_shift(db, prop_id=984, expired=True)
 
-    resp = await _post_pos_charge(client, booking_id)
+    resp = await _post_pos_charge(client, booking_id, prop_id=984)
 
     assert resp.status_code == 409, resp.text
     assert "más de 12 horas" in resp.json()["detail"]
@@ -242,7 +246,7 @@ async def test_pos_charge_allowed_with_open_shift(client, db, admin_user):
     shift_id = _open_shift(db, prop_id=985)
     create_folio(booking_id, shift_id=str(shift_id))
 
-    resp = await _post_pos_charge(client, booking_id)
+    resp = await _post_pos_charge(client, booking_id, prop_id=985)
 
     assert resp.status_code == 201, resp.text
     assert db.additional_charges.count_documents({"booking_id": booking_id}) == 1

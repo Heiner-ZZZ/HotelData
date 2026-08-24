@@ -1046,6 +1046,220 @@ def cancel_invoice(
     return _enrich_invoice(doc) if doc else None
 
 
+def cancel_stay_invoice_for_no_stay(
+    booking_id: str,
+    *,
+    reason: str | None = None,
+    cancelled_by: str | None = None,
+) -> dict | None:
+    """Anula la factura de estadía de una reserva cuya estadía NO ocurrió.
+
+    Se dispara en no-show y cancelación (con o sin penalización): la factura
+    emitida al confirmar la reserva queda sin efecto — nunca debe mostrarse
+    como "pendiente de pago" un importe que ya no corresponde cobrar (la
+    penalización vive en el folio/registro de penalización, no en la factura
+    de la estadía).
+
+    Regla de seguridad: solo anula facturas ``issued`` SIN pagos confirmados.
+    Si el huésped ya pagó algo, la anulación no es automática (se gestiona
+    manualmente: reembolso o crédito). Idempotente: factura inexistente o ya
+    anulada → no-op (retorna None).
+    """
+    db = get_database()
+    inv = db[INVOICES].find_one(
+        {"booking_id": booking_id, "status": "issued"},
+        {"_id": 1, "invoice_number": 1},
+    )
+    if not inv:
+        return None
+    paid = db[PAYMENTS].find_one(
+        {"booking_id": booking_id, "status": "confirmed"},
+        {"_id": 1},
+    )
+    if paid:
+        return None
+    return cancel_invoice(
+        str(inv["_id"]),
+        cancel_reason=reason,
+        cancelled_by=cancelled_by or "lifecycle_no_stay",
+    )
+
+
+# Postings de folio que la factura principal NO cubre y que se facturan al
+# cierre del checkout (decisión B): noches extra de extensión, penalización de
+# salida anticipada y fee de late check-out.
+FOLIO_COMPLEMENT_REFERENCE_TYPES = ("extend_stay", "early_checkout_penalty", "late_checkout")
+
+
+def create_folio_postings_complement_invoice(
+    booking_id: str, *,
+    changed_by: str = "checkout",
+) -> dict | None:
+    """Emite el complemento fiscal (charges-only) de los postings de folio
+    que la factura principal no cubre.
+
+    Decisión de negocio (B): la factura final se realinea CONTRA EL FOLIO al
+    cierre del checkout. Los postings de ``extend_stay`` (noches extra),
+    ``early_checkout_penalty`` y ``late_checkout`` viven en el folio pero NO en
+    la factura principal → este complemento los factura con un TOTAL EXACTO al
+    posting del folio (misma convención tax-incluida que la factura principal:
+    subtotal = total / 1.16) — nunca un tercer número.
+
+    - Idempotente: misma snapshot de postings → devuelve la complementaria
+      existente. Snapshot cambiada antes del pago → reconstruye la proyección
+      en el lugar. Con pagos confirmados → ``ValueError`` (inmutable).
+    - ``complement_type='folio_postings'`` (distinto del ``'gap'`` de amenities)
+      y ``parent_invoice_id`` apunta a la factura principal.
+    - Sin gap (sin factura principal, sin folio o sin postings elegibles) →
+      retorna None.
+    """
+    from src.app.modules.billing.service.folio import FOLIO_COLLECTION
+    db = get_database()
+
+    main_inv = db[INVOICES].find_one(
+        {
+            "booking_id": booking_id,
+            "status": {"$ne": "cancelled"},
+            "split_type": {"$ne": "charges_only"},
+        },
+        {"_id": 1, "invoice_number": 1},
+    )
+    if main_inv is None:
+        return None
+
+    folio = db[FOLIO_COLLECTION].find_one({"booking_id": booking_id})
+    if not folio:
+        return None
+
+    postings = [
+        p
+        for p in (folio.get("postings") or [])
+        if isinstance(p, dict)
+        and p.get("type") == "charge"
+        and str(p.get("reference_type") or "") in FOLIO_COMPLEMENT_REFERENCE_TYPES
+        and float(p.get("amount", 0) or 0) > 0
+    ]
+    if not postings:
+        return None
+
+    snapshot = sorted(
+        (
+            {
+                "reference_type": str(p.get("reference_type") or ""),
+                "amount": round(float(p.get("amount", 0) or 0), 2),
+            }
+            for p in postings
+        ),
+        key=lambda s: (s["reference_type"], s["amount"]),
+    )
+    total = round(sum(s["amount"] for s in snapshot), 2)
+    subtotal = round(total / 1.16, 2)
+    taxes = round(total - subtotal, 2)
+
+    def _build_projection(invoice_number: str) -> dict:
+        return {
+            "subtotal": subtotal,
+            "room_subtotal": 0,
+            "extras_total": total,
+            "taxes": taxes,
+            "total": total,
+            "line_items": [
+                {
+                    "type": "folio_posting",
+                    "reference_type": p.get("reference_type", ""),
+                    "concept": p.get("concept") or p.get("reference_type", ""),
+                    "amount": round(float(p.get("amount", 0) or 0), 2),
+                    "quantity": int(p.get("quantity", 1) or 1),
+                    "total": round(float(p.get("amount", 0) or 0), 2),
+                }
+                for p in postings
+            ],
+            "folio_snapshot": snapshot,
+            "notes": (
+                f"Factura complementaria de postings de folio — "
+                f"{len(postings)} cargo(s) por ${total:.2f} no cubiertos por la factura principal"
+            ),
+            "ledger_posting_status": "pending",
+            "ledger_posting_error": None,
+            "updated_at": _now(),
+        }
+
+    # ── Idempotencia / reconstrucción de la proyección existente ──
+    existing = db[INVOICES].find_one(
+        {
+            "booking_id": booking_id,
+            "split_type": "charges_only",
+            "complement_type": "folio_postings",
+            "status": {"$ne": "cancelled"},
+        },
+        {"_id": 1, "folio_snapshot": 1, "status": 1, "invoice_number": 1},
+    )
+    if existing:
+        if existing.get("folio_snapshot") == snapshot:
+            return _enrich_invoice(db[INVOICES].find_one({"_id": existing["_id"]}))
+        if existing.get("status") in {"paid", "partially_paid", "refunded"} or db[PAYMENTS].find_one(
+            {"invoice_id": existing["_id"], "status": {"$in": ["confirmed", "refunded"]}},
+            {"_id": 1},
+        ):
+            raise ValueError(
+                "La factura complementaria de postings no puede reconstruirse después de pagos confirmados"
+            )
+        projection = _build_projection(existing.get("invoice_number", ""))
+        _update_both(INVOICES, FACT_INVOICES, existing["_id"], {"$set": projection})
+        try:
+            from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_invoice
+            db.ledger_transactions.delete_many({
+                "source": "invoice",
+                "source_id": existing.get("invoice_number", ""),
+            })
+            refreshed = db[INVOICES].find_one({"_id": existing["_id"]}) or {}
+            generate_ledger_from_invoice(refreshed, db=db)
+            ledger_status, ledger_error = "posted", None
+        except Exception as exc:
+            logger.exception("Failed to reconcile folio complement %s", existing.get("invoice_number"))
+            ledger_status, ledger_error = "failed", str(exc)
+        _update_both(INVOICES, FACT_INVOICES, existing["_id"], {"$set": {
+            "ledger_posting_status": ledger_status, "ledger_posting_error": ledger_error,
+        }})
+        return _enrich_invoice(db[INVOICES].find_one({"_id": existing["_id"]}))
+
+    # ── Nueva complementaria ──
+    inv_doc = {
+        "booking_id": booking_id,
+        "prop_id": int(folio.get("prop_id", 0) or 0),
+        "hotel_id": resolve_hotel_id(int(folio.get("prop_id", 0) or 0)),
+        "invoice_number": _generate_invoice_number(),
+        "status": "issued",
+        "split_type": "charges_only",
+        "complement_type": "folio_postings",
+        "parent_invoice_id": str(main_inv["_id"]),
+        **{
+            k: v
+            for k, v in _build_projection("").items()
+            if k not in ("ledger_posting_status", "ledger_posting_error", "updated_at")
+        },
+        "issued_at": _now(),
+        "paid_at": None,
+    }
+    _write_both(INVOICES, FACT_INVOICES, inv_doc)
+
+    ledger_status = "posted"
+    ledger_error = None
+    try:
+        from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_invoice
+        generate_ledger_from_invoice(inv_doc, db=db)
+    except Exception as exc:
+        ledger_status, ledger_error = "failed", str(exc)
+        logger.exception("Failed to generate ledger for folio complement %s", inv_doc.get("invoice_number"))
+    db[INVOICES].update_one({"invoice_number": inv_doc["invoice_number"]}, {"$set": {
+        "ledger_posting_status": ledger_status, "ledger_posting_error": ledger_error, "updated_at": _now(),
+    }})
+    db[FACT_INVOICES].update_one({"invoice_number": inv_doc["invoice_number"]}, {"$set": {
+        "ledger_posting_status": ledger_status, "ledger_posting_error": ledger_error, "updated_at": _now(),
+    }})
+    return _enrich_invoice(db[INVOICES].find_one({"invoice_number": inv_doc["invoice_number"]}))
+
+
 def repair_cancelled_or_refunded_invoice(
     invoice_id: str,
     *,

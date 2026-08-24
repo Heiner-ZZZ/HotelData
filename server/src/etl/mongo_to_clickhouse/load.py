@@ -305,10 +305,44 @@ def create_tables(
     return result
 
 
+def coerce_date_column(rows: list[list[Any]], table_name: str) -> list[list[Any]]:
+    """Reconvierte la primera columna (``date``/``month``) a ``datetime.date``.
+
+    El pipeline persiste el transformado como JSON entre stages
+    (``write_json_file`` → ``read_json_file``) y ``_json_default`` convierte
+    las fechas a strings ISO. clickhouse_connect exige la columna Date como
+    ``datetime.date``; sin esta coerción el INSERT falla con
+    ``TypeError: unsupported operand type(s) for -: 'str' and 'datetime.date'``.
+    ``table_name`` documenta la intención (la primera columna es siempre la
+    columna de fecha) y permite ampliar a más columnas si un esquema futuro
+    tiene varias fechas.
+    """
+    from datetime import date as _date
+    from datetime import datetime as _datetime
+
+    if not rows:
+        return rows
+
+    def _coerce(value: Any) -> Any:
+        if isinstance(value, _datetime):
+            return value.date()
+        if isinstance(value, _date):
+            return value
+        if isinstance(value, str) and value:
+            try:
+                return _date.fromisoformat(value.split("T")[0])
+            except ValueError:
+                return value  # no es una fecha: se conserva (fallará si es columna Date)
+        return value
+
+    return [[_coerce(row[0]) if i == 0 else v for i, v in enumerate(row)] for row in rows]
+
+
 def load_table(client, database: str, table_name: str, columns: list[str], rows: list[list[Any]]) -> int:
     """Inserta filas transformadas en la tabla (batch). Devuelve el número de filas."""
     if not rows:
         return 0
+    rows = coerce_date_column(rows, table_name)
     inserted = 0
     for start in range(0, len(rows), INSERT_BATCH_SIZE):
         batch = rows[start : start + INSERT_BATCH_SIZE]

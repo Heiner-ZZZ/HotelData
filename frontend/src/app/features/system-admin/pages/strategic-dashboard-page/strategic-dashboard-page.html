@@ -102,7 +102,7 @@
             </div>
 
             <!-- Z-2 · KPIs estratégicos del hotel (summary.kpis) -->
-            <section class="strd-kpi-strip" aria-label="KPIs estratégicos del hotel">
+            <section class="strd-kpi-strip" aria-label="KPIs estratégicos del hotel" tabindex="0">
               @for (kpi of h.summary.kpis; track kpi.id) {
                 <article class="strd-card strd-kpi-card">
                   <div class="strd-kpi-top">
@@ -110,23 +110,34 @@
                     <span class="strd-kpi-label">{{ kpi.label }}</span>
                   </div>
                   <strong class="strd-kpi-value">{{ kpi.value | number:'1.0-2' }}<small>{{ kpi.unit }}</small></strong>
-                  <span class="strd-kpi-trend" [class]="'trend-' + kpi.trend">
-                    @if (kpi.trend === 'up') {
-                      <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
-                    } @else if (kpi.trend === 'down') {
-                      <span class="material-symbols-outlined" aria-hidden="true">trending_down</span>
-                    } @else {
-                      <span class="material-symbols-outlined" aria-hidden="true">trending_flat</span>
-                    }
-                    {{ kpi.pctChange > 0 ? '+' : '' }}{{ kpi.pctChange | number:'1.1-1' }}%
-                  </span>
+                  @if (kpi.hasPrev) {
+                    <span class="strd-kpi-trend" [class]="'trend-' + kpi.trend" title="Variación vs. período anterior">
+                      @if (kpi.trend === 'up') {
+                        <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
+                      } @else if (kpi.trend === 'down') {
+                        <span class="material-symbols-outlined" aria-hidden="true">trending_down</span>
+                      } @else {
+                        <span class="material-symbols-outlined" aria-hidden="true">trending_flat</span>
+                      }
+                      {{ kpi.pctChange > 0 ? '+' : '' }}{{ kpi.pctChange | number:'1.1-1' }}%
+                    </span>
+                  } @else {
+                    <span
+                      class="strd-kpi-trend trend-na"
+                      title="Sin datos del período anterior para comparar"
+                      aria-label="Sin datos del período anterior para comparar"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">remove</span>
+                      <span>Sin comparación</span>
+                    </span>
+                  }
                   <small class="strd-kpi-detail">{{ kpi.detail }}</small>
                 </article>
               }
             </section>
 
-            <!-- Z-3 · Serie mensual del hotel (IE-H01) -->
-            <section class="strd-chart-row">
+            <!-- Z-3 · Dos gráficos lado a lado (IE-H01): serie + revenue por plan -->
+            <section class="strd-chart-row charts">
               <app-kpi-chart
                 title="Evolución mensual del hotel (IE-H01)"
                 [labels]="h.serie.labels"
@@ -138,9 +149,21 @@
                 exportFilename="serie-hotel-{{ h.propId }}"
                 [borderless]="true"
               />
+              <app-kpi-chart
+                title="Revenue neto por tipo de habitación"
+                [labels]="hotelPlanesLabels()"
+                [datasets]="[{ label: 'Revenue neto (USD)', data: hotelPlanesData() }]"
+                type="bar"
+                [showLegend]="false"
+                [height]="240"
+                [showExport]="canExport()"
+                exportFilename="planes-hotel-{{ h.propId }}"
+                [borderless]="true"
+              />
             </section>
 
-            <!-- Z-4 · Tabla de registros mensuales (IE-H01) -->
+            <!-- Z-4 · Dos tablas de registros al final (IE-H01) -->
+            <section class="strd-table-grid">
             <section class="strd-card strd-table-card">
               <div class="strd-table-head">
                 <div>
@@ -197,18 +220,6 @@
             </section>
 
             <!-- Z-5 · Rentabilidad por plan (IE-H01) -->
-            <section class="strd-chart-row">
-              <app-kpi-chart
-                title="Revenue neto por tipo de habitación"
-                [labels]="hotelPlanesLabels()"
-                [datasets]="[{ label: 'Revenue neto (USD)', data: hotelPlanesData() }]"
-                type="bar"
-                [showLegend]="false"
-                [height]="240"
-                [showExport]="canExport()"
-                exportFilename="planes-hotel-{{ h.propId }}"
-                [borderless]="true"
-              />
               <section class="strd-card strd-table-card planes">
                 <div class="strd-table-head">
                   <div>
@@ -276,7 +287,7 @@
                 </div>
 
                 <!-- Z-1 · KPIs de posicionamiento (cajas separadas) -->
-                <section class="strd-kpi-strip" aria-label="KPIs de posicionamiento">
+                <section class="strd-kpi-strip" aria-label="KPIs de posicionamiento" tabindex="0">
                   @for (kpi of posicionamientoKpis(); track kpi.id) {
                     <article class="strd-card strd-kpi-card">
                       <div class="strd-kpi-top">
@@ -284,16 +295,27 @@
                         <span class="strd-kpi-label">{{ kpi.label }}</span>
                       </div>
                       <strong class="strd-kpi-value">{{ kpi.value | number:'1.0-2' }}<small>{{ kpi.unit }}</small></strong>
-                      <span class="strd-kpi-trend" [class]="'trend-' + kpi.trend">
-                        @if (kpi.trend === 'up') {
-                          <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
-                        } @else if (kpi.trend === 'down') {
-                          <span class="material-symbols-outlined" aria-hidden="true">trending_down</span>
-                        } @else {
-                          <span class="material-symbols-outlined" aria-hidden="true">trending_flat</span>
-                        }
-                        {{ kpi.pctChange > 0 ? '+' : '' }}{{ kpi.pctChange | number:'1.1-1' }}%
-                      </span>
+                      @if (kpi.hasPrev) {
+                        <span class="strd-kpi-trend" [class]="'trend-' + kpi.trend" title="Variación vs. período anterior">
+                          @if (kpi.trend === 'up') {
+                            <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
+                          } @else if (kpi.trend === 'down') {
+                            <span class="material-symbols-outlined" aria-hidden="true">trending_down</span>
+                          } @else {
+                            <span class="material-symbols-outlined" aria-hidden="true">trending_flat</span>
+                          }
+                          {{ kpi.pctChange > 0 ? '+' : '' }}{{ kpi.pctChange | number:'1.1-1' }}%
+                        </span>
+                      } @else {
+                        <span
+                          class="strd-kpi-trend trend-na"
+                          title="Sin datos del período anterior para comparar"
+                          aria-label="Sin datos del período anterior para comparar"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">remove</span>
+                          <span>Sin comparación</span>
+                        </span>
+                      }
                       <small class="strd-kpi-detail">{{ kpi.detail }}</small>
                     </article>
                   }
@@ -439,7 +461,7 @@
           </div>
 
           <!-- Z-1 · KPIs estratégicos de la cartera (summary.kpis) -->
-          <section class="strd-kpi-strip" aria-label="KPIs estratégicos de la cartera">
+          <section class="strd-kpi-strip" aria-label="KPIs estratégicos de la cartera" tabindex="0">
             <article class="strd-card strd-score-card">
               <span class="strd-kpi-eyebrow">Hoteles activos</span>
               <strong class="strd-score-value">{{ p.summary.hoteles }}</strong>
@@ -511,7 +533,7 @@
             </div>
 
             <!-- Z-1 · KPIs por ranking (cajas separadas) -->
-            <section class="strd-kpi-strip" aria-label="KPIs de rankings">
+            <section class="strd-kpi-strip" aria-label="KPIs de rankings" tabindex="0">
               @for (kpi of rankingsKpis(); track kpi.id) {
                 <article class="strd-card strd-kpi-card">
                   <div class="strd-kpi-top">
@@ -725,7 +747,7 @@
               </div>
 
               <!-- KPIs de demanda -->
-              <section class="strd-kpi-strip" aria-label="KPIs de demanda">
+              <section class="strd-kpi-strip" aria-label="KPIs de demanda" tabindex="0">
                 @for (kpi of m.summary.kpis; track kpi.id) {
                   <article class="strd-card strd-kpi-card">
                     <div class="strd-kpi-top">

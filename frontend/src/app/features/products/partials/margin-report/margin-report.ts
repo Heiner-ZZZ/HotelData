@@ -9,6 +9,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ProductsAuthService } from '../../services/products-auth.service';
 import { ReportApiService } from '../../services/report-api.service';
+import { ProductsSectionNavComponent } from '../products-section-nav/products-section-nav';
 import type { MarginReportDto } from '../../models/products-report.dto';
 
 @Component({
@@ -21,6 +22,7 @@ import type { MarginReportDto } from '../../models/products-report.dto';
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    ProductsSectionNavComponent,
   ],
   templateUrl: './margin-report.html',
   styleUrl: './margin-report.scss',

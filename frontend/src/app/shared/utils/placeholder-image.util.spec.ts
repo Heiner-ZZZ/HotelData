@@ -1,4 +1,5 @@
 import {
+  hotelGalleryImages,
   placeholderImageUrl,
   placeholderOrFallback,
   roomPlaceholderUrl,
@@ -58,5 +59,51 @@ describe('placeholderOrFallback', () => {
       expect(url.startsWith('https://loremflickr.com/')).toBe(true);
       expect(url).toContain('/hotel,room?lock=');
     }
+  });
+});
+
+describe('hotelGalleryImages — centralizado para /welcome y /search (TDD)', () => {
+  it('genera 3 placeholders distintos por hotel (no 3 iguales)', () => {
+    const gallery = hotelGalleryImages(1, null, 3);
+    expect(gallery.length).toBe(3);
+    // Las 3 deben ser URLs loremflickr distintas (mismo hotel, locks distintos)
+    expect(new Set(gallery).size).toBe(3);
+    expect(gallery.every((u) => u.startsWith('https://loremflickr.com/'))).toBe(true);
+    // No debe colapsar a la misma URL
+    expect(gallery[0]).not.toBe(gallery[1]);
+    expect(gallery[1]).not.toBe(gallery[2]);
+  });
+
+  it('placeholders usan tags distintos para variedad visual real (room/bedroom/living...) — no 3× hotel,room idénticos', () => {
+    const gallery = hotelGalleryImages(1, null, 3);
+    const tags = gallery.map((u) => u.match(/hotel,[^?]+/)?.[0] ?? '');
+    // Con el bug actual (3× mismo tag) este Set sería 1; debe ser 3
+    expect(new Set(tags).size).toBe(3);
+    expect(tags[0]).toContain('hotel,room');
+    expect(tags[1]).toContain('hotel,bedroom');
+    expect(tags[2]).toContain('hotel,living');
+  });
+
+  it('es determinista y compartido: mismo prop_id da misma galería en welcome y search', () => {
+    const a = hotelGalleryImages(42, null, 3);
+    const b = hotelGalleryImages(42, null, 3);
+    expect(a).toEqual(b);
+    // Hoteles distintos no colisionan
+    expect(hotelGalleryImages(1, null, 3)).not.toEqual(hotelGalleryImages(2, null, 3));
+  });
+
+  it('incluye la imagen real primero si existe, luego los placeholders', () => {
+    const withReal = hotelGalleryImages(7, 'https://cdn.test/real.jpg', 3);
+    expect(withReal.length).toBe(4);
+    expect(withReal[0]).toBe('https://cdn.test/real.jpg');
+    expect(withReal.slice(1).every((u) => u.startsWith('https://loremflickr.com/'))).toBe(true);
+    const withoutReal = hotelGalleryImages(7, null, 3);
+    expect(withoutReal.length).toBe(3);
+  });
+
+  it('respeta el count pedido y el tamaño', () => {
+    expect(hotelGalleryImages(1, null, 2).length).toBe(2);
+    expect(hotelGalleryImages(1, 'https://cdn.test/real.jpg', 2).length).toBe(3);
+    expect(hotelGalleryImages(1, null, 3, 800, 400)[0]).toContain('/800/400/');
   });
 });

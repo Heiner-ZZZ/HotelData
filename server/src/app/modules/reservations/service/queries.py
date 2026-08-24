@@ -187,6 +187,83 @@ def list_bookings(
     })
 
 
+def list_past_stays(
+    *,
+    prop_id: int | None = None,
+    limit: int = 12,
+    user: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Estadías pasadas del huésped, en modo lectura (zona sin acciones).
+
+    Devuelve los bookings TERMINADOS del usuario: check-outs completados,
+    no-shows y reservas cuyas fechas ya vencieron. Cada item lleva
+    ``read_only_reason`` (server-authoritative) que explica por qué la zona
+    no ofrece acciones:
+
+    - ``no_show``      → marcada como No Show (no se presentó en el check-in).
+    - ``dates_passed`` → las fechas de la estadía ya pasaron.
+
+    Scope: el ``cliente`` ve SOLO sus reservas (FK ``user_id``); el staff
+    conserva su filtro multi-hotel canónico. Canceladas/rechazadas quedan
+    fuera: no son estadías.
+    """
+    db = get_database()
+    today_str = local_today()
+    filters: dict[str, Any] = {
+        "status": {"$nin": ["cancelled", "rejected"]},
+        "$or": [
+            {"stay_status": {"$in": ["checked_out", "no_show"]}},
+            {"check_out_date": {"$lt": today_str}},
+        ],
+    }
+    if prop_id:
+        filters["prop_id"] = prop_id
+    if user and get_role_name(user) == "cliente":
+        uid = user.get("_id")
+        if uid:
+            # Mismo hardening ObjectId que list_bookings: el FK canónico es
+            # BSON; un string heredado no matchearía a su dueño.
+            if isinstance(uid, str) and ObjectId.is_valid(uid):
+                uid = ObjectId(uid)
+            filters["user_id"] = uid
+    else:
+        user_filter = hotel_filter_from_user(user)
+        if user_filter:
+            filters.update(user_filter)
+
+    docs = list(
+        db.booking_orders.find(filters)
+        .sort([("check_out_date", DESCENDING), ("created_at", DESCENDING)])
+        .limit(max(1, min(limit, 50)))
+    )
+    items: list[dict[str, Any]] = []
+    for b in docs:
+        stay = str(b.get("stay_status") or "").strip().lower()
+        reason = "no_show" if stay == "no_show" else "dates_passed"
+        context = (
+            hotel_booking_context(int(b["prop_id"]))
+            if b.get("prop_id") is not None else {}
+        )
+        items.append({
+            "booking_id": b.get("booking_id", ""),
+            "prop_id": int(b.get("prop_id") or 0),
+            "hotel_label": context.get("hotel_label") or f"Hotel {b.get('prop_id')}",
+            "guest_name": b.get("guest_name", ""),
+            "check_in_date": str(b.get("check_in_date") or ""),
+            "check_out_date": str(b.get("check_out_date") or ""),
+            "total_price": float(b["total_price"]) if b.get("total_price") is not None else None,
+            "currency": b.get("currency") or "USD",
+            "status": str(b.get("status") or ""),
+            "stay_status": stay,
+            "read_only_reason": reason,
+            "no_show_penalty_amount": (
+                float(b["no_show_penalty_amount"])
+                if b.get("no_show_penalty_amount") is not None else None
+            ),
+        })
+    return {"items": _json_safe(items)}
+
+
 def list_reservation_dates(*, prop_id: int | None = None, user: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Return distinct created_at dates with booking count, optionally filtered by property."""
     """Return distinct created_at dates with booking count, optionally filtered by property."""
@@ -263,6 +340,15 @@ def _build_price_breakdown(
     1. Attempts to fetch actual per-night rates from hotel_rate_calendar.
     2. Falls back to deriving from total_price / total_nights.
     Returns None if no pricing data is available.
+
+    Invariante de consistencia (regresión no-show/desglose): el ``total`` del
+    desglose SIEMPRE es el precio final de la reserva (el mismo que ve la
+    factura y el resumen financiero). El IVA se muestra como split de
+    presentación idéntico al de la factura (subtotal = total / 1.16); nunca
+    se suma IVA ENCIMA de un total que ya lo incluye. El total a cobrar se
+    calcula con la misma lógica de ``_calculate_total_price``: las tarifas
+    del calendario son brutas cuando el plan tiene IVA incluido y netas
+    cuando no (entonces se suma la tasa del plan).
     """
     if not check_in_date or not check_out_date or not total_nights:
         return None
@@ -280,20 +366,59 @@ def _build_price_breakdown(
     if room_type_id:
         rate_query["room_type_id"] = room_type_id
     calendar_rates = list(
-        db.hotel_rate_calendar.find(rate_query, {"_id": 0, "date": 1, "rate_amount": 1}).sort("date", 1)
+        db.hotel_rate_calendar.find(rate_query, {"_id": 0, "date": 1, "rate_amount": 1, "rate_plan_id": 1, "tax_included": 1, "tax_rate": 1}).sort("date", 1)
     )
+
+    def _resolve_tax_settings() -> tuple[bool, float]:
+        """Mismo lookup que ``_calculate_total_price``: plan + overrides por fecha."""
+        tax_included = False
+        tax_rate = 0.0
+        if calendar_rates:
+            rpid = calendar_rates[0].get("rate_plan_id") or ""
+            if rpid:
+                plan = db.rate_plans.find_one(
+                    {"rate_plan_id": rpid},
+                    {"_id": 0, "tax_included": 1, "tax_rate": 1},
+                )
+                if plan:
+                    tax_included = bool(plan.get("tax_included", False))
+                    tax_rate = float(plan.get("tax_rate") or 0)
+            first_record_tax = calendar_rates[0].get("tax_included")
+            first_record_tax_rate = calendar_rates[0].get("tax_rate")
+            if first_record_tax is not None:
+                tax_included = bool(first_record_tax)
+            if first_record_tax_rate is not None:
+                tax_rate = float(first_record_tax_rate)
+        return tax_included, tax_rate
+
+    def _split_total(total: float) -> tuple[float, float]:
+        """Split de presentación igual al de la factura: subtotal = total/1.16.
+
+        El IVA mostrado queda embebido en el total final (el huésped paga
+        ``total``), nunca se suma encima. 16% fijo de display, igual que
+        ``generate_invoice_for_booking``.
+        """
+        subtotal = round(total / 1.16, 2)
+        taxes = round(total - subtotal, 2)
+        return subtotal, taxes
 
     if calendar_rates and len(calendar_rates) == len(date_list):
         # All rates found in calendar
+        tax_included, tax_rate = _resolve_tax_settings()
         nights = []
-        subtotal = 0.0
+        base = 0.0
         for cr in calendar_rates:
             night_total = float(cr["rate_amount"]) * rooms
             nights.append({"date": cr["date"], "rate": float(cr["rate_amount"]), "rooms": rooms, "night_total": round(night_total, 2)})
-            subtotal += night_total
-        subtotal = round(subtotal, 2)
-        taxes = round(subtotal * 0.16, 2)
-        total = round(subtotal + taxes, 2)
+            base += night_total
+        base = round(base, 2)
+        # Total final a cobrar: tarifas brutas si el IVA va incluido; si el
+        # plan NO lo incluye y tiene tasa, se suma la tasa del plan.
+        if not tax_included and tax_rate > 0:
+            total = round(base * (1 + tax_rate / 100), 2)
+        else:
+            total = base
+        subtotal, taxes = _split_total(total)
         return {
             "nights": nights,
             "subtotal": subtotal,
@@ -304,17 +429,16 @@ def _build_price_breakdown(
             "source": "calendar",
         }
     elif total_price and total_price > 0:
-        # Derive from total_price
+        # Derive from total_price — que es el precio FINAL. Nunca sumarle IVA
+        # encima: eso duplicaba el impuesto y el desglose decía $218.08 cuando
+        # la factura decía $188.00 (regresión no-show).
         rate_per_night = round(total_price / total_nights, 2)
         nights = []
-        subtotal = 0.0
         for d in date_list:
             night_total = rate_per_night
             nights.append({"date": d, "rate": rate_per_night, "rooms": rooms, "night_total": round(night_total, 2)})
-            subtotal += night_total
-        subtotal = round(subtotal, 2)
-        taxes = round(subtotal * 0.16, 2)
-        total = round(subtotal + taxes, 2)
+        total = round(total_price, 2)
+        subtotal, taxes = _split_total(total)
         return {
             "nights": nights,
             "subtotal": subtotal,
@@ -381,6 +505,17 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
             "issued_at": invoice.get("issued_at").isoformat() if invoice.get("issued_at") else None,
             "paid_at": invoice.get("paid_at").isoformat() if invoice.get("paid_at") else None,
         }
+
+    # Folio de penalización por no-show: fuente de verdad del importe a cobrar
+    # cuando el huésped no se presentó (la factura de la estadía queda como
+    # referencia, NO como monto pendiente). ``process_no_show`` crea el folio
+    # con la penalización de la primera noche; aquí solo se expone el número
+    # para que el detalle muestre el importe correcto.
+    no_show_folio_number = None
+    if booking.get("stay_status") == "no_show":
+        _folio = db.guest_folios.find_one({"booking_id": booking_id}, {"folio_number": 1})
+        if _folio:
+            no_show_folio_number = _folio.get("folio_number")
 
     # Room type
     room_type = _lookup_room_type(db, booking.get("room_type_id", ""), int(booking.get("prop_id", 0)))
@@ -476,6 +611,7 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
         "manual": manual,
         "hotel": hotel_booking_context(int(booking["prop_id"])) if booking.get("prop_id") is not None else None,
         "invoice": invoice_data,
+        "no_show_folio_number": no_show_folio_number,
         "room_type": room_type,
         "price_breakdown": price_breakdown,
         "cancellation_policy": cancellation_policy,

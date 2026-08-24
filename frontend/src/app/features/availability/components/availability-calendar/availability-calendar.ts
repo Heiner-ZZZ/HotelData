@@ -85,12 +85,15 @@ export class AvailabilityCalendarComponent {
   /**
    * Noches ÚNICAS del rango con disponibilidad pero sin tarifa abierta
    * (no vendibles en el search público) — contador resumen del pie.
+   * Solo noches actuales y futuras; las pasadas ya no son vendibles y
+   * no deben inflar el contador ni la información del calendario.
    */
   readonly noRateNights = computed(() => {
     const cal = this.calendar();
     if (!cal) return 0;
     const dates = new Set<string>();
     for (const day of cal.days) {
+      if (day.isPast) continue;
       const hasNoRate = day.roomTypes.some(
         (cell) => cell.availableRooms > 0 && cell.hasRate === false,
       );

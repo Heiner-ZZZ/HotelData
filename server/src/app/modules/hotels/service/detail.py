@@ -150,12 +150,85 @@ def _hotel_content_for_detail(prop_id: int) -> dict[str, Any] | None:
 
 
 def _hotel_reviews_for_detail(prop_id: int, limit: int = 5) -> list[dict[str, Any]]:
+    """Reseñas verificadas para la ficha pública del hotel.
+
+    Solo ``moderation_status=approved``, ordenadas por fecha real de
+    creación (más recientes primero) con desempate por ``_id`` para no
+    depender de timestamps idénticos del seed. Cada documento se enriquece
+    con ``reviewer_name`` (display_name del usuario), ``review_score``,
+    ``review_text`` y fechas ISO, para que el mapper del frontend
+    (``hotel-detail.mapper.ts``) no caiga en ``Anónimo``/``0``.
+    """
+    from datetime import datetime, timezone
+
+    from bson import ObjectId
+
     db = get_database()
-    return list(
-        db.reviews.find({"prop_id": prop_id}, {"_id": 0})
-        .sort([("created_at", -1)])
+    raw = list(
+        db.reviews.find({"prop_id": prop_id, "moderation_status": "approved"})
+        .sort([("created_at", -1), ("_id", -1)])
         .limit(limit)
     )
+    out: list[dict[str, Any]] = []
+    for doc in raw:
+        # --- resolver nombre del huésped ---
+        reviewer_name = "Huésped"
+        user_id = doc.get("user_id")
+        if user_id:
+            try:
+                oid = ObjectId(str(user_id))
+                user = db.users.find_one({"_id": oid}, {"display_name": 1, "username": 1})
+                if user:
+                    reviewer_name = user.get("display_name") or user.get("username") or "Huésped"
+            except Exception:
+                reviewer_name = "Huésped"
+
+        # --- normalizar fechas a ISO (robusto ante string "YYYY-MM-DD HH:MM:SS.mmmmmm") ---
+        def _to_iso(val: Any) -> str:
+            if isinstance(val, datetime):
+                return val.astimezone(timezone.utc).isoformat() if val.tzinfo else val.replace(tzinfo=timezone.utc).isoformat()
+            if isinstance(val, str) and val:
+                # "2026-07-24 03:18:22.221000" → "2026-07-24T03:18:22.221000+00:00"
+                try:
+                    # intenta parsear como ISO con espacio
+                    dt = datetime.fromisoformat(val.replace(" ", "T"))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    return dt.isoformat()
+                except Exception:
+                    return val
+            return ""
+
+        created_iso = _to_iso(doc.get("created_at"))
+        updated_iso = _to_iso(doc.get("updated_at"))
+
+        rating = doc.get("rating")
+        try:
+            review_score = int(rating) if rating is not None else 0
+        except Exception:
+            review_score = 0
+
+        title = (doc.get("title") or "").strip()
+        comment = (doc.get("comment") or "").strip()
+        # Texto público: comentario si existe, si no título; nunca vacío si hay título
+        review_text = comment or title
+
+        out.append({
+            "review_id": str(doc.get("_id", "")),
+            "prop_id": doc.get("prop_id"),
+            "reviewer_name": reviewer_name,
+            "user_display_name": reviewer_name,
+            "review_score": review_score,
+            "rating": review_score,
+            "review_text": review_text,
+            "comment": comment,
+            "title": title,
+            "created_at": created_iso,
+            "updated_at": updated_iso,
+            "moderation_status": doc.get("moderation_status"),
+            "staff_response": doc.get("staff_response"),
+        })
+    return out
 
 
 def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
@@ -193,8 +266,9 @@ def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
     item["hotel_images"] = _hotel_images_for_detail(prop_id)
     item["hotel_content"] = _hotel_content_for_detail(prop_id)
     item["reviews"] = _hotel_reviews_for_detail(prop_id)
-    reviews_full = list(db.reviews.find({"prop_id": prop_id}).limit(0))
-    item["review_count"] = len(reviews_full) if reviews_full else db.reviews.count_documents({"prop_id": prop_id})
+    # Contador público: solo reseñas verificadas (approved), coherente con
+    # GET /api/hotels/{prop_id}/reviews y con la ficha pública.
+    item["review_count"] = db.reviews.count_documents({"prop_id": prop_id, "moderation_status": "approved"})
     return item
 
 

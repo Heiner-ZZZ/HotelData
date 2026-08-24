@@ -201,6 +201,14 @@ export class StaffInboxPageComponent {
   // Booking context for quick-request creation
   readonly selectedBookingId = signal<string | null>(null);
 
+  /** Conversation selected in the sidebar (drives the chat header attribution). */
+  readonly selectedConversation = computed(() =>
+    this.conversations().find((c) => c._id === this.selectedRoom()) ?? null,
+  );
+
+  /** Guest name of the open chat, shown real-chat style next to the room. */
+  readonly selectedGuestName = computed(() => this.selectedConversation()?.guest_name ?? '');
+
   // Sessions tab
   readonly sessions = signal<StaySession[]>([]);
   readonly sessionsLoading = signal(false);
@@ -353,8 +361,13 @@ export class StaffInboxPageComponent {
   // ── Data loading ──
 
   private loadData(): void {
+    // El backend exige prop_id >= 1 (Query ge=1): sin propiedad seleccionada
+    // aún no hay nada que pedir — el effect de auto-selección (o el usuario)
+    // disparará la carga cuando haya un id real.
+    const propId = this.selectedPropId();
+    if (!propId) return;
+
     this.loading.set(true);
-    const propId = this.selectedPropId() ?? undefined;
 
     this.api.listConversations(propId).subscribe({
       next: (res) => {
@@ -773,7 +786,8 @@ export class StaffInboxPageComponent {
   }
 
   private refreshData(): void {
-    const propId = this.selectedPropId() ?? undefined;
+    const propId = this.selectedPropId();
+    if (!propId) return;
     this.api.listConversations(propId).subscribe({
       next: (res) => this.conversations.set(res.conversations),
     });

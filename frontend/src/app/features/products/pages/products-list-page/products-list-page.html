@@ -18,23 +18,10 @@
           <span>Nuevo producto</span>
         </button>
       }
-
-      @if (canSeeCost()) {
-        <a routerLink="reports/margin" [queryParams]="{ prop_id: selectedPropId() }" class="btn-secondary">
-          <span class="material-symbols-outlined">trending_up</span>
-          <span>Margen</span>
-        </a>
-        <a routerLink="reports/cogs" [queryParams]="{ prop_id: selectedPropId() }" class="btn-secondary">
-          <span class="material-symbols-outlined">receipt_long</span>
-          <span>COGS</span>
-        </a>
-        <a routerLink="reports/stock-value" [queryParams]="{ prop_id: selectedPropId() }" class="btn-secondary">
-          <span class="material-symbols-outlined">warehouse</span>
-          <span>Valor stock</span>
-        </a>
-      }
     </div>
   </app-page-header>
+
+  <app-products-section-nav />
 
   <!-- Toolbar (solo con hotel seleccionado) -->
   @if (selectedPropId()) {

@@ -44,9 +44,6 @@ FEATURED_GEO: list[dict[str, Any]] = [
         "hotel_label": "Hotel Lima Centro",
         "prop_country_id": 219,  # Perú (dim_visitor_countries)
         "country_label": "Perú",
-        "geo_country_code": "PE",
-        "geo_country_name": "Perú",
-        "geo_country_iso": "PER",
         "destination": "Lima",  # srch_destination_id=89
         "city": "Lima",
         "prop_starrating": 4,
@@ -69,10 +66,6 @@ FEATURED_GEO: list[dict[str, Any]] = [
         "hotel_label": "Resort Cancún Playa",
         "prop_country_id": 148,  # México (dim_visitor_countries)
         "country_label": "México",
-        "geo_country_code": "MX",
-        "geo_country_name": "México",
-        "geo_country_iso": "MEX",
-        "geo_city_code": "CUN",  # existe en geo_catalog
         "destination": "Cancún",  # srch_destination_id=311
         "city": "Cancún",
         "prop_starrating": 5,
@@ -94,9 +87,6 @@ FEATURED_GEO: list[dict[str, Any]] = [
         "hotel_label": "Hotel Quito Histórico",
         "prop_country_id": 60,  # Ecuador (dim_visitor_countries)
         "country_label": "Ecuador",
-        "geo_country_code": "EC",  # se agrega a geo_catalog si no existe
-        "geo_country_name": "Ecuador",
-        "geo_country_iso": "ECU",
         "destination": None,  # Quito NO está en dim_destinations
         "city": "Quito",
         "prop_starrating": 3,
@@ -118,9 +108,6 @@ FEATURED_GEO: list[dict[str, Any]] = [
         "hotel_label": "Hotel Buenos Aires Elegance",
         "prop_country_id": 13,  # Argentina (dim_visitor_countries)
         "country_label": "Argentina",
-        "geo_country_code": "AR",
-        "geo_country_name": "Argentina",
-        "geo_country_iso": "ARG",
         "destination": "Buenos Aires",  # srch_destination_id=7
         "city": "Buenos Aires",
         "prop_starrating": 4,
@@ -142,9 +129,6 @@ FEATURED_GEO: list[dict[str, Any]] = [
         "hotel_label": "Hotel Santiago Business",
         "prop_country_id": 44,  # Chile (dim_visitor_countries)
         "country_label": "Chile",
-        "geo_country_code": "CL",
-        "geo_country_name": "Chile",
-        "geo_country_iso": "CHL",
         "destination": "Santiago",  # srch_destination_id=168
         "city": "Santiago",
         "prop_starrating": 4,

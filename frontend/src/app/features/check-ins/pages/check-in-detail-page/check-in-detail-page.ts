@@ -149,10 +149,7 @@ export class CheckInDetailPageComponent {
     if (!id) return undefined;
     const propId = this.effectivePropId();
     if (propId > 0) return `/management/check-ins/${id}/detail?prop_id=${propId}`;
-    // Sin prop_id: si el contexto aún carga (single-hotel bootstrap), esperar para evitar 400 de carrera.
-    // Si ya está ready y sigue sin prop_id (super_admin sin selección), disparar sin query para surfear el 400 como error visible.
-    if (!this.propertyCtx.ready()) return undefined;
-    return `/management/check-ins/${id}/detail`;
+    return undefined;
   });
 
   /**

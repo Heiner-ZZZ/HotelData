@@ -83,7 +83,7 @@
               <span class="material-symbols-outlined payment-icon">account_balance</span>
               <div>
                 <h2>Pago en línea</h2>
-                <p>Transferencia bancaria simulada · Procesado por HotelData Pay</p>
+                <p>Transferencia bancaria · Procesado por HotelData Pay</p>
               </div>
             </div>
 
@@ -97,10 +97,91 @@
                   <span class="material-symbols-outlined">lock</span>
                   Pagar ahora
                 </button>
-                <p class="payment-disclaimer">
-                  <span class="material-symbols-outlined">info</span>
-                  Pago simulado — no hay movimiento de dinero real
-                </p>
+              </div>
+            }
+
+            @if (paymentStep() === 'card') {
+              <div class="payment-card-form">
+                <div class="card-form-head">
+                  <span class="material-symbols-outlined card-form-icon">credit_card</span>
+                  <div>
+                    <h3>Datos de la tarjeta</h3>
+                    <p>Ingresa la tarjeta con la que quieres pagar esta factura.</p>
+                  </div>
+                </div>
+
+                <label class="card-field">
+                  <span>Número de tarjeta</span>
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="cc-number"
+                    placeholder="0000 0000 0000 0000"
+                    maxlength="19"
+                    [value]="cardNumberDisplay()"
+                    (input)="onCardNumberInput($any($event.target).value)"
+                    (focus)="onCardNumberFocus()"
+                    (blur)="onCardNumberBlur()"
+                  />
+                  @if (cardNumberError(); as err) {
+                    <span class="field-error"><span class="material-symbols-outlined">error</span>{{ err }}</span>
+                  }
+                </label>
+
+                <label class="card-field">
+                  <span>Titular</span>
+                  <input
+                    type="text"
+                    autocomplete="cc-name"
+                    placeholder="Nombre del titular"
+                    [value]="cardHolder()"
+                    (input)="onCardHolderInput($any($event.target).value)"
+                  />
+                  @if (cardHolderError(); as err) {
+                    <span class="field-error"><span class="material-symbols-outlined">error</span>{{ err }}</span>
+                  }
+                </label>
+
+                <div class="card-form-row card-form-row--split">
+                  <label class="card-field">
+                    <span>Vencimiento</span>
+                    <input
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="cc-exp"
+                      placeholder="MM/AA"
+                      maxlength="5"
+                      [value]="cardExpiry()"
+                      (input)="onCardExpiryInput($any($event.target).value)"
+                    />
+                    @if (cardExpiryError(); as err) {
+                      <span class="field-error"><span class="material-symbols-outlined">error</span>{{ err }}</span>
+                    }
+                  </label>
+                  <label class="card-field">
+                    <span>CVV</span>
+                    <input
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="cc-csc"
+                      placeholder="CVV"
+                      maxlength="4"
+                      [value]="cardCvv()"
+                      (input)="onCardCvvInput($any($event.target).value)"
+                    />
+                    @if (cardCvvError(); as err) {
+                      <span class="field-error"><span class="material-symbols-outlined">error</span>{{ err }}</span>
+                    }
+                  </label>
+                </div>
+
+                <div class="card-form-actions">
+                  <button type="button" class="btn-cancel-pay" (click)="backToIdle()">Volver</button>
+                  <button type="button" class="btn-confirm-pay" (click)="submitCard()" [disabled]="!cardValid() || paying()">
+                    <span class="material-symbols-outlined">credit_card</span>
+                    Continuar
+                  </button>
+                </div>
               </div>
             }
 
@@ -123,6 +204,10 @@
                   <div class="confirm-row">
                     <span>Beneficiario</span>
                     <strong>HotelData SAPI de CV</strong>
+                  </div>
+                  <div class="confirm-row">
+                    <span>Tarjeta</span>
+                    <strong class="confirm-card">{{ maskedCard() }}</strong>
                   </div>
                   <div class="confirm-row">
                     <span>Concepto</span>

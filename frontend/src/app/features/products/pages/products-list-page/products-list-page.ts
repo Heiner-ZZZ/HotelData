@@ -16,6 +16,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { ProductsAuthService } from '../../services/products-auth.service';
 import { ProductsApiService } from '../../services/products-api.service';
 import { ProductsRestockModalComponent } from '../../partials/products-restock-modal/products-restock-modal';
+import { ProductsSectionNavComponent } from '../../partials/products-section-nav/products-section-nav';
 import type { HotelProduct, ProductType } from '../../models/products.model';
 import { PRODUCT_TYPE_LABELS } from '../../models/products.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
@@ -36,7 +37,8 @@ interface TypeFilter {
     LoadingStateComponent,
     PageHeaderComponent,
     PropertySelectorComponent,
-    ProductsRestockModalComponent
+    ProductsRestockModalComponent,
+    ProductsSectionNavComponent
   ],
   templateUrl: './products-list-page.html',
   styleUrl: './products-list-page.scss',

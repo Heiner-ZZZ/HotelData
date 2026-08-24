@@ -295,6 +295,22 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
             {"$set": {"status": "cancelled", "updated_at": changed_at}},
         )
 
+    # La estadía no ocurrió: anular la factura emitida al confirmar (si no
+    # tiene pagos). La penalización queda registrada en el booking; la factura
+    # no debe seguir mostrándose como "pendiente de pago".
+    try:
+        from src.app.modules.billing.service.lifecycle.invoices import cancel_stay_invoice_for_no_stay
+        cancel_stay_invoice_for_no_stay(
+            booking_id,
+            reason=(
+                f"Cancelación — penalización ${penalty['penalty_amount']:.2f} "
+                f"({penalty['penalty_percent']}% de 1 noche) — la estadía no se factura."
+            ),
+            cancelled_by=changed_by,
+        )
+    except Exception:
+        logger.exception("Failed to cancel stay invoice for cancellation %s", booking_id)
+
     # ── Register transaction on active shift ──
     if not booking.get("is_test"):
         try:

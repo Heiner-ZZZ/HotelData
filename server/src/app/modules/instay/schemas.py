@@ -258,6 +258,9 @@ class ChatMessageResponse(BaseModel):
     room_label: str = ""
     sender: str = "guest"  # guest | staff | system
     staff_name: str = ""
+    # Guest display name resolved from the message's own booking, so a room's
+    # history stays attributable per message even across different guests.
+    guest_name: str = ""
     message: str = ""
     created_at: str = ""
     read: bool = False

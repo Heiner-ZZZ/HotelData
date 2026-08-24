@@ -20,7 +20,7 @@ const METHOD_OPTIONS = [
   { value: 'card', label: 'Tarjeta', icon: 'credit_card' },
   { value: 'cash', label: 'Efectivo', icon: 'payments' },
   { value: 'bank_transfer', label: 'Transferencia', icon: 'account_balance' },
-  { value: 'simulated', label: 'Simulado', icon: 'credit_card' },
+  { value: 'simulated', label: 'En línea', icon: 'credit_card' },
 ];
 
 const STATUS_OPTIONS = [
@@ -190,7 +190,7 @@ export class BillingPaymentsDashboardPageComponent {
   }
 
   methodLabel(m: string): string {
-    return ({ card: 'Tarjeta', cash: 'Efectivo', bank_transfer: 'Transferencia', simulated: 'Simulado' })[m] ?? (m || 'Sin método');
+    return ({ card: 'Tarjeta', cash: 'Efectivo', bank_transfer: 'Transferencia', simulated: 'En línea' })[m] ?? (m || 'Sin método');
   }
 
   methodIcon(m: string): string {

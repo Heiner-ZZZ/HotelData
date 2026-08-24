@@ -1,0 +1,221 @@
+<div class="repd-page">
+  <app-horizontal-sub-nav [activeSlug]="'gestion.pms.informes.reputacion'" />
+
+  <app-page-header
+    title="Dashboard de Reputación"
+    description="Índice de satisfacción, respuesta del hotel y detalle diario (kpi_review_daily)."
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropertySelected($event)"
+    />
+  </app-page-header>
+
+  <!-- ═══ Filter bar ═══ -->
+  <section class="surface-card repd-filters" aria-label="Filtros del dashboard">
+    <div class="repd-filter-row">
+      <span class="repd-filter-label">Período</span>
+      @for (opt of DAYS_OPTIONS; track opt) {
+        <button type="button" class="repd-chip" [class.active]="days() === opt" (click)="setDays(opt)">
+          {{ opt === 365 ? 'Año' : opt + ' días' }}
+        </button>
+      }
+      <span class="repd-filters-spacer"></span>
+      @if (canExport()) {
+        <button type="button" class="repd-clear-btn" (click)="exportPDF()" [disabled]="exporting()">
+          <span class="material-symbols-outlined">picture_as_pdf</span>
+          {{ exporting() ? 'Exportando...' : 'Exportar PDF' }}
+        </button>
+        <button type="button" class="repd-clear-btn" (click)="exportXlsx()" [disabled]="exporting()">
+          <span class="material-symbols-outlined">table_chart</span>
+          {{ exporting() ? 'Exportando...' : 'Exportar Excel' }}
+        </button>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Estados ═══ -->
+  @if (analyticsLoading()) {
+    <app-loading-state label="Consultando kpi_review_daily…" />
+  } @else if (analyticsError()) {
+    <app-error-state title="Error" description="No se pudo consultar la capa analítica de reputación." />
+  } @else if (!analyticsAvailable()) {
+    <section class="surface-card repd-unavailable">
+      <span class="material-symbols-outlined">hourglass_empty</span>
+      {{ analyticsMessage() || 'La capa analítica todavía no tiene datos: ejecutá el DAG M2C para cargar kpi_review_daily.' }}
+    </section>
+    <div class="repd-recent surface-card repd-side-only">
+      <h3>Reseñas recientes</h3>
+      @for (item of mongoData()?.recentFeedback ?? []; track item.id) {
+        <div class="repd-recent-item">
+          <div class="repd-recent-avatar">{{ item.userName.charAt(0).toUpperCase() }}</div>
+          <div class="repd-recent-body">
+            <div class="repd-recent-head">
+              <span>{{ item.userName }}</span>
+              <span class="repd-stars">
+                @for (star of [1,2,3,4,5]; track star) {
+                  <span class="material-symbols-outlined" [class.off]="star > item.rating">star</span>
+                }
+              </span>
+            </div>
+            <p>{{ item.comment || 'Sin comentario' }}</p>
+          </div>
+        </div>
+      } @empty {
+        <p class="repd-muted">Sin reseñas recientes.</p>
+      }
+    </div>
+  } @else if (!rows().length) {
+    <app-empty-state icon="reviews" title="Sin datos" description="No hay reseñas en el período seleccionado." />
+  } @else {
+    <!-- ═══ KPI cards (Z — top) ═══ -->
+    <section class="repd-kpis">
+      <div class="repd-kpi gri">
+        <span class="material-symbols-outlined">hotel_class</span>
+        <strong>{{ totals().gri }}</strong>
+        <small>Global Review Index</small>
+        <em>Rating medio {{ totals().avgRating | number:'1.1-2' }}/5</em>
+      </div>
+      <div class="repd-kpi reviews">
+        <span class="material-symbols-outlined">reviews</span>
+        <strong>{{ totals().reviews }}</strong>
+        <small>Reseñas</small>
+        <em>{{ rows().length }} día(s) con actividad</em>
+      </div>
+      <div class="repd-kpi responded">
+        <span class="material-symbols-outlined">forum</span>
+        <strong>{{ totals().responseRatePct }}%</strong>
+        <small>Tasa de respuesta</small>
+        <em>{{ totals().responded }} respondida(s)</em>
+      </div>
+      <div class="repd-kpi speed">
+        <span class="material-symbols-outlined">timer</span>
+        <strong>{{ totals().avgResponseHours === null ? '—' : (totals().avgResponseHours | number:'1.0-1') + ' h' }}</strong>
+        <small>Respuesta media</small>
+        <em>del hotel al huésped</em>
+      </div>
+    </section>
+
+    <!-- ═══ Chart row (Z — center) ═══ -->
+    <section class="repd-chart-row">
+      <div class="surface-card repd-chart-card">
+        <h3>Evolución del rating medio</h3>
+        <app-kpi-chart
+          type="line"
+          [labels]="chartLabels()"
+          [datasets]="chartDatasets()"
+          [height]="220"
+        />
+      </div>
+      <aside class="surface-card repd-side">
+        <h3>Sentimiento de huéspedes</h3>
+        <ul class="repd-sentiment">
+          <li>
+            <span class="repd-sent-label"><span class="material-symbols-outlined pos">sentiment_satisfied</span>Positivo</span>
+            <strong>{{ totals().sentiment.positive }}</strong>
+            <span class="repd-sent-bar">
+              <span class="fill pos" [style.width.%]="totals().sentimentTotal ? totals().sentiment.positive * 100 / totals().sentimentTotal : 0"></span>
+            </span>
+          </li>
+          <li>
+            <span class="repd-sent-label"><span class="material-symbols-outlined neu">sentiment_neutral</span>Neutral</span>
+            <strong>{{ totals().sentiment.neutral }}</strong>
+            <span class="repd-sent-bar">
+              <span class="fill neu" [style.width.%]="totals().sentimentTotal ? totals().sentiment.neutral * 100 / totals().sentimentTotal : 0"></span>
+            </span>
+          </li>
+          <li>
+            <span class="repd-sent-label"><span class="material-symbols-outlined neg">sentiment_dissatisfied</span>Negativo</span>
+            <strong>{{ totals().sentiment.negative }}</strong>
+            <span class="repd-sent-bar">
+              <span class="fill neg" [style.width.%]="totals().sentimentTotal ? totals().sentiment.negative * 100 / totals().sentimentTotal : 0"></span>
+            </span>
+          </li>
+        </ul>
+
+        <div class="repd-recent">
+          <h3>Reseñas recientes</h3>
+          @for (item of mongoData()?.recentFeedback ?? []; track item.id) {
+            <div class="repd-recent-item">
+              <div class="repd-recent-avatar">{{ item.userName.charAt(0).toUpperCase() }}</div>
+              <div class="repd-recent-body">
+                <div class="repd-recent-head">
+                  <span>{{ item.userName }}</span>
+                  <span class="repd-stars">
+                    @for (star of [1,2,3,4,5]; track star) {
+                      <span class="material-symbols-outlined" [class.off]="star > item.rating">star</span>
+                    }
+                  </span>
+                </div>
+                <p>{{ item.comment || 'Sin comentario' }}</p>
+              </div>
+            </div>
+          } @empty {
+            <p class="repd-muted">Sin reseñas recientes.</p>
+          }
+        </div>
+      </aside>
+    </section>
+
+    <!-- ═══ Grilla (Z — bottom) ═══ -->
+    <section class="surface-card repd-table-card">
+      <div class="repd-table-head">
+        <div class="repd-table-head-left">
+          <span class="material-symbols-outlined repd-head-icon">calendar_view_day</span>
+          <div>
+            <h2>Detalle diario por propiedad</h2>
+            <p class="repd-meta">
+              {{ rows().length }} fila(s) · Pág. {{ page() }} de {{ totalPages() }}
+              · Fuente: kpi_review_daily (ClickHouse)
+            </p>
+          </div>
+        </div>
+        <div class="repd-pagination">
+          <button type="button" class="repd-page-btn" (click)="goToPage(page() - 1)" [disabled]="page() <= 1">
+            <span class="material-symbols-outlined">chevron_left</span>
+            <span class="btn-label">Anterior</span>
+          </button>
+          <button type="button" class="repd-page-btn" (click)="goToPage(page() + 1)" [disabled]="page() >= totalPages()">
+            <span class="btn-label">Siguiente</span>
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="repd-table-wrap">
+        <table class="repd-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th class="th-num">Reseñas</th>
+              <th class="th-num">Aprobadas</th>
+              <th class="th-num">Pendientes</th>
+              <th class="th-num">Rechazadas</th>
+              <th class="th-num">Respondidas</th>
+              <th class="th-num">Rating medio</th>
+              <th class="th-num">Moderación</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of pagedRows(); track row.date + row.propId) {
+              <tr>
+                <td class="mono">{{ row.date }}</td>
+                <td class="td-num">{{ row.reviews }}</td>
+                <td class="td-num ok">{{ row.approved }}</td>
+                <td class="td-num warn">{{ row.pending }}</td>
+                <td class="td-num bad">{{ row.rejected }}</td>
+                <td class="td-num">{{ row.responded }}</td>
+                <td class="td-num mono strong">{{ row.avgRating | number:'1.1-2' }}</td>
+                <td class="td-num">{{ row.avgModerationMinutes === null ? '—' : (row.avgModerationMinutes | number:'1.0-0') + ' min' }}</td>
+              </tr>
+            } @empty {
+              <tr><td class="repd-empty-cell" colspan="8">Sin filas en el rango.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

@@ -51,15 +51,17 @@ def get_room_performance_dashboard(
     days: int = 30,
     room_type_id: str | None = None,
     channel: str | None = None,
+    only_profitable: bool = False,
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
     """Lee ``kpi_room_performance_daily`` y devuelve resumen + serie + filas.
 
     El resumen y la serie reflejan SIEMPRE el rango completo; los filtros por
-    tipo de habitación y canal solo afectan la grilla (mismo criterio que el
-    dashboard F1.4). La paginación se aplica en Python porque la granularidad
-    (día × hotel × tipo × divisa × canal) mantiene el resultado pequeño.
+    tipo de habitación, canal y "solo con ganancias" solo afectan la grilla
+    (mismo criterio que el dashboard F1.4). La paginación se aplica en Python
+    porque la granularidad (día × hotel × tipo × divisa × canal) mantiene el
+    resultado pequeño.
     """
     settings = get_settings()
     fallback_from, fallback_to = _default_range(days)
@@ -100,6 +102,7 @@ def get_room_performance_dashboard(
                 for row in all_rows
                 if (not room_type_id or row["room_type_id"] == room_type_id)
                 and (not channel or row["booking_source"] == channel)
+                and (not only_profitable or float(row.get("revenue") or 0) > 0)
             ]
             total = len(grid_rows)
             page_rows = grid_rows[(page - 1) * page_size : page * page_size]

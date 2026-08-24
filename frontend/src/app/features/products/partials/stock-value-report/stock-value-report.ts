@@ -9,6 +9,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ProductsAuthService } from '../../services/products-auth.service';
 import { ReportApiService } from '../../services/report-api.service';
+import { ProductsSectionNavComponent } from '../products-section-nav/products-section-nav';
 import type { StockValueItemDto, StockValueReportDto } from '../../models/products-report.dto';
 
 @Component({
@@ -23,6 +24,7 @@ import type { StockValueItemDto, StockValueReportDto } from '../../models/produc
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    ProductsSectionNavComponent,
   ],
   templateUrl: './stock-value-report.html',
   styleUrl: './stock-value-report.scss',

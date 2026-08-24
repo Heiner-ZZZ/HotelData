@@ -8,6 +8,23 @@ export interface ReservationsListViewModel {
   hasNext: boolean;
 }
 
+/** Estadía finalizada del huésped (zona de solo lectura, sin acciones). */
+export interface PastStay {
+  bookingId: string;
+  propId: number;
+  hotelLabel: string;
+  guestName: string;
+  checkInDate: string;
+  checkOutDate: string;
+  totalPrice: number | null;
+  currency: string;
+  status: string;
+  stayStatus: string;
+  /** Server-authoritative: 'no_show' | 'dates_passed'. */
+  readOnlyReason: 'no_show' | 'dates_passed';
+  noShowPenaltyAmount: number | null;
+}
+
 export interface ReservationListItem {
   bookingId: string;
   propId: number;
@@ -298,4 +315,8 @@ export interface ReservationDetailViewModel {
     changedBy: string;
   }[];
   stayStatus?: string;
+  /** Fuente de verdad del importe a cobrar cuando el huésped no se presentó. */
+  noShowPenaltyAmount?: number | null;
+  noShowPenaltyPercent?: number | null;
+  noShowFolioNumber?: string | null;
 }

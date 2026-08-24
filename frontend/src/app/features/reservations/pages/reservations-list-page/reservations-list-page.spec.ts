@@ -12,6 +12,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { ReservationsAuthService } from '../../services/reservations-auth.service';
 import { ReservationsListPageComponent } from './reservations-list-page';
 
 describe('ReservationsListPageComponent (gate de exportación)', () => {
@@ -339,5 +340,214 @@ describe('ReservationsListPageComponent (aviso post-masivo de checklist incomple
     expect(
       toast.toasts().some((t) => t.type === 'success' && t.message.includes('Check-in masivo completado · 1 reserva')),
     ).toBe(true);
+  });
+});
+
+describe('ReservationsListPageComponent (estadías pasadas del huésped — solo lectura)', () => {
+  const PAST_STAYS_PAYLOAD = {
+    items: [
+      {
+        booking_id: 'BK-PAST-NS',
+        prop_id: 1,
+        hotel_label: 'Hotel Lima Centro',
+        guest_name: 'Horuz',
+        check_in_date: '2026-08-01',
+        check_out_date: '2026-08-03',
+        total_price: 150,
+        currency: 'USD',
+        status: 'confirmed',
+        stay_status: 'no_show',
+        read_only_reason: 'no_show',
+        no_show_penalty_amount: 75,
+      },
+      {
+        booking_id: 'BK-PAST-OUT',
+        prop_id: 1,
+        hotel_label: 'Hotel Lima Centro',
+        guest_name: 'Horuz',
+        check_in_date: '2026-07-10',
+        check_out_date: '2026-07-13',
+        total_price: 300,
+        currency: 'USD',
+        status: 'checked_out',
+        stay_status: 'checked_out',
+        read_only_reason: 'dates_passed',
+        no_show_penalty_amount: null,
+      },
+    ],
+  };
+
+  function setupClient() {
+    const router = {
+      events: new Subject<unknown>().asObservable(),
+      navigate: jest.fn(),
+      routerState: { snapshot: { root: { data: {}, firstChild: null } } },
+    } as unknown as Router;
+    const auth = { hasPermission: jest.fn(() => true), currentUser: () => null } as unknown as AuthService;
+    const propertyContext = {
+      currentPropId: signal(0),
+      currentPropLabel: signal(''),
+      setProperty: jest.fn(),
+      clear: jest.fn(),
+    } as unknown as PropertyContextService;
+
+    TestBed.configureTestingModule({
+      imports: [ReservationsListPageComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: Router, useValue: router },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { queryParamMap: convertToParamMap({}) },
+            queryParamMap: of(convertToParamMap({})),
+          },
+        },
+        { provide: PropertyContextService, useValue: propertyContext },
+        { provide: AuthService, useValue: auth },
+        { provide: ConfirmDialogService, useValue: { open: jest.fn().mockResolvedValue(true) } },
+        {
+          provide: ReservationsAuthService,
+          useValue: { isStaff: signal(false), isClient: signal(true) },
+        },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(ReservationsListPageComponent);
+    fixture.detectChanges();
+    return {
+      fixture,
+      component: fixture.componentInstance,
+      el: fixture.nativeElement as HTMLElement,
+      http: TestBed.inject(HttpTestingController),
+    };
+  }
+
+  function flushPastStays(ctx: ReturnType<typeof setupClient>) {
+    const req = ctx.http.expectOne((r) => r.url.includes('/reservations/past-stays'));
+    req.flush(PAST_STAYS_PAYLOAD);
+    return req;
+  }
+
+  /** El httpResource aplica la respuesta en un microtask: esperar el tick
+   *  antes de re-renderizar (mismo patrón que los specs con rxResource). */
+  const settle = async () => {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  };
+
+  it('el cliente ve la zona de estadías pasadas con el motivo server-authoritative', async () => {
+    const ctx = setupClient();
+    flushPastStays(ctx);
+    await settle();
+    ctx.fixture.detectChanges();
+
+    const zone = ctx.el.querySelector('.past-stays');
+    expect(zone).not.toBeNull();
+    const text = zone?.textContent ?? '';
+    // No-show: badge + explicación.
+    expect(text).toContain('No Show');
+    expect(text).toContain('no se presentó');
+    // Fechas pasadas: badge + explicación.
+    expect(text).toContain('Finalizada');
+    expect(text).toContain('fechas ya pasaron');
+    // Ambas estadías listadas con su hotel.
+    expect(text).toContain('BK-PAST-NS');
+    expect(text).toContain('BK-PAST-OUT');
+    expect(text).toContain('Hotel Lima Centro');
+  });
+
+  it('la zona es de SOLO LECTURA: ningún botón ni enlace dentro', async () => {
+    const ctx = setupClient();
+    flushPastStays(ctx);
+    await settle();
+    ctx.fixture.detectChanges();
+
+    const zone = ctx.el.querySelector('.past-stays');
+    expect(zone?.querySelectorAll('button').length).toBe(0);
+    expect(zone?.querySelectorAll('a').length).toBe(0);
+  });
+
+  it('la tarjeta no-show muestra la penalización y el candado de solo lectura', async () => {
+    const ctx = setupClient();
+    flushPastStays(ctx);
+    await settle();
+    ctx.fixture.detectChanges();
+
+    const card = Array.from(ctx.el.querySelectorAll('.past-stay-card'))
+      .find((c) => c.textContent?.includes('BK-PAST-NS'));
+    expect(card).toBeDefined();
+    expect(card?.textContent).toContain('$75.00');
+    expect(card?.querySelector('.past-stay-lock')).not.toBeNull();
+    expect(card?.classList.contains('is-no-show')).toBe(true);
+  });
+
+  it('sin estadías pasadas la zona no se renderiza', async () => {
+    const ctx = setupClient();
+    const req = ctx.http.expectOne((r) => r.url.includes('/reservations/past-stays'));
+    req.flush({ items: [] });
+    await settle();
+    ctx.fixture.detectChanges();
+
+    expect(ctx.el.querySelector('.past-stays')).toBeNull();
+  });
+});
+
+describe('ReservationsListPageComponent (staff no ve estadías pasadas)', () => {
+  function setupStaff() {
+    TestBed.configureTestingModule({
+      imports: [ReservationsListPageComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: Router,
+          useValue: {
+            events: new Subject<unknown>().asObservable(),
+            navigate: jest.fn(),
+            routerState: { snapshot: { root: { data: {}, firstChild: null } } },
+          } as unknown as Router,
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { queryParamMap: convertToParamMap({}) },
+            queryParamMap: of(convertToParamMap({})),
+          },
+        },
+        {
+          provide: PropertyContextService,
+          useValue: {
+            currentPropId: signal(0),
+            currentPropLabel: signal(''),
+            mode: signal('all'),
+            ready: signal(true),
+            assignedProperties: signal([]),
+            defaultPropId: signal(0),
+            singleHotelMode: signal(false),
+            setProperty: jest.fn(),
+            clear: jest.fn(),
+          } as unknown as PropertyContextService,
+        },
+        { provide: AuthService, useValue: { hasPermission: jest.fn(() => true), currentUser: () => null } },
+        { provide: ConfirmDialogService, useValue: { open: jest.fn().mockResolvedValue(true) } },
+        {
+          provide: ReservationsAuthService,
+          useValue: { isStaff: signal(true), isClient: signal(false) },
+        },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(ReservationsListPageComponent);
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement, http: TestBed.inject(HttpTestingController) };
+  }
+
+  it('ni pide el endpoint ni renderiza la zona para staff', () => {
+    const ctx = setupStaff();
+
+    const pastReqs = ctx.http.match((r) => r.url.includes('/reservations/past-stays'));
+    expect(pastReqs.length).toBe(0);
+    expect(ctx.el.querySelector('.past-stays')).toBeNull();
   });
 });

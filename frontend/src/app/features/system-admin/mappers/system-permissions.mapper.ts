@@ -17,6 +17,7 @@ const ICON_MAP: Record<string, string> = {
   'icon-booking': 'calendar_month',
   'icon-partner': 'business',
   'icon-hotels': 'hotel',
+  'icon-receipt': 'receipt_long',
   'icon-etl': 'sync_alt',
 };
 

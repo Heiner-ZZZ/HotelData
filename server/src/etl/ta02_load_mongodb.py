@@ -60,14 +60,6 @@ def upsert_dimensions(db: Database, dimensions: dict[str, list[dict[str, Any]]],
     if full_reload is None:
         full_reload = os.getenv("GA03_FULL_RELOAD_DIMENSIONS", "true").lower() in {"1", "true", "yes"}
 
-    # Resolve geo_country_code for dim_hotels before loading (reads existing dim_visitor_countries)
-    if "dim_hotels" in dimensions:
-        _resolve_geo_country_for_hotels(db, dimensions["dim_hotels"])
-
-    # Resolve geo_country_code for dim_hotels before loading (reads existing dim_visitor_countries)
-    if "dim_hotels" in dimensions:
-        _resolve_geo_country_for_hotels(db, dimensions["dim_hotels"])
-
     for collection_name, documents in dimensions.items():
         if not documents:
             counts[collection_name] = 0

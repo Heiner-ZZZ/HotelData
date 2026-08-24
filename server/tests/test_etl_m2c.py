@@ -869,3 +869,27 @@ def test_schedule_refresh_mode_round_trip():
         update_schedule("5 * * * *", True, refresh_mode="full")
         restored = get_schedule()
         assert restored["refresh_mode"] == "full"
+
+
+def test_load_table_coerces_string_dates_from_json_roundtrip():
+    """El JSON intermedio convierte fechas a string (write_json_file usa
+    str(value)); load_table debe reconvertir la primera columna (date/month)
+    a datetime.date antes del INSERT o ClickHouse rechaza la columna Date con
+    ``TypeError: unsupported operand type(s) for -: 'str' and 'datetime.date'``.
+    """
+    from datetime import date
+
+    from src.etl.mongo_to_clickhouse.load import coerce_date_column
+
+    # Filas tal como salen del JSON (la fecha viaja como string ISO).
+    rows = [
+        ["2026-07-01", 1, "Hotel Lima Centro", "5", 9],
+        ["2026-08-01", 1, "Hotel Lima Centro", "3", 4],
+    ]
+    coerced = coerce_date_column(rows, "kpi_review_daily")
+    assert coerced[0][0] == date(2026, 7, 1)
+    assert coerced[1][0] == date(2026, 8, 1)
+    assert isinstance(coerced[0][0], date)
+    # El resto de la fila queda intacto.
+    assert coerced[0][1] == 1
+    assert coerced[0][4] == 9

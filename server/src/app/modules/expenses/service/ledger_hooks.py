@@ -370,7 +370,7 @@ def generate_ledger_from_payment(payment: dict) -> int:
         if booking:
             guest_name = booking.get("guest_name", "")
 
-    method_label = {"simulated": "Simulado", "cash": "Efectivo", "card": "Tarjeta", "transfer": "Transferencia"}.get(method, method.title())
+    method_label = {"simulated": "En línea", "cash": "Efectivo", "card": "Tarjeta", "transfer": "Transferencia"}.get(method, method.title())
     concept = f"Cobro {payment_ref} ({method_label}) — {guest_name or 'Huésped'}"
 
     # Entry 1: Debit Cash/Bank

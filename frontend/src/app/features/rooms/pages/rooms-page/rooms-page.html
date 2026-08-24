@@ -104,6 +104,109 @@
           (editRoom)="startEdit($event)"
           (deleteRoom)="requestDelete($event.id, $event.name)"
         />
+
+        <!-- Fotos por tipo de habitación — galería real del hotel-card -->
+        @if (vm.roomTypes.length) {
+          <section class="surface-card room-photos-panel" aria-labelledby="room-photos-title">
+            <div class="panel-head">
+              <span class="material-symbols-outlined panel-head-icon" aria-hidden="true">imagesmode</span>
+              <div>
+                <h2 id="room-photos-title">Fotos de habitaciones</h2>
+                <p id="room-photos-desc">Sube imágenes por tipo de habitación. Aparecerán en la galería del hotel-card después de las fotos del hotel.</p>
+              </div>
+            </div>
+
+            <div class="room-photos-controls">
+              <div class="field">
+                <label class="field-label" for="room-photo-type">Selecciona un tipo de habitación</label>
+                <div class="select-wrap">
+                  <select
+                    id="room-photo-type"
+                    [value]="roomPhotoRoomType()"
+                    (change)="onRoomPhotoRoomTypeChange(($any($event.target).value))"
+                    aria-label="Tipo de habitación para foto"
+                    aria-describedby="room-photos-desc"
+                  >
+                    <option value="">-- Elige un tipo --</option>
+                    @for (rt of vm.roomTypes; track rt.id) {
+                      <option [value]="rt.id">{{ rt.name }} — {{ rt.capacityLabel }}</option>
+                    }
+                  </select>
+                  <span class="material-symbols-outlined select-arrow" aria-hidden="true">expand_more</span>
+                </div>
+                <p class="field-hint" id="room-photo-type-hint">Elige el tipo para ver y gestionar sus imágenes.</p>
+              </div>
+
+              @if (roomPhotoRoomType()) {
+                <div class="field">
+                  <span class="field-label" id="room-photo-upload-label">Subir imagen</span>
+                  <p class="field-hint" id="room-photo-upload-hint">JPG, PNG, WebP — máx. 10 por tipo</p>
+                  <label
+                    class="file-upload-label"
+                    for="room-photo-file"
+                    [class.disabled]="roomPhotoUploading()"
+                    [attr.aria-busy]="roomPhotoUploading() ? 'true' : null"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">upload</span>
+                    <span>{{ roomPhotoUploading() ? 'Subiendo…' : 'Seleccionar archivo' }}</span>
+                  </label>
+                  <input
+                    id="room-photo-file"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    (change)="onRoomPhotoFileSelected($event)"
+                    [disabled]="roomPhotoUploading()"
+                    aria-labelledby="room-photo-upload-label"
+                    aria-describedby="room-photo-upload-hint"
+                    hidden
+                  />
+                </div>
+
+                @if (roomPhotoLoading()) {
+                  <p class="photo-loading" role="status" aria-live="polite">Cargando fotos…</p>
+                } @else if (filteredRoomPhotos().length) {
+                  <div class="photo-thumb-grid" role="list" aria-label="Fotos del tipo seleccionado">
+                    @for (p of filteredRoomPhotos(); track p.image_url) {
+                      <div class="photo-thumb" role="listitem">
+                        <img
+                          [src]="p.image_url"
+                          [alt]="'Foto de ' + (vm.roomTypes.find(rt => rt.id === roomPhotoRoomType())?.name || 'habitación')"
+                          loading="lazy"
+                        />
+                        <button
+                          class="photo-delete-btn"
+                          type="button"
+                          (click)="deleteRoomPhoto(p.image_url)"
+                          [attr.aria-label]="'Eliminar foto de ' + (vm.roomTypes.find(rt => rt.id === roomPhotoRoomType())?.name || 'habitación')"
+                          title="Eliminar foto"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                        </button>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="photo-empty" role="status">Sin fotos aún para este tipo de habitación.</p>
+                }
+              } @else {
+                <p class="photo-empty" role="status">Selecciona un tipo de habitación para gestionar sus fotos.</p>
+              }
+
+              @if (roomPhotoMessage()) {
+                <p
+                  class="photo-msg"
+                  [class.msg-success]="roomPhotoMsgType() === 'success'"
+                  [class.msg-error]="roomPhotoMsgType() === 'error'"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span class="material-symbols-outlined msg-icon" aria-hidden="true">{{ roomPhotoMsgType() === 'success' ? 'check_circle' : 'error' }}</span>
+                  {{ roomPhotoMessage() }}
+                </p>
+              }
+            </div>
+          </section>
+        }
       }
     }
   }

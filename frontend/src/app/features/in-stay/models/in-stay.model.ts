@@ -66,6 +66,8 @@ export interface ChatMessage {
   room_label: string;
   sender: 'guest' | 'staff';
   staff_name: string;
+  /** Guest display name resolved from the message's own booking (real-chat author). */
+  guest_name?: string;
   message: string;
   created_at: string;
   read: boolean;

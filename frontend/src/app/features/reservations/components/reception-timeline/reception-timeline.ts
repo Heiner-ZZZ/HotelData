@@ -12,6 +12,28 @@ import * as gregorian from '../../../../../cldr/main/es/ca-gregorian.json';
 import * as numbers from '../../../../../cldr/main/es/numbers.json';
 import * as timeZoneNames from '../../../../../cldr/main/es/timeZoneNames.json';
 import { httpResource } from '@angular/common/http';
+import { DatePicker } from '@syncfusion/ej2-calendars';
+// Patch ej2 DatePicker early: con [showHeaderBar]="false" el input interno
+// no existe y updateMinMaxDateToEditor revienta con querySelector sobre
+// undefined al cambiar selectedDate vía API. Se parchea el prototipo para
+// cubrir el dataBind inicial antes de que exista headerModule.
+try {
+  const proto = (DatePicker as unknown as { prototype: { updateMinMaxDateToEditor?: (...a: unknown[]) => unknown; __hgGuarded?: boolean } })?.prototype;
+  if (proto && typeof proto.updateMinMaxDateToEditor === 'function' && !proto.__hgGuarded) {
+    const orig = proto.updateMinMaxDateToEditor as (...a: unknown[]) => unknown;
+    proto.updateMinMaxDateToEditor = function (this: { element?: unknown; inputElement?: unknown }, ...args: unknown[]) {
+      try {
+        if (!this.element || !this.inputElement) return;
+        return (orig as (...a: unknown[]) => unknown).apply(this, args);
+      } catch {
+        return;
+      }
+    } as unknown as typeof proto.updateMinMaxDateToEditor;
+    proto.__hgGuarded = true;
+  }
+} catch {
+  // Cubierto por guardSyncfusionDatePicker por instancia.
+}
 import {
   ScheduleComponent,
   ScheduleModule,
@@ -412,6 +434,7 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.disableNativeEditor();
     this.guardSyncfusionPopupDestroy();
+    this.guardSyncfusionDatePicker();
     this.startNowLineTimer();
     this.scheduleNowLine();
   }
@@ -564,17 +587,35 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     const targetDate = isTimelineWeek
       ? this.weekStart(today)
       : this.monthStart(today);
+    // Fuerza el próximo dataBound a reposicionar el scroll/linea en la semana/mes actual
+    this.pendingScrollToToday = false;
     this.viewStartDate.set(this.toIsoDate(targetDate));
     // Syncfusion no reacciona automáticamente a cambios posteriores de
     // [selectedDate] — usar la API pública del componente para forzar la
     // navegación al mes/semana actual en ambas vistas.
     if (this.hotelSchedule) {
-      this.hotelSchedule.selectedDate = targetDate;
+      try {
+        this.guardSyncfusionDatePicker();
+        this.hotelSchedule.selectedDate = targetDate;
+      } catch {
+        // Guard de ej2-calendars: updateMinMaxDateToEditor con showHeaderBar false
+      }
     }
     // La vista semanal es por horas: "Hoy" navega a la semana actual y además
     // desplaza el scroll horizontal hasta la hora actual del día, para que
     // (p. ej. un domingo) no quede lejos del primer día de la semana.
-    if (isTimelineWeek) this.scrollToCurrentTime(today);
+    // Se difiere además por dataBound (pendingScrollToToday) para que el
+    // scroll ocurra DESPUÉS de que Syncfusion haya renderizado la nueva semana.
+    // La vista mensual también necesita reposicionar la barra roja "ahora"
+    // y hacer scroll horizontal hasta el día actual (antes solo ponía la
+    // línea fuera del viewport 1-7 Ago y el usuario debía scrollear a mano
+    // hasta el 23).
+    if (isTimelineWeek) {
+      this.scrollToCurrentTime(today);
+    } else {
+      this.scheduleNowLine();
+      this.scrollToTodayInMonth(today);
+    }
   }
 
   /**
@@ -589,13 +630,25 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     // Cubre también estados iniciales con nodos pre-colapsados: la columna de
     // recursos es la fuente de verdad de qué filas están ocultas.
     this.syncCollapsedRows();
-    if (this.currentView() !== 'TimelineWeek' || this.pendingScrollToToday) return;
-    // En el primer render el @ViewChild puede no estar resuelto todavía; si no
-    // hay instancia del schedule se descarta este disparo y el siguiente
-    // dataBound (tras la carga de datos) reintentará el posicionamiento.
-    if (!this.hotelSchedule) return;
-    this.pendingScrollToToday = true;
-    this.scrollToCurrentTime(new Date());
+    // Scroll inicial: semanal a la hora actual, mensual centrado en hoy si es el mes actual.
+    if (this.currentView() === 'TimelineWeek') {
+      if (this.pendingScrollToToday) return;
+      if (!this.hotelSchedule) return;
+      this.pendingScrollToToday = true;
+      this.scrollToCurrentTime(new Date());
+      return;
+    }
+    // Mensual: al abrir en el mes actual, centra el viewport en hoy (no en 1-7).
+    // Se hace solo en el primer dataBound del mes actual para no pelear con
+    // navegación manual a otros meses.
+    if (this.currentView() === 'TimelineMonth' && !this.pendingScrollToToday) {
+      const todayIso = this.toIsoDate(new Date());
+      const viewMonth = this.viewStartDate().slice(0, 7);
+      if (todayIso.slice(0, 7) === viewMonth) {
+        this.pendingScrollToToday = true;
+        this.scrollToTodayInMonth(new Date());
+      }
+    }
   }
 
   /**
@@ -621,6 +674,37 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       this.scrollToCurrentTimeFrame = requestAnimationFrame(() => {
         this.scrollToCurrentTimeFrame = null;
         schedule.scrollTo(hour, clamped);
+      });
+    });
+  }
+
+  /** Scroll mensual: lleva el viewport horizontal hasta la columna del día actual. */
+  private scrollToTodayInMonth(date: Date): void {
+    const schedule = this.hotelSchedule;
+    if (!schedule) return;
+    if (this.scrollToCurrentTimeFrame !== null) {
+      cancelAnimationFrame(this.scrollToCurrentTimeFrame);
+    }
+    this.scrollToCurrentTimeFrame = requestAnimationFrame(() => {
+      this.scrollToCurrentTimeFrame = requestAnimationFrame(() => {
+        this.scrollToCurrentTimeFrame = null;
+        const wrap = schedule.element.querySelector<HTMLElement>('.e-content-wrap');
+        const contentTable = wrap?.querySelector<HTMLElement>('.e-content-table');
+        if (!wrap || !contentTable) return;
+        const renderDates = schedule.getCurrentViewDates();
+        const todayIso = this.toIsoDate(date);
+        const dayIndex = renderDates.findIndex((d) => this.toIsoDate(d) === todayIso);
+        if (dayIndex < 0) return;
+        const totalWidth = contentTable.offsetWidth;
+        if (totalWidth <= 0 || renderDates.length === 0) return;
+        const dayWidth = totalWidth / renderDates.length;
+        const left = (contentTable.offsetLeft ?? 0) + (dayIndex + 0.5) * dayWidth;
+        // Centra el día actual en el viewport (no al borde)
+        const targetScroll = Math.max(0, left - wrap.clientWidth / 2);
+        wrap.scrollLeft = targetScroll;
+        // Sincroniza el header
+        const headerWrap = schedule.element.querySelector<HTMLElement>('.e-header-wrap');
+        if (headerWrap) headerWrap.scrollLeft = wrap.scrollLeft;
       });
     });
   }
@@ -763,9 +847,9 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
   setView(view: TimelineView): void {
     if (view === this.currentView()) return;
     this.closeDetail();
-    // Al volver de Mes → Semana se permite recentrar el scroll en el día
-    // actual de nuevo (el dataBound posterior lo hará).
-    if (view === 'TimelineWeek') this.pendingScrollToToday = false;
+    // Al volver de Mes → Semana o Semana → Mes (mes actual) se permite
+    // recentrar el scroll en el día actual de nuevo (el dataBound posterior lo hará).
+    this.pendingScrollToToday = false;
     const currentDate = new Date(`${this.viewStartDate()}T12:00:00`);
     this.currentView.set(view);
     this.viewStartDate.set(this.toIsoDate(
@@ -802,6 +886,7 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
   onScheduleCreated(): void {
     this.disableNativeEditor();
     this.guardSyncfusionPopupDestroy();
+    this.guardSyncfusionDatePicker();
     this.scheduleNowLine();
   }
 
@@ -835,6 +920,75 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       }
     };
     schedule.__popupDestroyGuarded = true;
+  }
+
+  /**
+   * Con [showHeaderBar]="false" el input interno del date-picker del header
+   * no existe. Al cambiar `selectedDate` vía API (goToday/navigate) Syncfusion
+   * ejecuta `DatePicker.updateMinMaxDateToEditor()` que hace
+   * `this.element.querySelector(...)` sobre `undefined`:
+   *   TypeError: Cannot read properties of undefined (reading 'querySelector')
+   *     at o.updateMinMaxDateToEditor (ej2-calendars)
+   *     at i.validateDate
+   * El Timeline nunca usa el header date-picker (showHeaderBar false), así que
+   * se parchea el método del date-picker interno para que sea no-op cuando
+   * `element`/`inputElement` no existen. Se busca el datePicker en
+   * `schedule.headerModule.datePicker` o `schedule.headerModule` directo.
+   */
+  private guardSyncfusionDatePicker(): void {
+    const schedule = this.hotelSchedule as unknown as {
+      headerModule?: { datePicker?: { updateMinMaxDateToEditor?: (...a: unknown[]) => unknown; __hgGuarded?: boolean; element?: unknown; inputElement?: unknown } };
+      __datePickerGuarded?: boolean;
+    } | undefined;
+    if (!schedule || schedule.__datePickerGuarded) return;
+    // Intenta localizar el DatePicker interno del header. En diferentes
+    // versiones de ej2-schedule el picker vive en headerModule.datePicker
+    // o directamente como headerModule con métodos de calendario.
+    const candidates: unknown[] = [
+      (schedule as unknown as { headerModule?: unknown }).headerModule,
+      (schedule as unknown as { headerModule?: { datePicker?: unknown } })?.headerModule && (schedule as unknown as { headerModule: { datePicker: unknown } }).headerModule.datePicker,
+    ];
+    for (const candidate of candidates) {
+      const dp = candidate as { updateMinMaxDateToEditor?: (...a: unknown[]) => unknown; __hgGuarded?: boolean; element?: unknown; inputElement?: unknown } | undefined;
+      if (!dp || typeof dp.updateMinMaxDateToEditor !== 'function' || dp.__hgGuarded) continue;
+      const orig = dp.updateMinMaxDateToEditor.bind(dp);
+      dp.updateMinMaxDateToEditor = (...args: unknown[]) => {
+        try {
+          if (!dp.element || !dp.inputElement) return;
+          return orig(...(args as []));
+        } catch {
+          return;
+        }
+      };
+      (dp as { __hgGuarded?: boolean }).__hgGuarded = true;
+    }
+    // Fallback global: si el picker aún no está instanciado, parchea el
+    // prototipo de DatePicker si el bundle ya lo tiene cargado vía Schedule.
+    try {
+      const g = globalThis as unknown as { ej2CalendarsPatched?: boolean };
+      if (!g.ej2CalendarsPatched) {
+        // Intenta resolver DatePicker desde el módulo ej2-calendars si está en el chunk.
+        // No se importa estáticamente para no forzar bundle; se busca en window.
+        const maybe = (globalThis as unknown as { DatePicker?: { prototype?: { updateMinMaxDateToEditor?: (...a: unknown[]) => unknown; __hgGuarded?: boolean } } }).DatePicker;
+        const proto = maybe?.prototype;
+        if (proto && typeof proto.updateMinMaxDateToEditor === 'function' && !proto.__hgGuarded) {
+          const origProto = proto.updateMinMaxDateToEditor;
+          proto.updateMinMaxDateToEditor = function (this: { element?: unknown; inputElement?: unknown }, ...args: unknown[]) {
+            try {
+              if (!this.element || !this.inputElement) return;
+              return (origProto as (...a: unknown[]) => unknown).apply(this, args as []);
+            } catch {
+              return;
+            }
+          } as unknown as typeof proto.updateMinMaxDateToEditor;
+          proto.__hgGuarded = true;
+          g.ej2CalendarsPatched = true;
+        }
+      }
+    } catch {
+      // Silenciar — el guard por instancia ya cubre el caso principal.
+    }
+    schedule.__datePickerGuarded = true;
   }
 
   private disableNativeEditor(): void {

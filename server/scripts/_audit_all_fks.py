@@ -35,7 +35,6 @@ FK_CHECKS = [
     ("booking_orders", "coupon_id", "coupon_codes", {}),
     ("navigation", "permission_id", "permissions", {"permission_code": {"$ne": None}}),
     ("navigation", "parent_id", "navigation", {"parent_slug": {"$ne": None}}),
-    ("dim_hotels", "geo_catalog_id", "geo_catalog", {}),
     ("users", "primary_role_id", "roles", {}),
 ]
 

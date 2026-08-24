@@ -2,7 +2,7 @@
   <app-page-header
     eyebrow="Facturación"
     title="Mis Facturas"
-    description="Consulta el estado de tus facturas, descarga comprobantes y realiza pagos simulados de forma segura."
+    description="Consulta el estado de tus facturas, descarga comprobantes y realiza pagos en línea de forma segura."
   />
 
   @switch (viewState()) {
@@ -111,39 +111,6 @@
             </table>
           </div>
         </section>
-
-        <!-- Banking info -->
-        <div class="banking-info surface-card">
-          <div class="banking-info-head">
-            <span class="material-symbols-outlined banking-icon">account_balance</span>
-            <div>
-              <h3>Transferencia bancaria simulada</h3>
-              <p>Los pagos se procesan de forma simulada. No hay movimiento de dinero real.</p>
-            </div>
-          </div>
-          <div class="banking-details">
-            <div class="banking-field">
-              <span class="banking-label">Banco</span>
-              <span class="banking-value">Banco HotelData S.A.</span>
-            </div>
-            <div class="banking-field">
-              <span class="banking-label">Titular</span>
-              <span class="banking-value">HotelData SAPI de CV</span>
-            </div>
-            <div class="banking-field">
-              <span class="banking-label">Cuenta</span>
-              <span class="banking-value banking-mono">6460 1802 3004 7812</span>
-            </div>
-            <div class="banking-field">
-              <span class="banking-label">CLABE</span>
-              <span class="banking-value banking-mono">002 646 018023007812 5</span>
-            </div>
-            <div class="banking-field">
-              <span class="banking-label">Referencia</span>
-              <span class="banking-value banking-mono">HD-{{ invNumber() }}</span>
-            </div>
-          </div>
-        </div>
       }
     }
   }

@@ -380,36 +380,62 @@
               </section>
             }
 
-            <!-- Reviews -->
+            <!-- Reviews — solo verificadas (approved), nombre real, fecha y valoración distintas -->
             @if (vm.reviews.length) {
-              <section id="reviews" class="detail-section">
+              <section id="reviews" class="detail-section" aria-labelledby="reviews-title">
                 <div class="reviews-head">
-                  <h2 class="section-title">Reseñas de Clientes</h2>
-                  @if (vm.reviewCount > vm.reviews.length) {
-                    <a class="reviews-all-link" href="#">Ver todas ({{ vm.reviewCount }})</a>
+                  <h2 id="reviews-title" class="section-title">Reseñas de Clientes</h2>
+                  @if (vm.reviewCount > 0) {
+                    <span class="reviews-all-link" aria-label="{{ vm.reviewCount }} reseñas verificadas">
+                      Ver todas ({{ vm.reviewCount }})
+                    </span>
                   }
                 </div>
                 <div class="reviews-layout">
-                  <div class="reviews-score-card">
-                    <span class="score-big">{{ vm.reviewLabel }}</span>
-                    <div class="score-stars">
+                  <div class="reviews-score-card" aria-label="Puntuación media {{ vm.reviewLabel }} sobre 5, basada en {{ vm.reviewCount }} valoraciones verificadas">
+                    <span class="score-big" aria-hidden="true">{{ vm.reviewLabel }}</span>
+                    <div class="score-stars" aria-hidden="true">
                       @for (i of [1,2,3,4,5]; track i) {
                         <span class="material-symbols-outlined score-star" [class.filled]="i <= stars()">star</span>
                       }
                     </div>
                     <span class="score-count">Basado en {{ vm.reviewCount }} valoraciones verificadas</span>
                   </div>
-                  <div class="reviews-list">
-                    @for (rev of vm.reviews.slice(0, 3); track rev.reviewerName + rev.date) {
-                      <div class="review-card">
+                  <div class="reviews-list" role="list" aria-label="Reseñas verificadas">
+                    @for (rev of vm.reviews; track rev.title + rev.date) {
+                      <article class="review-card" role="listitem" [attr.aria-label]="'Reseña de ' + rev.reviewerName + ' del ' + (rev.date | date:'d MMM yyyy')">
                         <div class="review-header">
-                          <span class="review-author">{{ rev.reviewerName }}</span>
-                          <span class="review-date">{{ rev.date | date:'d MMM' }}</span>
+                          <div class="review-author-block">
+                            <span class="review-author">{{ rev.reviewerName }}</span>
+                            <span class="review-verified" aria-label="Huésped verificado">
+                              <span class="material-symbols-outlined verified-icon" aria-hidden="true">verified</span>
+                              Huésped verificado
+                            </span>
+                          </div>
+                          <time class="review-date" [attr.datetime]="rev.date" [attr.title]="rev.date | date:'fullDate'">{{ rev.date | date:'d MMM yyyy' }}</time>
                         </div>
+                        <div class="review-rating" aria-label="Valoración {{ rev.score }} de 5">
+                          @for (i of [1,2,3,4,5]; track i) {
+                            <span class="material-symbols-outlined review-star" [class.filled]="i <= rev.score" aria-hidden="true">star</span>
+                          }
+                          <span class="review-score-label">{{ rev.score }}/5</span>
+                        </div>
+                        @if (rev.title) {
+                          <p class="review-title">{{ rev.title }}</p>
+                        }
                         @if (rev.text) {
                           <p class="review-text">"{{ rev.text }}"</p>
                         }
-                      </div>
+                        @if (rev.staffResponse) {
+                          <div class="review-staff-response" aria-label="Respuesta del hotel">
+                            <span class="material-symbols-outlined staff-icon" aria-hidden="true">support_agent</span>
+                            <div>
+                              <strong class="staff-label">Respuesta del hotel</strong>
+                              <p class="staff-text">{{ rev.staffResponse }}</p>
+                            </div>
+                          </div>
+                        }
+                      </article>
                     }
                   </div>
                 </div>

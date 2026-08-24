@@ -30,7 +30,26 @@
   border-radius: 10px;
 }
 
-.review-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.review-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.review-author-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .review-author { font-weight: 700; font-size: 14px; color: var(--on-surface, var(--app-text)); }
-.review-date { font-size: 12px; color: var(--outline, var(--muted-text)); }
+.review-verified { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--success-strong, var(--success)); }
+.verified-icon { font-size: 14px; color: var(--success); font-variation-settings: 'FILL' 1; }
+.review-date { font-size: 12px; color: var(--outline, var(--muted-text)); white-space: nowrap; flex-shrink: 0; }
+
+.review-rating { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.review-rating .review-star { font-size: 16px; color: var(--gray-300); font-variation-settings: 'FILL' 0; &.filled { color: var(--warning-strong); font-variation-settings: 'FILL' 1; } }
+.review-score-label { font-size: 12px; font-weight: 700; color: var(--app-text); margin-left: 4px; }
+
+.review-title { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: var(--app-text); line-height: 1.35; }
 .review-text { margin: 0; font-size: 14px; font-style: italic; color: var(--on-surface-variant, var(--gray-700)); line-height: 1.5; }
+
+.review-staff-response {
+  display: flex; gap: 10px; margin-top: 12px; padding: 12px;
+  background: var(--surface-soft, color-mix(in srgb, var(--accent) 6%, var(--surface)));
+  border: 1px solid var(--app-border); border-left: 3px solid var(--accent);
+  border-radius: 10px;
+}
+.review-staff-response .staff-icon { font-size: 18px; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.staff-label { display: block; font-size: 12px; font-weight: 700; color: var(--app-text); margin-bottom: 2px; }
+.staff-text { margin: 0; font-size: 13px; color: var(--muted-text); line-height: 1.45; }

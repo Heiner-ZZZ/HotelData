@@ -1,5 +1,8 @@
 import type { HotelCompareItem } from '../../models/hotel-compare.model';
-import { placeholderImageUrl } from '../../../../shared/utils/placeholder-image.util';
+import {
+  hotelGalleryImages,
+  isValidImageUrl,
+} from '../../../../shared/utils/placeholder-image.util';
 
 /** Map amenity keywords to Material Symbols icons. */
 export const AMENITY_ICONS: Record<string, string> = {
@@ -237,15 +240,14 @@ export function minRate(items: HotelCompareItem[]): string {
   return item?.minNightlyRateLabel || '—';
 }
 
-/** Generate carousel image URLs for a hotel using deterministic loremflickr seeds. */
+/** Galería centralizada — mismo `hotelGalleryImages` que `/welcome` y `/search` (4 fotos). */
 export function carouselImages(hotel: HotelCompareItem): string[] {
   const seed = hotel.propId || 0;
-  return [
-    hotel.imageUrl || placeholderImageUrl(`${seed}1`, 800, 400),
-    placeholderImageUrl(`${seed}2`, 800, 400),
-    placeholderImageUrl(`${seed}3`, 800, 400),
-    placeholderImageUrl(`${seed}4`, 800, 400),
-  ];
+  const placeholders = hotelGalleryImages(seed, null, 4, 800, 400);
+  if (isValidImageUrl(hotel.imageUrl)) {
+    return [hotel.imageUrl as string, ...placeholders.slice(1)];
+  }
+  return placeholders;
 }
 
 /** Compute comparison flags for each hotel vs average. */

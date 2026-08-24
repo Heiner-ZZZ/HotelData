@@ -4,25 +4,8 @@ import { catchError, map, of } from 'rxjs';
 
 import { ToastService } from '../../shared/services/toast.service';
 import { AuthService } from './auth.service';
-import { SUPERUSER_WILDCARD } from './permission.constants';
-
-function hasAllowedRole(role: string | undefined, allowedRoles: string[] | undefined): boolean {
-  if (!allowedRoles?.length) {
-    return true;
-  }
-  return !!role && allowedRoles.includes(role);
-}
-
-function hasRequiredPermission(permissionCodes: string[], requiredPermission: string | undefined): boolean {
-  if (!requiredPermission) {
-    return true;
-  }
-  // *.* super_admin wildcard grants access to everything
-  if (permissionCodes.includes(SUPERUSER_WILDCARD)) {
-    return true;
-  }
-  return permissionCodes.includes(requiredPermission);
-}
+import { hasAllowedRole, hasRequiredPermission } from './route-access';
+import { pickFirstAccessibleManagementHref } from '../../features/management/management-redirect';
 
 export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
@@ -63,10 +46,23 @@ export const roleGuard: CanActivateFn = (route) => {
       return true;
     }
     // If either guard was applicable and failed, announce it globally and
-    // redirect home. Same toast vocabulary used by the HTTP error boundary
-    // for backend 403s, so navigation and action denials feel identical.
+    // redirect home. Red toast (error), same vocabulary used by the HTTP
+    // error boundary for backend 403s, so navigation and action denials
+    // feel identical — a denied access is an error, not a warning.
     if (requiredPermission || (allowedRoles?.length ?? 0) > 0) {
-      toast.warning('No tienes permiso para acceder a esta sección.');
+      toast.error('No tienes permiso para acceder a esta sección.');
+      // Para dashboards estratégicos sin permiso, redirigir dinámicamente a
+      // la primera ruta de /management que sí tiene permitido (no estático
+      // a /search). Es dinámico porque depende de permissionCodes del usuario
+      // (housekeeping → /management/housekeeping, maintenance → housekeeping/hr, etc.).
+      if (requiredPermission?.startsWith('reports.strategic')) {
+        const href = pickFirstAccessibleManagementHref(
+          authState.permissionCodes,
+          authState.user?.primaryRole ?? null,
+        );
+        const qp = (route as unknown as { queryParams?: Record<string, string> }).queryParams ?? {};
+        return router.createUrlTree([href], { queryParams: qp });
+      }
       return router.parseUrl(authState.homeHref || '/search');
     }
     // No restrictions → allow

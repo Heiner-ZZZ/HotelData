@@ -1,0 +1,42 @@
+<nav class="products-section-nav" aria-label="Navegación de productos">
+  <a
+    routerLink="/management/products"
+    [queryParams]="queryParams()"
+    routerLinkActive="is-active"
+    [routerLinkActiveOptions]="{ exact: true }"
+    class="nav-tab"
+  >
+    <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
+    <span>Inventario</span>
+  </a>
+
+  @if (canSeeCost()) {
+    <a
+      routerLink="/management/products/reports/margin"
+      [queryParams]="queryParams()"
+      routerLinkActive="is-active"
+      class="nav-tab"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
+      <span>Margen</span>
+    </a>
+    <a
+      routerLink="/management/products/reports/cogs"
+      [queryParams]="queryParams()"
+      routerLinkActive="is-active"
+      class="nav-tab"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+      <span>COGS</span>
+    </a>
+    <a
+      routerLink="/management/products/reports/stock-value"
+      [queryParams]="queryParams()"
+      routerLinkActive="is-active"
+      class="nav-tab"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">warehouse</span>
+      <span>Valor stock</span>
+    </a>
+  }
+</nav>

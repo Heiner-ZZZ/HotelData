@@ -51,7 +51,9 @@ export interface HotelDetailViewModel {
     reviewerName: string;
     score: number;
     text: string;
+    title: string;
     date: string;
+    staffResponse: string | null;
   }[];
 }
 

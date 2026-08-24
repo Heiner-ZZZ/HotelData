@@ -36,7 +36,6 @@ export class ClientInvoicesListPageComponent {
       .filter(i => i.status === 'issued')
       .reduce((sum, i) => sum + i.total, 0) ?? 0,
   );
-  readonly invNumber = computed(() => this.data()?.items[0]?.invoiceNumber ?? '');
 
   constructor() {
     this.activatedRoute.queryParamMap

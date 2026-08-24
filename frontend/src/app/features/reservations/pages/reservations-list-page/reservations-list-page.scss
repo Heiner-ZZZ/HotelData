@@ -828,3 +828,191 @@
   color: var(--muted-text);
 }
 
+
+/* ── Estadías pasadas del huésped (zona de solo lectura) ─────────────────
+   Tokens canónicos del sistema (_scss-variables.scss): nada hardcodeado.
+   La zona es informativa: cero botones/enlaces por diseño. */
+.past-stays {
+  margin-top: 1.25rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--surface);
+
+  .past-stays-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .past-stays-icon {
+      font-size: 1.2rem;
+      color: var(--muted-text);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--app-text);
+    }
+
+    .past-stays-count {
+      margin-left: auto;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--muted-text);
+      background: var(--surface-soft);
+      border-radius: 999px;
+      padding: 0.15rem 0.6rem;
+    }
+  }
+
+  .past-stays-note {
+    margin: 0.35rem 0 0.9rem;
+    font-size: 0.76rem;
+    color: var(--muted-text);
+  }
+
+  .past-stays-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .past-stay-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--app-border);
+    border-radius: 10px;
+    background: var(--surface-raised);
+
+    /* No-show: borde de advertencia (ámbar) para distinguirla de un check-out normal. */
+    &.is-no-show {
+      border-color: color-mix(in srgb, var(--warning) 55%, transparent);
+    }
+
+    .past-stay-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+
+      .past-stay-hotel {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--app-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .past-stay-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        white-space: nowrap;
+
+        .material-symbols-outlined {
+          font-size: 0.85rem;
+        }
+
+        &.badge-no-show {
+          background: var(--warning-light);
+          color: var(--warning-strong);
+        }
+
+        &.badge-past {
+          background: var(--purple-light);
+          color: var(--purple-strong);
+        }
+      }
+    }
+
+    .past-stay-meta {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+
+      .past-stay-meta-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.6rem;
+        font-size: 0.76rem;
+
+        dt {
+          color: var(--muted-text);
+          font-weight: 600;
+        }
+
+        dd {
+          margin: 0;
+          color: var(--app-text);
+          text-align: right;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+
+          &.mono {
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+            font-size: 0.72rem;
+          }
+        }
+      }
+
+      .past-stay-reason {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.3rem;
+        margin-top: 0.3rem;
+        padding: 0.4rem 0.5rem;
+        border-radius: 8px;
+        font-size: 0.72rem;
+        line-height: 1.45;
+
+        .material-symbols-outlined {
+          font-size: 0.9rem;
+          flex-shrink: 0;
+        }
+
+        &.reason-no-show {
+          background: var(--warning-light);
+          color: var(--warning-strong);
+        }
+
+        &.reason-past {
+          background: var(--surface-soft);
+          color: var(--muted-text);
+        }
+      }
+    }
+
+    .past-stay-footer {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin-top: auto;
+      padding-top: 0.45rem;
+      border-top: 1px dashed var(--app-border);
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--muted-text);
+
+      .material-symbols-outlined {
+        font-size: 0.9rem;
+      }
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .past-stays .past-stays-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -418,7 +418,9 @@ def link_payment_to_shift(
 
     Raises ``ValueError`` with a machine-readable code on conflicts:
     - ``payment_not_found`` / ``shift_not_found``
-    - ``payment_already_linked`` (the payment already carries a shift)
+    - ``payment_already_linked`` (the payment already carries cashier
+      attribution; an unattributed payment is linkable even if a stale or
+      unresolved ``shift_id`` FK is present)
     - ``shift_prop_mismatch`` (shift belongs to another property)
     """
     db = get_database()
@@ -429,7 +431,11 @@ def link_payment_to_shift(
     payment = db[PAYMENTS].find_one({"_id": pay_id})
     if not payment:
         raise ValueError("payment_not_found")
-    if payment.get("shift_id"):
+    # Mirror the payments-list contract: the row shows "Sin turno · Vincular"
+    # exactly when the denormalized cashier attribution is missing. A leftover
+    # shift_id whose shift never got resolved (historical settlement seeds,
+    # deleted shifts) must not dead-lock that repair behind a 409.
+    if payment.get("shift_employee") or payment.get("shift_opened_by"):
         raise ValueError("payment_already_linked")
 
     try:

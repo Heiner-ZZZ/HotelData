@@ -12,6 +12,16 @@ import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { InvoiceDetailViewModel } from '../../models/billing.model';
 import { mapInvoiceDetail } from '../../mappers/billing.mapper';
 import { BillingApiService } from '../../services/billing-api.service';
+import {
+  formatCardNumber,
+  isCardHolderValid,
+  isCvvValid,
+  isExpiryValid,
+  luhnCheck,
+  maskCardNumber,
+  maskCardNumberDisplay,
+  normalizeCardNumber,
+} from './card-form.util';
 
 @Component({
   selector: 'app-client-invoice-detail-page',
@@ -47,17 +57,108 @@ export class ClientInvoiceDetailPageComponent {
   readonly actionError = signal<string | null>(null);
   readonly actionMessage = signal<string | null>(null);
   readonly paying = signal(false);
-  readonly paymentStep = signal<'idle' | 'processing' | 'confirm' | 'done'>('idle');
+  readonly paymentStep = signal<'idle' | 'card' | 'processing' | 'confirm' | 'done'>('idle');
   readonly paymentReference = signal('');
   readonly today = signal(new Date().toLocaleDateString('es-MX', {
     year: 'numeric', month: 'long', day: 'numeric',
   }));
 
+  // ── Datos de la tarjeta (pago en línea) ──
+  readonly cardNumber = signal('');
+  readonly cardHolder = signal('');
+  readonly cardExpiry = signal('');
+  readonly cardCvv = signal('');
+  /** True mientras el campo de número está enmascarado (blur) — el valor
+   *  interno ``cardNumber`` SIEMPRE conserva el número completo. */
+  readonly cardNumberMasked = signal(false);
+
+  /** Valor mostrado del campo de número: máscara realista (5003 **** ****
+   *  7003) al salir del foco, número completo formateado al editarlo. */
+  readonly cardNumberDisplay = computed(() =>
+    this.cardNumberMasked()
+      ? maskCardNumberDisplay(this.cardNumber())
+      : formatCardNumber(this.cardNumber()),
+  );
+
+  readonly cardNumberError = computed(() => {
+    const v = this.cardNumber();
+    if (!v) return 'Ingresa el número de tarjeta.';
+    if (!luhnCheck(v)) return 'Número de tarjeta inválido.';
+    return null;
+  });
+  readonly cardHolderError = computed(() => {
+    const v = this.cardHolder();
+    if (!v) return 'Ingresa el nombre del titular.';
+    if (!isCardHolderValid(v)) return 'Ingresa el nombre completo del titular.';
+    return null;
+  });
+  readonly cardExpiryError = computed(() => {
+    const v = this.cardExpiry();
+    if (!v) return 'Ingresa la fecha de vencimiento.';
+    if (!isExpiryValid(v)) return 'La tarjeta está vencida o la fecha es inválida.';
+    return null;
+  });
+  readonly cardCvvError = computed(() => {
+    const v = this.cardCvv();
+    if (!v) return 'Ingresa el CVV.';
+    if (!isCvvValid(v)) return 'CVV inválido.';
+    return null;
+  });
+  readonly cardValid = computed(() =>
+    !this.cardNumberError() && !this.cardHolderError() && !this.cardExpiryError() && !this.cardCvvError(),
+  );
+  /** Últimos 4 dígitos enmascarados para la confirmación (nunca el número completo). */
+  readonly maskedCard = computed(() => maskCardNumber(this.cardNumber()));
+
   constructor() {}
 
   startPayment() {
+    // Primer paso: capturar los datos de la tarjeta (número, titular,
+    // vencimiento, CVV) — el pago NO puede confirmarse sin ingresarlos.
     this.actionError.set(null);
     this.actionMessage.set(null);
+    this.paymentStep.set('card');
+  }
+
+  onCardNumberInput(value: string): void {
+    // Si el usuario edita un campo que estaba enmascarado (p.ej. autofill sin
+    // pasar por focus), descartamos la pulsación y restauramos el número
+    // completo para que el siguiente cambio de detección lo re-renderice.
+    if (this.cardNumberMasked()) {
+      this.cardNumberMasked.set(false);
+      return;
+    }
+    this.cardNumber.set(formatCardNumber(value));
+  }
+
+  onCardNumberFocus(): void {
+    // Al volver a editar se muestra el número completo.
+    this.cardNumberMasked.set(false);
+  }
+
+  onCardNumberBlur(): void {
+    // Al salir del campo, realismo: el número queda como 5003 **** **** 7003.
+    if (normalizeCardNumber(this.cardNumber()).length === 16) {
+      this.cardNumberMasked.set(true);
+    }
+  }
+
+  onCardHolderInput(value: string): void {
+    this.cardHolder.set(value);
+  }
+
+  onCardExpiryInput(value: string): void {
+    const digits = (value || '').replace(/\D/g, '').slice(0, 4);
+    this.cardExpiry.set(digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits);
+  }
+
+  onCardCvvInput(value: string): void {
+    this.cardCvv.set((value || '').replace(/\D/g, '').slice(0, 4));
+  }
+
+  submitCard() {
+    if (!this.cardValid()) return;
+    this.actionError.set(null);
     this.paymentStep.set('processing');
     this.paying.set(true);
 
@@ -91,6 +192,12 @@ export class ClientInvoiceDetailPageComponent {
   }
 
   cancelPayment() {
+    // Desde la confirmación: volver al formulario para corregir la tarjeta.
+    this.paymentStep.set('card');
+    this.paying.set(false);
+  }
+
+  backToIdle() {
     this.paymentStep.set('idle');
     this.paying.set(false);
   }

@@ -215,12 +215,6 @@ def _fallback(
             and c["prop_country_id"] == source["prop_country_id"]
         ):
             score += 25
-        elif (
-            c.get("geo_country_code") is not None
-            and source.get("geo_country_code") is not None
-            and c["geo_country_code"] == source["geo_country_code"]
-        ):
-            score += 25
         scored.append({
             "prop_id": int(c["prop_id"]),
             "similarity_score": min(100, score + 35),

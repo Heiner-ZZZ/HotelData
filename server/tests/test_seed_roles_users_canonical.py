@@ -92,3 +92,13 @@ def test_seed_roles_users_seeds_convergent_permissions_on_test_db() -> None:
         assert demo == 3, f"usuarios demo no sembrados (encontrados {demo})"
     finally:
         db.client.close()
+
+
+def test_operador_datos_is_platform_role_monitoring_only() -> None:
+    """operador_datos es un rol de PLATAFORMA (por encima del hotel) y tras la
+    corrección de 2026-08 solo porta monitoreo: sin etl.execute/etl.read ni
+    audit.read ni dashboard.read. El ETL lo ejecuta solo la administración.
+    """
+    _, canon = _modules()
+    assert "operador_datos" in canon.PLATFORM_ROLES
+    assert canon.ROLE_PERMISSION_CODES["operador_datos"] == ["monitoring.read"]

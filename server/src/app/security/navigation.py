@@ -96,6 +96,7 @@ NAVIGATION_BY_ROLE: dict[str, list[dict[str, Any]]] = {
     "cliente": [
         {"label": "Hoteles", "href": "/search", "icon": "icon-hotels"},
         {"label": "Reservas", "href": "/account/bookings", "icon": "icon-booking", "roles": ("cliente",)},
+        {"label": "Facturas", "href": "/account/billing", "icon": "icon-receipt", "roles": ("cliente",)},
         {"label": "Perfil", "href": "/account/profile", "icon": "icon-auth"},
     ],
 }

@@ -27,6 +27,7 @@ function mapKpi(raw: any): StrategicKpi {
     unit: raw.unit ?? '',
     target: raw.target == null ? null : asNum(raw.target),
     pctChange: asNum(raw.pct_change),
+    hasPrev: Boolean(raw.has_prev),
     trend: raw.trend ?? 'flat',
     semaforo: raw.semaforo ?? 'yellow',
     detail: raw.detail ?? '',

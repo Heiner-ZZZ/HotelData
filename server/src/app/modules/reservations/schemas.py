@@ -249,6 +249,34 @@ class BookingListResponse(BaseModel):
     has_prev: bool = False
 
 
+class PastStayItem(BaseModel):
+    """Una estadía finalizada del huésped (zona de solo lectura)."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    booking_id: str = ""
+    prop_id: int = 0
+    hotel_label: str = ""
+    guest_name: str = ""
+    check_in_date: str = ""
+    check_out_date: str = ""
+    total_price: float | None = None
+    currency: str = "USD"
+    status: str = ""
+    stay_status: str = ""
+    # 'no_show' | 'dates_passed' — server-authoritative.
+    read_only_reason: str = "dates_passed"
+    no_show_penalty_amount: float | None = None
+
+
+class PastStaysResponse(BaseModel):
+    """Envelope for ``GET /api/reservations/past-stays`` (guest read-only zone)."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    items: list[PastStayItem] = Field(default_factory=list)
+
+
 # ── Explicit rebuilds — ``from __future__ import annotations`` requires
 #    eager resolution before the first TypeAdapter binds. Force it.
 
@@ -258,3 +286,5 @@ AssignedRoomSnapshot.model_rebuild()
 BookingResponse.model_rebuild()
 ReservationCreatedResponse.model_rebuild()
 BookingListResponse.model_rebuild()
+PastStayItem.model_rebuild()
+PastStaysResponse.model_rebuild()

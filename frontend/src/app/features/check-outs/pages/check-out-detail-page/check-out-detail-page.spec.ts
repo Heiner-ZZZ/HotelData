@@ -763,4 +763,48 @@ describe('CheckOutDetailPageComponent', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('$190.00');
   });
+
+  // ═══ prop_id — no dispara 400 sin contexto ═══
+  it('no dispara GET sin prop_id (evita 400 Contexto de hotel requerido)', async () => {
+    const propCtxMock = {
+      currentPropId: signal(0),
+      currentPropLabel: signal(''),
+      currentPropLabelShort: signal(''),
+      ready: signal(true),
+      singleHotelMode: signal(false),
+      defaultPropId: signal(0),
+      mode: signal('all' as const),
+      assignedProperties: signal([]),
+    };
+    await TestBed.configureTestingModule({
+      imports: [CheckOutDetailPageComponent],
+      providers: [
+        provideHttpClient(withInterceptors([httpErrorInterceptor])),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: { get: (k: string) => (k === 'bookingId' ? 'BK-1' : null) } as any,
+              queryParamMap: { get: (_k: string) => null } as any,
+            },
+            paramMap: of(new Map([['bookingId', 'BK-1']] as any)),
+            queryParamMap: of(new Map([] as any)),
+          },
+        },
+        { provide: Router, useValue: { events: of() } },
+        { provide: ToastService, useValue: { error: jest.fn() } },
+        { provide: AuthService, useValue: { hasPermission: jest.fn(() => true), isAuthenticated: () => false, sessionLoaded: () => false } },
+        { provide: NoShowService, useValue: { markNoShowWithConfirm: jest.fn(), successMessage: jest.fn() } },
+        { provide: PropertyContextService, useValue: propCtxMock },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CheckOutDetailPageComponent);
+    fixture.detectChanges();
+    const httpTesting = TestBed.inject(HttpTestingController);
+    // No debe haber request sin prop_id — evita el 400 del backend
+    httpTesting.expectNone((r) => r.url.includes('/management/check-outs/BK-1/detail'));
+    expect(fixture.componentInstance.detailResource.isLoading()).toBe(false);
+  });
 });

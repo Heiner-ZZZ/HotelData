@@ -27,6 +27,7 @@ from src.app.modules.reservations.schemas import (
     BookingListResponse,
     BookingResponse,
     ModuleStatus,
+    PastStaysResponse,
     ReservationCreatedResponse,
 )
 from src.app.modules.reservations.service import (
@@ -129,6 +130,22 @@ def reservation_dates_api(
     current_user: dict = Depends(require_prop_permission("reservations.read")),
 ):
     return list_reservation_dates(prop_id=prop_id, user=current_user)
+
+
+@api_router.get("/past-stays", response_model=PastStaysResponse)
+def reservations_past_stays_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_permission("reservations.read")),
+):
+    """Zona "Estadías pasadas" del huésped — solo lectura.
+
+    Devuelve los bookings terminados del usuario (check-out, no-show o fechas
+    vencidas) con ``read_only_reason`` que explica por qué no hay acciones.
+    El scope ``cliente`` es ownership estricto por FK ``user_id``. Declarada
+    ANTES del catch-all ``/{booking_id}`` para que no lo capture.
+    """
+    from src.app.modules.reservations.service.queries import list_past_stays as _past
+    return PastStaysResponse.model_validate(to_json_safe(_past(prop_id=prop_id, user=current_user)))
 
 
 @api_router.get("/options")

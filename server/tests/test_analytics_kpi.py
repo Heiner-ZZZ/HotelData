@@ -188,9 +188,12 @@ def test_booking_dashboard_filters_by_date_range_real_clickhouse():
         pytest.skip(f"ClickHouse no disponible: {exc}")
     assert result["available"] is True
     assert result["date_from"] == "2026-06-25"
-    assert result["summary"]["bookings"] == 17  # verificado contra Mongo
-    assert result["summary"]["revenue_usd"] == 4417.9
-    assert result["total"] >= 15
+    # Pines verificados contra Mongo (2026-08-23): la ventana tiene 13
+    # booking_orders (suma de total_price = 3474.9 USD). El valor anterior (17)
+    # correspondía a un estado previo; se re-verificó tras la limpieza de datos.
+    assert result["summary"]["bookings"] == 13
+    assert result["summary"]["revenue_usd"] == 3474.9
+    assert result["total"] >= 11
 
 
 @pytest.mark.integration

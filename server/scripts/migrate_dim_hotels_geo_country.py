@@ -1,21 +1,32 @@
 """
-Migrate dim_hotels: backfill geo_country_code and geo_catalog_id from prop_country_id.
+DEPRECADO — opción B: los hoteles ya NO llevan geo_country_code/geo_catalog_id.
 
-For each dim_hotels document, resolves the legacy numeric prop_country_id to:
-1. dim_visitor_countries → country_name, then matches to geo_catalog (type=country)
-2. geo_country_code: the geo_catalog.code (e.g., "MX", "US")
-3. geo_catalog_id: the geo_catalog._id ObjectId
+El país del hotel se resuelve por ``prop_country_id`` → ``dim_visitor_countries``
+(la tabla del dataset con TODOS los países). Este script reescribía la relación
+hacia el catálogo curado (geo_catalog), que dejó de ser fuente de país. NO
+ejecutar: re-agregaría el campo muerto. Se conserva solo como referencia
+histórica.
 
-Documents already having geo_country_code are skipped.
+Original (histórico):
+    Migrate dim_hotels: backfill geo_country_code and geo_catalog_id from prop_country_id.
 
-Usage:
-    docker compose -f infra/docker-compose.yml exec server python scripts/migrate_dim_hotels_geo_country.py
+    For each dim_hotels document, resolves the legacy numeric prop_country_id to:
+    1. dim_visitor_countries → country_name, then matches to geo_catalog (type=country)
+    2. geo_country_code: the geo_catalog.code (e.g., "MX", "US")
+    3. geo_catalog_id: the geo_catalog._id ObjectId
+
+    Documents already having geo_country_code are skipped.
 """
 
 from __future__ import annotations
 
 import sys
-sys.path.insert(0, "/app")
+
+raise SystemExit(
+    "migrate_dim_hotels_geo_country.py está DEPRECADO (opción B): los hoteles ya "
+    "no usan geo_country_code/geo_catalog_id; el país se resuelve por "
+    "prop_country_id → dim_visitor_countries. No ejecutar."
+)
 
 import sys
 from pymongo import MongoClient, ASCENDING

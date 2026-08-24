@@ -33,6 +33,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
 
 import type {
+  PastStay,
   ReservationListItem,
   ReservationStats,
   ReservationsListViewModel,
@@ -523,6 +524,30 @@ export class ReservationsListPageComponent {
 
   readonly statsResource = httpResource<ReservationStats>(() => '/reservations/stats', {
     parse: (dto) => mapReservationStats(dto as ReservationStatsDto),
+  });
+
+  // ─── Estadías pasadas del huésped (zona de solo lectura) ───
+  /** Solo para ``cliente``: sus estadías finalizadas con el motivo
+   *  server-authoritative de por qué no ofrecen acciones. El staff no
+   *  consume este endpoint (su flujo es el grid completo). */
+  readonly pastStaysResource = httpResource<PastStay[]>(() => {
+    if (!this.isClient()) return undefined;
+    return '/reservations/past-stays';
+  }, {
+    parse: (dto) => ((dto as { items: Record<string, unknown>[] }).items ?? []).map((i) => ({
+      bookingId: String(i['booking_id'] ?? ''),
+      propId: Number(i['prop_id'] ?? 0),
+      hotelLabel: String(i['hotel_label'] ?? ''),
+      guestName: String(i['guest_name'] ?? ''),
+      checkInDate: String(i['check_in_date'] ?? ''),
+      checkOutDate: String(i['check_out_date'] ?? ''),
+      totalPrice: i['total_price'] == null ? null : Number(i['total_price']),
+      currency: String(i['currency'] ?? 'USD'),
+      status: String(i['status'] ?? ''),
+      stayStatus: String(i['stay_status'] ?? ''),
+      readOnlyReason: i['read_only_reason'] === 'no_show' ? 'no_show' as const : 'dates_passed' as const,
+      noShowPenaltyAmount: i['no_show_penalty_amount'] == null ? null : Number(i['no_show_penalty_amount']),
+    })),
   });
 
   // ─── Banner 'reservas sin precio' (admin) ───

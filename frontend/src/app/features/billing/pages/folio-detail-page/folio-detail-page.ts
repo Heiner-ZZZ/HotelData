@@ -8,15 +8,17 @@ import { distinctUntilChanged, map } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { BILLING_WRITE_OFF_APPROVE } from '../../../../core/auth/permission.constants';
-import { FolioApiService, getFolioCloseState, getFolioReconciliationNote, mapFolio, type FolioCategory, type FolioViewModel, type FolioPosting, type FolioDto, type FolioSettlementType } from '../../services/folio-api.service';
+import { ToastService } from '../../../../shared/services/toast.service';
+import { FolioApiService, getFolioCloseState, getFolioReconciliationNote, mapFolio, type FolioCategory, type FolioViewModel, type FolioDto, type FolioPosting, type FolioSettlementType } from '../../services/folio-api.service';
 
 @Component({
   selector: 'app-folio-detail-page',
-  imports: [DatePipe, FormsModule, ErrorStateComponent, LoadingStateComponent],
+  imports: [DatePipe, FormsModule, ErrorStateComponent, LoadingStateComponent, InfoTooltipComponent],
   templateUrl: './folio-detail-page.html',
   styleUrl: './folio-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -26,6 +28,8 @@ export class FolioDetailPageComponent {
   private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  /** Global toast: action feedback surfaces through the app-wide toaster. */
+  private readonly toast = inject(ToastService);
 
   /**
    * Autorización de supervisor para cierres de excepción (write-off / cortesía /
@@ -254,11 +258,11 @@ export class FolioDetailPageComponent {
     this.folioApi.emitComplementInvoice(folio.bookingId, folio.propId).subscribe({
       next: (invoice) => {
         this.folioResource.reload();
-        this.actionMessage.set(`Factura complementaria ${invoice.invoice_number} emitida para cubrir el gap sin facturar.`);
+        this.toast.success(`Factura complementaria ${invoice.invoice_number} emitida para cubrir el gap sin facturar.`);
         this.complementing.set(false);
       },
       error: (err: ApiError) => {
-        this.actionError.set(
+        this.toast.error(
           err?.message ||
           'No se pudo emitir la factura complementaria. Verificá que haya cargos nuevos sin facturar y un turno de caja activo, e intentá de nuevo.',
         );
@@ -272,7 +276,7 @@ export class FolioDetailPageComponent {
     if (!folio || folio.totalDue <= 0.005) return;
     // Los cierres de excepción exigen aprobación de supervisor (mismo gate del backend).
     if (mode !== 'payment' && !this.canApproveWriteOff()) {
-      this.actionError.set(
+      this.toast.error(
         'El cierre por excepción (write-off / cortesía / settlement externo) requiere aprobación del gerente. ' +
         'Registrá el pago del saldo o derivá el folio al gerente para que lo autorice.',
       );
@@ -301,18 +305,18 @@ export class FolioDetailPageComponent {
     const form = this.settlementForm();
     if (!folio || mode === 'idle') return;
     if (mode === 'payment' && (!form.method || form.amount <= 0 || form.amount > folio.totalDue + 0.005)) {
-      this.actionError.set(
+      this.toast.error(
         'El pago debe ser positivo y no exceder el saldo pendiente. ' +
         `Ingresá un monto entre $0.01 y $${folio.totalDue.toFixed(2)}.`,
       );
       return;
     }
     if (mode !== 'payment' && (!form.reason.trim() || !form.approvalReference.trim())) {
-      this.actionError.set('La razón y la referencia de aprobación son obligatorias: escribí ambas antes de confirmar la liquidación.');
+      this.toast.error('La razón y la referencia de aprobación son obligatorias: escribí ambas antes de confirmar la liquidación.');
       return;
     }
     if (mode === 'external_settlement' && !form.externalReference.trim()) {
-      this.actionError.set('La referencia externa es obligatoria: documentá el identificador del convenio antes de confirmar.');
+      this.toast.error('La referencia externa es obligatoria: documentá el identificador del convenio antes de confirmar.');
       return;
     }
 
@@ -333,13 +337,13 @@ export class FolioDetailPageComponent {
       next: (updated) => {
         this.folioResource.reload();
         this.settlementMode.set('idle');
-        this.actionMessage.set(updated.status === 'open'
+        this.toast.success(updated.status === 'open'
           ? 'Pago parcial registrado; el folio permanece abierto.'
           : 'Liquidación registrada y folio cerrado con trazabilidad.');
         this.postingBusy.set(false);
       },
       error: () => {
-        this.actionError.set('No se pudo registrar la liquidación. Verificá el monto y el método de pago, e intentá de nuevo.');
+        this.toast.error('No se pudo registrar la liquidación. Verificá el monto y el método de pago, e intentá de nuevo.');
         this.postingBusy.set(false);
       },
     });
@@ -348,7 +352,7 @@ export class FolioDetailPageComponent {
   submitPosting(): void {
     const form = this.postForm();
     if (!form.concept || form.amount <= 0) {
-      this.actionError.set('El concepto y el monto son obligatorios. Completá ambos campos para registrar la operación.');
+      this.toast.error('El concepto y el monto son obligatorios. Completá ambos campos para registrar la operación.');
       return;
     }
 
@@ -366,12 +370,12 @@ export class FolioDetailPageComponent {
     }, this.folio()!.propId).subscribe({
       next: () => {
         this.folioResource.reload();
-        this.actionMessage.set(this.postingMode() === 'charge' ? 'Cargo registrado en el folio.' : 'Descuento aplicado al folio.');
+        this.toast.success(this.postingMode() === 'charge' ? 'Cargo registrado en el folio.' : 'Descuento aplicado al folio.');
         this.postingMode.set('idle');
         this.postingBusy.set(false);
       },
       error: () => {
-        this.actionError.set('No se pudo registrar la operación en el folio. Verificá que haya un turno de caja activo y que el folio esté abierto, e intentá de nuevo.');
+        this.toast.error('No se pudo registrar la operación en el folio. Verificá que haya un turno de caja activo y que el folio esté abierto, e intentá de nuevo.');
         this.postingBusy.set(false);
       },
     });
@@ -386,11 +390,11 @@ export class FolioDetailPageComponent {
     this.folioApi.reopenFolio(folio.bookingId, folio.propId).subscribe({
       next: () => {
         this.folioResource.reload();
-        this.actionMessage.set('Folio reabierto para cobrar el saldo pendiente.');
+        this.toast.success('Folio reabierto para cobrar el saldo pendiente.');
         this.postingBusy.set(false);
       },
       error: () => {
-        this.actionError.set('No se pudo reabrir el folio. Verificá que el folio esté cerrado con saldo pendiente cobrable e intentá de nuevo.');
+        this.toast.error('No se pudo reabrir el folio. Verificá que el folio esté cerrado con saldo pendiente cobrable e intentá de nuevo.');
         this.postingBusy.set(false);
       },
     });
@@ -400,7 +404,7 @@ export class FolioDetailPageComponent {
     const folio = this.folio();
     if (!folio?.bookingId) return;
     if (getFolioCloseState(folio) !== 'ready') {
-      this.actionError.set(
+      this.toast.error(
         'No se puede cerrar el folio mientras tenga saldo pendiente: ' +
         'registrá el pago del saldo o resolvelo con un write-off / liquidación externa aprobado antes de cerrar.',
       );
@@ -413,11 +417,11 @@ export class FolioDetailPageComponent {
     this.folioApi.closeFolio(this.folio()!.bookingId, this.folio()!.propId).subscribe({
       next: () => {
         this.folioResource.reload();
-        this.actionMessage.set('Folio cerrado correctamente.');
+        this.toast.success('Folio cerrado correctamente.');
         this.postingBusy.set(false);
       },
       error: (err: ApiError) => {
-        this.actionError.set(
+        this.toast.error(
           err?.message ||
           'No se pudo cerrar el folio: registrá el saldo pendiente o pedile a un supervisor que autorice un cierre de excepción (write-off / cortesía / settlement externo).',
         );

@@ -250,7 +250,8 @@ async def test_search_still_filters_by_city(db, client):
 
 
 async def test_search_ignores_geo_country_code(db, client):
-    """Un hotel con SOLO geo_country_code (sin prop_country_id) NO matchea por país.
+    """Un hotel con SOLO geo_country_code (sin prop_country_id y sin el nombre
+    del país en su nombre) NO matchea al buscar ese país.
 
     Opción B: el país del hotel se resuelve por ``prop_country_id`` →
     ``dim_visitor_countries``; ``geo_country_code`` dejó de consultarse.
@@ -260,8 +261,8 @@ async def test_search_ignores_geo_country_code(db, client):
         {"prop_id": 777004},
         {"$set": {
             "prop_id": 777004,
-            "display_name": "Hotel Terranova Inn",
-            "hotel_name": "Hotel Terranova Inn",
+            "display_name": "Hotel Nocturno Inn",
+            "hotel_name": "Hotel Nocturno Inn",
             "geo_country_code": "TT",
         }},
         upsert=True,

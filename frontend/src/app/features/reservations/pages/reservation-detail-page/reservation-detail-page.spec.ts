@@ -155,3 +155,84 @@ describe('ReservationDetailPageComponent — canMarkNoShow', () => {
     expect((fixture.nativeElement as HTMLElement).textContent ?? '').not.toContain('Salida extendida');
   });
 });
+
+describe('ReservationDetailPageComponent — huésped (cliente) en su propia reserva', () => {
+  const GUEST_DTO: ReservationDetailDto = {
+    booking_id: 'BK-GUEST-1',
+    prop_id: 1,
+    status: 'confirmed',
+    booking_source: 'web',
+    guest_name: 'Horuz',
+    guest_email: 'horuz@hoteldata.local',
+    guest_phone: '',
+    cedula: '',
+    check_in_date: '2026-08-20',
+    check_out_date: '2026-08-22',
+    total_price: 188,
+    currency: 'USD',
+    total_nights: 2,
+    rooms: 1,
+    adults: 2,
+    children: 0,
+    comment: '',
+    created_at: '2026-08-07T20:26:28Z',
+    can_cancel: true,
+    assigned_rooms: [],
+    history: [],
+    additional_charges: [],
+  } as unknown as ReservationDetailDto;
+
+  async function renderGuest() {
+    await TestBed.configureTestingModule({
+      imports: [ReservationDetailPageComponent],
+      providers: [
+        provideHttpClient(withInterceptors([httpErrorInterceptor])),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: { get: () => 'BK-GUEST-1' } },
+            paramMap: of(new Map([['bookingId', 'BK-GUEST-1']])),
+          },
+        },
+        { provide: Router, useValue: { events: of(), navigate: jest.fn() } },
+        // Huésped autenticado: isClient() === true → no dispara requests de
+        // productos y NO debe ver el bloque "Sin permiso para ver servicios".
+        { provide: ReservationsAuthService, useValue: { isStaff: () => false, isClient: () => true } },
+        { provide: OperationModeService, useValue: { reset: jest.fn(), setMode: jest.fn(), setTransientMode: () => () => {} } },
+        { provide: ConfirmDialogService, useValue: { open: jest.fn(() => Promise.resolve(true)) } },
+        { provide: ReservationActionService, useValue: { confirm: jest.fn(() => of({})), reject: jest.fn(() => of({})) } },
+        { provide: InStayApiService, useValue: { getMyStaySession: jest.fn(() => of({ token: 't' })) } },
+        { provide: ProductsApiService, useValue: {} },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ReservationDetailPageComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const httpTesting = TestBed.inject(HttpTestingController);
+    const req = httpTesting.expectOne((r) => r.url === '/reservations/BK-GUEST-1');
+    req.flush(GUEST_DTO);
+
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    return { fixture, component, httpTesting };
+  }
+
+  it('no reporta "forbidden" ni muestra el bloque de permisos en la sección de servicios', async () => {
+    const { fixture, component } = await renderGuest();
+
+    // El estado de productos pasa a 'idle': la sección de servicios queda
+    // fuera de la vista (el huésped usa su catálogo de amenities propio).
+    expect(component.productsState()).toBe('idle');
+
+    const rendered = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(rendered).not.toContain('Sin permiso para ver servicios adicionales');
+    expect(rendered).not.toContain('properties.read');
+    fixture.destroy();
+  });
+});

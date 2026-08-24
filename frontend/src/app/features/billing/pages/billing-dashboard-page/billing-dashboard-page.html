@@ -107,35 +107,15 @@
           }
 
           <!-- ═══ Gráfico (Z — centro) ═══ -->
-          <section class="bdb-chart-row">
-            <app-kpi-chart
-              title="Evolución del monto facturado"
-              [labels]="series().labels"
-              [datasets]="chartDatasets()"
-              type="line"
-              formatValue="currency"
-              [showLegend]="true"
-              [height]="280"
-            />
-            @if (summary()?.byHotel?.length) {
-              <aside class="surface-card bdb-hotels">
-                <h3>Por hotel</h3>
-                <ul class="bdb-hotel-list">
-                  @for (h of summary()!.byHotel; track h.propId) {
-                    <li>
-                      <div class="bdb-hotel-meta">
-                        <span class="bdb-hotel-name">{{ h.hotelLabel || ('Hotel #' + h.propId) }}</span>
-                        <small>{{ h.invoiceCount }} factura(s)</small>
-                      </div>
-                      <strong>{{ h.total | number:'1.2-2' }}</strong>
-                    </li>
-                  } @empty {
-                    <li class="bdb-muted">Sin hoteles en el rango.</li>
-                  }
-                </ul>
-              </aside>
-            }
-          </section>
+          <app-kpi-chart
+            title="Evolución del monto facturado"
+            [labels]="series().labels"
+            [datasets]="chartDatasets()"
+            type="line"
+            formatValue="currency"
+            [showLegend]="true"
+            [height]="280"
+          />
 
           <!-- ═══ Grilla (Z — abajo) ═══ -->
           <section class="surface-card bdb-table-card">

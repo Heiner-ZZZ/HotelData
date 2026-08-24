@@ -42,6 +42,7 @@ def room_performance_dashboard_api(
     days: int = Query(default=30, ge=1, le=365),
     room_type_id: str | None = Query(default=None),
     channel: str | None = Query(default=None),
+    only_profitable: bool = Query(default=False, description="Grilla: solo filas con revenue > 0"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_permission("reports.rates.adr.read")),
@@ -50,7 +51,8 @@ def room_performance_dashboard_api(
 
     Lee exclusivamente ``kpi_room_performance_daily`` (agregado por día × hotel
     × tipo × divisa × canal). Devuelve resumen (ADR/RevPAR/ocupación), serie
-    diaria y filas paginadas. Filtros de tipo/canal solo afectan la grilla.
+    diaria y filas paginadas. Filtros de tipo/canal/solo-ganancias solo afectan
+    la grilla.
     """
     try:
         return get_room_performance_dashboard(
@@ -60,6 +62,7 @@ def room_performance_dashboard_api(
             days=days,
             room_type_id=room_type_id,
             channel=channel,
+            only_profitable=only_profitable,
             page=page,
             page_size=page_size,
         )
