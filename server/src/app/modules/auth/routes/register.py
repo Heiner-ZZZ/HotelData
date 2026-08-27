@@ -39,7 +39,10 @@ def send_code(
 
     db = get_database()
     if not _is_email_available(db, email):
-        raise HTTPException(status_code=400, detail="Este correo ya está registrado como usuario activo.")
+        raise HTTPException(
+            status_code=400,
+            detail="Este correo ya está registrado como usuario activo. Inicia sesión o usa 'Recuperar contraseña'.",
+        )
 
     # Aceptación de Términos: si el frontend la envía, debe coincidir con la
     # versión vigente; queda estampada en el pendiente para confirm-code.
@@ -92,7 +95,10 @@ def register(
     if not _is_username_available(db, username):
         raise HTTPException(status_code=400, detail="El username ya está registrado.")
     if not _is_email_available(db, email):
-        raise HTTPException(status_code=400, detail="El email ya está registrado como usuario activo.")
+        raise HTTPException(
+            status_code=400,
+            detail="El email ya está registrado como usuario activo. Inicia sesión o usa 'Recuperar contraseña'.",
+        )
 
     # Aceptación de Términos: si el payload la trae, debe coincidir con la
     # versión vigente. Sin el campo (back-compat con tests/seeds) no se estampa.

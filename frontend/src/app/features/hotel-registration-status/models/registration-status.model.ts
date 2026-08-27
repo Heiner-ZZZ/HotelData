@@ -61,19 +61,28 @@ export interface PropertyTypeOption {
   icon: string;
 }
 
+/** Catálogo seleccionable de tipos de propiedad.
+ *  Solo tipos que operan como un hotel (2026-08): apartamento y cabaña se
+ *  retiraron del catálogo (autoservicio, sin recepción/housekeeping). */
 export const PROPERTY_TYPES: readonly PropertyTypeOption[] = [
   { value: 'hotel', label: 'Hotel', icon: 'hotel' },
   { value: 'hostal', label: 'Hostal', icon: 'hostel' },
-  { value: 'apartamento', label: 'Apartamento', icon: 'apartment' },
   { value: 'bed_breakfast', label: 'Bed & Breakfast', icon: 'breakfast_dining' },
   { value: 'resort', label: 'Resort', icon: 'beach_access' },
-  { value: 'cabaña', label: 'Cabaña', icon: 'cabin' },
   { value: 'boutique', label: 'Boutique', icon: 'diamond' },
 ];
 
-const PROPERTY_TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  PROPERTY_TYPES.map((t) => [t.value, t.label]),
-);
+/** Labels de tipos retirados del catálogo (registros legados): se conservan
+ *  para la visualización aunque ya no sean seleccionables. */
+const PROPERTY_TYPE_LEGACY_LABELS: Record<string, string> = {
+  apartamento: 'Apartamento',
+  cabaña: 'Cabaña',
+};
+
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  ...Object.fromEntries(PROPERTY_TYPES.map((t) => [t.value, t.label])),
+  ...PROPERTY_TYPE_LEGACY_LABELS,
+};
 
 export function propertyTypeLabel(value: string): string {
   return PROPERTY_TYPE_LABELS[value] ?? value;

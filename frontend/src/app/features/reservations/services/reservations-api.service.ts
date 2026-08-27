@@ -239,6 +239,12 @@ export class ReservationsApiService {
       .post<ReservationPreviewDto>(
         '/reservations/preview',
         mapReservationCreatePayload(input),
+        // require_prop_permission exige prop_id en query (ver validateCoupon).
+        {
+          params: input.propId
+            ? new HttpParams().set('prop_id', String(input.propId))
+            : new HttpParams(),
+        },
       )
       .pipe(map((dto) => mapReservationPreview(dto)));
   }
@@ -248,6 +254,12 @@ export class ReservationsApiService {
       .post<ReservationCreateDto>(
         '/reservations',
         mapReservationCreatePayload(input),
+        // require_prop_permission exige prop_id en query (ver validateCoupon).
+        {
+          params: input.propId
+            ? new HttpParams().set('prop_id', String(input.propId))
+            : new HttpParams(),
+        },
       )
       .pipe(map((dto) => mapReservationCreateResult(dto) as ReservationCreateResult));
   }
@@ -369,6 +381,10 @@ export class ReservationsApiService {
         rate_plan_id: extra?.ratePlanId,
         room_type_id: extra?.roomTypeId,
       },
+      // El dependency require_prop_permission resuelve el hotel solo de
+      // path/query y 400a sin él ("Contexto de hotel requerido"). El body
+      // (prop_id) no le sirve — hay que mandarlo también como query param.
+      { params: new HttpParams().set('prop_id', String(propId)) },
     );
   }
 

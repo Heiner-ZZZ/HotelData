@@ -14,8 +14,22 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+
+function pastDateValidator(control: AbstractControl): ValidationErrors | null {
+  const v = String(control.value || '').trim();
+  if (!v) return null;
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { pastDate: true };
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  if (d >= now) return { pastDate: true };
+  const age = now.getFullYear() - d.getFullYear();
+  if (age < 0 || age > 120) return { pastDate: true };
+  return null;
+}
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
@@ -165,21 +179,29 @@ export class ProfilePageComponent {
   readonly travelAccommodationOptions = TRAVEL_ACCOMMODATION_OPTIONS;
   readonly travelDestinationOptions = TRAVEL_DESTINATION_OPTIONS;
 
+  // ── Validadores por campo (teléfono solo + , cédula solo -) ──
+  private static readonly displayNamePattern = /^[A-Za-zÀ-ÿ\u00C0-\u00FF\s\-']{2,60}$/;
+  private static readonly phonePattern = /^\+?[0-9\s\(\)\.]*$/;
+  private static readonly postalPattern = /^[A-Za-z0-9\s\-]{3,10}$/;
+  private static readonly docNumberPattern = /^[A-Za-z0-9\s\-]*$/;
+  private static readonly cityPattern = /^[A-Za-zÀ-ÿ\s\-']{2,50}$/;
+  private static readonly handlePattern = /^[A-Za-z0-9._\-@]{0,60}$/;
+
   readonly form = this.formBuilder.nonNullable.group({
-    // Personal
-    displayName: ['', Validators.required],
-    dateOfBirth: [''],
-    nationality: [''],
+    // Personal — nombre visible requerido, 2-60 letras
+    displayName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(60), Validators.pattern(ProfilePageComponent.displayNamePattern)]],
+    dateOfBirth: ['', [pastDateValidator]],
+    nationality: ['', [Validators.maxLength(40), Validators.pattern(ProfilePageComponent.cityPattern)]],
     idDocumentType: [''],
-    idDocumentNumber: [''],
-    // Contact
-    phone: [''],
-    notificationEmail: ['', Validators.email],
-    addressStreet: [''],
-    addressCity: [''],
-    addressState: [''],
-    addressCountry: [''],
-    addressPostalCode: [''],
+    idDocumentNumber: ['', [Validators.minLength(5), Validators.maxLength(20), Validators.pattern(ProfilePageComponent.docNumberPattern)]],
+    // Contact — teléfono opcional pero si se llena debe ser válido; email ya es email
+    phone: ['', [Validators.minLength(7), Validators.maxLength(20), Validators.pattern(ProfilePageComponent.phonePattern)]],
+    notificationEmail: ['', [Validators.email, Validators.maxLength(100)]],
+    addressStreet: ['', [Validators.maxLength(100)]],
+    addressCity: ['', [Validators.maxLength(50), Validators.pattern(ProfilePageComponent.cityPattern)]],
+    addressState: ['', [Validators.maxLength(50), Validators.pattern(ProfilePageComponent.cityPattern)]],
+    addressCountry: ['', [Validators.maxLength(50), Validators.pattern(ProfilePageComponent.cityPattern)]],
+    addressPostalCode: ['', [Validators.maxLength(10), Validators.pattern(ProfilePageComponent.postalPattern)]],
     // Preferences
     preferredLanguage: ['es'],
     marketingOptIn: [false],
@@ -187,21 +209,21 @@ export class ProfilePageComponent {
     notificationSmsEnabled: [false],
     // Avatar
     avatarUrl: [''],
-    // Social media
-    socialInstagram: [''],
-    socialFacebook: [''],
-    socialTwitter: [''],
-    socialLinkedin: [''],
+    // Social media — handles libres pero sin espacios ni caracteres raros
+    socialInstagram: ['', [Validators.maxLength(60), Validators.pattern(ProfilePageComponent.handlePattern)]],
+    socialFacebook: ['', [Validators.maxLength(60), Validators.pattern(ProfilePageComponent.handlePattern)]],
+    socialTwitter: ['', [Validators.maxLength(60), Validators.pattern(ProfilePageComponent.handlePattern)]],
+    socialLinkedin: ['', [Validators.maxLength(60), Validators.pattern(ProfilePageComponent.handlePattern)]],
     // Travel preferences
     travelPurpose: [''],
     travelBudget: [''],
     travelCompanions: [''],
     travelAccommodation: [''],
     travelDestinationType: [''],
-    travelInterests: [''],
-    travelFrequentFlyer: [''],
-    travelLoyaltyPrograms: [''],
-    travelNotes: [''],
+    travelInterests: ['', [Validators.maxLength(200)]],
+    travelFrequentFlyer: ['', [Validators.maxLength(30), Validators.pattern(ProfilePageComponent.docNumberPattern)]],
+    travelLoyaltyPrograms: ['', [Validators.maxLength(100)]],
+    travelNotes: ['', [Validators.maxLength(500)]],
   });
 
   readonly activeDropdown = signal<string | null>(null);

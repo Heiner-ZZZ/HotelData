@@ -239,7 +239,8 @@
               <span class="field-error">Las contraseñas no coinciden</span>
             }
           </label>
-        </form>          <div class="terms-accept">
+
+          <div class="terms-accept">
             <label class="terms-check">
               <input type="checkbox" formControlName="terms_accepted" />
               <span class="terms-text">
@@ -255,6 +256,7 @@
               <span class="field-error">Debes aceptar los términos para continuar.</span>
             }
           </div>
+        </form>
 
           <button class="code-submit" (click)="confirmCode()" [disabled]="verifyingCode() || codeDigits().join('').length !== 6 || registerForm.invalid || termsError()">
           @if (verifyingCode()) {

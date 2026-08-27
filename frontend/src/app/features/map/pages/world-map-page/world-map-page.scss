@@ -73,7 +73,12 @@
   gap: 0.35rem;
 }
 
-.legend-icon { font-size: 1.1rem; }
+.legend-icon {
+  font-size: 1.1rem;
+
+  &.legend-icon--dest { color: var(--accent); }
+  &.legend-icon--hotel { color: var(--success); }
+}
 .legend-count { color: var(--muted-text, var(--gray-500)); font-size: 0.8rem; }
 
 .destinations-panel {

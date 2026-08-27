@@ -45,13 +45,15 @@ interface PropertyTypeOption {
 /** E.164 international phone regex (digits 7-15, optional leading +). */
 const PHONE_PATTERN = /^\+?[1-9]\d{6,14}$/;
 
+/** Tipos de propiedad que operan como un hotel (recepción, housekeeping,
+ *  estancias cortas). Apartamento y cabaña se retiraron del catálogo (2026-08):
+ *  no comparten esas operaciones. Mantener en sync con el catálogo canónico de
+ *  hotel-registration-status/models/registration-status.model.ts. */
 const PROPERTY_TYPES: readonly PropertyTypeOption[] = [
   { value: 'hotel', label: 'Hotel', icon: 'hotel' },
   { value: 'hostal', label: 'Hostal', icon: 'hostel' },
-  { value: 'apartamento', label: 'Apartamento', icon: 'apartment' },
   { value: 'bed_breakfast', label: 'Bed & Breakfast', icon: 'breakfast_dining' },
   { value: 'resort', label: 'Resort', icon: 'beach_access' },
-  { value: 'cabaña', label: 'Cabaña', icon: 'cabin' },
   { value: 'boutique', label: 'Boutique', icon: 'diamond' }
 ];
 

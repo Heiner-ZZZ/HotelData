@@ -113,6 +113,18 @@
   }
 }
 
+/* ── Línea divisoria entre los datos del cliente y los del hotel ──
+   Verde oscuro intenso (--success-strong): marca que las cajas de debajo
+   (teléfono, moneda, habitaciones, descripción) son del HOTEL, no del
+   cliente, aunque queden en la columna de los datos del cliente. */
+.section-divider {
+  grid-column: 1 / -1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--success-strong);
+  margin: 2px 0 0;
+}
+
 /* ── Native select shells for country / currency dropdowns ── */
 .select-field {
   grid-column: 1 / -1;
@@ -419,7 +431,7 @@
     min-height: 124px;
     padding: 16px 15px 14px;
     border: 1px solid var(--app-border);
-    border-radius: 13px;
+    border-radius: 0;
     background: var(--surface);
     overflow: hidden;
     transition: border-color 160ms ease, background 160ms ease, transform 160ms ease,

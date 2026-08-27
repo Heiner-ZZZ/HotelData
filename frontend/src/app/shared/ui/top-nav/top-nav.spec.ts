@@ -35,6 +35,8 @@ function makeAuth(role: string | null, avatarUrl: string | null = null) {
       permissionCodes: [] as string[],
     })),
     currentUser: computed(() => user()),
+    isAuthenticated: computed(() => !!user()),
+    sessionLoaded: () => true,
     ensureSessionLoaded: () => of(null),
   } as unknown as AuthService;
 }

@@ -68,7 +68,12 @@ describe('ProfilePageComponent — modo CRUD del nav', () => {
 
     const api = { updateProfile: jest.fn(), uploadAvatar: jest.fn() };
     const toast = { success: jest.fn(), error: jest.fn() };
-    const auth = { updateAvatar: jest.fn() };
+    const auth = {
+      updateAvatar: jest.fn(),
+      isAuthenticated: jest.fn(() => true),
+      sessionLoaded: jest.fn(() => true),
+      invalidateSession: jest.fn(),
+    };
 
     TestBed.configureTestingModule({
       imports: [ProfilePageComponent],

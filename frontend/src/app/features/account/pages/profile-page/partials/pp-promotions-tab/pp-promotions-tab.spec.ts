@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 
+import { AuthService } from '../../../../../../core/auth/auth.service';
 import { ClientNotificationsService } from '../../../../../notifications/services/notifications.service';
 import type { MyNotificationsDto } from '../../../../../notifications/models/notifications.dto';
 import { PpPromotionsTabComponent } from './pp-promotions-tab';
@@ -63,18 +64,26 @@ describe('PpPromotionsTabComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  function setup() {
+  function setup(authenticated = true) {
     const router = {
       events: new Subject<unknown>().asObservable(),
       navigate: jest.fn(),
       routerState: { snapshot: { root: { data: {}, firstChild: null } } },
     } as unknown as Router;
+    const authMock = {
+      isAuthenticated: jest.fn(() => authenticated),
+      sessionLoaded: jest.fn(() => true),
+      // httpResource lee estas signals; ensureSessionLoaded no se usa aquí pero se mockea
+      authState: { authenticated } as unknown,
+      currentUser: () => authenticated ? { primaryRole: 'cliente' } : null,
+    } as unknown as AuthService;
     TestBed.configureTestingModule({
       imports: [PpPromotionsTabComponent],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: Router, useValue: router },
+        { provide: AuthService, useValue: authMock },
         {
           provide: ClientNotificationsService,
           useValue: { markAsRead: jest.fn(() => of({ id: 'notif-1', read: true })) },

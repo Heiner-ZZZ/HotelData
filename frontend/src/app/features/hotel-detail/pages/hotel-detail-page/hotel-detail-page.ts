@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, isDevMode, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, isDevMode, signal } from '@angular/core';
 import { HttpClient, httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -13,6 +13,8 @@ import { ImageLightboxComponent } from '../../../../shared/ui/image-lightbox/ima
 import { CarouselControlsComponent } from '../../../../shared/ui/carousel-controls/carousel-controls';
 import { SimilarCarouselComponent } from '../../components/similar-carousel/similar-carousel';
 import { HotelOffersComponent } from '../../components/hotel-offers/hotel-offers';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
+import { GuestsPickerComponent } from '../../../../shared/ui/guests-picker/guests-picker';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { HotelDetailViewModel, SimilarHotel } from '../../models/hotel-detail.model';
 import type { HotelDetailDto, RoomAvailabilitySnapshotDto, SimilarHotelsResponseDto } from '../../models/hotel-detail.dto';
@@ -21,7 +23,7 @@ import { mapHotelDetailResponse } from '../../mappers/hotel-detail.mapper';
 
 @Component({
   selector: 'app-hotel-detail-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, RouterLink, ImageLightboxComponent, CarouselControlsComponent, SimilarCarouselComponent, HotelOffersComponent],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, RouterLink, ImageLightboxComponent, CarouselControlsComponent, SimilarCarouselComponent, HotelOffersComponent, DateRangePickerComponent, GuestsPickerComponent],
   templateUrl: './hotel-detail-page.html',
   styleUrl: './hotel-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -38,6 +40,7 @@ export class HotelDetailPageComponent {
   private readonly trackingService = inject(TrackingService);
   private readonly apiConfig = inject(API_CONFIG);
   private readonly http = inject(HttpClient);
+  private readonly destroyRef = inject(DestroyRef);
 
   /**
    * Reactive snapshot of the route's `paramMap`. Initialised from
@@ -88,11 +91,20 @@ export class HotelDetailPageComponent {
   readonly roomAvailabilityLoading = computed(() => this.roomAvailabilityResource.isLoading());
 
   readonly activeTab = signal<string>('overview');
+  readonly activeSection = signal<string>('overview');
   readonly imageErrors = signal<Set<string>>(new Set());
   readonly selectedGalleryImage = signal<string | null>(null);
   readonly lightboxOpen = signal(false);
   readonly showSimilarInfo = signal(false);
+  readonly showGalleryGrid = signal(false);
   readonly showBooking = signal(false);
+  readonly showAllReviews = signal(false);
+  // ── Sidebar booking (centralized pickers) ──
+  readonly guestAdults = signal(2);
+  readonly guestChildren = signal(0);
+  readonly guestRooms = signal(1);
+  readonly todayStr = computed(() => new Date().toISOString().split('T')[0]);
+  private _anchorObserver: IntersectionObserver | null = null;
 
   // ── Carrusel de fotos por habitación (puntitos tipo comparador) ──
 
@@ -143,6 +155,20 @@ export class HotelDetailPageComponent {
   openGalleryModal(url: string) {
     this.selectedGalleryImage.set(url);
     this.lightboxOpen.set(true);
+  }
+
+  openGalleryGrid(): void {
+    this.showGalleryGrid.set(true);
+  }
+
+  closeGalleryGrid(): void {
+    this.showGalleryGrid.set(false);
+  }
+
+  openFromGrid(url: string): void {
+    this.closeGalleryGrid();
+    // Pequeño delay para que el cierre del grid no interfiera con el lightbox
+    setTimeout(() => this.openGalleryModal(url), 120);
   }
 
   closeGalleryModal() {
@@ -361,6 +387,7 @@ export class HotelDetailPageComponent {
       const hotel = this.hotel();
       if (hotel) {
         this.trackingService.trackHotelClick(hotel.id, 'detail');
+        this._scheduleAnchorObserver();
       }
     });
 
@@ -392,6 +419,8 @@ export class HotelDetailPageComponent {
         this.persistSelectedDates(checkIn, checkOut);
       }
     });
+
+    this.destroyRef.onDestroy(() => this._anchorObserver?.disconnect());
   }
 
   readonly shareHotel = () => {
@@ -440,8 +469,108 @@ export class HotelDetailPageComponent {
 
   scrollTo(sectionId: string): void {
     this.activeTab.set(sectionId);
+    this.activeSection.set(sectionId);
     const el = document.getElementById(sectionId);
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Sidebar pickers (centralized calendar + guests) ──
+  onSidebarDateStartChange(date: string): void {
+    this.inheritedCheckIn.set(date);
+    if (date && this.inheritedCheckOut() && date >= this.inheritedCheckOut()) {
+      this.inheritedCheckOut.set('');
+      return;
+    }
+    this._persistIfComplete();
+    this._syncGlobalDatesToRooms();
+  }
+
+  onSidebarDateEndChange(date: string): void {
+    this.inheritedCheckOut.set(date);
+    this._persistIfComplete();
+    this._syncGlobalDatesToRooms();
+  }
+
+  private _persistIfComplete(): void {
+    const ci = this.inheritedCheckIn();
+    const co = this.inheritedCheckOut();
+    if (ci && co && co > ci) {
+      this.persistSelectedDates(ci, co);
+    }
+  }
+
+  private _syncGlobalDatesToRooms(): void {
+    const ci = this.inheritedCheckIn();
+    const co = this.inheritedCheckOut();
+    const snap = this.roomAvailabilitySnapshot();
+    if (!ci || !co || !snap) return;
+    if (co <= ci) return;
+    const start = new Date(ci + 'T00:00:00');
+    const end = new Date(co + 'T00:00:00');
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
+    const newRanges: Record<string, { start: string; end: string }> = {};
+    for (const room of snap.rooms) {
+      let allAvailable = true;
+      for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+        const ds = d.toISOString().slice(0, 10);
+        const day = room.availability.find((a) => a.date === ds);
+        if (!day || !day.is_available) { allAvailable = false; break; }
+      }
+      if (allAvailable) newRanges[room.room_type_id] = { start: ci, end: co };
+    }
+    if (Object.keys(newRanges).length) this.selectedRanges.set(newRanges);
+  }
+
+  // Computed helpers for templates (avoid inline logic)
+  readonly sidebarDateLabel = computed(() => {
+    const ci = this.inheritedCheckIn();
+    const co = this.inheritedCheckOut();
+    if (!ci && !co) return '';
+    if (ci && !co) return ci;
+    if (ci && co) return `${ci} → ${co}`;
+    return '';
+  });
+
+  readonly sidebarGuestsLabel = computed(() => {
+    const a = this.guestAdults();
+    const c = this.guestChildren();
+    const r = this.guestRooms();
+    return `${a} ${a === 1 ? 'Adulto' : 'Adultos'}${c ? `, ${c} ${c === 1 ? 'Niño' : 'Niños'}` : ''} · ${r} ${r === 1 ? 'habitación' : 'habitaciones'}`;
+  });
+
+  private _initAnchorObserver(): void {
+    if (this._anchorObserver) {
+      this._anchorObserver.disconnect();
+    }
+    const ids = ['overview', 'amenities', 'rooms', 'reviews', 'policies', 'similar'];
+    const elements = ids
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => !!el);
+    if (!elements.length) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+
+    this._anchorObserver = new IntersectionObserver(
+      (entries) => {
+        // El más visible al centro del viewport
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) {
+          this.activeSection.set(visible.target.id);
+        }
+      },
+      {
+        root: null,
+        rootMargin: '-120px 0px -60% 0px',
+        threshold: [0, 0.25, 0.5, 1],
+      },
+    );
+    elements.forEach((el) => this._anchorObserver!.observe(el));
+  }
+
+  private _scheduleAnchorObserver(): void {
+    // Espera a que el DOM pinte las secciones (httpResource async)
+    setTimeout(() => this._initAnchorObserver(), 600);
   }
 
 }

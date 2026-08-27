@@ -211,7 +211,15 @@ export class RegisterPageComponent {
       },
       error: (error: unknown) => {
         this.sendingCode.set(false);
-        this.errorMessage.set(getErrorMessage(error) || 'Error al enviar el código. Intenta de nuevo.');
+        const detail = getErrorMessage(error) || '';
+        // Mensaje accionable para email duplicado (A2): el backend ya envía
+        // "Inicia sesión o usa 'Recuperar contraseña'". Si viene mensaje viejo,
+        // lo enriquecemos aquí para que el huésped sepa qué hacer.
+        if (detail.toLowerCase().includes('ya está registrado')) {
+          this.errorMessage.set(detail.includes('Recuperar') ? detail : `${detail} Inicia sesión o usa 'Recuperar contraseña'.`);
+        } else {
+          this.errorMessage.set(detail || 'Error al enviar el código. Intenta de nuevo.');
+        }
       }
     });
   }
@@ -289,6 +297,11 @@ export class RegisterPageComponent {
       return;
     }
 
+    if (!this.verificationEmail()) {
+      this.errorMessage.set('Espera a que se envíe el código de verificación.');
+      return;
+    }
+
     const { username, display_name, password } = this.registerForm.getRawValue();
 
     this.verifyingCode.set(true);
@@ -326,6 +339,14 @@ export class RegisterPageComponent {
   }
 
   resendCode() {
+    // Limpiar dígitos del código viejo para que el usuario no lo reenvíe por error
+    this.codeDigits.set(['', '', '', '', '', '']);
+    const controls = this.codeForm.controls;
+    for (let i = 0; i < 6; i++) {
+      controls[`digit${i}` as keyof typeof controls].setValue('');
+    }
+    // Enfocar el primer input para que el usuario pueda teclear el nuevo código sin clic extra
+    document.querySelector<HTMLInputElement>('#code-digit-0')?.focus();
     this.sendVerificationCode();
   }
 

@@ -32,13 +32,15 @@
         novalidate
       >
         <div class="form-grid">
-          <!-- ── Account block ─────────────────────────────────── -->
-          <fieldset class="form-block">
-            <legend class="form-block__title">
-              <span class="material-symbols-outlined">person</span>
-              Tu cuenta
-            </legend>
-
+          <!-- ── Cabeceras de sección (una por columna) ───────────── -->
+          <div class="form-block__title form-block__title--col">
+            <span class="material-symbols-outlined">person</span>
+            Tu cuenta
+          </div>
+          <div class="form-block__title form-block__title--col">
+            <span class="material-symbols-outlined">business</span>
+            Tu alojamiento
+          </div>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">mail</span>
               <span class="input-label">Correo electrónico</span>
@@ -55,7 +57,22 @@
                 <span class="field-error">Ingresa un correo válido.</span>
               }
             </label>
-
+            <label class="input-field">
+              <span class="material-symbols-outlined input-icon">apartment</span>
+              <span class="input-label">Nombre del alojamiento</span>
+              <input
+                type="text"
+                formControlName="property_name"
+                placeholder="ej: Hostal Sol de los Andes"
+                maxlength="120"
+              >
+              @if (
+                onboardingForm.controls.property_name.touched &&
+                onboardingForm.controls.property_name.invalid
+              ) {
+                <span class="field-error">Indica el nombre visible del alojamiento.</span>
+              }
+            </label>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">badge</span>
               <span class="input-label">Usuario</span>
@@ -72,7 +89,31 @@
                 <span class="field-error">Mínimo 3 caracteres.</span>
               }
             </label>
-
+            <fieldset class="input-field type-fieldset">
+              <span class="material-symbols-outlined input-icon">category</span>
+              <span class="input-label">Tipo de propiedad</span>
+              <div class="type-grid">
+                @for (opt of propertyTypes; track opt.value) {
+                  <label class="type-chip">
+                    <input
+                      type="radio"
+                      formControlName="property_type"
+                      [value]="opt.value"
+                    >
+                    <span class="type-chip__body">
+                      <span class="material-symbols-outlined" aria-hidden="true">{{ opt.icon }}</span>
+                      <span>{{ opt.label }}</span>
+                    </span>
+                  </label>
+                }
+              </div>
+              @if (
+                onboardingForm.controls.property_type.touched &&
+                onboardingForm.controls.property_type.invalid
+              ) {
+                <span class="field-error">Selecciona el tipo de propiedad.</span>
+              }
+            </fieldset>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">id_card</span>
               <span class="input-label">
@@ -86,7 +127,24 @@
                 autocomplete="name"
               >
             </label>
-
+            <label class="input-field">
+              <span class="material-symbols-outlined input-icon">public</span>
+              <span class="input-label">País</span>
+              <select class="select-field" formControlName="country_id">
+                <option value="0" disabled>Selecciona un país…</option>
+                @for (country of countries(); track country.visitor_location_country_id) {
+                  <option [value]="country.visitor_location_country_id">
+                    {{ country.country_name }}
+                  </option>
+                }
+              </select>
+              @if (
+                onboardingForm.controls.country_id.touched &&
+                onboardingForm.controls.country_id.invalid
+              ) {
+                <span class="field-error">Selecciona el país donde se ubica tu propiedad.</span>
+              }
+            </label>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">lock</span>
               <span class="input-label">Contraseña</span>
@@ -134,94 +192,6 @@
                 <span class="field-error">Mínimo 6 caracteres.</span>
               }
             </label>
-
-            <label class="input-field">
-              <span class="material-symbols-outlined input-icon">lock_reset</span>
-              <span class="input-label">Confirmar contraseña</span>
-              <input
-                [type]="passwordVisible() ? 'text' : 'password'"
-                formControlName="confirm_password"
-                placeholder="Repite la contraseña"
-                autocomplete="new-password"
-              >
-              @if (
-                onboardingForm.controls.confirm_password.touched &&
-                onboardingForm.errors && onboardingForm.errors['mismatch']
-              ) {
-                <span class="field-error">Las contraseñas no coinciden.</span>
-              }
-            </label>
-          </fieldset>
-
-          <!-- ── Property block ────────────────────────────────── -->
-          <fieldset class="form-block">
-            <legend class="form-block__title">
-              <span class="material-symbols-outlined">business</span>
-              Tu alojamiento
-            </legend>
-
-            <label class="input-field">
-              <span class="material-symbols-outlined input-icon">apartment</span>
-              <span class="input-label">Nombre del alojamiento</span>
-              <input
-                type="text"
-                formControlName="property_name"
-                placeholder="ej: Hostal Sol de los Andes"
-                maxlength="120"
-              >
-              @if (
-                onboardingForm.controls.property_name.touched &&
-                onboardingForm.controls.property_name.invalid
-              ) {
-                <span class="field-error">Indica el nombre visible del alojamiento.</span>
-              }
-            </label>
-
-            <fieldset class="input-field type-fieldset">
-              <span class="material-symbols-outlined input-icon">category</span>
-              <span class="input-label">Tipo de propiedad</span>
-              <div class="type-grid">
-                @for (opt of propertyTypes; track opt.value) {
-                  <label class="type-chip">
-                    <input
-                      type="radio"
-                      formControlName="property_type"
-                      [value]="opt.value"
-                    >
-                    <span class="type-chip__body">
-                      <span class="material-symbols-outlined" aria-hidden="true">{{ opt.icon }}</span>
-                      <span>{{ opt.label }}</span>
-                    </span>
-                  </label>
-                }
-              </div>
-              @if (
-                onboardingForm.controls.property_type.touched &&
-                onboardingForm.controls.property_type.invalid
-              ) {
-                <span class="field-error">Selecciona el tipo de propiedad.</span>
-              }
-            </fieldset>
-
-            <label class="input-field">
-              <span class="material-symbols-outlined input-icon">public</span>
-              <span class="input-label">País</span>
-              <select class="select-field" formControlName="country_id">
-                <option value="0" disabled>Selecciona un país…</option>
-                @for (country of countries(); track country.visitor_location_country_id) {
-                  <option [value]="country.visitor_location_country_id">
-                    {{ country.country_name }}
-                  </option>
-                }
-              </select>
-              @if (
-                onboardingForm.controls.country_id.touched &&
-                onboardingForm.controls.country_id.invalid
-              ) {
-                <span class="field-error">Selecciona el país donde se ubica tu propiedad.</span>
-              }
-            </label>
-
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">location_city</span>
               <span class="input-label">Ciudad</span>
@@ -238,7 +208,22 @@
                 <span class="field-error">Indica la ciudad.</span>
               }
             </label>
-
+            <label class="input-field">
+              <span class="material-symbols-outlined input-icon">lock_reset</span>
+              <span class="input-label">Confirmar contraseña</span>
+              <input
+                [type]="passwordVisible() ? 'text' : 'password'"
+                formControlName="confirm_password"
+                placeholder="Repite la contraseña"
+                autocomplete="new-password"
+              >
+              @if (
+                onboardingForm.controls.confirm_password.touched &&
+                onboardingForm.errors && onboardingForm.errors['mismatch']
+              ) {
+                <span class="field-error">Las contraseñas no coinciden.</span>
+              }
+            </label>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">signpost</span>
               <span class="input-label">
@@ -252,19 +237,7 @@
                 autocomplete="street-address"
               >
             </label>
-
-            <div class="location-picker-field">
-              <span class="input-label">
-                Ubicación en el mapa
-                <span class="optional">(opcional · define el radio de 5 km)</span>
-              </span>
-              <app-location-picker
-                [lat]="pickedLat()"
-                [lng]="pickedLng()"
-                (locationChange)="onLocationChange($event)"
-              ></app-location-picker>
-            </div>
-
+            <div class="section-divider" aria-hidden="true"></div>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">call</span>
               <span class="input-label">Teléfono de contacto</span>
@@ -281,7 +254,6 @@
                 <span class="field-error">Usa formato internacional (ej. +5215512345678).</span>
               }
             </label>
-
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">payments</span>
               <span class="input-label">Moneda principal</span>
@@ -300,7 +272,6 @@
                 <span class="field-error">Selecciona la moneda para tus tarifas.</span>
               }
             </label>
-
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">meeting_room</span>
               <span class="input-label">Cantidad de habitaciones</span>
@@ -318,7 +289,6 @@
                 <span class="field-error">La cantidad debe ser mayor a 0.</span>
               }
             </label>
-
             <label class="input-field description-field">
               <span class="material-symbols-outlined input-icon">description</span>
               <span class="input-label">
@@ -333,7 +303,17 @@
                 maxlength="500"
               ></textarea>
             </label>
-          </fieldset>
+            <div class="location-picker-field">
+              <span class="input-label">
+                Ubicación en el mapa
+                <span class="optional">(opcional · define el radio de 5 km)</span>
+              </span>
+              <app-location-picker
+                [lat]="pickedLat()"
+                [lng]="pickedLng()"
+                (locationChange)="onLocationChange($event)"
+              ></app-location-picker>
+            </div>
         </div>
 
         <!-- ── Elige tu plan (Fase 6, PLAN §14) ──────────────────── -->

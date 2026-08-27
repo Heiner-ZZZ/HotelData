@@ -8,12 +8,17 @@
 @use 'scss/profile-security';
 @use 'scss/profile-responsive';
 
-// ── Layout ──────────────────────────────────────────────────────────────
+// ── Layout — frontend-design: ritmo vertical generoso y respiración entre cards ──
 .profile-page {
   max-width: 640px;
   margin: 0 auto;
   display: grid;
-  gap: 1.25rem;
+  gap: 1.35rem;
+}
+
+.profile-form {
+  display: grid;
+  gap: 1.1rem;
 }
 
 // Borde transparente para que el highlight global .mode-active (directive

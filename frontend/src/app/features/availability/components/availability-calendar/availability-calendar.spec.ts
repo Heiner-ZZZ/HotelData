@@ -23,6 +23,23 @@ const ROOM_TYPES: AvailabilityRoomType[] = [
   { id: 'RT-STD', name: 'Habitación Standard', capacityLabel: '2 base · 2 adultos · 1 niños', isActive: true },
 ];
 
+/** Los fixtures usan agosto 2026 (día 20 pasado / 25 futuro) y septiembre 2026
+ *  como mes futuro, con referencia "hoy = 2026-08-23". Sin congelar el reloj,
+ *  el spec solo era válido unos días al mes (el 2026-08-25 dejaba de ser futuro
+ *  el día 26) y las fechas de septiembre envejecían igual. Se fija el tiempo
+ *  del sistema para que el contrato pasado/futuro sea determinista. */
+beforeEach(() => {
+  jest.useFakeTimers({
+    now: new Date('2026-08-23T12:00:00'),
+    // Microtasks y timers internos de zone.js/angular no deben congelarse.
+    doNotFake: ['queueMicrotask', 'setImmediate', 'nextTick', 'performance'],
+  });
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 describe('AvailabilityCalendarComponent — marcador disponible sin tarifa', () => {
   function setup(items: AvailabilityInventoryItem[]) {
     TestBed.configureTestingModule({ imports: [AvailabilityCalendarComponent] });

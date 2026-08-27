@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { Router } from '@angular/router';
 
+import { AuthService } from '../../../../../../core/auth/auth.service';
 import { EmptyStateComponent } from '../../../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../../../shared/ui/loading-state/loading-state';
@@ -26,13 +27,23 @@ const PAGE_SIZE = 10;
 export class PpPromotionsTabComponent {
   private readonly notificationsService = inject(ClientNotificationsService);
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
 
   /** Página actual de promocionales (solo guest_promotional, paginado en el backend). */
   private readonly page = signal(1);
 
+  // httpResource es la API moderna de Angular 22 para GETs reactivos con signals.
+  // Se mantiene el patrón: el request es undefined cuando no hay sesión (no hay 401).
+  // Tras PUT /api/settings/password el backend invalida la sesión; el interceptor
+  // hace toast + redirect, pero este tab no debe disparar 401 fantasma antes de eso.
   readonly notificationsResource = httpResource<MyNotifications>(
-    () =>
-      `/api/notifications/my?notification_type=${PROMOTIONAL_TYPE}&page=${this.page()}&page_size=${PAGE_SIZE}`,
+    () => {
+      // Gate reactivo: si no hay sesión, no hay request (evita 401).
+      if (!this.authService.sessionLoaded() || !this.authService.isAuthenticated()) {
+        return undefined;
+      }
+      return `/api/notifications/my?notification_type=${PROMOTIONAL_TYPE}&page=${this.page()}&page_size=${PAGE_SIZE}`;
+    },
     {
       parse: (dto) => mapMyNotifications(dto as MyNotificationsDto),
     },
@@ -53,6 +64,8 @@ export class PpPromotionsTabComponent {
   );
 
   readonly viewState = computed<'loading' | 'error' | 'empty' | 'success'>(() => {
+    // Sin sesión no hay error: evita mostrar "error" tras logout/cambio de pass (401 esperado).
+    if (!this.authService.sessionLoaded() || !this.authService.isAuthenticated()) return 'empty';
     if (this.items().length === 0 && this.notificationsResource.isLoading()) return 'loading';
     if (this.notificationsResource.error()) return 'error';
     return this.items().length ? 'success' : 'empty';
@@ -65,6 +78,16 @@ export class PpPromotionsTabComponent {
       if (!data || data.page <= this.lastLoadedPage) return;
       this.lastLoadedPage = data.page;
       this.items.update((prev) => [...prev, ...data.items]);
+    });
+
+    // Limpia el acumulado cuando se pierde la sesión (logout / password change → 401).
+    // Sin esto, el usuario vería promociones stale tras re-login como otro usuario.
+    effect(() => {
+      if (!this.authService.sessionLoaded() || !this.authService.isAuthenticated()) {
+        if (this.items().length) this.items.set([]);
+        this.lastLoadedPage = 0;
+        if (this.page() !== 1) this.page.set(1);
+      }
     });
   }
 

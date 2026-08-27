@@ -56,19 +56,23 @@ export class ScrollToTopComponent implements OnInit {
   private readonly elementRef = inject(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
   private scrollEl: HTMLElement | null = null;
+  private _useWindow = false;
 
   constructor() {
-    // ``DestroyRef.onDestroy`` replaces the legacy ``ngOnDestroy`` hook —
-    // fires during the same destruction phase in Angular 22.
     this.destroyRef.onDestroy(() => {
       if (this.scrollEl) {
         this.scrollEl.removeEventListener('scroll', this._onScroll);
+      }
+      if (this._useWindow) {
+        window.removeEventListener('scroll', this._onWindowScroll);
       }
     });
   }
 
   ngOnInit(): void {
-    // Find the nearest scrollable ancestor (the overflow-y:auto container)
+    // Busca el ancestro scrolleable (overflow-y:auto) usado en admin/management
+    // shells (.management-scroll / .system-scroll). En área huésped (public/account)
+    // el scroll es el window (body), así que si no hay contenedor, hace fallback a window.
     let el: HTMLElement | null = this.elementRef.nativeElement.parentElement;
     while (el) {
       const overflowY = getComputedStyle(el).overflowY;
@@ -80,6 +84,13 @@ export class ScrollToTopComponent implements OnInit {
     }
     if (this.scrollEl) {
       this.scrollEl.addEventListener('scroll', this._onScroll, { passive: true });
+      // Estado inicial por si ya está scrolleado al montar
+      this._onScroll();
+    } else {
+      // Fallback guest: window scroll (public/account shells no tienen contenedor scrolleable)
+      this._useWindow = true;
+      window.addEventListener('scroll', this._onWindowScroll, { passive: true });
+      this._onWindowScroll();
     }
   }
 
@@ -87,8 +98,16 @@ export class ScrollToTopComponent implements OnInit {
     this.visible.set((this.scrollEl?.scrollTop ?? 0) > 400);
   };
 
+  private _onWindowScroll = (): void => {
+    this.visible.set(window.scrollY > 400);
+  };
+
   scrollToTop(): void {
-    this.scrollEl?.scrollTo({ top: 0, behavior: 'smooth' });
+    if (this._useWindow) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      this.scrollEl?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 }
 

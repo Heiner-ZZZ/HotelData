@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 
+import { AuthService } from '../../../../../core/auth/auth.service';
+import { ToastService } from '../../../../../shared/services/toast.service';
 import { ProfileApiService } from '../../../services/profile-api.service';
 
 @Component({
@@ -9,8 +12,85 @@ import { ProfileApiService } from '../../../services/profile-api.service';
   standalone: true,
   imports: [ReactiveFormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  // Mismo ritmo vertical que la caja "Seguridad" (32px de separación entre cards).
-  styles: [':host .form-section { margin-top: 2rem; }'],
+  styles: [`
+    :host .form-section { margin-top: 2rem; }
+    :host .password-form {
+      display: grid;
+      gap: 0.95rem;
+    }
+    :host .field {
+      display: grid;
+      gap: 6px;
+    }
+    :host .field label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted-text);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    :host .input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0 0.65rem;
+      border: 1px solid var(--app-border);
+      border-radius: 0.5rem;
+      background: var(--surface);
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+    }
+    :host .input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+    :host .input-wrap input {
+      flex: 1;
+      min-height: 38px;
+      border: 0;
+      background: transparent;
+      font-size: 0.88rem;
+      outline: none;
+    }
+    :host .field-error {
+      font-size: 0.72rem;
+      color: var(--danger);
+      margin-top: 2px;
+    }
+    :host .form-footer {
+      margin-top: 0.85rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid var(--app-border);
+      display: flex;
+      justify-content: flex-end;
+    }
+    :host .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1.15rem;
+      border: 0;
+      border-radius: 0.5rem;
+      background: var(--accent);
+      color: var(--on-accent);
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+    :host .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    :host .btn-primary:hover:not(:disabled) { opacity: 0.92; }
+    :host .notice-success, :host .notice-error {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 0.85rem;
+      border-radius: 0.5rem;
+      font-size: 0.84rem;
+      margin-bottom: 0.25rem;
+    }
+    :host .notice-success { background: color-mix(in srgb, var(--success) 10%, transparent); color: var(--success-strong); border: 1px solid color-mix(in srgb, var(--success) 18%, transparent); }
+    :host .notice-error { background: color-mix(in srgb, var(--danger) 8%, transparent); color: var(--danger-strong); border: 1px solid color-mix(in srgb, var(--danger) 15%, transparent); }
+  `],
   template: `
     <section class="form-section">
       <div class="section-header">
@@ -90,6 +170,9 @@ export class ProfilePasswordComponent {
   private readonly profileApi = inject(ProfileApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   readonly changingPassword = signal(false);
   readonly successMessage = signal('');
@@ -138,12 +221,22 @@ export class ProfilePasswordComponent {
         next: (res) => {
           this.passwordForm.reset();
           this.changingPassword.set(false);
-          this.successMessage.set(res.message || 'Contraseña actualizada.');
-          setTimeout(() => this.successMessage.set(''), 5000);
+          const msg = res.message || 'Contraseña actualizada. Tus otras sesiones han sido cerradas. Inicia sesión nuevamente.';
+          this.successMessage.set(msg);
+          this.toast.success(msg);
+          // RN-O29-03: el backend invalida TODAS las sesiones (incluida la actual).
+          // Invalidamos el estado local *inmediatamente* para que top-nav y
+          // pp-promotions-tab (gated por isAuthenticated/sessionLoaded) dejen de
+          // pollear antes del próximo 401 fantasma; la navegación se retrasa para
+          // que el usuario vea el mensaje de éxito.
+          this.authService.invalidateSession();
+          setTimeout(() => void this.router.navigate(['/login']), 1500);
         },
         error: (err) => {
           this.changingPassword.set(false);
-          this.errorMessage.set(err?.error?.detail || 'Error al cambiar la contraseña.');
+          const detail = err?.error?.detail || err?.detail || 'Error al cambiar la contraseña.';
+          this.errorMessage.set(detail);
+          this.toast.error(detail);
           setTimeout(() => this.errorMessage.set(''), 6000);
         },
       });

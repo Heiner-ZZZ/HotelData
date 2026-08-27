@@ -86,23 +86,38 @@ export function guestEmailError(control: AbstractControl | null): string | null 
   return null;
 }
 
-/** Teléfono: obligatorio y con caracteres válidos. */
+/** Teléfono: obligatorio y con caracteres válidos — solo + permitido. */
 export function guestPhoneError(control: AbstractControl | null): string | null {
   if (!control || !control.touched) return null;
   if (control.hasError('required')) {
     return 'Ingresá un teléfono de contacto para continuar.';
   }
   if (control.hasError('pattern')) {
-    return 'El teléfono contiene caracteres inválidos. Usá solo números, espacios, guiones o paréntesis.';
+    return 'El teléfono contiene caracteres inválidos. Usá solo números, espacios, paréntesis, puntos y el signo + al inicio. El guion - no está permitido para el teléfono.';
+  }
+  if (control.hasError('minlength')) {
+    return 'El teléfono es demasiado corto. Ingresá al menos 7 caracteres.';
+  }
+  if (control.hasError('maxlength')) {
+    return 'El teléfono es demasiado largo. Máximo 20 caracteres.';
   }
   return null;
 }
 
-/** Cédula / documento: obligatorio. */
+/** Cédula / documento: obligatorio — solo - permitido. */
 export function guestCedulaError(control: AbstractControl | null): string | null {
   if (!control || !control.touched) return null;
   if (control.hasError('required')) {
     return 'Ingresá la cédula o documento del huésped para continuar.';
+  }
+  if (control.hasError('pattern')) {
+    return 'La cédula contiene caracteres inválidos. Usá solo números y guiones (-). El signo + no está permitido.';
+  }
+  if (control.hasError('minlength')) {
+    return 'La cédula es demasiado corta. Ingresá al menos 6 caracteres.';
+  }
+  if (control.hasError('maxlength')) {
+    return 'La cédula es demasiado larga. Máximo 20 caracteres.';
   }
   return null;
 }

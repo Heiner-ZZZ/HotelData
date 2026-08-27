@@ -156,7 +156,9 @@ export class TopNavComponent implements OnInit {
   });
 
   ngOnInit() {
-    this._startNotifPolling();
+    // Espera a que la sesión esté cargada antes de iniciar el polling.
+    // Evita el 401 inicial cuando el componente monta antes de GET /api/auth/me.
+    this.authService.ensureSessionLoaded().subscribe(() => this._startNotifPolling());
   }
 
   private _startNotifPolling() {
@@ -174,6 +176,15 @@ export class TopNavComponent implements OnInit {
   private _fetchNotifications() {
     if (this._notifPollingStopped) {
       this._stopNotifPolling();
+      return;
+    }
+
+    // No disparar polling hasta que la sesión esté resuelta.
+    // Tras cambio de contraseña el backend invalida la sesión (PUT /api/settings/password
+    // → invalidate_user_sessions); si el cliente aún está en `authenticated:true`
+    // pero la cookie ya no es válida, el 401 es esperado y el interceptor redirige.
+    // Gatear por sessionLoaded evita el 401 fantasma al montar antes de /auth/me.
+    if (!this.authService.sessionLoaded()) {
       return;
     }
 

@@ -181,39 +181,24 @@ export class DateRangePickerComponent {
     this.isOpen.set(false);
   }
 
-  // ─── Drag-select state ───
+  // ─── Drag/click-select state ───
   readonly isDragging = signal(false);
   readonly dragStartDate = signal('');
   readonly dragHoverDate = signal('');
 
-  selectDay(day: CalendarDay): void {
-    if (day.isDisabled) return;
-
-    const dateStr = this._formatDate(day.date);
-
-    if (!this.selectingEnd() || !this.startDate()) {
-      this.startChange.emit(dateStr);
-      this.endChange.emit('');
-      this.selectingEnd.set(true);
-    } else {
-      const startD = new Date(this.startDate() + 'T00:00:00');
-      if (day.date < startD) {
-        this.startChange.emit(dateStr);
-        this.endChange.emit('');
-        this.selectingEnd.set(true);
-      } else {
-        this.endChange.emit(dateStr);
-        this.selectingEnd.set(false);
-        // Don't close — let user adjust if needed
-      }
-    }
-  }
-
-  // ─── Drag-select handlers ───
+  /** Entrada vigente ANTES del mousedown. El preview del arrastre emite una
+   *  entrada provisional en mousedown, así que para reconstruir la selección
+   *  clic-clic hay que recordar el valor previo (el input del padre ya lo
+   *  pisó para cuando llega el mouseup). */
+  private clickStartBefore = '';
+  /** Estado de selección ANTES del mousedown (¿se estaba eligiendo la salida?). */
+  private clickSelectingEndBefore = false;
 
   onDayMouseDown(day: CalendarDay, event: MouseEvent): void {
     if (day.isDisabled) return;
     event.preventDefault();
+    this.clickStartBefore = this.startDate();
+    this.clickSelectingEndBefore = this.selectingEnd();
     const dateStr = this._formatDate(day.date);
     this.isDragging.set(true);
     this.dragStartDate.set(dateStr);
@@ -242,6 +227,34 @@ export class DateRangePickerComponent {
     if (!this.isDragging()) return;
     this.isDragging.set(false);
     const dateStr = this._formatDate(day.date);
+
+    // Clic (mousedown+mouseup en la MISMA celda) → selección clic-clic.
+    // El mousedown ya emitió una entrada provisional; aquí se corrige para que
+    // el clic signifique: 1er clic = entrada, 2º clic = salida. Si el 2º cae
+    // ANTES de la entrada, se intercambian (misma validación de orden que el
+    // arrastre): el más temprano pasa a ser la entrada y el tardío la salida.
+    if (dateStr === this.dragStartDate()) {
+      const priorStart = this.clickStartBefore;
+      if (priorStart && this.clickSelectingEndBefore) {
+        if (dateStr > priorStart) {
+          this.startChange.emit(priorStart); // restaura la entrada provisional
+          this.endChange.emit(dateStr);
+        } else if (dateStr < priorStart) {
+          this.endChange.emit(priorStart); // swap: el más temprano = entrada
+        } else {
+          this.endChange.emit(dateStr); // mismo día dos veces → misma fecha
+        }
+        this.selectingEnd.set(false);
+      } else {
+        // Primer clic (sin entrada previa) o reinicio tras un rango completo:
+        // el mousedown ya dejó entrada + sin salida; queda a la espera de la
+        // salida (el hint "Arrastra o haz clic…" lo acompaña).
+        this.selectingEnd.set(true);
+      }
+      return;
+    }
+
+    // Arrastre real entre celdas → rango completo (ambas direcciones).
     const startD = new Date(this.dragStartDate() + 'T00:00:00');
     const endD = new Date(dateStr + 'T00:00:00');
     if (endD >= startD) {
@@ -259,6 +272,44 @@ export class DateRangePickerComponent {
       this.isDragging.set(false);
       this.selectingEnd.set(false);
     }
+  }
+
+  /** Selección clic-clic: el primer clic fija la entrada; el segundo fija la
+   *  salida, intercambiando si cae antes de la entrada (misma regla de orden
+   *  que el arrastre). Comparte máquina de estados con el clic de ratón. */
+  selectDay(day: CalendarDay): void {
+    if (day.isDisabled) return;
+
+    const dateStr = this._formatDate(day.date);
+
+    if (!this.selectingEnd() || !this.startDate()) {
+      this.startChange.emit(dateStr);
+      this.endChange.emit('');
+      this.selectingEnd.set(true);
+      return;
+    }
+
+    const startStr = this.startDate();
+    if (dateStr > startStr) {
+      this.endChange.emit(dateStr);
+      this.selectingEnd.set(false);
+    } else if (dateStr < startStr) {
+      this.startChange.emit(dateStr); // el más temprano pasa a ser la entrada
+      this.endChange.emit(startStr); // la entrada previa pasa a ser la salida
+      this.selectingEnd.set(false);
+    } else {
+      this.endChange.emit(dateStr); // mismo día dos veces → misma fecha
+      this.selectingEnd.set(false);
+    }
+  }
+
+  /** El clic de RATÓN ya lo resuelve el flujo mousedown/mouseup (arrastre o
+   *  clic); este handler atiende SOLO la activación por teclado (Enter/Espacio,
+   *  cuyo evento `click` llega con detail === 0). Sin esto el calendario sería
+   *  inutilizable por teclado, porque el arrastre es exclusivo de ratón. */
+  onDayClick(day: CalendarDay, event: MouseEvent): void {
+    if (event.detail !== 0) return;
+    this.selectDay(day);
   }
 
   /** Check if a day is within the drag preview range. */

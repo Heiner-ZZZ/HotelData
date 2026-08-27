@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { httpResource } from '@angular/common/http';
 
 import { SettingsApiService } from '../../settings/services/settings-api.service';
@@ -39,6 +40,7 @@ export class SettingsPageComponent {
   private readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
   private readonly opMode = inject(OperationModeService);
+  private readonly router = inject(Router);
 
   readonly currentUser = this.authService.currentUser;
 
@@ -221,9 +223,11 @@ export class SettingsPageComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.toast.success('Contraseña actualizada correctamente.');
+          this.toast.success('Contraseña actualizada. Inicia sesión nuevamente.');
           this.passwordForm.reset();
           this.changingPassword.set(false);
+          this.authService.invalidateSession();
+          setTimeout(() => void this.router.navigate(['/login']), 1500);
         },
         error: (err: { message?: string }) => {
           this.toast.error(err.message || 'Error al cambiar la contraseña.');

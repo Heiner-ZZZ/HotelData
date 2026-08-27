@@ -75,29 +75,44 @@ import { ReactiveFormsModule } from '@angular/forms';
           <label for="travelInterests">Intereses (tags)</label>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-icon">interests</span>
-            <input id="travelInterests" type="text" [formControl]="form()?.controls?.travelInterests" placeholder="gastronomía, senderismo, museos…" />
+            <input id="travelInterests" type="text" [formControl]="form()?.controls?.travelInterests" placeholder="gastronomía, senderismo, museos…" maxlength="200" />
           </div>
+          @if (form()?.controls?.travelInterests?.touched && form()?.controls?.travelInterests?.hasError('maxlength')) {
+            <span class="field-error"><span class="material-symbols-outlined">error</span> Máximo 200 caracteres.</span>
+          }
         </div>
         <div class="field field-full">
           <label for="travelFrequentFlyer">Programa de viajero frecuente</label>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-icon">card_membership</span>
-            <input id="travelFrequentFlyer" type="text" [formControl]="form()?.controls?.travelFrequentFlyer" placeholder="Ej: Aeroméxico Rewards #12345" />
+            <input id="travelFrequentFlyer" type="text" [formControl]="form()?.controls?.travelFrequentFlyer" placeholder="Ej: Aeroméxico Rewards #12345" maxlength="30" />
           </div>
+          @if (form()?.controls?.travelFrequentFlyer?.touched && form()?.controls?.travelFrequentFlyer?.invalid) {
+            <span class="field-error"><span class="material-symbols-outlined">error</span>
+              @if (form()?.controls?.travelFrequentFlyer?.hasError('maxlength')) { Máximo 30. }
+              @else if (form()?.controls?.travelFrequentFlyer?.hasError('pattern')) { Solo letras, números y guiones. }
+            </span>
+          }
         </div>
         <div class="field field-full">
           <label for="travelLoyaltyPrograms">Programas de lealtad</label>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-icon">redeem</span>
-            <input id="travelLoyaltyPrograms" type="text" [formControl]="form()?.controls?.travelLoyaltyPrograms" placeholder="Ej: Hilton Honors, Marriott Bonvoy" />
+            <input id="travelLoyaltyPrograms" type="text" [formControl]="form()?.controls?.travelLoyaltyPrograms" placeholder="Ej: Hilton Honors, Marriott Bonvoy" maxlength="100" />
           </div>
+          @if (form()?.controls?.travelLoyaltyPrograms?.touched && form()?.controls?.travelLoyaltyPrograms?.hasError('maxlength')) {
+            <span class="field-error"><span class="material-symbols-outlined">error</span> Máximo 100 caracteres.</span>
+          }
         </div>
         <div class="field field-full">
           <label for="travelNotes">Notas personales</label>
           <div class="input-wrap textarea-wrap">
             <span class="material-symbols-outlined input-icon">edit_note</span>
-            <textarea id="travelNotes" [formControl]="form()?.controls?.travelNotes" placeholder="Preferencias, alergias, requisitos especiales…" rows="3"></textarea>
+            <textarea id="travelNotes" [formControl]="form()?.controls?.travelNotes" placeholder="Preferencias, alergias, requisitos especiales…" rows="3" maxlength="500"></textarea>
           </div>
+          @if (form()?.controls?.travelNotes?.touched && form()?.controls?.travelNotes?.hasError('maxlength')) {
+            <span class="field-error"><span class="material-symbols-outlined">error</span> Máximo 500 caracteres.</span>
+          }
         </div>
       </div>
     </section>

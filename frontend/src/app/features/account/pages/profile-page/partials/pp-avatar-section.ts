@@ -59,7 +59,7 @@ import { ReactiveFormsModule } from '@angular/forms';
             <label for="avatarUrl">O pega una URL</label>
             <div class="input-wrap">
               <span class="material-symbols-outlined input-icon">link</span>
-              <input id="avatarUrl" type="url" [formControl]="form()?.controls?.avatarUrl" placeholder="https://ejemplo.com/mi-foto.jpg" />
+              <input id="avatarUrl" type="url" [formControl]="form()?.controls?.avatarUrl" placeholder="https://ejemplo.com/mi-foto.jpg" maxlength="300" />
             </div>
           </div>
         </div>
@@ -72,22 +72,40 @@ import { ReactiveFormsModule } from '@angular/forms';
             <label for="socialInstagram">Instagram</label>
             <div class="input-wrap">
               <span class="material-symbols-outlined input-icon social-ig">camera_alt</span>
-              <input id="socialInstagram" type="text" [formControl]="form()?.controls?.socialInstagram" placeholder="&#64;usuario o url" />
+              <input id="socialInstagram" type="text" [formControl]="form()?.controls?.socialInstagram" placeholder="&#64;usuario o url" maxlength="60" />
             </div>
+            @if (form()?.controls?.socialInstagram?.touched && form()?.controls?.socialInstagram?.invalid) {
+              <span class="field-error"><span class="material-symbols-outlined">error</span>
+                @if (form()?.controls?.socialInstagram?.hasError('maxlength')) { Máximo 60. }
+                @else if (form()?.controls?.socialInstagram?.hasError('pattern')) { Solo letras, números, ., _, - y @. }
+              </span>
+            }
           </div>
           <div class="field">
             <label for="socialFacebook">Facebook</label>
             <div class="input-wrap">
               <span class="material-symbols-outlined input-icon social-fb">facebook</span>
-              <input id="socialFacebook" type="text" [formControl]="form()?.controls?.socialFacebook" placeholder="usuario o url" />
+              <input id="socialFacebook" type="text" [formControl]="form()?.controls?.socialFacebook" placeholder="usuario o url" maxlength="60" />
             </div>
+            @if (form()?.controls?.socialFacebook?.touched && form()?.controls?.socialFacebook?.invalid) {
+              <span class="field-error"><span class="material-symbols-outlined">error</span>
+                @if (form()?.controls?.socialFacebook?.hasError('maxlength')) { Máximo 60. }
+                @else if (form()?.controls?.socialFacebook?.hasError('pattern')) { Solo letras, números, ., _, - y @. }
+              </span>
+            }
           </div>
           <div class="field">
             <label for="socialTwitter">Twitter / X</label>
             <div class="input-wrap">
               <span class="material-symbols-outlined input-icon social-tw">x</span>
-              <input id="socialTwitter" type="text" [formControl]="form()?.controls?.socialTwitter" placeholder="&#64;usuario" />
+              <input id="socialTwitter" type="text" [formControl]="form()?.controls?.socialTwitter" placeholder="&#64;usuario" maxlength="60" />
             </div>
+            @if (form()?.controls?.socialTwitter?.touched && form()?.controls?.socialTwitter?.invalid) {
+              <span class="field-error"><span class="material-symbols-outlined">error</span>
+                @if (form()?.controls?.socialTwitter?.hasError('maxlength')) { Máximo 60. }
+                @else if (form()?.controls?.socialTwitter?.hasError('pattern')) { Solo letras, números, ., _, - y @. }
+              </span>
+            }
           </div>
           <div class="field">
             <label for="socialLinkedin">LinkedIn</label>
@@ -95,8 +113,14 @@ import { ReactiveFormsModule } from '@angular/forms';
               <svg class="input-icon social-li-svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                 <path fill="currentColor" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
               </svg>
-              <input id="socialLinkedin" type="text" [formControl]="form()?.controls?.socialLinkedin" placeholder="url del perfil" />
+              <input id="socialLinkedin" type="text" [formControl]="form()?.controls?.socialLinkedin" placeholder="url del perfil" maxlength="60" />
             </div>
+            @if (form()?.controls?.socialLinkedin?.touched && form()?.controls?.socialLinkedin?.invalid) {
+              <span class="field-error"><span class="material-symbols-outlined">error</span>
+                @if (form()?.controls?.socialLinkedin?.hasError('maxlength')) { Máximo 60. }
+                @else if (form()?.controls?.socialLinkedin?.hasError('pattern')) { Solo letras, números, ., _, - y @. }
+              </span>
+            }
           </div>
         </div>
       </div>

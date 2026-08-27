@@ -45,6 +45,7 @@
             (mousedown)="onDayMouseDown(day, $event)"
             (mouseenter)="onDayMouseEnter(day)"
             (mouseup)="onDayMouseUp(day)"
+            (click)="onDayClick(day, $event)"
             [attr.aria-label]="dayLabel(day)"
           >
             {{ day.day }}

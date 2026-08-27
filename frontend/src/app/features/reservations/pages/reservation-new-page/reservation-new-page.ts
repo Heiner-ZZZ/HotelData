@@ -99,11 +99,18 @@ export class ReservationNewPageComponent {
   private readonly operationMode = inject(OperationModeService);
 
   // ─── Form ─── (declared BEFORE the toSignal fields that read it)
+  // Validadores por caja: teléfono solo permite + (no -), cédula solo permite - (no +)
+  // según requerimiento de negocio celular vs cédula.
   readonly form = this.formBuilder.nonNullable.group({
     propId: [0, [Validators.required, Validators.min(1)]],
     guestName: ['', [Validators.required]],
     guestEmail: ['', [Validators.required, Validators.email]],
-    guestPhone: ['', [Validators.required, Validators.pattern(/^[\d\s\-\+\(\)\.]+$/)]],
+    guestPhone: ['', [
+      Validators.required,
+      Validators.minLength(7),
+      Validators.maxLength(20),
+      Validators.pattern(/^\+?[0-9\s\(\)\.]*$/),
+    ]],
     checkInDate: ['', [Validators.required]],
     checkOutDate: ['', [Validators.required]],
     // Standard overnight booking requires both arrival and departure times.
@@ -121,7 +128,12 @@ export class ReservationNewPageComponent {
     comment: [''],
     couponCode: [''],
     specialRequests: [[] as string[]],
-    cedula: ['', [Validators.required]],
+    cedula: ['', [
+      Validators.required,
+      Validators.minLength(6),
+      Validators.maxLength(20),
+      Validators.pattern(/^[0-9\-]*$/),
+    ]],
   }, { validators: validateStayDates });
 
   // ─── Form-driven signal sources that httpResource declarations read in their URL formula ───
@@ -399,6 +411,32 @@ export class ReservationNewPageComponent {
     this._loadGuestSuggestions();
     this._restoreGuestDraft();
     this._persistGuestDraft();
+
+    // ── Sanitización en vivo: teléfono solo + (no -), cédula solo - (no +) ──
+    this.form.controls.guestPhone.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
+      if (typeof v !== 'string') return;
+      let filtered = v.replace(/[^0-9\s\(\)\.+]/g, '');
+      filtered = filtered.replace(/-/g, '');
+      const plusMatches = filtered.match(/\+/g) || [];
+      if (plusMatches.length > 1) {
+        filtered = '+' + filtered.replace(/\+/g, '');
+      }
+      if (filtered.includes('+') && !filtered.startsWith('+')) {
+        filtered = filtered.replace(/\+/g, '');
+      }
+      if (filtered !== v) {
+        this.form.controls.guestPhone.setValue(filtered, { emitEvent: false });
+      }
+    });
+    this.form.controls.cedula.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((v) => {
+      if (typeof v !== 'string') return;
+      let filtered = v.replace(/[^0-9\-]/g, '');
+      filtered = filtered.replace(/\+/g, '');
+      filtered = filtered.replace(/--+/g, '-');
+      if (filtered !== v) {
+        this.form.controls.cedula.setValue(filtered, { emitEvent: false });
+      }
+    });
 
     // The shared property selector handles hotel catalog loading. Once it
     // emits a property, the form control drives all dependent resources below.

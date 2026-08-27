@@ -55,10 +55,8 @@ _PHONE_REGEX = re.compile(r"^\+?[1-9]\d{6,14}$")
 _PROPERTY_TYPES: tuple[str, ...] = (
     "hotel",
     "hostal",
-    "apartamento",
     "bed_breakfast",
     "resort",
-    "cabaña",
     "boutique",
 )
 

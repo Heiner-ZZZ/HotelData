@@ -41,7 +41,14 @@ describe('SettingsPageComponent — modo CRUD del nav', () => {
 
     const api = { getSettings: jest.fn(), updateSettings: jest.fn(), changePassword: jest.fn() };
     const toast = { success: jest.fn(), error: jest.fn() };
-    const auth = { currentUser: signal(null), updateAvatar: jest.fn() };
+    const auth = {
+      currentUser: signal(null),
+      updateAvatar: jest.fn(),
+      isAuthenticated: jest.fn(() => true),
+      sessionLoaded: jest.fn(() => true),
+      invalidateSession: jest.fn(),
+      ensureSessionLoaded: jest.fn(() => of(null)),
+    };
     // La página delega la aplicación del tema a ThemeService (única fuente de
     // verdad); el mock evita que el servicio real toque BD y localStorage.
     const theme = {

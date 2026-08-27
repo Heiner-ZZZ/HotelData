@@ -179,3 +179,41 @@ async def test_onboarding_rejects_lat_without_lng(client, db, monkeypatch):
 
     resp = await client.post("/api/auth/register-property/send-code", json=payload)
     assert resp.status_code == 400
+
+
+class TestPropertyTypeCatalog:
+    """Solo tipos de propiedad que operan como un hotel (2026-08): el catálogo
+    canónico excluye apartamento y cabaña (autoservicio sin recepción/
+    housekeeping), y el backend debe rechazarlos aunque se envíen por API."""
+
+    async def test_canonical_catalog_is_hotel_like_only(self) -> None:
+        assert rp._PROPERTY_TYPES == (
+            "hotel",
+            "hostal",
+            "bed_breakfast",
+            "resort",
+            "boutique",
+        )
+
+    @pytest.mark.parametrize("bad_type", ["apartamento", "cabaña"])
+    async def test_send_code_rejects_non_hotel_types(self, client, db, bad_type) -> None:
+        _seed_catalogs(db)
+        payload = _onboarding_payload(f"tipo_{bad_type}@nuevo.hotel", f"tipo_{bad_type}")
+        payload["property_type"] = bad_type
+
+        resp = await client.post("/api/auth/register-property/send-code", json=payload)
+
+        assert resp.status_code == 400
+        assert "Tipo de alojamiento inválido" in resp.json()["detail"]
+
+    async def test_send_code_accepts_all_hotel_like_types(self, client, db) -> None:
+        _seed_catalogs(db)
+        for good_type in ("hotel", "hostal", "bed_breakfast", "resort", "boutique"):
+            payload = _onboarding_payload(
+                f"tipo_{good_type}@nuevo.hotel", f"tipo_{good_type}"
+            )
+            payload["property_type"] = good_type
+
+            resp = await client.post("/api/auth/register-property/send-code", json=payload)
+
+            assert resp.status_code == 200, resp.text

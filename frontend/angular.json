@@ -17,7 +17,6 @@
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "allowedCommonJsDependencies": [
-              "leaflet",
               "maplibre-gl"
             ],
             "assets": [

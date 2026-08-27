@@ -1,12 +1,13 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import * as L from 'leaflet';
+import maplibregl from 'maplibre-gl';
 
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { GeoDestination, GeoHotel } from '../../models/map.model';
 import { MapApiService } from '../../services/map-api.service';
+import { mapTileStyleUrl } from '../../components/location-picker/location-picker';
 
 @Component({
   selector: 'app-world-map-page',
@@ -15,7 +16,7 @@ import { MapApiService } from '../../services/map-api.service';
   styleUrl: './world-map-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class WorldMapPageComponent {
+export class WorldMapPageComponent implements AfterViewInit {
   private readonly api = inject(MapApiService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -24,12 +25,32 @@ export class WorldMapPageComponent {
   readonly destinations = signal<GeoDestination[]>([]);
   readonly hotels = signal<GeoHotel[]>([]);
 
-  private map: L.Map | null = null;
-  private destLayer: L.LayerGroup | null = null;
-  private hotelLayer: L.LayerGroup | null = null;
+  private map: maplibregl.Map | null = null;
+  private destMarkers: maplibregl.Marker[] = [];
+  private hotelMarkers: maplibregl.Marker[] = [];
+  private destVisible = true;
+  private hotelVisible = true;
+  private fitted = false;
 
   constructor() {
+    // Re-dibuja marcadores cuando llegan los datos (async) — mismo patrón
+    // que competitive-map. Cubre el caso de hoteles que arriban después
+    // de los destinos.
+    effect(() => {
+      this.destinations();
+      this.hotels();
+      if (this.map && this.map.loaded()) this.redrawMarkers();
+    });
+    this.destroyRef.onDestroy(() => {
+      this.clearMarkers();
+      this.map?.remove();
+      this.map = null;
+    });
     this.loadData();
+  }
+
+  ngAfterViewInit(): void {
+    this.initMap();
   }
 
   private loadData() {
@@ -37,7 +58,6 @@ export class WorldMapPageComponent {
       next: (dests) => {
         this.destinations.set(dests);
         this.loaded.set(true);
-        this.initMap();
       },
     });
     this.api.getGeoHotels().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -49,95 +69,106 @@ export class WorldMapPageComponent {
     if (this.map) return;
     const el = this.mapContainer().nativeElement;
 
-    this.map = L.map(el, {
-      center: [20, 0],
+    this.map = new maplibregl.Map({
+      container: el,
+      style: mapTileStyleUrl(),
+      center: [0, 20],
       zoom: 2,
-      zoomControl: true,
       attributionControl: false,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      minZoom: 2,
-    }).addTo(this.map);
+    this.map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    this.map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
 
-    // Add zoom control to top-right
-    L.control.zoom({ position: 'topright' }).addTo(this.map);
+    this.map.on('load', () => this.redrawMarkers());
+  }
 
-    this.destLayer = L.layerGroup().addTo(this.map);
-    this.hotelLayer = L.layerGroup().addTo(this.map);
+  private redrawMarkers() {
+    if (!this.map) return;
+    this.clearMarkers();
 
-    // Custom icons
-    const destIcon = L.divIcon({
-      html: '<span style="font-size:24px">📍</span>',
-      className: '',
-      iconSize: [24, 24],
-      iconAnchor: [12, 24],
-      popupAnchor: [0, -24],
-    });
-
-    const hotelIcon = L.divIcon({
-      html: '<span style="font-size:18px">🏨</span>',
-      className: '',
-      iconSize: [18, 18],
-      iconAnchor: [9, 18],
-      popupAnchor: [0, -18],
-    });
-
-    // Add destination markers
     for (const d of this.destinations()) {
       if (d.latitude === null || d.longitude === null) continue;
-      const marker = L.marker([d.latitude, d.longitude], { icon: destIcon });
-      marker.bindPopup(`
-        <div style="font-family:sans-serif; min-width:180px">
-          <strong style="font-size:1rem">${d.visibleName || d.destinationDisplayName}</strong>
-          ${d.country ? `<br><span style="color:#64748b">${d.country}${d.city ? `, ${d.city}` : ''}</span>` : ''}
-          <br><span style="color:#94a3b8;font-size:0.8rem">Destino #${d.srchDestinationId}</span>
-          <br><a href="/admin/destinations/${d.srchDestinationId}" style="color:#1463ff;font-size:0.8rem">Editar destino →</a>
-        </div>
-      `);
-      this.destLayer!.addLayer(marker);
+      const marker = this.makeMarker([d.longitude, d.latitude], 'location_on', '#1463ff', 'Destino turístico')
+        .setPopup(
+          new maplibregl.Popup({ offset: 25 }).setHTML(`
+            <div style="font-family:sans-serif; min-width:180px">
+              <strong style="font-size:1rem">${d.visibleName || d.destinationDisplayName}</strong>
+              ${d.country ? `<br><span style="color:#64748b">${d.country}${d.city ? `, ${d.city}` : ''}</span>` : ''}
+              <br><span style="color:#94a3b8;font-size:0.8rem">Destino #${d.srchDestinationId}</span>
+              <br><a href="/admin/destinations/${d.srchDestinationId}" style="color:#1463ff;font-size:0.8rem">Editar destino →</a>
+            </div>
+          `),
+        )
+        .addTo(this.map);
+      if (!this.destVisible) marker.remove();
+      this.destMarkers.push(marker);
     }
 
-    // Add hotel markers
     for (const h of this.hotels()) {
       if (h.latitude === null || h.longitude === null) continue;
-      const stars = h.stars ? '⭐'.repeat(Math.min(h.stars, 5)) : '';
-      const marker = L.marker([h.latitude, h.longitude], { icon: hotelIcon });
-      marker.bindPopup(`
-        <div style="font-family:sans-serif; min-width:180px">
-          <strong>${h.displayName || h.hotelName}</strong>
-          ${stars ? `<br>${stars}` : ''}
-          ${h.reviewScore ? `<br><span style="color:#eab308">★ ${h.reviewScore.toFixed(1)}</span>` : ''}
-          <br><span style="color:#94a3b8;font-size:0.8rem">Hotel #${h.propId}</span>
-          ${h.destinationDisplayName ? `<br><span style="color:#64748b;font-size:0.8rem">${h.destinationDisplayName}</span>` : ''}
-        </div>
-      `);
-      this.hotelLayer!.addLayer(marker);
+      const stars = h.stars ? '★'.repeat(Math.min(h.stars, 5)) : '';
+      const marker = this.makeMarker([h.longitude, h.latitude], 'hotel', '#059669', 'Hotel')
+        .setPopup(
+          new maplibregl.Popup({ offset: 25 }).setHTML(`
+            <div style="font-family:sans-serif; min-width:180px">
+              <strong>${h.displayName || h.hotelName}</strong>
+              ${stars ? `<br>${stars}` : ''}
+              ${h.reviewScore ? `<br><span style="color:#eab308">★ ${h.reviewScore.toFixed(1)}</span>` : ''}
+              <br><span style="color:#94a3b8;font-size:0.8rem">Hotel #${h.propId}</span>
+              ${h.destinationDisplayName ? `<br><span style="color:#64748b;font-size:0.8rem">${h.destinationDisplayName}</span>` : ''}
+            </div>
+          `),
+        )
+        .addTo(this.map);
+      if (!this.hotelVisible) marker.remove();
+      this.hotelMarkers.push(marker);
     }
 
-    // Fit bounds to show all markers
-    const allBounds = this.destinations()
-      .filter(d => d.latitude !== null && d.longitude !== null)
-      .map(d => L.latLng(d.latitude!, d.longitude!));
-    if (allBounds.length > 1) {
-      this.map.fitBounds(L.latLngBounds(allBounds), { padding: [30, 30] });
+    if (!this.fitted) {
+      const bounds = new maplibregl.LngLatBounds();
+      let points = 0;
+      for (const d of this.destinations()) {
+        if (d.latitude === null || d.longitude === null) continue;
+        bounds.extend([d.longitude, d.latitude]);
+        points++;
+      }
+      if (points > 1) {
+        this.map.fitBounds(bounds, { padding: 30, duration: 0 });
+        this.fitted = true;
+      }
+    }
+  }
+
+  private makeMarker(lngLat: [number, number], symbol: string, colour: string, title: string): maplibregl.Marker {
+    const el = document.createElement('div');
+    el.innerHTML = `<span class="material-symbols-outlined" style="font-size:1.4rem;color:${colour}">${symbol}</span>`;
+    el.title = title;
+    return new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(lngLat);
+  }
+
+  private setMarkersVisible(markers: maplibregl.Marker[], visible: boolean) {
+    if (!this.map) return;
+    for (const m of markers) {
+      if (visible) m.addTo(this.map);
+      else m.remove();
     }
   }
 
   toggleDestinations() {
-    if (this.destLayer && this.map?.hasLayer(this.destLayer)) {
-      this.map.removeLayer(this.destLayer);
-    } else if (this.destLayer) {
-      this.destLayer.addTo(this.map!);
-    }
+    this.destVisible = !this.destVisible;
+    this.setMarkersVisible(this.destMarkers, this.destVisible);
   }
 
   toggleHotels() {
-    if (this.hotelLayer && this.map?.hasLayer(this.hotelLayer)) {
-      this.map.removeLayer(this.hotelLayer);
-    } else if (this.hotelLayer) {
-      this.hotelLayer.addTo(this.map!);
-    }
+    this.hotelVisible = !this.hotelVisible;
+    this.setMarkersVisible(this.hotelMarkers, this.hotelVisible);
+  }
+
+  private clearMarkers() {
+    for (const m of this.destMarkers) m.remove();
+    this.destMarkers = [];
+    for (const m of this.hotelMarkers) m.remove();
+    this.hotelMarkers = [];
   }
 }

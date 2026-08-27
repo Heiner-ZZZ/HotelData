@@ -236,7 +236,7 @@ export class ManagementTopNavComponent implements OnInit {
   }
 
   ngOnInit() {
-    this._startPolling();
+    this.authService.ensureSessionLoaded().subscribe(() => this._startPolling());
   }
 
   private _startPolling() {
@@ -252,11 +252,15 @@ export class ManagementTopNavComponent implements OnInit {
   }
 
   private _fetchNotifications() {
+    if (!this.authService.sessionLoaded()) {
+      return;
+    }
     if (this._pollingStopped || !this.canViewNotifications()) {
       // No access: show empty state silently, stop polling
       this.pollingError.set(false);
       this.notifications.set([]);
-      this._stopPolling();
+      // Solo detener polling definitivamente si no es por sesión aún no cargada.
+      if (!this.canViewNotifications()) this._stopPolling();
       return;
     }
 

@@ -10,6 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import maplibregl from 'maplibre-gl';
+import type { Feature } from 'geojson';
 
 import type { CompetitorMarker } from '../../../models/strategic-dashboard.model';
 
@@ -32,7 +33,7 @@ function radiusPolygon(
   lng: number,
   radiusKm: number,
   points = 72,
-): GeoJSON.Feature {
+): Feature {
   const coords: [number, number][] = [];
   const dLat = radiusKm / 111.32;
   const dLng = radiusKm / (111.32 * Math.cos((lat * Math.PI) / 180));

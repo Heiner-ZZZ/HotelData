@@ -54,10 +54,10 @@
               }
               <!-- "View all" button overlay on last image -->
               @if (vm.galleryImages.length > 5) {
-                <div class="bento-view-all">
+                <button type="button" class="bento-view-all" (click)="openGalleryGrid()" [attr.aria-label]="'Ver todas las fotos, ' + vm.galleryImages.length + ' imágenes'">
                   <span class="material-symbols-outlined">grid_view</span>
                   Ver todas ({{ vm.galleryImages.length }})
-                </div>
+                </button>
               }
             </div>
           </section>
@@ -103,6 +103,34 @@
             </div>
           </div>
         </div>
+
+        <!-- ─── Anchor Nav Horizontal (guest) ─── -->
+        <nav class="detail-anchor-nav" aria-label="Secciones del hotel">
+          <button type="button" class="detail-anchor" [class.active]="activeSection() === 'overview'" (click)="scrollTo('overview')">
+            <span class="material-symbols-outlined">description</span>
+            Descripción General
+          </button>
+          <button type="button" class="detail-anchor" [class.active]="activeSection() === 'amenities'" (click)="scrollTo('amenities')">
+            <span class="material-symbols-outlined">spa</span>
+            Amenidades
+          </button>
+          <button type="button" class="detail-anchor" [class.active]="activeSection() === 'rooms'" (click)="scrollTo('rooms')">
+            <span class="material-symbols-outlined">king_bed</span>
+            Habitaciones
+          </button>
+          <button type="button" class="detail-anchor" [class.active]="activeSection() === 'reviews'" (click)="scrollTo('reviews')">
+            <span class="material-symbols-outlined">reviews</span>
+            Reseñas
+          </button>
+          <button type="button" class="detail-anchor" [class.active]="activeSection() === 'policies'" (click)="scrollTo('policies')">
+            <span class="material-symbols-outlined">policy</span>
+            Políticas
+          </button>
+          <button type="button" class="detail-anchor" [class.active]="activeSection() === 'similar'" (click)="scrollTo('similar')">
+            <span class="material-symbols-outlined">travel_explore</span>
+            Hoteles Similares
+          </button>
+        </nav>
 
         <!-- ═══════════════════════════════════════════════════
              TWO-COLUMN LAYOUT
@@ -380,14 +408,19 @@
               </section>
             }
 
-            <!-- Reviews — solo verificadas (approved), nombre real, fecha y valoración distintas -->
+            <!-- Reviews — solo 1 destacada, resto en modal -->
             @if (vm.reviews.length) {
               <section id="reviews" class="detail-section" aria-labelledby="reviews-title">
                 <div class="reviews-head">
                   <h2 id="reviews-title" class="section-title">Reseñas de Clientes</h2>
-                  @if (vm.reviewCount > 0) {
-                    <span class="reviews-all-link" aria-label="{{ vm.reviewCount }} reseñas verificadas">
+                  @if (vm.reviews.length > 1) {
+                    <button type="button" class="reviews-all-btn" (click)="showAllReviews.set(true)" [attr.aria-label]="'Ver todas las reseñas, ' + vm.reviewCount + ' verificadas'">
+                      <span class="material-symbols-outlined">visibility</span>
                       Ver todas ({{ vm.reviewCount }})
+                    </button>
+                  } @else {
+                    <span class="reviews-all-link" aria-label="{{ vm.reviewCount }} reseña verificada">
+                      {{ vm.reviewCount }} verificada
                     </span>
                   }
                 </div>
@@ -400,46 +433,95 @@
                       }
                     </div>
                     <span class="score-count">Basado en {{ vm.reviewCount }} valoraciones verificadas</span>
-                  </div>
-                  <div class="reviews-list" role="list" aria-label="Reseñas verificadas">
-                    @for (rev of vm.reviews; track rev.title + rev.date) {
-                      <article class="review-card" role="listitem" [attr.aria-label]="'Reseña de ' + rev.reviewerName + ' del ' + (rev.date | date:'d MMM yyyy')">
-                        <div class="review-header">
-                          <div class="review-author-block">
-                            <span class="review-author">{{ rev.reviewerName }}</span>
-                            <span class="review-verified" aria-label="Huésped verificado">
-                              <span class="material-symbols-outlined verified-icon" aria-hidden="true">verified</span>
-                              Huésped verificado
-                            </span>
-                          </div>
-                          <time class="review-date" [attr.datetime]="rev.date" [attr.title]="rev.date | date:'fullDate'">{{ rev.date | date:'d MMM yyyy' }}</time>
-                        </div>
-                        <div class="review-rating" aria-label="Valoración {{ rev.score }} de 5">
-                          @for (i of [1,2,3,4,5]; track i) {
-                            <span class="material-symbols-outlined review-star" [class.filled]="i <= rev.score" aria-hidden="true">star</span>
-                          }
-                          <span class="review-score-label">{{ rev.score }}/5</span>
-                        </div>
-                        @if (rev.title) {
-                          <p class="review-title">{{ rev.title }}</p>
-                        }
-                        @if (rev.text) {
-                          <p class="review-text">"{{ rev.text }}"</p>
-                        }
-                        @if (rev.staffResponse) {
-                          <div class="review-staff-response" aria-label="Respuesta del hotel">
-                            <span class="material-symbols-outlined staff-icon" aria-hidden="true">support_agent</span>
-                            <div>
-                              <strong class="staff-label">Respuesta del hotel</strong>
-                              <p class="staff-text">{{ rev.staffResponse }}</p>
-                            </div>
-                          </div>
-                        }
-                      </article>
+                    @if (vm.reviews.length > 1) {
+                      <button type="button" class="score-more-btn" (click)="showAllReviews.set(true)">
+                        Ver {{ vm.reviewCount - 1 }} más
+                        <span class="material-symbols-outlined">chevron_right</span>
+                      </button>
                     }
+                  </div>
+                  <div class="reviews-list reviews-list--featured" role="list" aria-label="Reseña destacada">
+                    @let featured = vm.reviews[0];
+                    <article class="review-card review-card--featured" role="listitem" [attr.aria-label]="'Reseña destacada de ' + featured.reviewerName + ' del ' + (featured.date | date:'d MMM yyyy')">
+                      <div class="review-header">
+                        <div class="review-author-block">
+                          <span class="review-author">{{ featured.reviewerName }}</span>
+                          <span class="review-verified" aria-label="Huésped verificado">
+                            <span class="material-symbols-outlined verified-icon" aria-hidden="true">verified</span>
+                            Huésped verificado
+                          </span>
+                        </div>
+                        <time class="review-date" [attr.datetime]="featured.date" [attr.title]="featured.date | date:'fullDate'">{{ featured.date | date:'d MMM yyyy' }}</time>
+                      </div>
+                      <div class="review-rating" aria-label="Valoración {{ featured.score }} de 5">
+                        @for (i of [1,2,3,4,5]; track i) {
+                          <span class="material-symbols-outlined review-star" [class.filled]="i <= featured.score" aria-hidden="true">star</span>
+                        }
+                        <span class="review-score-label">{{ featured.score }}/5</span>
+                      </div>
+                      @if (featured.title) {
+                        <p class="review-title">{{ featured.title }}</p>
+                      }
+                      @if (featured.text) {
+                        <p class="review-text">"{{ featured.text }}"</p>
+                      }
+                      @if (featured.staffResponse) {
+                        <div class="review-staff-response" aria-label="Respuesta del hotel">
+                          <span class="material-symbols-outlined staff-icon" aria-hidden="true">support_agent</span>
+                          <div>
+                            <strong class="staff-label">Respuesta del hotel</strong>
+                            <p class="staff-text">{{ featured.staffResponse }}</p>
+                          </div>
+                        </div>
+                      }
+                    </article>
                   </div>
                 </div>
               </section>
+
+              @if (showAllReviews()) {
+                <div class="gallery-modal-overlay reviews-modal-overlay" (click)="showAllReviews.set(false)" (window:keydown.escape)="showAllReviews.set(false)">
+                  <div class="reviews-modal" (click)="$event.stopPropagation()">
+                    <div class="reviews-modal-head">
+                      <div class="reviews-modal-title">
+                        <span class="material-symbols-outlined">reviews</span>
+                        <h3>Todas las reseñas — {{ vm.name }}</h3>
+                      </div>
+                      <span class="reviews-modal-count">{{ vm.reviewCount }} reseñas</span>
+                      <button type="button" class="gallery-modal-close" (click)="showAllReviews.set(false)" aria-label="Cerrar reseñas">
+                        <span class="material-symbols-outlined">close</span>
+                      </button>
+                    </div>
+                    <div class="reviews-modal-list" role="list">
+                      @for (rev of vm.reviews; track rev.title + rev.date + $index) {
+                        <article class="review-card" role="listitem" [attr.aria-label]="'Reseña de ' + rev.reviewerName">
+                          <div class="review-header">
+                            <div class="review-author-block">
+                              <span class="review-author">{{ rev.reviewerName }}</span>
+                              <span class="review-verified"><span class="material-symbols-outlined verified-icon">verified</span>Huésped verificado</span>
+                            </div>
+                            <time class="review-date" [attr.datetime]="rev.date">{{ rev.date | date:'d MMM yyyy' }}</time>
+                          </div>
+                          <div class="review-rating">
+                            @for (i of [1,2,3,4,5]; track i) {
+                              <span class="material-symbols-outlined review-star" [class.filled]="i <= rev.score">star</span>
+                            }
+                            <span class="review-score-label">{{ rev.score }}/5</span>
+                          </div>
+                          @if (rev.title) { <p class="review-title">{{ rev.title }}</p> }
+                          @if (rev.text) { <p class="review-text">"{{ rev.text }}"</p> }
+                          @if (rev.staffResponse) {
+                            <div class="review-staff-response">
+                              <span class="material-symbols-outlined staff-icon">support_agent</span>
+                              <div><strong class="staff-label">Respuesta del hotel</strong><p class="staff-text">{{ rev.staffResponse }}</p></div>
+                            </div>
+                          }
+                        </article>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
             }
 
             <!-- Policies -->
@@ -479,7 +561,7 @@
 
             <!-- Similar Hotels -->
             @if (similarHotels().length) {
-              <section class="detail-section">
+              <section id="similar" class="detail-section">
                 <h2 class="section-title">
                   Hoteles similares
                   <button type="button" class="similar-info-btn" (click)="showSimilarInfo.set(true)" aria-label="Informacion sobre hoteles similares" title="Cómo se eligen los hoteles similares">
@@ -531,17 +613,24 @@
               <div class="sidebar-fields">
                 <div class="sidebar-field">
                   <span class="field-label">Fechas (Entrada - Salida)</span>
-                  <div class="field-display">
-                    <span class="material-symbols-outlined field-icon">calendar_month</span>
-                    <span>Seleccionar fechas</span>
-                  </div>
+                  <app-date-range-picker
+                    [minDate]="todayStr()"
+                    [startDate]="inheritedCheckIn()"
+                    [endDate]="inheritedCheckOut()"
+                    (startChange)="onSidebarDateStartChange($event)"
+                    (endChange)="onSidebarDateEndChange($event)"
+                  />
                 </div>
                 <div class="sidebar-field">
                   <span class="field-label">Huéspedes</span>
-                  <div class="field-display">
-                    <span class="material-symbols-outlined field-icon">group</span>
-                    <span>2 Adultos, 0 Niños</span>
-                  </div>
+                  <app-guests-picker
+                    [adults]="guestAdults()"
+                    [children]="guestChildren()"
+                    [rooms]="guestRooms()"
+                    (adultsChange)="guestAdults.set($event)"
+                    (childrenChange)="guestChildren.set($event)"
+                    (roomsChange)="guestRooms.set($event)"
+                  />
                 </div>
               </div>
 
@@ -553,7 +642,7 @@
                 <span class="total-unit">/noche</span>
               </div>
 
-              <a [routerLink]="['/account/bookings/new']" [queryParams]="{ prop_id: vm.id, check_in: inheritedCheckIn() || null, check_out: inheritedCheckOut() || null }" class="btn-confirm">
+              <a [routerLink]="['/account/bookings/new']" [queryParams]="{ prop_id: vm.id, check_in: inheritedCheckIn() || null, check_out: inheritedCheckOut() || null, adults: guestAdults(), children: guestChildren(), rooms: guestRooms() }" class="btn-confirm">
                 Confirmar y Pagar
               </a>
               <div class="secure-badge">
@@ -623,6 +712,34 @@
                 </li>
               </ul>
               <p class="similar-info-footer">Los resultados se ordenan por puntuacion de similitud (0&#8211;100).</p>
+            </div>
+          </div>
+        }
+
+        @if (showGalleryGrid()) {
+          <div class="gallery-modal-overlay gallery-grid-overlay" (click)="closeGalleryGrid()" (window:keydown.escape)="closeGalleryGrid()">
+            <div class="gallery-grid-modal" (click)="$event.stopPropagation()">
+              <div class="gallery-grid-head">
+                <div class="gallery-grid-title">
+                  <span class="material-symbols-outlined">photo_library</span>
+                  <h3>Galería — {{ vm.name }}</h3>
+                </div>
+                <span class="gallery-count">{{ vm.galleryImages.length }} fotos</span>
+                <button type="button" class="gallery-modal-close" (click)="closeGalleryGrid()" aria-label="Cerrar galería">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div class="gallery-grid">
+                @for (img of vm.galleryImages; track $index) {
+                  <button type="button" class="gallery-grid-item" (click)="openFromGrid(img)" [attr.aria-label]="'Ver foto ' + ($index + 1) + ' de ' + vm.name">
+                    @if (!imageErrors().has('grid-' + $index)) {
+                      <img [src]="img" [alt]="vm.name + ' foto ' + ($index + 1)" loading="lazy" (error)="onImageError('grid-' + $index, $event)" />
+                    } @else {
+                      <span class="material-symbols-outlined grid-placeholder">broken_image</span>
+                    }
+                  </button>
+                }
+              </div>
             </div>
           </div>
         }
