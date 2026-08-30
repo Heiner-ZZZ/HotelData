@@ -51,7 +51,7 @@ jest.mock('maplibre-gl', () => {
     on = () => undefined;
     remove = () => undefined;
     getLngLat() {
-      return { lat: 19.4326, lng: -99.1332 };
+      return { lat: -0.1807, lng: -78.4678 };
     }
   }
 

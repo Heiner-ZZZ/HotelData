@@ -10,7 +10,7 @@ import { ToastService } from '../../../../shared/services/toast.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { AmenitiesApiService } from '../../services/amenities-api.service';
 import { AMENITIES_ROUTES } from '../../amenities.routes';
-import { AmenitiesPageComponent, impliesHighFloor, impliesLateArrival, impliesPetRelated } from './amenities-page';
+import { AmenitiesPageComponent, impliesLateArrival, impliesPetRelated } from './amenities-page';
 
 describe('AmenitiesPageComponent', () => {
   function setup(initialPath = 'servicios') {
@@ -178,14 +178,13 @@ describe('AmenitiesPageComponent', () => {
     unit_price: number;
     chargeable: boolean;
     pet_related: boolean;
-    high_floor: boolean;
     late_arrival: boolean;
   };
 
   function raw(over: Partial<RawRequest> = {}): RawRequest {
     return {
       label: 'Cama extra', unit_price: 15, chargeable: true,
-      pet_related: false, high_floor: false, late_arrival: false,
+      pet_related: false, late_arrival: false,
       ...over,
     };
   }
@@ -206,15 +205,12 @@ describe('AmenitiesPageComponent', () => {
       facilities: [],
       room_types: [],
       special_requests: requests,
-      high_floor_from: 3,
     });
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     ctx.fixture.detectChanges();
   }
 
   it('detecta las reglas implicadas por el nombre de la petición', () => {
-    expect(impliesHighFloor('Piso alto')).toBe(true);
-    expect(impliesHighFloor('Cama extra')).toBe(false);
     expect(impliesLateArrival('Llegada tarde')).toBe(true);
     expect(impliesLateArrival('Cama extra')).toBe(false);
     expect(impliesPetRelated('Mascotas (Pet friendly)')).toBe(true);
@@ -246,7 +242,6 @@ describe('AmenitiesPageComponent', () => {
   it('no renderiza toggle circular para peticiones cuyo nombre ya implica la regla', async () => {
     const ctx = setup('especialsPeticions');
     await seedRequests(ctx, [
-      raw({ label: 'Piso alto', unit_price: 0, chargeable: false, high_floor: true }),
       raw({ label: 'Llegada tarde', unit_price: 0, chargeable: false, late_arrival: true }),
       raw({ label: 'Mascotas (Pet friendly)', unit_price: 20, pet_related: true }),
       raw(),
@@ -262,22 +257,20 @@ describe('AmenitiesPageComponent', () => {
       return row.querySelectorAll('.rules-panel input[type="checkbox"]').length;
     };
 
-    expect(checkboxesOf('Piso alto')).toBe(2); // mascotas + llegada tarde (sin piso alto)
-    expect(checkboxesOf('Llegada tarde')).toBe(2); // mascotas + piso alto (sin llegada tarde)
-    expect(checkboxesOf('Mascotas (Pet friendly)')).toBe(2); // piso alto + llegada tarde (sin mascotas)
-    expect(checkboxesOf('Cama extra')).toBe(3); // las tres reglas aplican
+    expect(checkboxesOf('Llegada tarde')).toBe(1); // solo mascotas (sin llegada tarde)
+    expect(checkboxesOf('Mascotas (Pet friendly)')).toBe(1); // solo llegada tarde (sin mascotas)
+    expect(checkboxesOf('Cama extra')).toBe(2); // mascotas + llegada tarde
   });
 
   it('envía al guardar los flags implícitos por el nombre de la petición', async () => {
     const ctx = setup('especialsPeticions');
     await seedRequests(ctx, [
-      raw({ label: 'Piso alto', unit_price: 0, chargeable: false, high_floor: false }),
       raw({ label: 'Llegada tarde', unit_price: 0, chargeable: false, late_arrival: false }),
+      raw({ label: 'Mascotas (Pet friendly)', unit_price: 20, pet_related: false }),
       raw(),
     ]);
     const pending = new Subject<{
       special_requests: RawRequest[];
-      high_floor_from: number;
     }>();
     (ctx.api as unknown as { saveSpecialRequests: jest.Mock }).saveSpecialRequests.mockReturnValue(pending);
 
@@ -287,9 +280,11 @@ describe('AmenitiesPageComponent', () => {
     const flagsByLabel = Object.fromEntries(
       (payload.special_requests as { label: string; flags: string[] }[]).map((r) => [r.label, r.flags]),
     );
-    expect(flagsByLabel['Piso alto']).toContain('high_floor');
     expect(flagsByLabel['Llegada tarde']).toContain('late_arrival');
+    expect(flagsByLabel['Mascotas (Pet friendly)']).toContain('pet_related');
     expect(flagsByLabel['Cama extra']).not.toContain('high_floor');
+    expect(flagsByLabel['Cama extra']).not.toContain('late_arrival');
+    expect(flagsByLabel['Cama extra']).not.toContain('pet_related');
     pending.complete();
   });
 });

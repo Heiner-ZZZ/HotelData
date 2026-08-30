@@ -49,13 +49,16 @@
                 formControlName="email"
                 placeholder="ej: hola@mi-hotel.com"
                 autocomplete="email"
+                maxlength="100"
               >
-              @if (
-                onboardingForm.controls.email.touched &&
-                onboardingForm.controls.email.invalid
-              ) {
+              @if (onboardingForm.controls.email.touched && onboardingForm.controls.email.hasError('required')) {
+                <span class="field-error">Ingresa tu correo.</span>
+              } @else if (onboardingForm.controls.email.touched && onboardingForm.controls.email.hasError('email')) {
                 <span class="field-error">Ingresa un correo válido.</span>
+              } @else if (onboardingForm.controls.email.touched && onboardingForm.controls.email.hasError('maxlength')) {
+                <span class="field-error">Máximo 100 caracteres.</span>
               }
+              <span class="field-hint field-hint--count">{{ onboardingForm.controls.email.value.length || 0 }}/100</span>
             </label>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">apartment</span>
@@ -66,12 +69,16 @@
                 placeholder="ej: Hostal Sol de los Andes"
                 maxlength="120"
               >
-              @if (
-                onboardingForm.controls.property_name.touched &&
-                onboardingForm.controls.property_name.invalid
-              ) {
+              @if (onboardingForm.controls.property_name.touched && onboardingForm.controls.property_name.hasError('required')) {
                 <span class="field-error">Indica el nombre visible del alojamiento.</span>
+              } @else if (onboardingForm.controls.property_name.touched && onboardingForm.controls.property_name.hasError('minlength')) {
+                <span class="field-error">Mínimo 2 caracteres.</span>
+              } @else if (onboardingForm.controls.property_name.touched && onboardingForm.controls.property_name.hasError('maxlength')) {
+                <span class="field-error">Máximo 120 caracteres.</span>
+              } @else if (onboardingForm.controls.property_name.touched && onboardingForm.controls.property_name.hasError('pattern')) {
+                <span class="field-error">Solo letras, números y puntuación básica.</span>
               }
+              <span class="field-hint field-hint--count">{{ onboardingForm.controls.property_name.value.length || 0 }}/120</span>
             </label>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">badge</span>
@@ -81,13 +88,18 @@
                 formControlName="username"
                 placeholder="ej: hostel-cusco"
                 autocomplete="username"
+                maxlength="32"
               >
-              @if (
-                onboardingForm.controls.username.touched &&
-                onboardingForm.controls.username.invalid
-              ) {
+              @if (onboardingForm.controls.username.touched && onboardingForm.controls.username.hasError('required')) {
+                <span class="field-error">Ingresa un nombre de usuario.</span>
+              } @else if (onboardingForm.controls.username.touched && onboardingForm.controls.username.hasError('minlength')) {
                 <span class="field-error">Mínimo 3 caracteres.</span>
+              } @else if (onboardingForm.controls.username.touched && onboardingForm.controls.username.hasError('maxlength')) {
+                <span class="field-error">Máximo 32 caracteres.</span>
+              } @else if (onboardingForm.controls.username.touched && onboardingForm.controls.username.hasError('pattern')) {
+                <span class="field-error">Solo letras, números, punto, guion y guion bajo.</span>
               }
+              <span class="field-hint field-hint--count">{{ onboardingForm.controls.username.value.length || 0 }}/32</span>
             </label>
             <fieldset class="input-field type-fieldset">
               <span class="material-symbols-outlined input-icon">category</span>
@@ -125,7 +137,16 @@
                 formControlName="user_display_name"
                 placeholder="ej: María Rodríguez"
                 autocomplete="name"
+                maxlength="80"
               >
+              @if (onboardingForm.controls.user_display_name.touched && onboardingForm.controls.user_display_name.hasError('minlength')) {
+                <span class="field-error">Mínimo 2 caracteres.</span>
+              } @else if (onboardingForm.controls.user_display_name.touched && onboardingForm.controls.user_display_name.hasError('maxlength')) {
+                <span class="field-error">Máximo 80 caracteres.</span>
+              } @else if (onboardingForm.controls.user_display_name.touched && onboardingForm.controls.user_display_name.hasError('pattern')) {
+                <span class="field-error">Solo letras, espacios, guion y apóstrofe.</span>
+              }
+              <span class="field-hint field-hint--count">{{ onboardingForm.controls.user_display_name.value.length || 0 }}/80</span>
             </label>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">public</span>
@@ -154,6 +175,7 @@
                   formControlName="password"
                   placeholder="Mínimo 6 caracteres"
                   autocomplete="new-password"
+                  maxlength="64"
                 >
                 <button
                   type="button"
@@ -185,12 +207,14 @@
                   </svg>
                 </button>
               </div>
-              @if (
-                onboardingForm.controls.password.touched &&
-                onboardingForm.controls.password.invalid
-              ) {
+              @if (onboardingForm.controls.password.touched && onboardingForm.controls.password.hasError('required')) {
+                <span class="field-error">Ingresa una contraseña.</span>
+              } @else if (onboardingForm.controls.password.touched && onboardingForm.controls.password.hasError('minlength')) {
                 <span class="field-error">Mínimo 6 caracteres.</span>
+              } @else if (onboardingForm.controls.password.touched && onboardingForm.controls.password.hasError('maxlength')) {
+                <span class="field-error">Máximo 64 caracteres.</span>
               }
+              <span class="field-hint field-hint--count">{{ onboardingForm.controls.password.value.length || 0 }}/64</span>
             </label>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">location_city</span>
@@ -200,13 +224,18 @@
                 formControlName="city"
                 placeholder="ej: Cusco"
                 autocomplete="address-level2"
+                maxlength="60"
               >
-              @if (
-                onboardingForm.controls.city.touched &&
-                onboardingForm.controls.city.invalid
-              ) {
+              @if (onboardingForm.controls.city.touched && onboardingForm.controls.city.hasError('required')) {
                 <span class="field-error">Indica la ciudad.</span>
+              } @else if (onboardingForm.controls.city.touched && onboardingForm.controls.city.hasError('minlength')) {
+                <span class="field-error">Mínimo 2 caracteres.</span>
+              } @else if (onboardingForm.controls.city.touched && onboardingForm.controls.city.hasError('maxlength')) {
+                <span class="field-error">Máximo 60 caracteres.</span>
+              } @else if (onboardingForm.controls.city.touched && onboardingForm.controls.city.hasError('pattern')) {
+                <span class="field-error">Solo letras, espacios, guion y apóstrofe.</span>
               }
+              <span class="field-hint field-hint--count">{{ onboardingForm.controls.city.value.length || 0 }}/60</span>
             </label>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">lock_reset</span>
@@ -235,7 +264,14 @@
                 formControlName="address"
                 placeholder="ej: Av. Tulum 5, Zona Hotelera"
                 autocomplete="street-address"
+                maxlength="200"
               >
+              @if (onboardingForm.controls.address.touched && onboardingForm.controls.address.hasError('minlength')) {
+                <span class="field-error">Mínimo 5 caracteres.</span>
+              } @else if (onboardingForm.controls.address.touched && onboardingForm.controls.address.hasError('maxlength')) {
+                <span class="field-error">Máximo 200 caracteres.</span>
+              }
+              <span class="field-hint field-hint--count">{{ onboardingForm.controls.address.value.length || 0 }}/200</span>
             </label>
             <div class="section-divider" aria-hidden="true"></div>
             <label class="input-field">
@@ -246,13 +282,14 @@
                 formControlName="contact_phone"
                 placeholder="ej: +51987654321"
                 autocomplete="tel"
+                maxlength="16"
               >
-              @if (
-                onboardingForm.controls.contact_phone.touched &&
-                onboardingForm.controls.contact_phone.invalid
-              ) {
+              @if (onboardingForm.controls.contact_phone.touched && onboardingForm.controls.contact_phone.hasError('required')) {
+                <span class="field-error">Ingresa el teléfono de contacto.</span>
+              } @else if (onboardingForm.controls.contact_phone.touched && onboardingForm.controls.contact_phone.hasError('pattern')) {
                 <span class="field-error">Usa formato internacional (ej. +5215512345678).</span>
               }
+              <span class="field-hint field-hint--count">{{ onboardingForm.controls.contact_phone.value.length || 0 }}/16</span>
             </label>
             <label class="input-field">
               <span class="material-symbols-outlined input-icon">payments</span>
@@ -302,6 +339,10 @@
                 placeholder="Cuenta brevemente qué hace especial a tu alojamiento."
                 maxlength="500"
               ></textarea>
+              @if (onboardingForm.controls.description.touched && onboardingForm.controls.description.hasError('maxlength')) {
+                <span class="field-error">Máximo 500 caracteres.</span>
+              }
+              <span class="field-hint field-hint--count">{{ onboardingForm.controls.description.value.length || 0 }}/500</span>
             </label>
             <div class="location-picker-field">
               <span class="input-label">
@@ -319,12 +360,17 @@
         <!-- ── Elige tu plan (Fase 6, PLAN §14) ──────────────────── -->
         <section class="plan-card" aria-labelledby="plan-title">
           <header class="plan-card__header">
-            <p class="plan-eyebrow">Tu suscripción</p>
-            <h2 id="plan-title">Tu plan, según tus {{ totalRooms() }} habitaciones</h2>
-            <p class="plan-card__lead">
-              La tarifa se deriva del tamaño de tu alojamiento. Confírmala, elige
-              el ciclo y cómo pagarás.
-            </p>
+            <div class="plan-header-icon" aria-hidden="true">
+              <span class="material-symbols-outlined">workspace_premium</span>
+            </div>
+            <div class="plan-header-copy">
+              <p class="plan-eyebrow">Tu suscripción · facturación en USD</p>
+              <h2 id="plan-title">Tu plan, según tus {{ totalRooms() }} habitaciones</h2>
+              <p class="plan-card__lead">
+                La cuota se calcula por el tamaño declarado de tu alojamiento.
+                Confirma la banda asignada, elige el ciclo de pago y el método.
+              </p>
+            </div>
           </header>
 
           @if (pricingPlansResource.isLoading()) {
@@ -339,13 +385,15 @@
           } @else {
             <!-- ── 3 tarjetas radio ─────────────────────────────── -->
             <fieldset class="plan-options">
-              <legend class="plan-options__legend">Tamaño de tu alojamiento</legend>
+              <legend class="plan-options__legend">Banda según habitaciones</legend>
+              <p class="plan-options__hint">Selecciona la tarjeta que coincide con tu banda asignada. Solo la sugerida permite continuar.</p>
               <div class="plan-options__grid">
                 @for (plan of visiblePlans; track plan.key) {
                   <label
                     class="plan-option"
                     [class.plan-option--active]="selectedPlanKey() === plan.key"
                     [class.plan-option--suggested]="derivedPlanKey() === plan.key"
+                    [attr.aria-label]="plan.label + ' · ' + plan.rangeLabel + ' habitaciones'"
                   >
                     <input
                       type="radio"
@@ -357,32 +405,38 @@
                     <span class="plan-option__body">
                       @if (derivedPlanKey() === plan.key) {
                         <span class="plan-option__badge">
-                          <span class="material-symbols-outlined" aria-hidden="true">check</span>
-                          Tu plan
+                          <span class="material-symbols-outlined" aria-hidden="true">verified</span>
+                          Sugerido para ti
                         </span>
                       }
                       <span class="plan-option__top">
-                        <span class="material-symbols-outlined plan-option__icon" aria-hidden="true">
-                          {{ plan.icon }}
-                        </span>
+                        <span class="material-symbols-outlined plan-option__icon" aria-hidden="true">{{ plan.icon }}</span>
                         <span class="plan-option__label">{{ plan.label }}</span>
+                        <span class="plan-option__range-badge">{{ plan.rangeLabel }} hab.</span>
                       </span>
                       @if (derivedPlanKey() === plan.key) {
-                        <span class="plan-option__exact">
-                          {{ derivedPlan()?.min_rooms }}–{{ derivedPlan()?.max_rooms }} habitaciones
+                        <span class="plan-option__band">
+                          <span class="material-symbols-outlined" aria-hidden="true">label</span>
+                          Banda {{ derivedPlan()?.band }} · {{ derivedPlan()?.label }} · {{ derivedPlan()?.min_rooms }}–{{ derivedPlan()?.max_rooms }} hab.
                         </span>
                         <span class="plan-option__price plan-option__price--exact">
                           <span class="plan-option__amount">${{ currentPlanPrice() }}</span>
                           <span class="plan-option__period">/mes</span>
+                          @if (billingCycle() === 'annual' && planAnnualDiscountPct() > 0) {
+                            <span class="plan-option__discount">−{{ planAnnualDiscountPct() }}%</span>
+                          }
                         </span>
                         @if (billingCycle() === 'annual') {
-                          <span class="plan-option__annual">${{ currentPlanPrice() * 12 }}/año facturado</span>
+                          <span class="plan-option__annual">${{ currentPlanPrice() * 12 }} /año · ahorras ${{ planAnnualSavings() }}/año</span>
+                        } @else {
+                          <span class="plan-option__annual plan-option__annual--muted">Pagas mes a mes · cambia a anual y ahorra ${{ planAnnualSavings() }}/año</span>
                         }
                       } @else {
-                        <span class="plan-option__range">{{ plan.rangeLabel }} habitaciones</span>
+                        <span class="plan-option__desc">{{ plan.rangeLabel }} habitaciones</span>
                         <span class="plan-option__price">
                           desde <strong>${{ visiblePlanPrices()[plan.key] }}</strong>/mes
                         </span>
+                        <span class="plan-option__meta">Rango agrupado · ver banda exacta al ajustar habitaciones</span>
                       }
                     </span>
                   </label>
@@ -390,9 +444,10 @@
               </div>
               @if (planMismatch()) {
                 <p class="plan-mismatch" role="alert">
-                  Tu plan por {{ totalRooms() }} habitaciones es
-                  <strong>{{ derivedVisiblePlan()?.label }}</strong>. Selecciona la tarjeta
-                  sugerida para continuar.
+                  <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+                  Tu banda para {{ totalRooms() }} habitaciones es
+                  <strong>{{ derivedPlan()?.label }} ({{ derivedPlan()?.min_rooms }}–{{ derivedPlan()?.max_rooms }} hab.)</strong>
+                  dentro del grupo <strong>{{ derivedVisiblePlan()?.label }}</strong>. Selecciona esa tarjeta para continuar.
                 </p>
               }
             </fieldset>
@@ -400,33 +455,31 @@
             <!-- ── Toggle mensual/anual ────────────────────────── -->
             <fieldset class="plan-cycle">
               <legend class="plan-options__legend">Ciclo de facturación</legend>
-              <div class="cycle-toggle">
-                <label
-                  class="cycle-option"
-                  [class.cycle-option--active]="billingCycle() === 'monthly'"
-                >
+              <div class="cycle-toggle" role="radiogroup" aria-label="Ciclo de facturación">
+                <label class="cycle-option" [class.cycle-option--active]="billingCycle() === 'monthly'">
                   <input type="radio" formControlName="billing_cycle" value="monthly">
                   <span class="cycle-option__name">Mensual</span>
+                  <span class="cycle-option__sub">Pago mes a mes</span>
                 </label>
-                <label
-                  class="cycle-option"
-                  [class.cycle-option--active]="billingCycle() === 'annual'"
-                >
+                <label class="cycle-option" [class.cycle-option--active]="billingCycle() === 'annual'">
                   <input type="radio" formControlName="billing_cycle" value="annual">
-                  <span class="cycle-option__name">Anual</span>
-                  @if (planAnnualDiscountPct() > 0) {
-                    <span class="cycle-option__saving">−{{ planAnnualDiscountPct() }}%</span>
-                  }
+                  <span class="cycle-option__main">
+                    <span class="cycle-option__name">Anual</span>
+                    @if (planAnnualDiscountPct() > 0) {
+                      <span class="cycle-option__saving">Ahorra {{ planAnnualDiscountPct() }}%</span>
+                    }
+                  </span>
+                  <span class="cycle-option__sub">12 meses · ${{ currentPlanPrice() * 12 }}/año</span>
                 </label>
               </div>
               <p class="cycle-hint">
                 @if (billingCycle() === 'annual') {
-                  Pagas el año por adelantado:
-                  <strong>${{ currentPlanPrice() * 12 }}/año</strong> · ahorras
-                  <strong>${{ planAnnualSavings() }}/año</strong>.
+                  <span class="material-symbols-outlined" aria-hidden="true">savings</span>
+                  Pagas <strong>${{ currentPlanPrice() * 12 }}/año</strong> por adelantado · ahorras
+                  <strong>${{ planAnnualSavings() }}/año</strong> frente al mensual.
                 } @else {
-                  Pagas <strong>${{ currentPlanPrice() }}/mes</strong>. Si eliges anual,
-                  ahorras <strong>${{ planAnnualSavings() }}/año</strong>.
+                  Pagas <strong>${{ currentPlanPrice() }}/mes</strong>. Cambia a anual y ahorra
+                  <strong>${{ planAnnualSavings() }}/año</strong> ({{ planAnnualDiscountPct() }}%).
                 }
               </p>
             </fieldset>
@@ -434,19 +487,19 @@
             <!-- ── Método de pago ──────────────────────────────── -->
             <fieldset class="plan-payment">
               <legend class="plan-options__legend">Método de pago</legend>
+              <p class="plan-options__hint">Define cómo abonarás la primera factura. Se confirma tras la aprobación.</p>
               <div class="payment-options">
                 @for (method of paymentMethodOptions; track method.value) {
                   <label
                     class="payment-option"
-                    [class.payment-option--active]="
-                      onboardingForm.controls.payment_method.value === method.value
-                    "
+                    [class.payment-option--active]="onboardingForm.controls.payment_method.value === method.value"
                   >
                     <input type="radio" formControlName="payment_method" [value]="method.value">
-                    <span class="material-symbols-outlined payment-option__icon" aria-hidden="true">
-                      {{ method.icon }}
+                    <span class="payment-option__icon-wrap" aria-hidden="true">
+                      <span class="material-symbols-outlined payment-option__icon">{{ method.icon }}</span>
                     </span>
-                    <span>{{ method.label }}</span>
+                    <span class="payment-option__label">{{ method.label }}</span>
+                    @if (method.value === 'bank_transfer') { <span class="payment-option__hint">Recomendado</span> }
                   </label>
                 }
               </div>
@@ -455,41 +508,46 @@
             <!-- ── Resumen (total del período) ────────────────── -->
             <div class="plan-total">
               <div class="plan-total__info">
-                <span class="plan-chip">
-                  <span class="material-symbols-outlined" aria-hidden="true">
-                    {{ derivedVisiblePlan()?.icon }}
+                <div class="plan-total__row">
+                  <span class="plan-chip">
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ derivedVisiblePlan()?.icon }}</span>
+                    {{ derivedPlan()?.label ?? derivedVisiblePlan()?.label }}
                   </span>
-                  {{ derivedVisiblePlan()?.label }}
-                </span>
+                  <span class="plan-total__band">Banda {{ derivedPlan()?.band }} · {{ derivedPlan()?.min_rooms }}–{{ derivedPlan()?.max_rooms }} hab.</span>
+                </div>
                 <span class="plan-total__cycle">
-                  {{ billingCycle() === 'annual' ? 'Facturación anual' : 'Facturación mensual' }}
+                  {{ billingCycle() === 'annual' ? 'Facturación anual · 12 meses por adelantado' : 'Facturación mensual · pago mes a mes' }}
                 </span>
               </div>
               <div class="plan-total__price">
-                <span class="plan-total__amount">${{ currentPlanPrice() }}</span>
-                <span class="plan-total__period">/mes</span>
+                <div class="plan-total__price-main">
+                  <span class="plan-total__amount">${{ currentPlanPrice() }}</span>
+                  <span class="plan-total__period">/mes</span>
+                </div>
+                @if (billingCycle() === 'annual') {
+                  <span class="plan-total__annual">${{ currentPlanPrice() * 12 }}/año</span>
+                }
                 @if (billingCycle() === 'annual' && planAnnualDiscountPct() > 0) {
                   <span class="plan-total__badge">
-                    <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
-                    −{{ planAnnualDiscountPct() }}%
+                    <span class="material-symbols-outlined" aria-hidden="true">savings</span>
+                    −{{ planAnnualDiscountPct() }}% anual
                   </span>
                 }
               </div>
             </div>
 
             <p class="plan-due">
-              <span class="material-symbols-outlined" aria-hidden="true">event</span>
-              La primera factura vence 7 días después de la aprobación de tu alojamiento.
+              <span class="material-symbols-outlined" aria-hidden="true">event_upcoming</span>
+              La primera factura se emite 7 días después de la aprobación. Podrás cambiar de banda si declaras más habitaciones.
             </p>
 
             <!-- ── Confirmación ───────────────────────────────── -->
             <label class="plan-confirm">
               <input type="checkbox" formControlName="plan_confirmed">
-              <span>
+              <span class="plan-confirm__text">
                 Confirmo que revisé mi plan:
-                <strong>{{ derivedVisiblePlan()?.label }} — ${{ currentPlanPrice() }}/mes</strong>
-                ({{ billingCycle() === 'annual' ? 'anual' : 'mensual' }}, con
-                {{ totalRooms() }} habitaciones).
+                <strong>{{ derivedPlan()?.label ?? derivedVisiblePlan()?.label }} — ${{ currentPlanPrice() }}/mes</strong>
+                <span class="plan-confirm__meta"> ({{ billingCycle() === 'annual' ? 'anual · ' + currentPlanPrice() * 12 + '/año' : 'mensual' }}, banda {{ derivedPlan()?.band }} · {{ derivedPlan()?.min_rooms }}–{{ derivedPlan()?.max_rooms }} hab. con {{ totalRooms() }} habitaciones declaradas)</span>
               </span>
             </label>
             @if (

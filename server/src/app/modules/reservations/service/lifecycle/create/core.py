@@ -82,7 +82,7 @@ def create_booking(
         raise ValueError(room_error)
 
     request_error = validate_special_requests(
-        payload.prop_id, payload.hotel_room_id, payload.special_requests)
+        payload.prop_id, payload.special_requests)
     if request_error:
         raise ValueError(request_error)
 

@@ -47,16 +47,13 @@ export interface AmenitiesDto {
     unit_price: number;
     chargeable: boolean;
     pet_related: boolean;
-    high_floor: boolean;
     late_arrival: boolean;
   }[];
-  high_floor_from?: number;
 }
 
 export interface SpecialRequestsSaveDto {
   prop_id: number;
   special_requests: { label: string; unit_price: number; flags: string[] }[];
-  high_floor_from: number;
 }
 
 export interface AmenitiesOptionsDto {

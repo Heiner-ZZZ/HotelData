@@ -34,7 +34,7 @@ export class AmenitiesApiService {
   /** Save special requests — mismo gate por-hotel que saveAmenities. */
   saveSpecialRequests(payload: SpecialRequestsSaveDto) {
     const params = new HttpParams().set('prop_id', String(payload.prop_id));
-    return this.http.put<{ special_requests: AmenitiesDto['special_requests']; high_floor_from: number }>(
+    return this.http.put<{ special_requests: AmenitiesDto['special_requests'] }>(
       '/management/amenities/special-requests',
       payload,
       { params },

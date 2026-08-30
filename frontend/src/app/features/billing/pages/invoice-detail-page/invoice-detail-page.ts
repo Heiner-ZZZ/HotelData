@@ -21,6 +21,14 @@ import { FolioApiService } from '../../services/folio-api.service';
 import { amenityIcon } from '../../../amenities/utils/amenity-icons';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
+import { ReportsExportService } from '../../../../shared/services/reports-export.service';
+import {
+  buildReportShell,
+  buildSummaryGrid,
+  buildTable,
+  esc,
+  fmtUsd,
+} from '../../../../shared/utils/report-html-templates';
 
 @Component({
   selector: 'app-invoice-detail-page',
@@ -37,6 +45,7 @@ export class InvoiceDetailPageComponent {
   private readonly router = inject(Router);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly auth = inject(AuthService);
+  private readonly reports = inject(ReportsExportService);
 
   /** Descarga del PDF de la factura gateada por ``reports.download``. */
   readonly canExport = computed(() => this.auth.hasPermission(REPORTS_DOWNLOAD));
@@ -377,6 +386,136 @@ export class InvoiceDetailPageComponent {
 
   printPage(): void {
     window.print();
+  }
+
+  readonly exportingPdf = signal(false);
+
+  async exportPdf(): Promise<void> {
+    const inv = this.invoice();
+    if (!inv) return;
+    this.exportingPdf.set(true);
+    try {
+      const statusBadge = `<span class="badge ${this.statusTone() === 'success' ? 'success' : this.statusTone() === 'danger' ? 'danger' : 'warning'}">${esc(this.statusLabel())}</span>`;
+      const headerMeta = [
+        { label: 'Factura', value: inv.invoiceNumber },
+        { label: 'Estado', value: this.statusLabel() },
+        { label: 'Emisión', value: new Date(inv.issuedAt).toLocaleDateString('es-MX') },
+        { label: 'Hotel', value: inv.hotelLabel || `#${inv.propId}` },
+        { label: 'Huésped', value: inv.guestName || '—' },
+        { label: 'Moneda', value: 'USD' },
+      ];
+
+      const summary = buildSummaryGrid([
+        { label: 'Subtotal', value: fmtUsd(this.subtotal(), { showZero: true }), tone: 'neutral' },
+        { label: `IVA (${this.taxRate().toFixed(0)}%)`, value: fmtUsd(this.taxes(), { showZero: true }), tone: 'neutral' },
+        { label: this.isVoided() ? 'Importe original' : 'Total', value: fmtUsd(this.total(), { showZero: true }), tone: this.isVoided() ? 'warning' : 'positive' },
+        { label: 'Pagado', value: fmtUsd(this.totalPaidAmount(), { showZero: true }), tone: 'positive' },
+        { label: 'Pendiente', value: fmtUsd(this.totalPendingAmount(), { showZero: true }), tone: this.totalPendingAmount() > 0 ? 'warning' : 'neutral' },
+        { label: 'Líneas', value: String(this.lineItems().length), tone: 'neutral' },
+      ]);
+
+      const lineRows: (string | number)[][] = [];
+      if (inv.roomSubtotal > 0) {
+        lineRows.push([
+          `Habitación — ${inv.roomTypeName || 'Habitación'} (${inv.checkInDate} → ${inv.checkOutDate}${inv.roomLabels.length ? ` · Hab. ${inv.roomLabels.join(', ')}` : ''})`,
+          String(inv.totalNights),
+          fmtUsd(inv.roomSubtotal / Math.max(1, inv.totalNights), { showZero: true }),
+          fmtUsd(inv.roomSubtotal, { showZero: true }),
+        ]);
+      }
+      for (const li of this.lineItems()) {
+        lineRows.push([li.name, String(li.quantity), fmtUsd(li.unitPrice, { showZero: true }), fmtUsd(li.total, { showZero: true })]);
+      }
+
+      const lineTable = buildTable(
+        [
+          { label: 'Descripción' },
+          { label: 'Cant', align: 'right' },
+          { label: 'P. Unit', align: 'right' },
+          { label: 'Importe', align: 'right' },
+        ],
+        lineRows,
+        ['TOTAL', '', '', fmtUsd(this.total(), { showZero: true })],
+      );
+
+      const emitRecept = `
+        <div class="two-col">
+          <div>
+            <h3>Emisor</h3>
+            <p><strong>${esc(inv.hotelLabel || 'HotelData PMS')}</strong><br>Prop. #${inv.propId}<br>HotelData — Sistema de Gestión Hotelera</p>
+          </div>
+          <div>
+            <h3>Receptor</h3>
+            <p><strong>${esc(inv.guestName || '—')}</strong><br>${esc(inv.guestEmail || '—')}<br><span style="font-family:monospace">${esc(inv.guestCedula || '—')}</span></p>
+          </div>
+        </div>
+      `;
+
+      const fiscalInfo = `
+        <h2>Información fiscal y de folio</h2>
+        <table class="financial">
+          <tbody>
+            <tr><td style="width:35%;font-weight:700">Folio UUID</td><td style="font-family:monospace;word-break:break-all">${esc(inv.id)}</td></tr>
+            <tr><td style="font-weight:700">Factura</td><td>${esc(inv.invoiceNumber)}</td></tr>
+            <tr><td style="font-weight:700">Estado</td><td>${statusBadge} &nbsp; ${esc(this.statusLabel())}</td></tr>
+            <tr><td style="font-weight:700">Emisión</td><td>${esc(new Date(inv.issuedAt).toLocaleString('es-MX'))}</td></tr>
+            ${inv.folioNumber ? `<tr><td style="font-weight:700">Folio asociado</td><td>${esc(inv.folioNumber)} (${esc(inv.bookingId)})</td></tr>` : ''}
+            ${inv.notes ? `<tr><td style="font-weight:700">Notas</td><td>${esc(inv.notes)}</td></tr>` : ''}
+            ${this.isVoided() ? `<tr><td style="font-weight:700">Valor neto reconocido</td><td>${esc(fmtUsd(inv.recognizedTotal, { showZero: true }))}</td></tr>` : ''}
+            ${inv.creditNoteNumber ? `<tr><td style="font-weight:700">Nota de crédito</td><td>${esc(inv.creditNoteNumber)}</td></tr>` : ''}
+          </tbody>
+        </table>
+      `;
+
+      const paymentsSection = this.payments().length
+        ? `<h2>Historial de pagos (${this.payments().length})</h2>` +
+          buildTable(
+            [
+              { label: 'Fecha' },
+              { label: 'Método' },
+              { label: 'Referencia' },
+              { label: 'Importe', align: 'right' },
+              { label: 'Cajero' },
+            ],
+            this.payments().map((p) => [
+              p.paidAt ? new Date(p.paidAt).toLocaleString('es-MX') : '—',
+              this.paymentMethodLabel(p.method),
+              p.reference || '—',
+              fmtUsd(p.amount, { showZero: true }),
+              p.shiftEmployee || p.shiftOpenedBy || '—',
+            ]),
+          )
+        : '<p style="color:var(--c-text-muted);font-style:italic">Sin pagos registrados.</p>';
+
+      const literal = `
+        <div style="margin-top:4mm;padding:3mm 4mm;background:var(--c-bg-soft);border:0.5pt solid var(--c-border);border-radius:4pt;font-size:9pt">
+          <strong>Importe en letra:</strong> ${esc(this.totalLiteral())}
+        </div>
+      `;
+
+      const bodyHtml = `
+        ${summary}
+        ${emitRecept}
+        <h2>Conceptos facturados</h2>
+        ${lineTable}
+        ${literal}
+        ${paymentsSection}
+        ${fiscalInfo}
+        <p style="margin-top:6mm;font-size:8pt;color:var(--c-text-muted);text-align:center">Documento generado electrónicamente por HotelData — Válido sin firma autógrafa · Confidencial</p>
+      `;
+
+      const html = buildReportShell({
+        title: `Factura ${inv.invoiceNumber}`,
+        subtitle: `${this.statusLabel()} · ${inv.hotelLabel || `Prop. #${inv.propId}`} · ${inv.guestName || 'Huésped'}`,
+        generatedAt: new Date(),
+        metaRows: headerMeta,
+        bodyHtml,
+      });
+
+      await this.reports.exportPdf(html, `factura-${inv.invoiceNumber}-${new Date().toISOString().slice(0, 10)}`, `Factura ${inv.invoiceNumber}`);
+    } finally {
+      this.exportingPdf.set(false);
+    }
   }
 
   categoryIcon(cat: string): string {

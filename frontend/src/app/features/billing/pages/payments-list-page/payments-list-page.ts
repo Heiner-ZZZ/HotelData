@@ -18,6 +18,14 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { type PermissionCode } from '../../../../core/auth/permission.constants';
 import { BillingApiService } from '../../services/billing-api.service';
+import { ReportsExportService } from '../../../../shared/services/reports-export.service';
+import {
+  buildReportShell,
+  buildSummaryGrid,
+  buildTable,
+  esc,
+  fmtUsd,
+} from '../../../../shared/utils/report-html-templates';
 import type { PaymentListItem } from '../../models/billing.model';
 import { PaymentRegisterModalComponent } from '../../components/payment-register-modal/payment-register-modal';
 import type { PaymentRegisterPayload } from '../../components/payment-register-modal/payment-register-modal';
@@ -43,6 +51,7 @@ export class PaymentsListPageComponent implements OnInit {
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
+  private readonly reports = inject(ReportsExportService);
 
   // ── URL-driven state ──
   private readonly qp = toSignal(this.activatedRoute.queryParamMap, { initialValue: this.activatedRoute.snapshot.queryParamMap });
@@ -305,7 +314,78 @@ export class PaymentsListPageComponent implements OnInit {
     return id ? `Turno ${id}${type}` : 'Sin turno asociado';
   }
 
+  readonly exportingPdf = signal(false);
+
   printPage() {
     window.print();
+  }
+
+  async exportPaymentsPdf(): Promise<void> {
+    const vm = this.data();
+    if (!vm || !vm.items.length) {
+      this.toast.show('No hay pagos para exportar con los filtros actuales.', 'info', 3000);
+      return;
+    }
+    this.exportingPdf.set(true);
+    try {
+      const totalConfirmed = vm.items
+        .filter((p: PaymentListItem) => p.status === 'confirmed')
+        .reduce((s: number, p: PaymentListItem) => s + (p.amount || 0), 0);
+      const totalRefunded = vm.items
+        .filter((p: PaymentListItem) => p.status === 'refunded')
+        .reduce((s: number, p: PaymentListItem) => s + (p.amount || 0), 0);
+
+      const summary = buildSummaryGrid([
+        { label: 'Total pagos', value: String(vm.total), tone: 'neutral' },
+        { label: 'Página actual', value: `${vm.page} / ${vm.totalPages || 1}`, tone: 'neutral' },
+        { label: 'Confirmados (USD)', value: fmtUsd(totalConfirmed, { showZero: true }), tone: 'positive' },
+        { label: 'Reembolsados (USD)', value: fmtUsd(totalRefunded, { showZero: true }), tone: totalRefunded ? 'warning' : 'neutral' },
+        { label: 'Hotel', value: this.selectedLabel() || (this.selectedPropId() ? `#${this.selectedPropId()}` : 'Todos'), tone: 'neutral' },
+      ]);
+
+      const table = buildTable(
+        [
+          { label: 'Reserva' },
+          { label: 'Monto', align: 'right' },
+          { label: 'Método' },
+          { label: 'Estado', align: 'center' },
+          { label: 'Referencia' },
+          { label: 'Fecha' },
+          { label: 'Cajero / Turno' },
+          { label: 'Factura' },
+        ],
+        vm.items.map((item: PaymentListItem) => [
+          item.bookingId,
+          fmtUsd(item.amount, { showZero: true }),
+          this.getMethodInfo(item.method).label,
+          this.getStatusInfo(item.status).label,
+          item.reference || '—',
+          item.paidAt || '—',
+          this.shiftLabel(item) || '—',
+          item.invoiceId || item.refundDocumentNumber || '—',
+        ]),
+      );
+
+      const metaRows = [
+        { label: 'Hotel', value: this.selectedLabel() || (this.selectedPropId() ? `#${this.selectedPropId()}` : 'Global') },
+        { label: 'Total registros', value: String(vm.total) },
+        { label: 'Filtros', value: `turno=${this.turnoFilter() || '—'} · cajero=${this.cajeroFilter() || '—'}${this.sinTurno() ? ' · sin turno' : ''}` },
+        { label: 'Generado', value: new Date().toLocaleString('es-MX') },
+      ];
+
+      const bodyHtml = `${summary}${table}<p style="font-size:8pt;color:var(--c-text-muted);text-align:center;margin-top:4mm">Listado de pagos — HotelData · Confidencial · Válido sin firma</p>`;
+
+      const html = buildReportShell({
+        title: 'Reporte de Pagos',
+        subtitle: `Hotel ${this.selectedLabel() || this.selectedPropId() || '—'} · ${vm.total} registro(s)`,
+        generatedAt: new Date(),
+        metaRows,
+        bodyHtml,
+      });
+
+      await this.reports.exportPdf(html, `pagos-${this.selectedPropId() || 'global'}-${new Date().toISOString().slice(0, 10)}`, 'Reporte de Pagos');
+    } finally {
+      this.exportingPdf.set(false);
+    }
   }
 }

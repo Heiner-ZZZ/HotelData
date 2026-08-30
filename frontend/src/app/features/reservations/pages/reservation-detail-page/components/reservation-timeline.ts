@@ -36,7 +36,11 @@ export class ReservationTimelineComponent {
   readonly roomGuestsTrigger = signal('');
   readonly roomGuestsResource = httpResource<any[]>(() => {
     const id = this.roomGuestsTrigger();
-    return id ? `/reservations/${id}/room-guests` : undefined;
+    if (!id) return undefined;
+    // El backend exige prop_id en query (require_prop_permission → 400 sin
+    // él). Se usa el prop_id de la propia reserva, no el contexto global.
+    const vm = this.reservation();
+    return `/reservations/${id}/room-guests?prop_id=${vm.propId}`;
   });
 
   readonly reviewSuccess = signal(false);
@@ -166,7 +170,7 @@ export class ReservationTimelineComponent {
         is_primary_for_room: g.isPrimaryForRoom,
       })),
     }));
-    this.reservationsApi.saveRoomGuests(vm.bookingId, payload)
+    this.reservationsApi.saveRoomGuests(vm.bookingId, payload, vm.propId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {

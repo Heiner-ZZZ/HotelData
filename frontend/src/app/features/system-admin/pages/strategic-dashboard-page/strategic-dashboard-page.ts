@@ -597,11 +597,12 @@ export class StrategicDashboardPageComponent {
     }
   }
 
-  /** Concatena secciones (título + cabeceras + filas) en un solo CSV con BOM. */
+  /** Concatena secciones (título + cabeceras + filas) en un solo CSV con BOM — diseño profesional. */
   private downloadSectionsCsv(filename: string, sections: CsvSection[]): void {
     const lines: string[] = [];
     for (const section of sections) {
-      lines.push(section.title);
+      // Título como fila única escapada — evita rotura si contiene coma
+      lines.push(csvEscape(section.title));
       lines.push(section.headers.map((h) => csvEscape(h)).join(','));
       for (const row of section.rows) {
         lines.push(row.map((cell) => csvEscape(cell)).join(','));
@@ -617,12 +618,33 @@ export class StrategicDashboardPageComponent {
     URL.revokeObjectURL(url);
   }
 
+  /** Helpers normalizados para CSV — montos 2 dec sin $, fechas dd/mm/yyyy, % con 1 dec. */
+  private fmtMoneyCsv(v: number | null | undefined): string {
+    if (v === null || v === undefined || isNaN(Number(v))) return '';
+    return Number(v).toFixed(2);
+  }
+  private fmtPctCsv(v: number | null | undefined): string {
+    if (v === null || v === undefined || isNaN(Number(v))) return '';
+    return `${Number(v).toFixed(1)}%`;
+  }
+  private fmtMonthCsv(ym: string): string {
+    if (!ym) return '';
+    // ym = YYYY-MM
+    const d = new Date(`${ym}-01T00:00:00`);
+    if (isNaN(d.getTime())) return ym;
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  private fmtLabelCsv(label: string): string {
+    // Normaliza etiquetas residuales en inglés → español profesional
+    return label.replace(/Revenue/gi, 'Ingresos').replace(/RevPAR/gi, 'RevPAR').replace(/ADR/gi, 'Tarifa media').replace(/Rating/gi, 'Calificación');
+  }
+
   /** Sección KPI (misma forma en todos los informes: cajas → filas CSV). */
   private kpiSection(title: string, kpis: StrategicKpi[]): CsvSection {
     return {
       title,
-      headers: ['Indicador', 'Valor', 'Unidad', 'Variación', 'Estado', 'Detalle'],
-      rows: kpis.map((k) => [k.label, k.value, k.unit, `${k.pctChange}%`, k.semaforo.toUpperCase(), k.detail]),
+      headers: ['Indicador', 'Valor', 'Unidad', 'Variación (%)', 'Estado', 'Detalle'],
+      rows: kpis.map((k) => [k.label, typeof k.value === 'number' ? this.fmtMoneyCsv(k.value) : String(k.value), k.unit, this.fmtPctCsv(k.pctChange), k.semaforo.toUpperCase(), k.detail]),
     };
   }
 
@@ -631,8 +653,12 @@ export class StrategicDashboardPageComponent {
     if (!s || !s.labels.length || !s.datasets.length) return null;
     return {
       title,
-      headers: ['Mes', ...s.datasets.map((d) => d.label)],
-      rows: s.labels.map((label, i) => [label, ...s.datasets.map((d) => d.data[i] ?? 0)]),
+      headers: ['Mes', ...s.datasets.map((d) => this.fmtLabelCsv(d.label))],
+      rows: s.labels.map((label, i) => [this.fmtMonthCsv(label), ...s.datasets.map((d) => {
+        const v = d.data[i] ?? 0;
+        // Si el dataset es monetario, 2 dec
+        return typeof v === 'number' && (d.label.toLowerCase().includes('revenue') || d.label.toLowerCase().includes('ingresos') || d.label.includes('ADR') || d.label.includes('RevPAR')) ? this.fmtMoneyCsv(v) : String(v);
+      })]),
     };
   }
 
@@ -648,17 +674,17 @@ export class StrategicDashboardPageComponent {
     if (h.rows.rows.length) {
       sections.push({
         title: 'Registros mensuales del hotel (IE-H01)',
-        headers: ['Mes', 'Reservas', 'Noches', 'Revenue bruto', 'Descuento', 'Revenue neto', 'ADR', 'Ocupación', 'RevPAR', 'Cancelación'],
+        headers: ['Mes', 'Reservas', 'Noches', 'Ingresos brutos (USD)', 'Descuento (USD)', 'Ingresos netos (USD)', 'Tarifa media (USD)', 'Ocupación (%)', 'RevPAR (USD)', 'Cancelación (%)'],
         rows: h.rows.rows.map((r) => [
-          r.month, r.bookings, r.roomNights, r.revenueBruto, r.descuento, r.revenueNeto, r.adr, `${r.ocupacionPct}%`, r.revpar, `${r.cancelacionPct}%`,
+          this.fmtMonthCsv(r.month), r.bookings, r.roomNights, this.fmtMoneyCsv(r.revenueBruto), this.fmtMoneyCsv(r.descuento), this.fmtMoneyCsv(r.revenueNeto), this.fmtMoneyCsv(r.adr), this.fmtPctCsv(r.ocupacionPct), this.fmtMoneyCsv(r.revpar), this.fmtPctCsv(r.cancelacionPct),
         ]),
       });
     }
     if (h.planes.rows.length) {
       sections.push({
         title: 'Rentabilidad por plan (IE-H01)',
-        headers: ['Tipo', 'Reservas', 'Noches', 'Revenue bruto', 'Descuento', 'Revenue neto', 'ADR'],
-        rows: h.planes.rows.map((p) => [p.label, p.bookings, p.roomNights, p.revenueBruto, p.descuento, p.revenueNeto, p.adr]),
+        headers: ['Tipo', 'Reservas', 'Noches', 'Ingresos brutos (USD)', 'Descuento (USD)', 'Ingresos netos (USD)', 'Tarifa media (USD)'],
+        rows: h.planes.rows.map((p) => [p.label, p.bookings, p.roomNights, this.fmtMoneyCsv(p.revenueBruto), this.fmtMoneyCsv(p.descuento), this.fmtMoneyCsv(p.revenueNeto), this.fmtMoneyCsv(p.adr)]),
       });
     }
     this.downloadSectionsCsv(`informe-estrategico-h01-hotel-${h.propId}-${date}`, sections);
@@ -685,8 +711,8 @@ export class StrategicDashboardPageComponent {
     if (h.posicionamientoRows.length) {
       sections.push({
         title: 'Registros de posicionamiento (IE-H02)',
-        headers: ['Mes', 'Rating', 'ADR (USD)', 'Respuesta a reseñas %'],
-        rows: h.posicionamientoRows.map((r) => [r.month, r.rating, r.adr, `${r.respuesta}%`]),
+        headers: ['Mes', 'Calificación', 'Tarifa media (USD)', 'Respuesta a reseñas (%)'],
+        rows: h.posicionamientoRows.map((r) => [this.fmtMonthCsv(r.month), typeof r.rating === 'number' ? r.rating.toFixed(1) : String(r.rating), this.fmtMoneyCsv(r.adr), this.fmtPctCsv(r.respuesta)]),
       });
     }
     this.downloadSectionsCsv(`informe-estrategico-h02-posicionamiento-${h.propId}-${date}`, sections);
@@ -718,8 +744,8 @@ export class StrategicDashboardPageComponent {
     for (const g of p.rankings.groups) {
       sections.push({
         title: `${g.codigo} · ${g.titulo} — ${g.criterio}`,
-        headers: ['Entidad', 'Valor', 'Unidad', 'Variación', 'Motivo', 'Decisión'],
-        rows: g.rows.map((r) => [r.entidad, r.valor, r.unidad, `${r.variacion}%`, r.motivo, r.decision]),
+        headers: ['Entidad', 'Valor', 'Unidad', 'Variación (%)', 'Motivo', 'Decisión'],
+        rows: g.rows.map((r) => [r.entidad, typeof r.valor === 'number' ? this.fmtMoneyCsv(r.valor) : String(r.valor), r.unidad, this.fmtPctCsv(r.variacion), r.motivo, r.decision]),
       });
     }
     this.downloadSectionsCsv(`informe-estrategico-g02-rankings-${date}`, sections);
@@ -735,17 +761,17 @@ export class StrategicDashboardPageComponent {
     if (p.rows.rows.length) {
       sections.push({
         title: `Rentabilidad por hotel (IE-G03) — ${this.formatDate(p.dateFrom)} → ${this.formatDate(p.dateTo)}`,
-        headers: ['Hotel', 'Reservas', 'Noches', 'Revenue bruto', 'Descuento', 'Revenue neto', 'ADR', 'Ocupación', 'RevPAR', 'Var.'],
+        headers: ['Hotel', 'Reservas', 'Noches', 'Ingresos brutos (USD)', 'Descuento (USD)', 'Ingresos netos (USD)', 'Tarifa media (USD)', 'Ocupación (%)', 'RevPAR (USD)', 'Variación (%)'],
         rows: p.rows.rows.map((r) => [
-          r.hotelLabel, r.bookings, r.roomNights, r.revenueBruto, r.descuento, r.revenueNeto, r.adr, `${r.ocupacionPct}%`, r.revpar, `${r.variacion}%`,
+          r.hotelLabel, r.bookings, r.roomNights, this.fmtMoneyCsv(r.revenueBruto), this.fmtMoneyCsv(r.descuento), this.fmtMoneyCsv(r.revenueNeto), this.fmtMoneyCsv(r.adr), this.fmtPctCsv(r.ocupacionPct), this.fmtMoneyCsv(r.revpar), this.fmtPctCsv(r.variacion),
         ]),
       });
     }
     if (p.planes.rows.length) {
       sections.push({
         title: 'Rentabilidad por plan (IE-G03)',
-        headers: ['Tipo', 'Reservas', 'Noches', 'Revenue bruto', 'Descuento', 'Revenue neto', 'ADR'],
-        rows: p.planes.rows.map((r) => [r.label, r.bookings, r.roomNights, r.revenueBruto, r.descuento, r.revenueNeto, r.adr]),
+        headers: ['Tipo', 'Reservas', 'Noches', 'Ingresos brutos (USD)', 'Descuento (USD)', 'Ingresos netos (USD)', 'Tarifa media (USD)'],
+        rows: p.planes.rows.map((r) => [r.label, r.bookings, r.roomNights, this.fmtMoneyCsv(r.revenueBruto), this.fmtMoneyCsv(r.descuento), this.fmtMoneyCsv(r.revenueNeto), this.fmtMoneyCsv(r.adr)]),
       });
     }
     this.downloadSectionsCsv(`informe-estrategico-g03-rentabilidad-${date}`, sections);
@@ -763,9 +789,9 @@ export class StrategicDashboardPageComponent {
     if (m.rows.rows.length) {
       sections.push({
         title: 'Mapa de mercados (IE-G04)',
-        headers: ['Destino', 'Búsquedas', 'Clics', 'Reservas', 'Conversión %', 'Crecimiento %', 'Posición %', 'Revenue', 'Cuadrante', 'Decisión'],
+        headers: ['Destino', 'Búsquedas', 'Clics', 'Reservas', 'Conversión (%)', 'Crecimiento (%)', 'Posición (%)', 'Ingresos (USD)', 'Cuadrante', 'Decisión'],
         rows: m.rows.rows.map((r) => [
-          r.destination, r.searches, r.clicks, r.reservations, `${r.conversionPct}%`, `${r.growthPct}%`, `${r.positionPct}%`, r.revenue, r.quadrant, r.decision,
+          r.destination, r.searches, r.clicks, r.reservations, this.fmtPctCsv(r.conversionPct), this.fmtPctCsv(r.growthPct), this.fmtPctCsv(r.positionPct), this.fmtMoneyCsv(r.revenue), r.quadrant, r.decision,
         ]),
       });
     }

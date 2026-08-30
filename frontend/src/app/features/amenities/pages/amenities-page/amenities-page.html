@@ -376,36 +376,6 @@
             </div>
           </section>
 
-          <!-- high_floor_from threshold -->
-          <section class="surface-card requests-threshold-card">
-            <div class="panel-header">
-              <span class="material-symbols-outlined icon-blue">floor</span>
-              <div>
-                <h3>Piso alto — desde qué piso</h3>
-                <p>La petición "Piso alto" solo se puede cumplir en habitaciones en o por encima de este piso. Se valida al reservar contra el piso real de la habitación.</p>
-              </div>
-            </div>
-            <div class="requests-threshold-body">
-              <label class="field requests-threshold-field">
-                <span class="field-label">Pisos altos desde el piso</span>
-                <div class="input-wrap">
-                  <span class="material-symbols-outlined input-prefix">stairs</span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    [value]="highFloorFrom()"
-                    (input)="setHighFloorFrom($any($event.target).value)"
-                    [readonly]="!requestsEditing()"
-                  />
-                </div>
-              </label>
-              <p class="requests-threshold-note">
-                Actualmente: pisos altos desde el <strong>piso {{ highFloorFrom() }}</strong>.
-              </p>
-            </div>
-          </section>
-
           <!-- Request editor list -->
           <section class="surface-card requests-editor-card">
             <div class="panel-header">
@@ -453,25 +423,6 @@
                                 <span class="rule-copy">
                                   <strong>Mascotas</strong>
                                   <small>Se valida contra la política de mascotas del hotel y usa su cargo.</small>
-                                </span>
-                              </label>
-                            }
-                            @if (impliesHighFloor(req.label)) {
-                              <div class="rule-row rule-implied">
-                                <span class="material-symbols-outlined">stairs</span>
-                                <span class="rule-copy">
-                                  <strong>Piso alto</strong>
-                                  <small>Aplica automáticamente por el nombre de la petición.</small>
-                                </span>
-                                <span class="rule-badge">Implícita</span>
-                              </div>
-                            } @else {
-                              <label class="rule-row">
-                                <input type="checkbox" [checked]="req.highFloor" (change)="toggleRequestFlag(req.label, 'highFloor')" />
-                                <span class="material-symbols-outlined">stairs</span>
-                                <span class="rule-copy">
-                                  <strong>Piso alto</strong>
-                                  <small>Solo se cumple en habitaciones en o por encima del umbral de pisos altos del hotel.</small>
                                 </span>
                               </label>
                             }

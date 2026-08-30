@@ -61,6 +61,10 @@ import { ReactiveFormsModule } from '@angular/forms';
               <span class="material-symbols-outlined input-icon">link</span>
               <input id="avatarUrl" type="url" [formControl]="form()?.controls?.avatarUrl" placeholder="https://ejemplo.com/mi-foto.jpg" maxlength="300" />
             </div>
+            @if (form()?.controls?.avatarUrl?.touched && form()?.controls?.avatarUrl?.hasError('maxlength')) {
+              <span class="field-error"><span class="material-symbols-outlined">error</span> Máximo 300 caracteres.</span>
+            }
+            <span class="field-hint field-hint--count" aria-live="polite">{{ (form()?.controls?.avatarUrl?.value?.length || 0) }}/300</span>
           </div>
         </div>
       </div>

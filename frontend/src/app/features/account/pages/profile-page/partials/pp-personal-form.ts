@@ -20,7 +20,7 @@ import { ReactiveFormsModule } from '@angular/forms';
           <label for="displayName">Nombre completo <span class="required-mark" aria-hidden="true">*</span></label>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-icon">badge</span>
-            <input id="displayName" type="text" [formControl]="form()?.controls?.displayName" placeholder="Cómo quieres aparecer" />
+            <input id="displayName" type="text" [formControl]="form()?.controls?.displayName" placeholder="Cómo quieres aparecer" maxlength="60" />
           </div>
           @if (form()?.controls?.displayName?.touched && form()?.controls?.displayName?.invalid) {
             <span class="field-error"><span class="material-symbols-outlined">error</span>
@@ -49,7 +49,8 @@ import { ReactiveFormsModule } from '@angular/forms';
           </div>
           @if (form()?.controls?.nationality?.touched && form()?.controls?.nationality?.invalid) {
             <span class="field-error"><span class="material-symbols-outlined">error</span>
-              @if (form()?.controls?.nationality?.hasError('maxlength')) { Máximo 40 caracteres. }
+              @if (form()?.controls?.nationality?.hasError('minlength')) { Mínimo 2 caracteres. }
+              @else if (form()?.controls?.nationality?.hasError('maxlength')) { Máximo 40 caracteres. }
               @else if (form()?.controls?.nationality?.hasError('pattern')) { Solo letras y espacios. }
             </span>
           }

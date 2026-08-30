@@ -745,29 +745,10 @@
   }
 }
 
-.requests-threshold-card,
 .requests-editor-card {
   padding: 1rem;
   display: grid;
   gap: 0.85rem;
-}
-
-.requests-threshold-body {
-  display: flex;
-  align-items: flex-end;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.requests-threshold-field { width: 220px; }
-
-.requests-threshold-note {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--muted-text);
-  padding-bottom: 0.4rem;
-
-  strong { color: var(--accent); }
 }
 
 .requests-list {

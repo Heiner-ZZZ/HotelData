@@ -50,8 +50,11 @@ import { ReactiveFormsModule } from '@angular/forms';
             <span class="material-symbols-outlined input-icon">home</span>
             <input id="addressStreet" type="text" [formControl]="form()?.controls?.addressStreet" placeholder="Calle y número" maxlength="100" />
           </div>
-          @if (form()?.controls?.addressStreet?.touched && form()?.controls?.addressStreet?.hasError('maxlength')) {
-            <span class="field-error"><span class="material-symbols-outlined">error</span> Máximo 100 caracteres.</span>
+          @if (form()?.controls?.addressStreet?.touched && form()?.controls?.addressStreet?.invalid) {
+            <span class="field-error"><span class="material-symbols-outlined">error</span>
+              @if (form()?.controls?.addressStreet?.hasError('minlength')) { Mínimo 5 caracteres. }
+              @else if (form()?.controls?.addressStreet?.hasError('maxlength')) { Máximo 100 caracteres. }
+            </span>
           }
         </div>
         <div class="field">
@@ -62,7 +65,8 @@ import { ReactiveFormsModule } from '@angular/forms';
           </div>
           @if (form()?.controls?.addressCity?.touched && form()?.controls?.addressCity?.invalid) {
             <span class="field-error"><span class="material-symbols-outlined">error</span>
-              @if (form()?.controls?.addressCity?.hasError('maxlength')) { Máximo 50. }
+              @if (form()?.controls?.addressCity?.hasError('minlength')) { Mínimo 2 caracteres. }
+              @else if (form()?.controls?.addressCity?.hasError('maxlength')) { Máximo 50. }
               @else if (form()?.controls?.addressCity?.hasError('pattern')) { Solo letras y espacios. }
             </span>
           }
@@ -75,7 +79,8 @@ import { ReactiveFormsModule } from '@angular/forms';
           </div>
           @if (form()?.controls?.addressState?.touched && form()?.controls?.addressState?.invalid) {
             <span class="field-error"><span class="material-symbols-outlined">error</span>
-              @if (form()?.controls?.addressState?.hasError('maxlength')) { Máximo 50. }
+              @if (form()?.controls?.addressState?.hasError('minlength')) { Mínimo 2 caracteres. }
+              @else if (form()?.controls?.addressState?.hasError('maxlength')) { Máximo 50. }
               @else if (form()?.controls?.addressState?.hasError('pattern')) { Solo letras y espacios. }
             </span>
           }
@@ -88,7 +93,8 @@ import { ReactiveFormsModule } from '@angular/forms';
           </div>
           @if (form()?.controls?.addressCountry?.touched && form()?.controls?.addressCountry?.invalid) {
             <span class="field-error"><span class="material-symbols-outlined">error</span>
-              @if (form()?.controls?.addressCountry?.hasError('maxlength')) { Máximo 50. }
+              @if (form()?.controls?.addressCountry?.hasError('minlength')) { Mínimo 2 caracteres. }
+              @else if (form()?.controls?.addressCountry?.hasError('maxlength')) { Máximo 50. }
               @else if (form()?.controls?.addressCountry?.hasError('pattern')) { Solo letras y espacios. }
             </span>
           }
@@ -101,7 +107,8 @@ import { ReactiveFormsModule } from '@angular/forms';
           </div>
           @if (form()?.controls?.addressPostalCode?.touched && form()?.controls?.addressPostalCode?.invalid) {
             <span class="field-error"><span class="material-symbols-outlined">error</span>
-              @if (form()?.controls?.addressPostalCode?.hasError('maxlength')) { Máximo 10. }
+              @if (form()?.controls?.addressPostalCode?.hasError('minlength')) { Mínimo 3 caracteres. }
+              @else if (form()?.controls?.addressPostalCode?.hasError('maxlength')) { Máximo 10. }
               @else if (form()?.controls?.addressPostalCode?.hasError('pattern')) { Letras, números, espacios y guiones (3-10). }
             </span>
           }

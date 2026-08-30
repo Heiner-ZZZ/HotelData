@@ -5,9 +5,10 @@ configuration before a booking is created:
 
 - ``pet_related`` requests are checked against the hotel-wide ``pets_allowed``
   policy; disallowed pets block the booking with the ``pet_policy`` text.
-- ``high_floor`` requests are checked against the assigned room's ``floor``
-  and the hotel's ``high_floor_from`` threshold; a room below the threshold
-  blocks the booking (the request can't be honored).
+
+(La validación de ``high_floor`` contra el piso de la habitación se eliminó
+2026-08: las peticiones especiales ya no se bloquean por piso y aplican a
+todas las reservas.)
 
 Priced requests (``chargeable`` with unit_price > 0) generate an automatic
 additional charge, mirroring paid amenities.
@@ -24,8 +25,6 @@ from src.app.modules.partner.services.content.special_requests import (
 from src.database.connection import get_database
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_HIGH_FLOOR_FROM = 3
 
 # Hora (HH:MM, inclusiva) a partir de la cual una llegada se considera tardía
 # cuando el huésped da una hora estimada de llegada pero no marcó la petición
@@ -57,12 +56,13 @@ def resolve_late_checkin(
 
 def validate_special_requests(
     prop_id: int,
-    hotel_room_id: str,
     special_requests: list[str] | None,
 ) -> str | None:
     """Return an error message if any selected request can't be honored, else None.
 
     Unknown labels are informational (stored as free text, not validated).
+    (La validación de ``high_floor`` contra el piso se eliminó 2026-08: las
+    peticiones de piso ya no se ofrecen ni bloquean la reserva.)
     """
     selected = [str(s).strip() for s in (special_requests or []) if str(s).strip()]
     if not selected:
@@ -88,34 +88,6 @@ def validate_special_requests(
                 if pet_text:
                     msg += f" {pet_text}"
                 return msg
-
-        if entry["high_floor"]:
-            if not hotel_room_id:
-                return "La petición de piso alto requiere seleccionar una habitación específica."
-            page = db.hotel_content_pages.find_one(
-                {"prop_id": prop_id},
-                {"_id": 0, "high_floor_from": 1},
-            )
-            try:
-                threshold = int((page or {}).get("high_floor_from") or _DEFAULT_HIGH_FLOOR_FROM)
-            except (ValueError, TypeError):
-                threshold = _DEFAULT_HIGH_FLOOR_FROM
-            room = db.hotel_rooms.find_one(
-                {"prop_id": prop_id, "hotel_room_id": hotel_room_id},
-                {"_id": 0, "floor": 1, "room_label": 1},
-            )
-            # ``floor`` llega como int o string (datos reales mezclan ambos).
-            try:
-                floor = int((room or {}).get("floor"))
-            except (ValueError, TypeError):
-                floor = None
-            if floor is None or floor < threshold:
-                label = str((room or {}).get("room_label") or hotel_room_id)
-                floor_txt = str(floor) if floor is not None else "desconocido"
-                return (
-                    f"La petición de piso alto no puede cumplirse: la habitación {label} "
-                    f"está en el piso {floor_txt} y el hotel reserva pisos altos desde el {threshold}."
-                )
 
     return None
 

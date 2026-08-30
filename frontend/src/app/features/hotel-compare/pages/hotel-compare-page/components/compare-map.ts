@@ -35,8 +35,8 @@ export class CompareMapComponent implements AfterViewInit {
     this._map = new maplibregl.Map({
       container: el.nativeElement,
       style: 'https://tiles.openfreemap.org/styles/liberty',
-      center: [-93.0, 23.0],
-      zoom: 5,
+      center: [-78.4678, -0.1807],
+      zoom: 6,
       attributionControl: false,
     });
 

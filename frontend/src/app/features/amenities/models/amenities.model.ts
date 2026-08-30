@@ -25,7 +25,6 @@ export interface SpecialRequestOptionView {
   unitPrice: number;
   chargeable: boolean;
   petRelated: boolean;
-  highFloor: boolean;
   lateArrival: boolean;
 }
 
@@ -44,5 +43,4 @@ export interface AmenitiesViewModel {
   roomTypes: RoomTypeOption[];
   roomAmenities: Record<string, string[]>;
   specialRequests: SpecialRequestOptionView[];
-  highFloorFrom: number;
 }

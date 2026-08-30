@@ -101,7 +101,7 @@ interface ReservationPreviewView {
             </div>
           </div>
         }
-        @if (couponCode()) {
+        @if (couponCode() && couponStatus()?.valid) {
           <div class="review-item"><span class="review-label">Cupón</span><strong>{{ couponCode() | uppercase }}</strong></div>
         }
       </div>

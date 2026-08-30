@@ -664,7 +664,7 @@ export class LedgerPageComponent {
     if (!gridApi) return;
 
     const rows: string[][] = [];
-    const header = ['Fecha', 'DC', 'Asiento', 'Cuenta', 'Descripción', 'Huésped', 'Ctro. Costo', 'Débito', 'Crédito', 'Balance', 'Período', 'Folio / Factura'];
+    const header = ['Fecha', 'Tipo', 'Asiento', 'Cuenta', 'Descripción', 'Huésped', 'Centro de Costo', 'Débito (USD)', 'Crédito (USD)', 'Balance (USD)', 'Período', 'Folio / Factura'];
     rows.push(header);
 
     const fmtDate = (v: string | number | Date | null | undefined): string => {
@@ -673,9 +673,15 @@ export class LedgerPageComponent {
       if (isNaN(d.getTime())) return String(v).slice(0, 10);
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
-      return `${day}-${month} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const year = String(d.getFullYear());
+      return `${day}/${month}/${year} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     };
-    const usd = (n: unknown) => '$' + _num(n).toFixed(2);
+    const fmtMoney = (n: unknown): string => {
+      if (n === null || n === undefined || n === '') return '';
+      const num = _num(n);
+      if (isNaN(num)) return '';
+      return num.toFixed(2);
+    };
     const esc = (v: string | number | null | undefined) => {
       if (v === null || v === undefined) return '';
       const s = String(v);
@@ -692,12 +698,11 @@ export class LedgerPageComponent {
           '', '', esc(g.journalEntryId), '',
           `JE ${g.journalEntryId} — ${g.__childCount} movs`,
           '', '',
-          g.__groupDebit ? usd(g.__groupDebit) : '',
-          g.__groupCredit ? usd(g.__groupCredit) : '',
-          usd(g.__groupDebit - g.__groupCredit),
+          g.__groupDebit ? fmtMoney(g.__groupDebit) : '',
+          g.__groupCredit ? fmtMoney(g.__groupCredit) : '',
+          fmtMoney(g.__groupDebit - g.__groupCredit),
           '', '',
         ]);
-        rows.push([]);
       } else {
         rows.push([
           fmtDate(d.txDate),
@@ -707,9 +712,9 @@ export class LedgerPageComponent {
           esc(d.description),
           esc(d.guestName),
           esc(d.costCenter),
-          d.debit ? usd(d.debit) : '',
-          d.credit ? usd(d.credit) : '',
-          usd(d.balance ?? 0),
+          d.debit ? fmtMoney(d.debit) : '',
+          d.credit ? fmtMoney(d.credit) : '',
+          fmtMoney(d.balance ?? 0),
           esc(d.accountingPeriod),
           esc(d.folioRef),
         ]);

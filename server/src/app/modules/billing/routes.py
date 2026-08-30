@@ -1864,9 +1864,17 @@ def my_invoice_detail_api(
 @api_router.post("/my-invoices/{invoice_id}/pay", response_model=ActionResponse)
 def my_invoice_pay_api(
     invoice_id: str,
+    payload: dict = Body(default={}),
     current_user: dict = Depends(require_permission("account.update")),
 ):
-    """Simulate payment for an invoice (client-facing). Generates a realistic payment record."""
+    """Simulate payment for an invoice (client-facing). Generates a realistic payment record.
+
+    Acepta un ``amount`` opcional en el body para pagos parciales: debe ser
+    mayor a 0 y no exceder el saldo pendiente (total − pagos confirmados). Si
+    no se envía, paga el saldo restante completo. El gate es
+    ``require_permission("account.update")`` — autoservicio del huésped, SIN
+    ``require_prop_permission``/prop_id.
+    """
     from src.app.modules.billing.schemas import PaymentCreate
     db = get_database()
     from bson import ObjectId
@@ -1906,12 +1914,49 @@ def my_invoice_pay_api(
             ),
         )
 
+    # Saldo pendiente de ESTA factura = total − pagos confirmados sobre ella.
+    # Soporta pagos parciales (la cascade en create_payment marca la factura
+    # como ``partially_paid`` hasta cubrirla).
+    invoice_total = float(inv.get("total", 0) or 0)
+    confirmed_paid = sum(
+        float(r.get("amount", 0) or 0)
+        for r in db.reservation_payments.find(
+            {"invoice_id": ObjectId(invoice_id), "status": "confirmed"},
+            {"amount": 1},
+        )
+    )
+    remaining = round(invoice_total - confirmed_paid, 2)
+
+    raw_amount = payload.get("amount")
+    if raw_amount is None:
+        amount = remaining
+    else:
+        try:
+            amount = round(float(raw_amount), 2)
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Monto inválido: ingresá un número válido.",
+            ) from None
+        if amount <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El monto a pagar debe ser mayor a cero.",
+            )
+        if amount > remaining + 0.01:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El pago excede el saldo pendiente de la factura.",
+            )
+        if amount > remaining:
+            amount = remaining  # clamp el centavo de tolerancia
+
     before = get_invoice(invoice_id)
     # Create the payment
     pay_payload = PaymentCreate(
         booking_id=str(inv["booking_id"]),
         invoice_id=invoice_id,
-        amount=float(inv.get("total", 0)),
+        amount=amount,
         method="bank_transfer",
     )
     try:

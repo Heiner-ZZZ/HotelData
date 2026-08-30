@@ -271,11 +271,11 @@ export class ReservationsApiService {
   }
 
   /** Flip one checklist item's fulfillment status (pending ↔ fulfilled). */
-  updateSpecialRequestStatus(bookingId: string, label: string, status: 'pending' | 'fulfilled', kind: 'special_request' | 'amenity' = 'special_request') {
+  updateSpecialRequestStatus(bookingId: string, label: string, status: 'pending' | 'fulfilled', kind: 'special_request' | 'amenity' = 'special_request', propId?: number) {
     return this.http.patch<{ ok: boolean; kind: string; fulfillment: { label: string; status: string; fulfilled_at?: string | null }[] }>(
       `/reservations/${bookingId}/special-requests`,
       { kind, label, status },
-      { params: this.propParams() },
+      { params: this.actionParams(propId) },
     );
   }
 
@@ -324,19 +324,32 @@ export class ReservationsApiService {
     });
   }
 
-  confirmReservation(bookingId: string, context?: HttpContext) {
+  /**
+   * Params para acciones sobre una reserva concreta. El backend exige
+   * ``prop_id`` en query (require_prop_permission + _require_booking_same_hotel)
+   * y el hotel correcto es el de la propia reserva, no el contexto global
+   * (que puede ser 0 si la URL no trae ``?prop_id=``). Por eso se prefiere el
+   * ``propId`` de la fila/detalle y solo se cae a ``propParams()`` (contexto
+   * global) como fallback cuando no se provee.
+   */
+  private actionParams(propId?: number): HttpParams {
+    if (propId && propId > 0) return new HttpParams().set('prop_id', String(propId));
+    return this.propParams();
+  }
+
+  confirmReservation(bookingId: string, propId?: number, context?: HttpContext) {
     return this.http.post<ReservationConfirmRejectDto>(
       `/reservations/${bookingId}/confirm`,
       {},
-      { params: this.propParams(), ...(context ? { context } : {}) },
+      { params: this.actionParams(propId), ...(context ? { context } : {}) },
     );
   }
 
-  rejectReservation(bookingId: string, context?: HttpContext) {
+  rejectReservation(bookingId: string, propId?: number, context?: HttpContext) {
     return this.http.post<ReservationConfirmRejectDto>(
       `/reservations/${bookingId}/reject`,
       {},
-      { params: this.propParams(), ...(context ? { context } : {}) },
+      { params: this.actionParams(propId), ...(context ? { context } : {}) },
     );
   }
 
@@ -348,18 +361,18 @@ export class ReservationsApiService {
     );
   }
 
-  getRoomGuests(bookingId: string) {
+  getRoomGuests(bookingId: string, propId?: number) {
     return this.http.get<Record<string, unknown>[]>(
       `/reservations/${bookingId}/room-guests`,
-      { params: this.propParams() },
+      { params: this.actionParams(propId) },
     );
   }
 
-  saveRoomGuests(bookingId: string, roomGuests: { room_index: number; guests: Record<string, unknown>[] }[]) {
+  saveRoomGuests(bookingId: string, roomGuests: { room_index: number; guests: Record<string, unknown>[] }[], propId?: number) {
     return this.http.put<Record<string, unknown>[]>(
       `/reservations/${bookingId}/room-guests`,
       { room_guests: roomGuests },
-      { params: this.propParams() },
+      { params: this.actionParams(propId) },
     );
   }
 

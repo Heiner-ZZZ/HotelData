@@ -241,11 +241,13 @@ export class BillingApiService {
     );
   }
 
-  /** Client-facing: simulate payment for an invoice. */
-  payMyInvoice(invoiceId: string) {
+  /** Client-facing: simulate payment for an invoice. ``amount`` opcional:
+ *  sin monto paga el saldo pendiente completo; con monto hace un pago parcial
+ *  (debe ser > 0 y ≤ saldo pendiente — el backend lo valida). */
+  payMyInvoice(invoiceId: string, amount?: number) {
     return this.http.post<{ ok: boolean; message: string; payment: Record<string, unknown> }>(
       `${this.apiConfig.baseUrl}/billing/my-invoices/${invoiceId}/pay`,
-      {},
+      amount !== undefined ? { amount } : {},
       { withCredentials: true },
     );
   }

@@ -1,8 +1,8 @@
 import type { ColDef } from 'ag-grid-community';
 
 export interface ColumnActionCallbacks {
-  onConfirm: (bookingId: string, guestName: string) => void;
-  onReject: (bookingId: string, guestName: string) => void;
+  onConfirm: (bookingId: string, guestName: string, propId: number) => void;
+  onReject: (bookingId: string, guestName: string, propId: number) => void;
   isStaff: () => boolean;
 }
 
@@ -300,10 +300,10 @@ export function buildColumnDefs(
         };
 
         const confirm = buildAction('check_circle', 'Confirmar reserva', 'var(--success)', () =>
-          callbacks.onConfirm(p.data.bookingId, p.data.guestName)
+          callbacks.onConfirm(p.data.bookingId, p.data.guestName, p.data.propId)
         );
         const reject = buildAction('cancel', 'Rechazar reserva', 'var(--danger)', () =>
-          callbacks.onReject(p.data.bookingId, p.data.guestName)
+          callbacks.onReject(p.data.bookingId, p.data.guestName, p.data.propId)
         );
 
         wrap.append(confirm, reject);

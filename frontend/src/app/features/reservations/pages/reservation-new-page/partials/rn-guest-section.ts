@@ -5,6 +5,8 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { RecentGuestView } from './reservation-form.types';
 import {
   guestCedulaError,
+  guestCommentError,
+  guestCouponError,
   guestEmailError,
   guestNameError,
   guestPhoneError,
@@ -33,7 +35,6 @@ interface SpecialRequestView {
   unit_price: number;
   chargeable: boolean;
   pet_related: boolean;
-  high_floor: boolean;
   late_arrival: boolean;
 }
 
@@ -58,23 +59,25 @@ interface SpecialRequestView {
           <span class="field-label">Nombre completo</span>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">badge</span>
-            <input formControlName="guestName" autocomplete="name" [attr.readonly]="isClient() || null"
+            <input formControlName="guestName" autocomplete="name" maxlength="60" [attr.readonly]="isClient() || null"
               (input)="guestInput.emit($any($event.target).value)" (focus)="guestFocus.emit()" (blur)="guestBlur.emit()" />
             @if (guestNameError(form().get('guestName')); as err) {
               <span class="field-error-msg" role="alert">{{ err }}</span>
             }
           </div>
+          <span class="field-hint field-hint--count" aria-live="polite">{{ (form().get('guestName')?.value?.length || 0) }}/60</span>
         </label>
         <label class="field">
           <span class="field-label">Correo electrónico</span>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">mail</span>
-            <input formControlName="guestEmail" type="email" placeholder="ejemplo@correo.com" autocomplete="email"
+            <input formControlName="guestEmail" type="email" placeholder="ejemplo@correo.com" autocomplete="email" maxlength="100"
               [attr.readonly]="isClient() || null" [class.readonly-field]="isClient()" />
             @if (guestEmailError(form().get('guestEmail')); as err) {
               <span class="field-error-msg" role="alert">{{ err }}</span>
             }
           </div>
+          <span class="field-hint field-hint--count" aria-live="polite">{{ (form().get('guestEmail')?.value?.length || 0) }}/100</span>
         </label>
       </div>
       <div class="field-group two-col">
@@ -82,21 +85,23 @@ interface SpecialRequestView {
           <span class="field-label">Teléfono <span class="required-mark" aria-hidden="true">*</span></span>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">phone</span>
-            <input formControlName="guestPhone" type="tel" placeholder="+52 555 123 4567" autocomplete="tel" required aria-required="true" />
+            <input formControlName="guestPhone" type="tel" placeholder="+52 555 123 4567" autocomplete="tel" maxlength="20" required aria-required="true" />
             @if (guestPhoneError(form().get('guestPhone')); as err) {
               <span class="field-error-msg" role="alert">{{ err }}</span>
             }
           </div>
+          <span class="field-hint field-hint--count" aria-live="polite">{{ (form().get('guestPhone')?.value?.length || 0) }}/20 · mín. 7</span>
         </label>
         <label class="field">
           <span class="field-label">Cédula / Identificación <span class="required-mark" aria-hidden="true">*</span></span>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">badge</span>
-            <input formControlName="cedula" type="text" placeholder="Ej: 123456789" autocomplete="off" required aria-required="true" />
+            <input formControlName="cedula" type="text" placeholder="Ej: 123456789" autocomplete="off" maxlength="20" required aria-required="true" />
             @if (guestCedulaError(form().get('cedula')); as err) {
               <span class="field-error-msg" role="alert">{{ err }}</span>
             }
           </div>
+          <span class="field-hint field-hint--count" aria-live="polite">{{ (form().get('cedula')?.value?.length || 0) }}/20 · mín. 6</span>
         </label>
       </div>
       <div class="field-group two-col">
@@ -218,8 +223,12 @@ interface SpecialRequestView {
       <div class="field-group">
         <label class="field">
           <div class="input-wrap">
-            <textarea formControlName="comment" rows="3" placeholder="Ej: Prefiero piso alto, sin mascotas, hora de llegada tardía..."></textarea>
+            <textarea formControlName="comment" rows="3" placeholder="Ej: Prefiero habitación tranquila, sin mascotas, hora de llegada tardía..." maxlength="500"></textarea>
           </div>
+          @if (guestCommentError(form().get('comment')); as err) {
+            <span class="field-error-msg" role="alert">{{ err }}</span>
+          }
+          <span class="field-hint field-hint--count" aria-live="polite">{{ (form().get('comment')?.value?.length || 0) }}/500</span>
         </label>
       </div>
     </section>
@@ -236,12 +245,16 @@ interface SpecialRequestView {
         <div class="field-group">
           <label class="field">
             <div class="input-wrap promo-wrap" style="display: flex; gap: 8px; border: none; background: transparent; padding: 0;">
-              <input formControlName="couponCode" placeholder="Ej: VERANO20" style="text-transform: uppercase; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; flex: 1; background: var(--surface-1);" />
+              <input formControlName="couponCode" placeholder="Ej: VERANO20" maxlength="20" style="text-transform: uppercase; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; flex: 1; background: var(--surface-1);" />
               <button type="button" class="btn-secondary" (click)="validateCoupon.emit()" [disabled]="couponValidating()">
                 @if (couponValidating()) { <span class="material-symbols-outlined loading-spin">sync</span> }
                 @else { Aplicar }
               </button>
             </div>
+            @if (guestCouponError(form().get('couponCode')); as err) {
+              <span class="field-error-msg" role="alert">{{ err }}</span>
+            }
+            <span class="field-hint field-hint--count" aria-live="polite">{{ (form().get('couponCode')?.value?.length || 0) }}/20</span>
             @if (couponStatus(); as status) {
               <span class="field-message" [style.color]="status.valid ? 'var(--color-success)' : ''" style="margin-top: 8px; display: block; font-weight: 500;">
                 {{ status.message }}
@@ -293,4 +306,6 @@ export class RnGuestSectionComponent {
   readonly guestEmailError = guestEmailError;
   readonly guestPhoneError = guestPhoneError;
   readonly guestCedulaError = guestCedulaError;
+  readonly guestCommentError = guestCommentError;
+  readonly guestCouponError = guestCouponError;
 }

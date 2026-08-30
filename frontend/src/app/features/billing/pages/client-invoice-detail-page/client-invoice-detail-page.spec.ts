@@ -194,6 +194,44 @@ describe('ClientInvoiceDetailPageComponent — formulario de tarjeta', () => {
     fixture.destroy();
   });
 
+  it('permite elegir un monto parcial y lo envía al confirmar', async () => {
+    const { fixture } = await render();
+    const amountInput = fixture.nativeElement.querySelector('.pay-amount-input input') as HTMLInputElement;
+    expect(amountInput).not.toBeNull();
+    amountInput.value = '50';
+    amountInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    ((fixture.nativeElement as HTMLElement).querySelector('.btn-pay') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    inputFor(fixture, '0000 0000 0000 0000').value = '4242424242424242';
+    inputFor(fixture, '0000 0000 0000 0000').dispatchEvent(new Event('input'));
+    inputFor(fixture, 'Nombre del titular').value = 'ANA GARCIA';
+    inputFor(fixture, 'Nombre del titular').dispatchEvent(new Event('input'));
+    inputFor(fixture, 'MM/AA').value = '12/30';
+    inputFor(fixture, 'MM/AA').dispatchEvent(new Event('input'));
+    inputFor(fixture, 'CVV').value = '123';
+    inputFor(fixture, 'CVV').dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const cont = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')]
+      .find((b) => (b.textContent ?? '').includes('Continuar')) as HTMLButtonElement;
+    cont.click();
+    fixture.detectChanges();
+    jest.advanceTimersByTime(2000);
+    fixture.detectChanges();
+
+    const confirmar = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')]
+      .find((b) => (b.textContent ?? '').includes('Confirmar pago')) as HTMLButtonElement;
+    confirmar.click();
+    fixture.detectChanges();
+
+    const billingApi = TestBed.inject(BillingApiService) as unknown as { payMyInvoice: jest.Mock };
+    expect(billingApi.payMyInvoice).toHaveBeenCalledWith('6a85ff8f5cf638c2b82e1daf', 50);
+    fixture.destroy();
+  });
+
   it('al salir del campo (blur) el número se muestra 4242 **** **** 4242 y al re-focar vuelve completo', async () => {
     const { fixture } = await render();
     ((fixture.nativeElement as HTMLElement).querySelector('.btn-pay') as HTMLButtonElement).click();

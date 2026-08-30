@@ -56,6 +56,7 @@ export interface HotelDetailDto {
     description?: string;
     features?: string[];
     image_url?: string;
+    images?: { image_url: string }[];
   }[];
   hotel_policies: {
     check_in_time?: string | null;

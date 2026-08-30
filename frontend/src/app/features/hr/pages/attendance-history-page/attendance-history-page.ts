@@ -8,6 +8,7 @@ import { toast } from '../../../../core/toast/toast.service';
 import { catchAndToastWarning } from '../../../../shared/utils/catch-and-toast';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { REPORTS_DOWNLOAD } from '../../../../core/auth/permission.constants';
+import { csvEscape } from '../../../../shared/utils/csv-export.util';
 
 type TabType = 'all' | 'present' | 'absent' | 'late';
 
@@ -141,7 +142,7 @@ export class AttendanceHistoryPageComponent {
     return dateStr === this.todayStr;
   }
 
-  /** Genera y descarga un archivo CSV con los datos actuales */
+  /** Genera y descarga un archivo CSV con los datos actuales — formato profesional. */
   exportCSV() {
     const data = this.attendance();
     if (!data || data.records.length === 0) {
@@ -149,23 +150,33 @@ export class AttendanceHistoryPageComponent {
       return;
     }
 
+    const fmtDate = (iso: string): string => {
+      if (!iso) return '';
+      const d = new Date(`${iso}T00:00:00`);
+      if (isNaN(d.getTime())) return iso;
+      return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+    const fmtHoursCsv = (h: number | null): string => {
+      if (h === null || h === undefined) return '';
+      return Number(h).toFixed(2);
+    };
+
+    const headers = ['Fecha', 'Día', 'Turno', 'Check-in', 'Check-out', 'Horas', 'Estado', 'Área'];
     const rows: string[] = [];
-    // Header
-    rows.push('Fecha,Dia,Turno,Check-in,Check-out,Horas,Estado,Area');
+    rows.push(headers.map((h) => csvEscape(h)).join(','));
 
     for (const r of data.records) {
-      const date = r.date;
+      const date = fmtDate(r.date);
       const day = r.dayName;
       const shift = r.shiftStart ? `${r.shiftStart}-${r.shiftEnd}` : '';
       const checkIn = r.checkIn ? this.formatTime(r.checkIn) : '';
       const checkOut = r.checkOut ? this.formatTime(r.checkOut) : '';
-      const hours = r.hoursWorked !== null ? this.formatHours(r.hoursWorked) : '';
+      const hours = fmtHoursCsv(r.hoursWorked);
       const status = this._statusLabel(r);
       const area = r.area;
 
-      // Escape commas by wrapping in quotes
       const row = [date, day, shift, checkIn, checkOut, hours, status, area]
-        .map(cell => `"${cell}"`).join(',');
+        .map((cell) => csvEscape(cell)).join(',');
       rows.push(row);
     }
 
@@ -176,7 +187,8 @@ export class AttendanceHistoryPageComponent {
 
     const a = document.createElement('a');
     a.href = url;
-    a.download = `asistencias_${data.employeeName}_${this.currentMonth()}.csv`;
+    const safeName = String(data.employeeName).replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]/g, '_').replace(/_+/g, '_');
+    a.download = `asistencias_${safeName}_${this.currentMonth()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

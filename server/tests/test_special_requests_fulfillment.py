@@ -130,7 +130,7 @@ class TestUpdateFulfillment:
         result = create_booking(_booking_payload(seeded_hotel, special_requests=["Cama extra"]))
         from src.app.modules.reservations.service.special_request_fulfillment import update_special_request_fulfillment
         with pytest.raises(ValueError, match="no pertenece"):
-            update_special_request_fulfillment(result["booking_id"], "Piso alto", "fulfilled")
+            update_special_request_fulfillment(result["booking_id"], "Desayuno en suite", "fulfilled")
 
     def test_invalid_status_rejected(self, db, seeded_hotel):
         result = create_booking(_booking_payload(seeded_hotel, special_requests=["Cama extra"]))

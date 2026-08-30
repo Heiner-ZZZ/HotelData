@@ -242,17 +242,8 @@ class TestBookingUserIdObjectIdFk:
         """
         from tests.conftest import login
 
-        # The staff-only creation route 409-gates on an active cash shift.
-        db.reception_shifts.delete_many({"prop_id": seeded_hotel})
-        db.reception_shifts.insert_one(
-            {
-                "prop_id": seeded_hotel,
-                "status": "open",
-                "shift_type": "morning",
-                "start_time": utc_now(),
-                "transactions": [],
-            }
-        )
+        # La ruta de reserva web (POST /api/reservations) ya NO exige turno de
+        # caja activo — no hace falta abrir un turno para este test.
         lr = await client.post(
             "/api/auth/login",
             json={"identifier": admin_user["username"], "password": admin_user["password"]},
@@ -284,6 +275,49 @@ class TestBookingUserIdObjectIdFk:
         assert isinstance(doc.get("user_id"), ObjectId)
         # The owner must be the authenticated admin (server-controlled).
         assert doc["user_id"] == ObjectId(admin_user["user_id"])
+
+    @pytest.mark.asyncio
+    async def test_web_booking_does_not_require_active_shift(self, client, db, seeded_hotel, admin_user):
+        """Reserva WEB (POST /api/reservations) NO exige turno de caja activo.
+
+        El huésped reserva online: la reserva debe crearse (201) aunque no haya
+        un turno de caja abierto y quedar con shift_id null. El turno es un
+        requisito SOLO de las operaciones físicas en recepción
+        (manual-reservations), no del canal web.
+        """
+        # Garantiza que NO hay turno abierto para este hotel.
+        db.reception_shifts.delete_many({"prop_id": seeded_hotel})
+
+        lr = await client.post(
+            "/api/auth/login",
+            json={"identifier": admin_user["username"], "password": admin_user["password"]},
+        )
+        assert lr.status_code == 200, lr.text
+        resp = await client.post(
+            f"/api/reservations?prop_id={seeded_hotel}",
+            json={
+                "prop_id": seeded_hotel,
+                "guest_name": "Web Guest",
+                "guest_email": "web@test.com",
+                "guest_phone": "+1234567890",
+                "cedula": "1234567890",
+                "room_type_id": "RT-999-deluxe",
+                "check_in_date": "2026-08-10",
+                "check_out_date": "2026-08-13",
+                "check_in_time": "15:00",
+                "check_out_time": "12:00",
+                "adults": 2,
+                "children": 0,
+                "rooms": 1,
+                "comment": "",
+                "is_test": True,
+            },
+        )
+        assert resp.status_code == 201, resp.text
+        doc = db.booking_orders.find_one({"booking_id": resp.json()["booking_id"]})
+        assert doc is not None
+        # Canal web: sin turno de caja asociado.
+        assert doc.get("shift_id") is None
 
     def test_guest_booking_without_user_id_stays_null(self, db, seeded_hotel):
         result = create_booking(

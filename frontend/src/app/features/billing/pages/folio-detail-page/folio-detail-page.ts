@@ -15,6 +15,14 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { BILLING_WRITE_OFF_APPROVE } from '../../../../core/auth/permission.constants';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { FolioApiService, getFolioCloseState, getFolioReconciliationNote, mapFolio, type FolioCategory, type FolioViewModel, type FolioDto, type FolioPosting, type FolioSettlementType } from '../../services/folio-api.service';
+import { ReportsExportService } from '../../../../shared/services/reports-export.service';
+import {
+  buildReportShell,
+  buildSummaryGrid,
+  buildTable,
+  esc,
+  fmtUsd,
+} from '../../../../shared/utils/report-html-templates';
 
 @Component({
   selector: 'app-folio-detail-page',
@@ -28,6 +36,7 @@ export class FolioDetailPageComponent {
   private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly reports = inject(ReportsExportService);
   /** Global toast: action feedback surfaces through the app-wide toaster. */
   private readonly toast = inject(ToastService);
 
@@ -436,6 +445,105 @@ export class FolioDetailPageComponent {
 
   printPage(): void {
     window.print();
+  }
+
+  readonly exportingPdf = signal(false);
+
+  async exportFolioPdf(): Promise<void> {
+    const f = this.folio();
+    if (!f) return;
+    this.exportingPdf.set(true);
+    try {
+      const badgeClass =
+        f.status === 'open' && !f.isExpired ? 'success' :
+        f.status === 'open' && f.isExpired ? 'warning' :
+        f.status === 'settled' ? 'info' :
+        f.status === 'closed' && f.hasInvoice ? 'success' : 'warning';
+      const statusBadge = `<span class="badge ${badgeClass}">${esc(this.statusLabel())}</span>`;
+      const metaRows = [
+        { label: 'Folio', value: f.folioNumber },
+        { label: 'Estado', value: this.statusLabel() },
+        { label: 'Hotel', value: f.hotelLabel || `#${f.propId}` },
+        { label: 'Huésped', value: f.guestName || '—' },
+        { label: 'Habitación', value: f.roomLabel || '—' },
+        { label: 'Estancia', value: `${f.checkInDate}${f.checkInTime ? ' ' + f.checkInTime : ''} → ${f.checkOutDate}${f.checkOutTime ? ' ' + f.checkOutTime : ''}` },
+      ];
+
+      const summary = buildSummaryGrid([
+        { label: 'Habitación', value: fmtUsd(f.totalRoom, { showZero: true }), tone: 'neutral' },
+        { label: 'Cargos', value: fmtUsd(f.totalCharges, { showZero: true }), tone: 'neutral' },
+        { label: 'Descuentos', value: f.totalDiscounts > 0 ? '-' + fmtUsd(f.totalDiscounts, { showZero: true }) : fmtUsd(0, { showZero: true }), tone: f.totalDiscounts > 0 ? 'negative' : 'neutral' },
+        { label: 'Pagos', value: f.totalPayments > 0 ? '-' + fmtUsd(f.totalPayments, { showZero: true }) : fmtUsd(0, { showZero: true }), tone: f.totalPayments > 0 ? 'positive' : 'neutral' },
+        { label: 'Total a pagar', value: fmtUsd(f.totalDue, { showZero: true }), tone: f.totalDue > 0.005 ? 'warning' : 'positive' },
+        { label: 'Movimientos', value: String(this.postingCount()), tone: 'neutral' },
+      ]);
+
+      // Postings table grouped
+      const allPostings: (string | number)[][] = [];
+      for (const [catKey, postings] of this.postingsByCategory()) {
+        const catLabel = this.categoryLabel(catKey);
+        allPostings.push([`— ${catLabel} —`, '', '', '', '']);
+        for (const p of postings) {
+          allPostings.push([
+            `${p.concept} (${this.typeLabel(p.type)})`,
+            p.postedAt ? new Date(p.postedAt).toLocaleString('es-MX') : '—',
+            p.shiftEmployee || p.shiftOpenedBy || '—',
+            p.type === 'discount' || p.amount < 0 ? '-' + fmtUsd(Math.abs(p.amount), { showZero: true }) : fmtUsd(p.amount, { showZero: true }),
+            p.type,
+          ]);
+        }
+      }
+
+      const postingsTable = allPostings.length
+        ? buildTable(
+            [
+              { label: 'Concepto' },
+              { label: 'Fecha', align: 'right' },
+              { label: 'Cajero' },
+              { label: 'Importe', align: 'right' },
+              { label: 'Tipo', align: 'center' },
+            ],
+            allPostings,
+          )
+        : '<p style="color:var(--c-text-muted);font-style:italic">Sin movimientos registrados.</p>';
+
+      const folioInfo = `
+        <h2>Información del folio</h2>
+        <table class="financial">
+          <tbody>
+            <tr><td style="width:32%;font-weight:700">Número</td><td style="font-family:monospace">${esc(f.folioNumber)}</td></tr>
+            <tr><td style="font-weight:700">Estado</td><td>${statusBadge} ${esc(this.statusLabel())}</td></tr>
+            <tr><td style="font-weight:700">Reserva</td><td style="font-family:monospace">${esc(f.bookingId)}</td></tr>
+            <tr><td style="font-weight:700">Creado</td><td>${esc(f.createdAt ? new Date(f.createdAt).toLocaleString('es-MX') : '—')}</td></tr>
+            ${f.closedAt ? `<tr><td style="font-weight:700">Cerrado</td><td>${esc(new Date(f.closedAt).toLocaleString('es-MX'))}</td></tr>` : ''}
+            ${f.hasInvoice ? `<tr><td style="font-weight:700">Factura</td><td style="font-family:monospace">${esc(f.invoiceId || '')}</td></tr>` : '<tr><td style="font-weight:700">Factura</td><td style="color:#92400e">Sin factura</td></tr>'}
+            ${f.settledBy ? `<tr><td style="font-weight:700">Liquidado por</td><td>${esc(f.settledBy)}</td></tr>` : ''}
+          </tbody>
+        </table>
+      `;
+
+      const bodyHtml = `
+        ${summary}
+        ${folioInfo}
+        <h2>Movimientos del folio</h2>
+        ${postingsTable}
+        <div style="margin-top:4mm;padding:3mm 4mm;background:var(--c-bg-soft);border:0.5pt solid var(--c-border);border-radius:4pt;font-size:8.5pt;color:var(--c-text-muted)">
+          <strong>Nota:</strong> Este folio es la cuenta del huésped durante la estancia. Los cargos se registran en tiempo real y requieren turno de caja activo. El saldo final debe ser cero antes del cierre.
+        </div>
+      `;
+
+      const html = buildReportShell({
+        title: `Folio ${f.folioNumber}`,
+        subtitle: `${this.statusLabel()} · ${f.hotelLabel || `Prop. #${f.propId}`} · ${f.guestName || 'Huésped'} · Hab. ${f.roomLabel || '—'}`,
+        generatedAt: new Date(),
+        metaRows,
+        bodyHtml,
+      });
+
+      await this.reports.exportPdf(html, `folio-${f.folioNumber}-${new Date().toISOString().slice(0, 10)}`, `Folio ${f.folioNumber}`);
+    } finally {
+      this.exportingPdf.set(false);
+    }
   }
 
   /** Responsible cashier label for a shift-stamped posting, or null. */

@@ -42,7 +42,7 @@ describe('AmenitiesApiService save (Migración E: prop_id en query)', () => {
 
   it('saveSpecialRequests envía prop_id en query', () => {
     const { service, httpMock } = setup();
-    const payload = { prop_id: 2, special_requests: [], high_floor_from: 3 } as never;
+    const payload = { prop_id: 2, special_requests: [] } as never;
     service.saveSpecialRequests(payload).subscribe();
 
     const req = httpMock.expectOne(

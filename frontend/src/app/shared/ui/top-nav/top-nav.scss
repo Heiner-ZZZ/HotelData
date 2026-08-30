@@ -49,26 +49,33 @@
 }
 
 .nav-leading {
-  gap: 0.25rem;
+  gap: 0.75rem;
+  min-height: 44px;
+  flex-shrink: 0;
 }
 
 .primary-nav {
   justify-content: center;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .brand-logo {
-  width: 72px;
-  max-width: min(16vw, 72px);
-  height: auto;
+  height: 40px;
+  width: auto;
+  max-width: 180px;
+  max-height: 44px;
   display: block;
   object-fit: contain;
+  object-position: left center;
   filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--accent) 10%, transparent));
+  flex-shrink: 0;
 }
 
 .brand-logo--guest {
-  width: 88px;
-  max-width: min(20vw, 88px);
+  height: 44px;
+  max-height: 46px;
+  max-width: 200px;
 }
 
 .back-btn {
@@ -129,18 +136,23 @@
 }
 
 .session-btn {
-  gap: 0.4rem;
-  min-width: 160px;
-  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 240px;
+  flex-shrink: 0;
+  justify-content: flex-start;
+  white-space: nowrap;
+  isolation: isolate;
 }
 
 .session-avatar {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
   border: 1px solid color-mix(in srgb, var(--app-border) 50%, transparent);
+  display: block;
 }
 
 /* Enlaces directos del huésped: texto plano sin píldora (ya se sabe que son
@@ -174,16 +186,28 @@
   display: grid;
   text-align: left;
   line-height: 1.2;
+  min-width: 0;
+  max-width: 150px;
+  overflow: hidden;
 }
 
 .session-name {
   font-size: 0.9rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .session-role {
   color: var(--muted-text);
   font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  text-transform: capitalize;
 }
 
 .nav-icon {
@@ -472,26 +496,28 @@
   }
 }
 
-/* Responsive */
+/* Mantener 3 columnas hasta tablet; el apilado vertical solo en móvil estrecho para no romper el perfil */
 @media (max-width: 1040px) {
   .top-nav {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .nav-leading,
-  .primary-nav,
-  .nav-actions {
-    min-width: 0;
-  }
-
-  .nav-leading,
-  .primary-nav,
-  .nav-actions {
-    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.25rem 0.85rem;
   }
 
   .primary-nav {
-    justify-content: flex-start;
+    gap: 0.35rem;
+  }
+
+  .primary-nav .nav-link {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.86rem;
+  }
+
+  .session-btn {
+    max-width: 200px;
+  }
+
+  .session-info {
+    max-width: 120px;
   }
 }
 
@@ -503,8 +529,10 @@
   }
 
   .brand-logo {
-    width: 96px;
+    height: 36px;
+    max-height: 36px;
     max-width: 34vw;
+    width: auto;
   }
 
   .top-nav.top-nav--guest {
@@ -535,6 +563,7 @@
 
   .top-nav--guest .session-info {
     min-width: 0;
+    max-width: 110px;
   }
 
   .top-nav--guest .session-name,
@@ -545,8 +574,10 @@
   }
 
   .brand-logo.brand-logo--guest {
-    width: 104px;
+    height: 40px;
+    max-height: 40px;
     max-width: 38vw;
+    width: auto;
   }
 
   .dropdown {

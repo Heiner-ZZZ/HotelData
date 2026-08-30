@@ -456,9 +456,9 @@
                 </button>
               }
               @if (canExport()) {
-                <button type="button" class="inv-btn inv-btn-outline inv-btn-full" (click)="printPage()">
-                  <span class="material-symbols-outlined">download</span>
-                  Descargar PDF
+                <button type="button" class="inv-btn inv-btn-outline inv-btn-full" (click)="exportPdf()" [disabled]="exportingPdf()">
+                  <span class="material-symbols-outlined">picture_as_pdf</span>
+                  {{ exportingPdf() ? 'Generando PDF...' : 'Descargar PDF' }}
                 </button>
               }
             </section>

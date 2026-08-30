@@ -26,15 +26,11 @@ import { DestroyRef } from '@angular/core';
 
 // ─── Reglas de negocio implícitas por el nombre ───
 // Una petición cuyo label ya nombra la regla no necesita toggle: el flag
-// aplica automáticamente (ej. "Piso alto" → high_floor). Evita los toggles
+// aplica automáticamente (ej. "Mascotas" → pet_related). Evita los toggles
 // circulares del catálogo y mantiene la consistencia al guardar.
 
 export function impliesPetRelated(label: string): boolean {
   return /mascota|pet/i.test(label);
-}
-
-export function impliesHighFloor(label: string): boolean {
-  return /piso\s*alt|planta\s*alta|piso\s*elevad|high\s*floor/i.test(label);
 }
 
 export function impliesLateArrival(label: string): boolean {
@@ -419,11 +415,9 @@ export class AmenitiesPageComponent {
 
   /** Editable copy of the per-hotel special-requests catalog. */
   readonly requestOptions = signal<SpecialRequestOptionView[]>([]);
-  readonly highFloorFrom = signal(3);
   readonly requestsEditing = signal(false);
   /** Helpers de reglas implícitas expuestos para el template. */
   readonly impliesPetRelated = impliesPetRelated;
-  readonly impliesHighFloor = impliesHighFloor;
   readonly impliesLateArrival = impliesLateArrival;
   /** Labels con el panel "Reglas de negocio" expandido (colapsado por defecto). */
   readonly expandedRules = signal<Set<string>>(new Set());
@@ -431,7 +425,6 @@ export class AmenitiesPageComponent {
   readonly newRequestLabel = signal('');
   readonly newRequestPrice = signal('');
   private baseRequestOptions = signal<SpecialRequestOptionView[]>([]);
-  private baseHighFloorFrom = signal(3);
 
   /** Seed the requests tab from the catalog when the resource loads. */
   private _seedRequestsFromCatalog() {
@@ -439,30 +432,27 @@ export class AmenitiesPageComponent {
     if (!vm) return;
     const opts = vm.specialRequests.map((r) => ({ ...r }));
     this.requestOptions.set(opts);
-    this.highFloorFrom.set(vm.highFloorFrom);
     // Keep the base snapshot in sync while in read mode so the dirty hint
     // only appears once the user actually edits the catalog.
     if (!this.requestsEditing()) {
       this.baseRequestOptions.set(opts.map((r) => ({ ...r })));
-      this.baseHighFloorFrom.set(vm.highFloorFrom);
     }
   }
 
   readonly requestsDirty = computed(() => {
     const cur = this.requestOptions();
     const base = this.baseRequestOptions();
-    if (cur.length !== base.length || this.highFloorFrom() !== this.baseHighFloorFrom()) return true;
+    if (cur.length !== base.length) return true;
     return cur.some((r, i) => {
       const b = base[i];
       return !b || r.label !== b.label || r.unitPrice !== b.unitPrice
-        || r.petRelated !== b.petRelated || r.highFloor !== b.highFloor || r.lateArrival !== b.lateArrival;
+        || r.petRelated !== b.petRelated || r.lateArrival !== b.lateArrival;
     });
   });
 
   startRequestsEditing(): void {
     if (this.requestsEditing()) return;
     this.baseRequestOptions.set(this.requestOptions().map((r) => ({ ...r })));
-    this.baseHighFloorFrom.set(this.highFloorFrom());
     this.requestsEditing.set(true);
     this.opMode.setMode('update', 'Peticiones especiales');
   }
@@ -473,7 +463,6 @@ export class AmenitiesPageComponent {
       return;
     }
     this.requestOptions.set(this.baseRequestOptions().map((r) => ({ ...r })));
-    this.highFloorFrom.set(this.baseHighFloorFrom());
     this.requestsEditing.set(false);
     this.opMode.reset();
   }
@@ -485,7 +474,7 @@ export class AmenitiesPageComponent {
     ));
   }
 
-  toggleRequestFlag(label: string, flag: 'petRelated' | 'highFloor' | 'lateArrival'): void {
+  toggleRequestFlag(label: string, flag: 'petRelated' | 'lateArrival'): void {
     this.requestOptions.set(this.requestOptions().map((r) =>
       r.label === label ? { ...r, [flag]: !r[flag] } : r
     ));
@@ -514,15 +503,10 @@ export class AmenitiesPageComponent {
     if (this.requestOptions().some((r) => r.label.toLowerCase() === label.toLowerCase())) return;
     this.requestOptions.set([
       ...this.requestOptions(),
-      { label, unitPrice: Number.isNaN(price) ? 0 : Math.max(0, price), chargeable: !Number.isNaN(price) && price > 0, petRelated: false, highFloor: false, lateArrival: false },
+      { label, unitPrice: Number.isNaN(price) ? 0 : Math.max(0, price), chargeable: !Number.isNaN(price) && price > 0, petRelated: false, lateArrival: false },
     ]);
     this.newRequestLabel.set('');
     this.newRequestPrice.set('');
-  }
-
-  setHighFloorFrom(value: string): void {
-    const num = parseInt(value, 10);
-    this.highFloorFrom.set(Number.isNaN(num) ? 1 : Math.max(1, num));
   }
 
   saveRequests(): void {
@@ -536,21 +520,17 @@ export class AmenitiesPageComponent {
         unit_price: r.unitPrice,
         flags: [
           ...(r.petRelated || impliesPetRelated(r.label) ? ['pet_related'] : []),
-          ...(r.highFloor || impliesHighFloor(r.label) ? ['high_floor'] : []),
           ...(r.lateArrival || impliesLateArrival(r.label) ? ['late_arrival'] : []),
           ...(r.chargeable ? ['chargeable'] : []),
         ],
       })),
-      high_floor_from: this.highFloorFrom(),
     }).subscribe({
       next: (fresh) => {
         this.requestOptions.set((fresh.special_requests ?? []).map((r) => ({
           label: r.label, unitPrice: r.unit_price, chargeable: r.chargeable,
-          petRelated: r.pet_related, highFloor: r.high_floor, lateArrival: r.late_arrival,
+          petRelated: r.pet_related, lateArrival: r.late_arrival,
         })));
-        this.highFloorFrom.set(fresh.high_floor_from ?? 3);
         this.baseRequestOptions.set(this.requestOptions().map((r) => ({ ...r })));
-        this.baseHighFloorFrom.set(this.highFloorFrom());
         this.requestsEditing.set(false);
         this.requestsSaving.set(false);
         this.opMode.reset();

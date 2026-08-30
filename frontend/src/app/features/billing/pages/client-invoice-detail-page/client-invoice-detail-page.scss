@@ -120,6 +120,10 @@ code {
   font-weight: 700;
 }
 
+.amount-row--pending {
+  font-weight: 700;
+}
+
 .total-value {
   color: var(--accent);
 }
@@ -206,8 +210,9 @@ code {
 
 .payment-summary {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
   padding: 0.75rem 1rem;
   background: color-mix(in srgb, var(--accent) 5%, transparent);
   border-radius: 10px;
@@ -215,6 +220,40 @@ code {
 
 .pay-label {
   font-size: 0.82rem;
+  color: var(--muted-text);
+}
+
+.pay-amount-input {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  .pay-currency {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--muted-text);
+  }
+
+  input {
+    width: 160px;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--app-text);
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+
+    &:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+  }
+}
+
+.pay-hint {
+  font-size: 0.78rem;
   color: var(--muted-text);
 }
 

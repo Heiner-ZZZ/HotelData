@@ -14,18 +14,20 @@ function displayValue(value: string | number | null | undefined): string {
 }
 
 /**
- * Galería de un tipo de habitación: la foto real (si existe) primero y dos
- * placeholders deterministas después (seeded por hotel + índice, sin
- * colisiones entre habitaciones). Mismo patrón híbrido que el bento del
- * hotel: locales arriba, fallbacks abajo.
+ * Galería híbrida de un tipo de habitación: locales primero, loremflickr después.
+ * Mismo principio que `galleryImages` del hotel: si el dueño subió 3 fotos en
+ * `/management/rooms` esas 3 aparecen antes que los 2 placeholders deterministas.
+ * Si no hay locales, solo se ven los placeholders (seeded por hotel + índice).
  */
-function roomGalleryImages(propId: number, roomIdx: number, realUrl: string | undefined): string[] {
-  const real = isValidImageUrl(realUrl) ? [realUrl] : [];
-  return [
-    ...real,
+function roomGalleryImages(propId: number, roomIdx: number, realUrls: string[]): string[] {
+  const reals = (realUrls || []).filter(isValidImageUrl);
+  const placeholders = [
     roomPlaceholderUrl(propId, roomIdx * 10 + 1),
     roomPlaceholderUrl(propId, roomIdx * 10 + 2),
   ];
+  // Si hay 1..N locales, se anteponen y se mantienen los 2 fallbacks siempre
+  // visibles — el carrusel nunca queda vacío y las fotos propias son primeras.
+  return [...reals, ...placeholders];
 }
 
 export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewModel {
@@ -84,23 +86,29 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
       floor: item.floor || '',
       isActive: item.is_active,
     })),
-    roomTypes: dto.room_types.map((item, roomIdx) => ({
-      id: item.room_type_id,
-      name: item.name,
-      capacityLabel: `${displayValue(item.base_capacity)} base · ${displayValue(item.max_adults)} adultos · ${displayValue(item.max_children)} niños`,
-      statusLabel: item.is_active ? 'Activa' : 'Inactiva',
-      description: item.description || '',
-      imageUrl: item.image_url || '',
-      images: roomGalleryImages(dto.prop_id, roomIdx, item.image_url),
-      features: (item.features || []).reduce<string[]>((acc, f) => {
-        if (typeof f === 'string') { if (f.trim()) acc.push(f.trim()); return acc; }
-        const maybe = f as { label?: unknown } | null;
-        if (maybe?.label && typeof maybe.label === 'string' && maybe.label.trim()) {
-          acc.push(maybe.label.trim());
-        }
-        return acc;
-      }, []),
-    })),
+    roomTypes: dto.room_types.map((item, roomIdx) => {
+      const localUrls = (item.images || []).map((img) => img.image_url).filter(isValidImageUrl);
+      // Fallback legacy: si no hay array `images` pero sí `image_url` singular
+      const fallbackSingle = !localUrls.length && isValidImageUrl(item.image_url) ? [item.image_url as string] : [];
+      const allLocals = localUrls.length ? localUrls : fallbackSingle;
+      return {
+        id: item.room_type_id,
+        name: item.name,
+        capacityLabel: `${displayValue(item.base_capacity)} base · ${displayValue(item.max_adults)} adultos · ${displayValue(item.max_children)} niños`,
+        statusLabel: item.is_active ? 'Activa' : 'Inactiva',
+        description: item.description || '',
+        imageUrl: allLocals[0] || item.image_url || '',
+        images: roomGalleryImages(dto.prop_id, roomIdx, allLocals),
+        features: (item.features || []).reduce<string[]>((acc, f) => {
+          if (typeof f === 'string') { if (f.trim()) acc.push(f.trim()); return acc; }
+          const maybe = f as { label?: unknown } | null;
+          if (maybe?.label && typeof maybe.label === 'string' && maybe.label.trim()) {
+            acc.push(maybe.label.trim());
+          }
+          return acc;
+        }, []),
+      };
+    }),
     policies: dto.hotel_policies
       ? [
           { label: 'Check-in', value: displayValue(dto.hotel_policies.check_in_time) },

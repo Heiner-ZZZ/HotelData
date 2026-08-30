@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal, rxResource } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { of } from 'rxjs';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -55,21 +56,35 @@ export class ReputationDashboardPageComponent {
 
   // ── URL-driven state ──
   private readonly qp = toSignal(this.activatedRoute.queryParamMap, { initialValue: this.activatedRoute.snapshot.queryParamMap });
-  readonly selectedPropId = computed(() => Number(this.qp()?.get('prop_id') ?? '0'));
+  readonly selectedPropId = computed(() => {
+    const fromQuery = Number(this.qp()?.get('prop_id') ?? '0');
+    if (fromQuery) return fromQuery;
+    return this.propertyCtx.currentPropId() || 0;
+  });
   readonly selectedLabel = signal(this.activatedRoute.snapshot.queryParamMap.get('prop_label') ?? '');
   readonly days = computed(() => Number(this.qp()?.get('days') ?? '30'));
+  readonly hasPropId = computed(() => this.selectedPropId() > 0);
 
   readonly DAYS_OPTIONS = [7, 30, 90, 365] as const;
   readonly PAGE_SIZE = PAGE_SIZE;
 
   // ── Compuesto (TA12 M1.2/M1.3/M1.4): ClickHouse kpi_review_daily ──
-  private readonly analyticsResource = rxResource<ReviewAnalytics, { propId?: number; days: number }>({
-    params: () => ({ propId: this.selectedPropId() || undefined, days: this.days() }),
-    stream: ({ params }) => this.reviewsApi.getReputationAnalytics(params.propId, params.days),
+  // No dispara la petición sin prop_id: evita el 400 "Contexto de hotel requerido"
+  // que ve super_admin al entrar a /management/reviews/dashboard sin ?prop_id.
+  private readonly analyticsResource = rxResource<ReviewAnalytics | null, { propId: number; days: number } | undefined>({
+    params: () => {
+      const pid = this.selectedPropId();
+      const days = this.days();
+      return pid ? { propId: pid, days } : undefined;
+    },
+    stream: ({ params }) => {
+      if (!params) return of(null as unknown as ReviewAnalytics);
+      return this.reviewsApi.getReputationAnalytics(params.propId, params.days);
+    },
   });
 
-  readonly analyticsLoading = this.analyticsResource.isLoading;
-  readonly analyticsError = this.analyticsResource.error;
+  readonly analyticsLoading = computed(() => this.hasPropId() ? this.analyticsResource.isLoading() : false);
+  readonly analyticsError = computed(() => this.hasPropId() ? this.analyticsResource.error() : null);
   private readonly analyticsValue = this.analyticsResource.value;
   readonly analyticsAvailable = computed(() => Boolean(this.analyticsValue()?.available));
   readonly analyticsMessage = computed(() => this.analyticsValue()?.message ?? '');
@@ -77,25 +92,36 @@ export class ReputationDashboardPageComponent {
 
   // ── Simple (M1.x Mongo): recientes/departamental para aside y export ──
   readonly mongoData = signal<ReputationDashboard | null>(null);
+  readonly mongoLoading = signal(false);
 
   constructor() {
     const reloadMongo = (): void => {
       const propId = this.selectedPropId();
       const days = this.days();
+      if (!propId) {
+        this.mongoData.set(null);
+        this.mongoLoading.set(false);
+        return;
+      }
+      this.mongoLoading.set(true);
       this.reviewsApi
-        .getReputationDashboard(propId || undefined, days)
+        .getReputationDashboard(propId, days)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: (res) => this.mongoData.set(res),
-          error: () => this.mongoData.set(null),
+          next: (res) => { this.mongoData.set(res); this.mongoLoading.set(false); },
+          error: () => { this.mongoData.set(null); this.mongoLoading.set(false); },
         });
     };
-    reloadMongo();
-
-    // Recarga la parte Simple cuando cambia propiedad/período.
+    // Carga inicial diferida: espera a que PropertyContext esté listo para no pedir sin prop_id.
     effect(() => {
-      void this.selectedPropId();
+      // Dependencias reactivas: propId (query o contexto) + days + ready
+      void this.propertyCtx.ready();
+      const pid = this.selectedPropId();
       void this.days();
+      if (!pid) {
+        this.mongoData.set(null);
+        return;
+      }
       reloadMongo();
     });
   }

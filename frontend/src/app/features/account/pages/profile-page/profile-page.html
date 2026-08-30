@@ -6,6 +6,20 @@
   <div class="profile-page">
     <app-pp-hero [vm]="vm" (avatarClick)="openAvatarLightbox()" />
 
+    @if (isGuest()) {
+      <a routerLink="/account/bookings" class="profile-estadias">
+        <span class="material-symbols-outlined estadias-icon">hotel</span>
+        <span class="estadias-copy">
+          <strong>Estadías</strong>
+          <small>Activas y pasadas · las pasadas son solo lectura tras el check-out</small>
+        </span>
+        <span class="estadias-meta">
+          <span class="estadias-badge">Ver reservas</span>
+          <span class="material-symbols-outlined estadias-chevron">chevron_right</span>
+        </span>
+      </a>
+    }
+
     <app-pp-tab-bar [tabs]="tabs()" [activeTab]="activeTab()" (setTab)="handleSetTab($event)" />
 
     @if (activeTab() === 'promotions') {

@@ -9,12 +9,15 @@ override price/flags by label or add custom requests via
 Behavior flags:
 - ``pet_related`` → validated against the hotel's ``pets_allowed`` policy at
   booking time; its price comes from the policy's ``pet_fee`` when set.
-- ``high_floor`` → validated against the assigned room's ``floor`` and the
-  hotel's ``high_floor_from`` threshold at booking time.
 - ``late_arrival`` → informational; the guest wants a late check-in (used by
   the ETA / late check-in marker).
 
 ``chargeable`` is derived (unit_price > 0) and drives automatic charges.
+
+(El flag ``high_floor`` y el umbral ``high_floor_from`` fueron eliminados
+2026-08: el hotel casi nunca puede cumplir peticiones de piso alto, así que
+las peticiones especiales ya no se validan ni bloquean contra el piso de la
+habitación.)
 """
 from __future__ import annotations
 
@@ -29,12 +32,11 @@ DEFAULT_SPECIAL_REQUESTS: list[dict[str, Any]] = [
     {"label": "Cuna para bebé", "unit_price": 10.0, "flags": ["chargeable"]},
     {"label": "Accesibilidad", "unit_price": 0.0, "flags": []},
     {"label": "Mascotas (Pet friendly)", "unit_price": 20.0, "flags": ["pet_related", "chargeable"]},
-    {"label": "Piso alto", "unit_price": 0.0, "flags": ["high_floor"]},
     {"label": "Llegada tarde", "unit_price": 0.0, "flags": ["late_arrival"]},
 ]
 
 # Behavior flags that survive from storage into the wire payload.
-_BEHAVIOR_FLAGS = ("pet_related", "high_floor", "late_arrival")
+_BEHAVIOR_FLAGS = ("pet_related", "late_arrival")
 
 
 def _expand(entry: dict[str, Any]) -> dict[str, Any]:
@@ -94,6 +96,11 @@ def special_requests_payload_for_prop(prop_id: int) -> list[dict[str, Any]]:
             continue
         label = str(entry.get("label") or "").strip()
         if not label:
+            continue
+        # Legacy: peticiones guardadas con el flag ``high_floor`` (ya eliminado)
+        # dejan de ofrecerse — el hotel no puede cumplirlas.
+        stored_flags = {str(f).strip().lower() for f in (entry.get("flags") or [])}
+        if "high_floor" in stored_flags:
             continue
         merged[normalize_label(label)] = {
             "label": label,

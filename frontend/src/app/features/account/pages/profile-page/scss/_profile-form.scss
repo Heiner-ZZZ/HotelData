@@ -86,6 +86,7 @@
 }
 
 .field-hint { margin: 3px 0; color: var(--gray-400); font-size: 0.72rem; grid-column: 1 / -1; }
+.field-hint--count { font-size: 0.62rem; color: var(--gray-400, #9ca3af); text-align: right; justify-self: end; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; opacity: 0.85; }
 
 .field-error {
   font-size: 0.72rem;

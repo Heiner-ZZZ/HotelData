@@ -124,7 +124,6 @@ def preview_reservation(payload: dict) -> dict:
         )
         request_error = validate_special_requests(
             reservation_input.prop_id,
-            reservation_input.hotel_room_id,
             reservation_input.special_requests,
         )
         avail_error = _check_availability(

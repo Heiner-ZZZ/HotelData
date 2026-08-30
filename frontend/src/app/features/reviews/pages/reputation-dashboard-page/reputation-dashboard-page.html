@@ -37,7 +37,9 @@
   </section>
 
   <!-- ═══ Estados ═══ -->
-  @if (analyticsLoading()) {
+  @if (!hasPropId()) {
+    <app-empty-state icon="apartment" title="Selecciona una propiedad" description="Elige un hotel en el selector superior para ver su dashboard de reputación. El dashboard es por hotel y requiere contexto (prop_id)." />
+  } @else if (analyticsLoading() || mongoLoading()) {
     <app-loading-state label="Consultando kpi_review_daily…" />
   } @else if (analyticsError()) {
     <app-error-state title="Error" description="No se pudo consultar la capa analítica de reputación." />

@@ -9,11 +9,6 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
 from src.app.core.types import to_json_safe
-from src.app.modules.reception import (
-    ShiftExpiredError,
-    ensure_shift_not_expired,
-    get_active_shift_id,
-)
 from src.app.modules.billing.schemas import PaymentCreate
 from src.app.modules.billing.service import create_payment
 from src.app.modules.reservations.routes.reservations_impl import (
@@ -213,29 +208,20 @@ def reservations_create_api(
             raise ValueError("; ".join(form_errors))
         if reservation_input.rate_plan_id:
             payload["rate_plan_id"] = reservation_input.rate_plan_id
-        # Staff-created reservations (front desk / walk-in) require an open
-        # cash shift for the property; web-channel bookings never reach this
-        # staff-only endpoint and keep shift_id null.
+        # Canal WEB (huésped reservando online): esta ruta (/reservations) es
+        # el motor de reserva web. NO exige ni estampa turno de caja activo —
+        # el turno es un requisito SOLO de las operaciones físicas en
+        # recepción (POST /management/manual-reservations y check-in/out),
+        # que sí pasan por get_active_shift_id. La reserva web queda con
+        # shift_id null (contrato de reception/shifts.get_active_shift_id:
+        # "Web-channel bookings keep shift_id null").
         prop_id = int(payload.get("prop_id") or 0)
         if prop_id <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Se requiere un prop_id válido para registrar la reserva.",
             )
-        shift_id = get_active_shift_id(prop_id)
-        if shift_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=(
-                    "No hay un turno de caja activo para esta propiedad. "
-                    "Abre un turno primero en Cajas y Turnos antes de registrar "
-                    "una reserva en recepción."
-                ),
-            )
-        try:
-            ensure_shift_not_expired(prop_id)
-        except ShiftExpiredError as exc:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
+        shift_id = None
 
         # ── Depósito real (política de pago por adelantado) ──
         # El wizard de recepción registra el depósito mínimo en la MISMA
@@ -349,8 +335,11 @@ def reservation_export_api(
     output, raw_date = export_reservations_csv(status_filter=status_filter, prop_id=prop_id)
     return StreamingResponse(
         iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=reservas_{raw_date}.csv"},
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename=reservas_{raw_date}.csv",
+            "Content-Type": "text/csv; charset=utf-8",
+        },
     )
 
 

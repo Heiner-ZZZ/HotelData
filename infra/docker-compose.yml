@@ -313,6 +313,14 @@ services:
       SYNCFUSION_LICENSE_KEY: ${SYNCFUSION_LICENSE_KEY:-}
     ports:
       - "4200:80"
+    volumes:
+      # Dev: nginx sirve el dist desde el HOST (sin rebuild de imagen por
+      # cambios de código). Actualizá el dist con scripts/build-frontend.*
+      # (Node efímero en Docker, sin proceso Node residente en el host).
+      # El entrypoint reescribe runtime-config.js (license key) en cada boot,
+      # por eso el mount es rw. Solo se reconstruye la imagen si cambia
+      # Dockerfile/nginx.conf/package.json (deps).
+      - ../frontend/dist/frontend/browser:/usr/share/nginx/html
 
 volumes:
   mongo_data:

@@ -24,7 +24,6 @@ export interface GuestSpecialRequestDto {
   unit_price: number;
   chargeable: boolean;
   pet_related: boolean;
-  high_floor: boolean;
   late_arrival: boolean;
 }
 

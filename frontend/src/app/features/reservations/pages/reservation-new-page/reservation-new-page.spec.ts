@@ -79,11 +79,11 @@ describe('ReservationNewPageComponent — peticiones especiales activas', () => 
     component.specialRequestsCatalog.set([
       {
         label: 'Cuna para bebé', unit_price: 10, chargeable: true,
-        pet_related: false, high_floor: false, late_arrival: false,
+        pet_related: false, late_arrival: false,
       },
       {
         label: 'Llegada tarde', unit_price: 0, chargeable: false,
-        pet_related: false, high_floor: false, late_arrival: true,
+        pet_related: false, late_arrival: true,
       },
     ]);
     const options = component.specialRequestOptions();

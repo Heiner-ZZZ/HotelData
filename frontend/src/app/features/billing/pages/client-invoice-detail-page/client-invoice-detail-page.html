@@ -35,7 +35,7 @@
             </div>
             <app-status-badge
               [tone]="inv.status === 'paid' ? 'success' : inv.status === 'cancelled' ? 'danger' : 'warning'"
-              [label]="inv.status === 'paid' ? 'Pagada' : inv.status === 'cancelled' ? 'Anulada' : 'Pendiente de pago'"
+              [label]="inv.status === 'paid' ? 'Pagada' : inv.status === 'cancelled' ? 'Anulada' : inv.status === 'partially_paid' ? 'Parcialmente pagada' : 'Pendiente de pago'"
             />
           </div>
 
@@ -54,6 +54,16 @@
               <span>Total</span>
               <span class="total-value">{{ inv.total | currency:'USD' }}</span>
             </div>
+            @if (inv.totalPaidAmount > 0) {
+              <div class="amount-row">
+                <span>Pagado</span>
+                <span>{{ inv.totalPaidAmount | currency:'USD' }}</span>
+              </div>
+              <div class="amount-row amount-row--pending">
+                <span>Pendiente</span>
+                <span class="total-value">{{ remainingAmount() | currency:'USD' }}</span>
+              </div>
+            }
           </div>
 
           <!-- ═══ Dates ═══ -->
@@ -76,8 +86,8 @@
           }
         </div>
 
-        <!-- ═══ Payment section (only for issued invoices) ═══ -->
-        @if (inv.status === 'issued') {
+        <!-- ═══ Payment section (issued o parcialmente pagada) ═══ -->
+        @if (inv.status === 'issued' || inv.status === 'partially_paid') {
           <div class="payment-section surface-card">
             <div class="payment-head">
               <span class="material-symbols-outlined payment-icon">account_balance</span>
@@ -91,9 +101,26 @@
               <div class="payment-idle">
                 <div class="payment-summary">
                   <span class="pay-label">Monto a pagar</span>
-                  <span class="pay-amount">{{ inv.total | currency:'USD' }}</span>
+                  <div class="pay-amount-input">
+                    <span class="pay-currency">$</span>
+                    <input
+                      type="number"
+                      inputmode="decimal"
+                      min="0.01"
+                      [max]="remainingAmount()"
+                      step="0.01"
+                      [value]="paymentAmount()"
+                      (input)="onPaymentAmountInput($any($event.target).value)"
+                      [disabled]="paying()"
+                      aria-label="Monto a pagar"
+                    />
+                  </div>
+                  <span class="pay-hint">Saldo pendiente: {{ remainingAmount() | currency:'USD' }} · podés pagar el total o un monto parcial.</span>
+                  @if (paymentAmountError(); as err) {
+                    <span class="field-error"><span class="material-symbols-outlined">error</span>{{ err }}</span>
+                  }
                 </div>
-                <button type="button" class="btn-pay" (click)="startPayment()" [disabled]="paying()">
+                <button type="button" class="btn-pay" (click)="startPayment()" [disabled]="paying() || !!paymentAmountError()">
                   <span class="material-symbols-outlined">lock</span>
                   Pagar ahora
                 </button>
@@ -215,7 +242,7 @@
                   </div>
                   <div class="confirm-row">
                     <span>Monto</span>
-                    <strong class="confirm-amount">{{ inv.total | currency:'USD' }}</strong>
+                    <strong class="confirm-amount">{{ paymentAmountValue() | currency:'USD' }}</strong>
                   </div>
                 </div>
                 <div class="confirm-actions">
@@ -249,7 +276,7 @@
                   </div>
                   <div class="done-row">
                     <span>Monto</span>
-                    <strong>{{ inv.total | currency:'USD' }}</strong>
+                    <strong>{{ paymentAmountValue() | currency:'USD' }}</strong>
                   </div>
                   <div class="done-row">
                     <span>Fecha</span>

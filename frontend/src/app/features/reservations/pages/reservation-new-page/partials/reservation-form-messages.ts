@@ -71,6 +71,15 @@ export function guestNameError(control: AbstractControl | null): string | null {
   if (control.hasError('required')) {
     return 'Ingresá el nombre del huésped para continuar.';
   }
+  if (control.hasError('minlength')) {
+    return 'El nombre es demasiado corto. Mínimo 2 caracteres.';
+  }
+  if (control.hasError('maxlength')) {
+    return 'El nombre es demasiado largo. Máximo 60 caracteres.';
+  }
+  if (control.hasError('pattern')) {
+    return 'El nombre solo admite letras, espacios, guiones y apóstrofes.';
+  }
   return null;
 }
 
@@ -82,6 +91,27 @@ export function guestEmailError(control: AbstractControl | null): string | null 
   }
   if (control.hasError('email')) {
     return 'Ingresá un correo válido (ej. nombre@dominio.com).';
+  }
+  if (control.hasError('maxlength')) {
+    return 'El correo es demasiado largo. Máximo 100 caracteres.';
+  }
+  return null;
+}
+
+/** Comentario / requerimientos especiales (opcional, hasta 500). */
+export function guestCommentError(control: AbstractControl | null): string | null {
+  if (!control || !control.touched) return null;
+  if (control.hasError('maxlength')) {
+    return 'El comentario es demasiado largo. Máximo 500 caracteres.';
+  }
+  return null;
+}
+
+/** Cupón promocional (opcional, hasta 20). */
+export function guestCouponError(control: AbstractControl | null): string | null {
+  if (!control || !control.touched) return null;
+  if (control.hasError('maxlength')) {
+    return 'El código es demasiado largo. Máximo 20 caracteres.';
   }
   return null;
 }

@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 function pastDateValidator(control: AbstractControl): ValidationErrors | null {
   const v = String(control.value || '').trim();
@@ -109,7 +109,7 @@ function formToPayload(formValue: Record<string, unknown>): Record<string, unkno
 
 @Component({
   selector: 'app-profile-page',
-  imports: [ErrorStateComponent, LoadingStateComponent, ReactiveFormsModule,
+  imports: [ErrorStateComponent, LoadingStateComponent, ReactiveFormsModule, RouterLink,
     PpHeroComponent, PpTabBarComponent, PpPersonalFormComponent, PpContactFormComponent,
     PpPreferencesFormComponent, PpPromotionsTabComponent, PpAvatarSectionComponent,
     ImageLightboxComponent, PpTravelSectionComponent, ModeHighlightDirective],
@@ -191,24 +191,24 @@ export class ProfilePageComponent {
     // Personal — nombre visible requerido, 2-60 letras
     displayName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(60), Validators.pattern(ProfilePageComponent.displayNamePattern)]],
     dateOfBirth: ['', [pastDateValidator]],
-    nationality: ['', [Validators.maxLength(40), Validators.pattern(ProfilePageComponent.cityPattern)]],
+    nationality: ['', [Validators.minLength(2), Validators.maxLength(40), Validators.pattern(ProfilePageComponent.cityPattern)]],
     idDocumentType: [''],
     idDocumentNumber: ['', [Validators.minLength(5), Validators.maxLength(20), Validators.pattern(ProfilePageComponent.docNumberPattern)]],
     // Contact — teléfono opcional pero si se llena debe ser válido; email ya es email
     phone: ['', [Validators.minLength(7), Validators.maxLength(20), Validators.pattern(ProfilePageComponent.phonePattern)]],
     notificationEmail: ['', [Validators.email, Validators.maxLength(100)]],
-    addressStreet: ['', [Validators.maxLength(100)]],
-    addressCity: ['', [Validators.maxLength(50), Validators.pattern(ProfilePageComponent.cityPattern)]],
-    addressState: ['', [Validators.maxLength(50), Validators.pattern(ProfilePageComponent.cityPattern)]],
-    addressCountry: ['', [Validators.maxLength(50), Validators.pattern(ProfilePageComponent.cityPattern)]],
-    addressPostalCode: ['', [Validators.maxLength(10), Validators.pattern(ProfilePageComponent.postalPattern)]],
+    addressStreet: ['', [Validators.minLength(5), Validators.maxLength(100)]],
+    addressCity: ['', [Validators.minLength(2), Validators.maxLength(50), Validators.pattern(ProfilePageComponent.cityPattern)]],
+    addressState: ['', [Validators.minLength(2), Validators.maxLength(50), Validators.pattern(ProfilePageComponent.cityPattern)]],
+    addressCountry: ['', [Validators.minLength(2), Validators.maxLength(50), Validators.pattern(ProfilePageComponent.cityPattern)]],
+    addressPostalCode: ['', [Validators.minLength(3), Validators.maxLength(10), Validators.pattern(ProfilePageComponent.postalPattern)]],
     // Preferences
     preferredLanguage: ['es'],
     marketingOptIn: [false],
     notificationEmailEnabled: [true],
     notificationSmsEnabled: [false],
     // Avatar
-    avatarUrl: [''],
+    avatarUrl: ['', [Validators.maxLength(300)]],
     // Social media — handles libres pero sin espacios ni caracteres raros
     socialInstagram: ['', [Validators.maxLength(60), Validators.pattern(ProfilePageComponent.handlePattern)]],
     socialFacebook: ['', [Validators.maxLength(60), Validators.pattern(ProfilePageComponent.handlePattern)]],

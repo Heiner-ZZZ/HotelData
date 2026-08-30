@@ -62,8 +62,11 @@ export default class CogsReportComponent {
   constructor() {
     // httpResource is a Signal: re-derives whenever period OR method changes.
     // The backend resolves the same URL pattern with a different cost flow.
-    this.report = httpResource<CogsReportDto>(() => ({      url: this.api.cogsReportUrl(this.propId, this.period, this.method) ?? '',
-      }));
+    this.report = httpResource<CogsReportDto>(() => {
+      // undefined → el httpResource NO dispara (un url '' pegaría a /api raíz → 404).
+      const url = this.api.cogsReportUrl(this.propId, this.period, this.method);
+      return url ? { url } : undefined;
+    });
   }
 
   selectPeriod(p: StockValueReportPeriod): void {

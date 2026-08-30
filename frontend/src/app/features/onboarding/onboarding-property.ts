@@ -44,6 +44,10 @@ interface PropertyTypeOption {
 
 /** E.164 international phone regex (digits 7-15, optional leading +). */
 const PHONE_PATTERN = /^\+?[1-9]\d{6,14}$/;
+const USERNAME_PATTERN = /^[a-zA-Z0-9._-]+$/;
+const DISPLAY_NAME_PATTERN = /^[A-Za-zÀ-ÿ\s\-']{2,80}$/;
+const PROPERTY_NAME_PATTERN = /^[A-Za-z0-9À-ÿ\s\-'.,&()]{2,120}$/;
+const CITY_PATTERN = /^[A-Za-zÀ-ÿ\s\-']{2,60}$/;
 
 /** Tipos de propiedad que operan como un hotel (recepción, housekeeping,
  *  estancias cortas). Apartamento y cabaña se retiraron del catálogo (2026-08):
@@ -234,23 +238,23 @@ export class OnboardingPropertyComponent {
   // ── Combined registration form ──
   readonly onboardingForm = this.formBuilder.nonNullable.group({
     // Account block
-    email: ['', [Validators.required, Validators.email]],
-    username: ['', [Validators.required, Validators.minLength(3)]],
-    user_display_name: [''],
-    password: ['', [Validators.required, Validators.minLength(6)]],
+    email: ['', [Validators.required, Validators.email, Validators.maxLength(100)]],
+    username: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(32), Validators.pattern(USERNAME_PATTERN)]],
+    user_display_name: ['', [Validators.minLength(2), Validators.maxLength(80), Validators.pattern(DISPLAY_NAME_PATTERN)]],
+    password: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(64)]],
     confirm_password: ['', [Validators.required]],
 
     // Property block
-    property_name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(120)]],
+    property_name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(120), Validators.pattern(PROPERTY_NAME_PATTERN)]],
     property_type: ['', [Validators.required]],
     contact_phone: ['', [Validators.required, Validators.pattern(PHONE_PATTERN)]],
     country_id: [0, [Validators.required, Validators.min(1)]],
-    city: ['', [Validators.required, Validators.minLength(2)]],
-    currency: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(3)]],
+    city: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(60), Validators.pattern(CITY_PATTERN)]],
+    currency: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(3), Validators.pattern(/^[A-Za-z]{3}$/)]],
     total_rooms: [1, [Validators.required, Validators.min(1), Validators.max(10000)]],
     description: ['', [Validators.maxLength(500)]],
     // Geolocalización (Nivel 2): dirección opcional + lat/lng reales del mapa.
-    address: ['', [Validators.maxLength(200)]],
+    address: ['', [Validators.minLength(5), Validators.maxLength(200)]],
     latitude: [null as number | null],
     longitude: [null as number | null],
     // Ciclo de facturación + método de pago (Fase 6, PLAN §14.1).

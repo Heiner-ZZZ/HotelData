@@ -630,3 +630,44 @@ class TestMyInvoicesClientFacing:
         resp = await client.post(f"/api/billing/my-invoices/{inv['id']}/pay")
         assert resp.status_code == 200, resp.text
         assert resp.json()["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_my_invoice_pay_partial_amount_marks_partially_paid(
+        self, client, db, cliente_user, cliente_role
+    ):
+        """Pago parcial con amount → confirmado y la factura queda partially_paid
+        con el monto pagado reflejado (sin require_prop_permission: el gate es
+        account.update)."""
+        bid = self._owned_booking(db, cliente_user["user_id"])
+        inv = create_invoice(InvoiceCreate(booking_id=bid, subtotal=100.0, taxes=10.0))
+
+        lr = await client.post(
+            "/api/auth/login",
+            json={"identifier": cliente_user["username"], "password": cliente_user["password"]},
+        )
+        assert lr.status_code == 200, lr.text
+
+        resp = await client.post(f"/api/billing/my-invoices/{inv['id']}/pay", json={"amount": 50})
+        assert resp.status_code == 200, resp.text
+        updated = get_invoice(inv["id"])
+        assert updated["status"] == "partially_paid"
+        assert round(float(updated["total_paid_amount"]), 2) == 50.0
+
+    @pytest.mark.asyncio
+    async def test_my_invoice_pay_rejects_amount_over_remaining(
+        self, client, db, cliente_user, cliente_role
+    ):
+        """Un amount > saldo pendiente se rechaza con 400 (sin crear pago)."""
+        bid = self._owned_booking(db, cliente_user["user_id"])
+        inv = create_invoice(InvoiceCreate(booking_id=bid, subtotal=100.0, taxes=10.0))
+
+        lr = await client.post(
+            "/api/auth/login",
+            json={"identifier": cliente_user["username"], "password": cliente_user["password"]},
+        )
+        assert lr.status_code == 200, lr.text
+
+        resp = await client.post(f"/api/billing/my-invoices/{inv['id']}/pay", json={"amount": 120})
+        assert resp.status_code == 400, resp.text
+        assert "excede el saldo pendiente" in resp.json()["detail"]
+        assert get_invoice(inv["id"])["status"] == "issued"

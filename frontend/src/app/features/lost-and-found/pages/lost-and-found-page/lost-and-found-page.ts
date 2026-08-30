@@ -153,9 +153,17 @@ export class LostAndFoundPageComponent {
   }
 
   private _loadList(propId: number = this.selectedPropId()) {
+    // Sin prop_id el backend responde 400 (require_any_prop_permission →
+    // "Contexto de hotel requerido"). No disparar la petición: mostrar la
+    // tabla vacía + selector de propiedad (sin error de prop_id).
+    if (!propId) {
+      this.data.set({ items: [], total: 0, page: 1, page_size: 20, total_pages: 0, has_next: false, has_prev: false });
+      this.viewState.set('success');
+      return;
+    }
     this.viewState.set('loading');
     this.api.listItems({
-      propId: propId || undefined,
+      propId: propId,
       status: this.statusFilter() || undefined,
       search: this.searchQuery() || undefined,
       page: this.currentPage(),

@@ -26,7 +26,7 @@ function buildManagementReportHtml(data: ReportData): string {
   const grid = buildSummaryGrid([
     { label: 'Eventos totales', value: String(data.totalEvents), tone: 'neutral' },
     { label: 'Reservas detectadas', value: String(data.reservationsDetected), tone: 'positive' },
-    { label: 'Revenue bruto', value: data.grossRevenueLabel, tone: 'positive' },
+    { label: 'Ingresos brutos', value: data.grossRevenueLabel, tone: 'positive' },
     { label: 'Colección fuente', value: data.sourceCollection, tone: 'neutral' },
   ]);
 
@@ -36,7 +36,7 @@ function buildManagementReportHtml(data: ReportData): string {
           { label: 'Hotel' },
           { label: 'Perfil' },
           { label: 'Eventos', align: 'right' },
-          { label: 'Revenue', align: 'right' },
+          { label: 'Ingresos (USD)', align: 'right' },
         ],
         data.topHotels.map((h) => [h.displayName, h.profileBadge, String(h.events), h.grossRevenueLabel]),
         ['HOTELES LISTADOS', String(data.topHotels.length), `${data.topHotels.reduce((s, h) => s + h.events, 0)}`, '']
@@ -48,7 +48,7 @@ function buildManagementReportHtml(data: ReportData): string {
         [
           { label: 'Destino' },
           { label: 'Eventos', align: 'right' },
-          { label: 'Revenue', align: 'right' },
+          { label: 'Ingresos (USD)', align: 'right' },
         ],
         data.topDestinations.map((d) => [d.label, String(d.events), d.grossRevenueLabel]),
         ['DESTINOS LISTADOS', String(data.topDestinations.length), `${data.topDestinations.reduce((s, d) => s + d.events, 0)}`, '']
@@ -107,6 +107,15 @@ function buildManagementReportHtml(data: ReportData): string {
  * `inject()` is only valid inside an Angular injection context (it
  * throws when invoked from a button-click handler).
  */
+function parseMoney(label: string | number): number | string {
+  if (typeof label === 'number') return label;
+  const s = String(label).trim();
+  // Extrae número de "$1,234.56" o "1.234,56"
+  const cleaned = s.replace(/[^0-9.,-]/g, '').replace(/,/g, '');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? s : num;
+}
+
 export async function exportToExcel(
   data: ReportData,
   reports: ReportsExportService,
@@ -118,11 +127,11 @@ export async function exportToExcel(
     sheets: [
       {
         name: 'Resumen',
-        headers: [{ label: 'Métrica' }, { label: 'Valor' }],
+        headers: [{ label: 'Métrica' }, { label: 'Valor', align: 'right' }],
         rows: [
           ['Eventos totales', data.totalEvents],
           ['Reservas detectadas', data.reservationsDetected],
-          ['Revenue bruto', data.grossRevenueLabel],
+          ['Ingresos brutos (USD)', parseMoney(data.grossRevenueLabel)],
           ['Colección fuente', data.sourceCollection],
           ['Generado en', timestamp()],
         ],
@@ -134,9 +143,9 @@ export async function exportToExcel(
           { label: 'Hotel' },
           { label: 'Perfil' },
           { label: 'Eventos', align: 'right' },
-          { label: 'Revenue' },
+          { label: 'Ingresos (USD)', align: 'right' },
         ],
-        rows: data.topHotels.map((h) => [h.displayName, h.profileBadge, h.events, h.grossRevenueLabel]),
+        rows: data.topHotels.map((h) => [h.displayName, h.profileBadge, h.events, parseMoney(h.grossRevenueLabel)]),
         column_widths: { A: 32, B: 28, C: 14, D: 22 },
       },
       {
@@ -144,9 +153,9 @@ export async function exportToExcel(
         headers: [
           { label: 'Destino' },
           { label: 'Eventos', align: 'right' },
-          { label: 'Revenue' },
+          { label: 'Ingresos (USD)', align: 'right' },
         ],
-        rows: data.topDestinations.map((d) => [d.label, d.events, d.grossRevenueLabel]),
+        rows: data.topDestinations.map((d) => [d.label, d.events, parseMoney(d.grossRevenueLabel)]),
         column_widths: { A: 28, B: 16, C: 22 },
       },
       {

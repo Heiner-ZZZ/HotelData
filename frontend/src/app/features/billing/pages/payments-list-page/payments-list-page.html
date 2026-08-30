@@ -9,7 +9,11 @@
       }
       <button type="button" class="pay-print-btn" (click)="printPage()">
         <span class="material-symbols-outlined btn-icon">print</span>
-        Imprimir reporte
+        Imprimir
+      </button>
+      <button type="button" class="pay-print-btn" (click)="exportPaymentsPdf()" [disabled]="exportingPdf()">
+        <span class="material-symbols-outlined btn-icon">picture_as_pdf</span>
+        {{ exportingPdf() ? 'Generando...' : 'PDF' }}
       </button>
     </div>
   </app-billing-sub-nav>

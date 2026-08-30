@@ -110,7 +110,7 @@ def _hotel_rates_for_detail(prop_id: int, limit: int = 12) -> list[dict[str, Any
 
 def _room_types_for_detail(prop_id: int, limit: int = 12) -> list[dict[str, Any]]:
     db = get_database()
-    return list(
+    room_types = list(
         db.room_types.find(
             {"prop_id": prop_id},
             {"_id": 0, "room_type_id": 1, "name": 1, "base_capacity": 1, "max_adults": 1, "max_children": 1, "is_active": 1, "description": 1, "features": 1, "image_url": 1},
@@ -118,6 +118,31 @@ def _room_types_for_detail(prop_id: int, limit: int = 12) -> list[dict[str, Any]
         .sort([("is_active", -1), ("name", 1)])
         .limit(limit)
     )
+    # Enriquecer con imágenes locales múltiples (room_type_images) — mismo
+    # principio híbrido que hotel_images: locales primero, luego loremflickr.
+    try:
+        images_map: dict[str, list[str]] = {}
+        for doc in db.room_type_images.find(
+            {"prop_id": prop_id},
+            {"_id": 0, "room_type_id": 1, "image_url": 1, "sort_order": 1},
+        ).sort([("sort_order", 1), ("_id", 1)]):
+            rt_id = str(doc.get("room_type_id") or "")
+            url = str(doc.get("image_url") or "").strip()
+            if rt_id and url:
+                images_map.setdefault(rt_id, []).append(url)
+        for rt in room_types:
+            rt_id = str(rt.get("room_type_id") or "")
+            local_images = images_map.get(rt_id, [])
+            # Mantener compat: image_url = primera local si existe, si no la de room_types
+            if local_images:
+                rt["image_url"] = local_images[0]
+            # Lista completa de locales para la galería híbrida del detalle
+            rt["images"] = [{"image_url": u} for u in local_images]
+    except Exception:
+        # Si la colección no existe o hay error, no bloquear el detalle
+        for rt in room_types:
+            rt.setdefault("images", [])
+    return room_types
 
 
 def _hotel_rooms_for_detail(prop_id: int) -> list[dict[str, Any]]:

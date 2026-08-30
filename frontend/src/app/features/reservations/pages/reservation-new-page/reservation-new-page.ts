@@ -49,7 +49,6 @@ export interface SpecialRequestOption {
   unit_price: number;
   chargeable: boolean;
   pet_related: boolean;
-  high_floor: boolean;
   late_arrival: boolean;
 }
 
@@ -100,11 +99,14 @@ export class ReservationNewPageComponent {
 
   // ─── Form ─── (declared BEFORE the toSignal fields that read it)
   // Validadores por caja: teléfono solo permite + (no -), cédula solo permite - (no +)
-  // según requerimiento de negocio celular vs cédula.
+  // según requerimiento de negocio celular vs cédula. Campos de texto con
+  // límites de caracteres acordes a su naturaleza (nombre, email, comentario no
+  // todos llevan el mismo rango — ver mensajes en reservation-form-messages.ts).
+  private static readonly guestNamePattern = /^[A-Za-zÀ-ÿ\u00C0-\u00FF\s\-']{2,60}$/;
   readonly form = this.formBuilder.nonNullable.group({
     propId: [0, [Validators.required, Validators.min(1)]],
-    guestName: ['', [Validators.required]],
-    guestEmail: ['', [Validators.required, Validators.email]],
+    guestName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(60), Validators.pattern(ReservationNewPageComponent.guestNamePattern)]],
+    guestEmail: ['', [Validators.required, Validators.email, Validators.maxLength(100)]],
     guestPhone: ['', [
       Validators.required,
       Validators.minLength(7),
@@ -125,8 +127,8 @@ export class ReservationNewPageComponent {
     adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
     children: [0, [Validators.required, Validators.min(0), Validators.max(10)]],
     rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
-    comment: [''],
-    couponCode: [''],
+    comment: ['', [Validators.maxLength(500)]],
+    couponCode: ['', [Validators.maxLength(20)]],
     specialRequests: [[] as string[]],
     cedula: ['', [
       Validators.required,
@@ -258,8 +260,30 @@ export class ReservationNewPageComponent {
    */
   readonly userSearchTrigger = signal('');
 
-  readonly couponStatus = signal<{valid: boolean; message: string; discountPercent: number} | null>(null);
+  readonly couponStatus = signal<{
+    valid: boolean;
+    message: string;
+    discountPercent: number;
+    /** Código (normalizado a mayúsculas) contra el que se validó este estado. */
+    code?: string;
+    /** Contexto (fechas/tarifa/habitación) con el que se resolvió esta validación. */
+    context?: { checkIn: string; checkOut: string; ratePlanId: string; roomTypeId: string };
+  } | null>(null);
   readonly couponValidating = signal(false);
+
+  /**
+   * Cupón que efectivamente aplica al total: solo cuenta cuando la validación
+   * fue exitosa Y el código del form sigue siendo el que se validó. Si el
+   * usuario edita el código sin volver a Aplicar, el estado de validación queda
+   * del código anterior y este computed lo anula — el resumen y el payload se
+   * construyen sobre el cupón realmente aplicado, nunca sobre un texto suelto.
+   */
+  readonly appliedCoupon = computed(() => {
+    const status = this.couponStatus();
+    if (!status?.valid || !status.code) return null;
+    const current = this.form.controls.couponCode.value?.trim().toUpperCase() || '';
+    return current === status.code ? status : null;
+  });
 
   readonly amenityCatalog = signal<GuestAmenityCategoryDto[]>([]);
   readonly amenityCatalogLoading = signal(false);
@@ -367,7 +391,6 @@ export class ReservationNewPageComponent {
       unit_price: r.unit_price,
       chargeable: r.chargeable,
       pet_related: r.pet_related,
-      high_floor: r.high_floor,
       late_arrival: r.late_arrival,
     })),
   );
@@ -526,6 +549,31 @@ export class ReservationNewPageComponent {
       this.selectedAmenities.set(new Set());
     });
 
+    // Re-valida el cupón aplicado cuando cambia la ventana de la estancia, la
+    // tarifa o la habitación: la vigencia de la campaña y la relación
+    // tarifa↔cupón se evalúan contra esos valores. Sin esto, couponStatus
+    // quedaba stale tras mover las fechas (un descuento fuera de ventana seguía
+    // contándose como aplicado). El guard de contexto rompe el ciclo: tras cada
+    // validación se guarda el contexto con el que se resolvió, y solo se vuelve
+    // a validar si el contexto actual difiere.
+    effect(() => {
+      this.checkInDateSignal();
+      this.checkOutDateSignal();
+      this.selectedRatePlanId();
+      this.preselectedRoomTypeId();
+      const status = this.couponStatus();
+      if (!status?.valid || !status.code) return;
+      // Si el usuario reescribió el código sin Aplicar, no re-valida: el
+      // appliedCoupon ya lo deja fuera y el input espera un Aplicar explícito.
+      const current = this.form.controls.couponCode.value?.trim().toUpperCase() || '';
+      if (current !== status.code) return;
+      const ctx = this._couponContext();
+      const prev = status.context;
+      if (prev && prev.checkIn === ctx.checkIn && prev.checkOut === ctx.checkOut
+          && prev.ratePlanId === ctx.ratePlanId && prev.roomTypeId === ctx.roomTypeId) return;
+      this.validateCoupon();
+    });
+
     // ── Search registered users on the backend when staff types (debounced, rxjs-native) ──
     // httpResource has no native debounce: keeping `toObservable + debounceTime + distinctUntilChanged +
     // switchMap` is the canonical pattern for search-typeahead input. The signal-driven trigger
@@ -654,7 +702,11 @@ export class ReservationNewPageComponent {
       children: v.children,
       rooms: v.rooms,
       comment: v.comment,
-      couponCode: v.couponCode,
+      // Solo viaja al backend un cupón efectivamente aplicado (validado y con el
+      // código aún intacto en el form). Un código rechazado (vencido, fuera de
+      // ventana), reescrito sin revalidar o sin validar no debe intentar
+      // aplicarse en preview/create ni mostrarse en el resumen.
+      couponCode: this.appliedCoupon() ? v.couponCode : undefined,
       specialRequests: v.specialRequests,
       selectedAmenities: [...this.selectedAmenities()],
       roomTypeId: this.preselectedRoomTypeId() || undefined,
@@ -857,34 +909,50 @@ export class ReservationNewPageComponent {
     });
   }
 
+  /** Contexto con el que se resuelve la validez de un cupón: fechas de la
+   *  estancia, tarifa elegida y habitación. Se guarda en `couponStatus.context`
+   *  y se compara en el effect de re-validación para no re-validar en bucle. */
+  private _couponContext() {
+    return {
+      checkIn: this.form.controls.checkInDate.value || '',
+      checkOut: this.form.controls.checkOutDate.value || '',
+      ratePlanId: this.selectedRatePlanId() || '',
+      roomTypeId: this.preselectedRoomTypeId() || '',
+    };
+  }
+
   validateCoupon() {
     const code = this.form.controls.couponCode.value;
     const propId = this.form.controls.propId.value;
-    if (!code) {
+    const normalized = (code || '').trim().toUpperCase();
+    if (!normalized) {
       this.couponStatus.set(null);
       return;
     }
     if (!propId) {
-      this.couponStatus.set({valid: false, message: 'Selecciona un hotel primero', discountPercent: 0});
+      this.couponStatus.set({valid: false, message: 'Selecciona un hotel primero', discountPercent: 0, code: normalized});
       return;
     }
+    const context = this._couponContext();
     this.couponValidating.set(true);
     this.reservationsApi.validateCoupon(code, propId, {
       checkIn: this.form.controls.checkInDate.value || undefined,
       checkOut: this.form.controls.checkOutDate.value || undefined,
       ratePlanId: this.selectedRatePlanId() || undefined,
-      roomTypeId: this.preselectedRoomTypeId() || this.form.controls.rooms.value ? undefined : undefined,
+      roomTypeId: this.preselectedRoomTypeId() || undefined,
     }).subscribe({
       next: (res) => {
          this.couponStatus.set({
            valid: res.valid,
            message: res.message,
-           discountPercent: res.discount_percent
+           discountPercent: res.discount_percent,
+           code: normalized,
+           context,
          });
          this.couponValidating.set(false);
       },
       error: () => {
-         this.couponStatus.set({valid: false, message: 'Error de validación', discountPercent: 0});
+         this.couponStatus.set({valid: false, message: 'Error de validación', discountPercent: 0, code: normalized, context});
          this.couponValidating.set(false);
       }
     });

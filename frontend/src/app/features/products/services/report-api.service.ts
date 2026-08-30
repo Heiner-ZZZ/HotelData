@@ -6,9 +6,10 @@
  *   private api = inject(ReportApiService);
  *
  *   // In some page/partial component constructor or computed:
- *   report = httpResource<MarginReportDto>(() => ({
- *     url: this.api.marginReportUrl(this.propId) ?? '',
- *   }));
+ *   report = httpResource<MarginReportDto>(() => {
+ *     const url = this.api.marginReportUrl(this.propId);
+ *     return url ? { url } : undefined;  // undefined = no request
+ *   });
  *
  * The `inject(ReportApiService)` pattern keeps the service singleton while
  * letting each component pick the right endpoint. The service caches its
@@ -71,7 +72,12 @@ export class ReportApiService {
   // ─── httpResource factories (for components that prefer explicit data) ─
 
   marginReport(propId: Signal<number | null | undefined>): HttpResourceRef<MarginReportDto | undefined> {
-    return httpResource<MarginReportDto>(() => ({ url: this.marginReportUrl(propId) ?? '' }));
+    return httpResource<MarginReportDto>(() => {
+      const url = this.marginReportUrl(propId);
+      // undefined → el httpResource NO dispara. Un url '' viajaría por el
+      // interceptor de base y pegaría a /api (raíz) → 404 del backend.
+      return url ? { url } : undefined;
+    });
   }
 
   cogsReport(
@@ -79,12 +85,16 @@ export class ReportApiService {
     period: Signal<StockValueReportPeriod>,
     method: Signal<CogsMethod>,
   ): HttpResourceRef<CogsReportDto | undefined> {
-    return httpResource<CogsReportDto>(() => ({
-      url: this.cogsReportUrl(propId, period, method) ?? '',
-    }));
+    return httpResource<CogsReportDto>(() => {
+      const url = this.cogsReportUrl(propId, period, method);
+      return url ? { url } : undefined;
+    });
   }
 
   stockValueReport(propId: Signal<number | null | undefined>): HttpResourceRef<StockValueReportDto | undefined> {
-    return httpResource<StockValueReportDto>(() => ({ url: this.stockValueReportUrl(propId) ?? '' }));
+    return httpResource<StockValueReportDto>(() => {
+      const url = this.stockValueReportUrl(propId);
+      return url ? { url } : undefined;
+    });
   }
 }

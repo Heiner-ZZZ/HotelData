@@ -5,10 +5,10 @@ to a per-hotel catalog (``hotel_content_pages.special_requests``) with unit
 prices and behavior flags:
 
 - ``pet_related`` → validated against the hotel's ``pets_allowed`` policy.
-- ``high_floor`` → validated against the assigned room's ``floor`` and the
-  hotel's ``high_floor_from`` threshold.
+- ``late_arrival`` → informational (late check-in marker).
 - ``chargeable`` with price > 0 → generates an additional charge at creation.
 
+(La validación de ``high_floor`` contra el piso se eliminó 2026-08.)
 Defaults (labels/prices/flags) exist in code; hotels override by label.
 """
 from __future__ import annotations
@@ -126,10 +126,10 @@ class TestSpecialRequestsCatalog:
         assert by_label["Cuna para bebé"]["unit_price"] == 10.0
         assert by_label["Mascotas (Pet friendly)"]["pet_related"] is True
         assert by_label["Mascotas (Pet friendly)"]["chargeable"] is True
-        assert by_label["Piso alto"]["high_floor"] is True
-        assert by_label["Piso alto"]["unit_price"] == 0.0
         assert by_label["Llegada tarde"]["late_arrival"] is True
         assert by_label["Accesibilidad"]["unit_price"] == 0.0
+        # "Piso alto" ya no se ofrece (eliminado 2026-08).
+        assert "Piso alto" not in by_label
 
     def test_hotel_override_replaces_price_and_flags(self, db, seeded_hotel_with_requests):
         db.hotel_content_pages.insert_one({
@@ -176,30 +176,6 @@ class TestPetRequestValidation:
         assert result["status"] == "pending"
 
 
-class TestHighFloorValidation:
-    def test_high_floor_request_blocked_for_low_floor_room(self, db, seeded_hotel_with_requests):
-        # Room 101 is on floor 2; default high_floor_from is 3 → blocked.
-        with pytest.raises(ValueError, match="piso alto"):
-            create_booking(_booking_payload(
-                seeded_hotel_with_requests, _days_from_today(1), _days_from_today(3),
-                special_requests=["Piso alto"]))
-
-    def test_high_floor_request_allowed_for_high_floor_room(self, db, seeded_hotel_with_requests):
-        # Room 102 is on floor 5 ≥ 3 → allowed.
-        result = create_booking(_booking_payload(
-            seeded_hotel_with_requests, _days_from_today(1), _days_from_today(3),
-            hotel_room_id="HR-988-102", special_requests=["Piso alto"]))
-        assert result["status"] == "pending"
-
-    def test_high_floor_threshold_configurable(self, db, seeded_hotel_with_requests):
-        db.hotel_content_pages.insert_one({"prop_id": seeded_hotel_with_requests, "high_floor_from": 6})
-        # Room 102 is on floor 5 < 6 → now blocked.
-        with pytest.raises(ValueError, match="piso alto"):
-            create_booking(_booking_payload(
-                seeded_hotel_with_requests, _days_from_today(1), _days_from_today(3),
-                hotel_room_id="HR-988-102", special_requests=["Piso alto"]))
-
-
 class TestSpecialRequestCharges:
     def test_priced_request_generates_charge(self, db, seeded_hotel_with_requests):
         result = create_booking(_booking_payload(
@@ -215,7 +191,7 @@ class TestSpecialRequestCharges:
     def test_free_request_creates_no_charge(self, db, seeded_hotel_with_requests):
         result = create_booking(_booking_payload(
             seeded_hotel_with_requests, _days_from_today(1), _days_from_today(3),
-            hotel_room_id="HR-988-102", special_requests=["Piso alto", "Llegada tarde"]))
+            special_requests=["Llegada tarde"]))
         assert db.additional_charges.count_documents({"booking_id": result["booking_id"]}) == 0
 
 

@@ -337,6 +337,153 @@
   }
 }
 
+// ── Gráfico líneas / dona ───────────────────────────────────────
+.chart-section {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--surface-soft);
+
+  &__title {
+    min-width: 0;
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--app-text);
+    }
+    p {
+      margin: 0.2rem 0 0;
+      font-size: 0.78rem;
+      color: var(--muted-text);
+    }
+  }
+}
+
+.chart-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  gap: 2px;
+  flex-shrink: 0;
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.38rem 0.85rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted-text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+    white-space: nowrap;
+
+    .material-symbols-outlined {
+      font-size: 1.05rem;
+      --icon-wght: 400;
+    }
+
+    &:hover {
+      color: var(--app-text);
+      background: var(--surface-hover);
+    }
+
+    &.is-active {
+      background: var(--accent);
+      color: var(--on-accent);
+      box-shadow: 0 1px 6px color-mix(in srgb, var(--accent) 28%, transparent);
+
+      &:hover {
+        background: var(--accent-hover);
+        color: var(--on-accent);
+      }
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+    }
+  }
+}
+
+.chart-body {
+  padding: 1rem 1.25rem 1.25rem;
+  background: var(--surface);
+  min-height: 300px;
+  display: grid;
+  place-items: stretch;
+}
+
+// Dona: canvas centrado + valor total en el hueco
+.donut-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+}
+
+.donut-canvas {
+  width: 100%;
+  max-width: 360px;
+  height: 280px;
+  position: relative;
+}
+
+.donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  pointer-events: none;
+
+  &__value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--app-text);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-text);
+    margin-top: 0.15rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .chart-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .chart-toggle {
+    align-self: flex-start;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .category-bar,
   .share-bar,

@@ -72,8 +72,8 @@ export class WorldMapPageComponent implements AfterViewInit {
     this.map = new maplibregl.Map({
       container: el,
       style: mapTileStyleUrl(),
-      center: [0, 20],
-      zoom: 2,
+      center: [-78.4678, -0.1807],
+      zoom: 6,
       attributionControl: false,
     });
 

@@ -10,6 +10,12 @@ export interface ReservationActionOptions {
   /** Guest name shown in the confirmation dialog. If omitted, no dialog is shown. */
   guestName?: string;
   /**
+   * Hotel context of the booking. The backend requires ``prop_id`` in query
+   * for confirm/reject; the authoritative value is the booking's own
+   * ``prop_id`` (never trust the global context, which may be 0).
+   */
+  propId?: number;
+  /**
    * HttpContext for the underlying API call (e.g. SUPPRESS_ERROR_TOAST in
    * bulk flows that report their own summary toasts).
    */
@@ -33,7 +39,7 @@ export class ReservationActionService {
       dialogMessage: (name) => `¿Confirmar la reserva de "${name}"?`,
       confirmLabel: 'Confirmar',
       variant: 'default',
-      apiCall: (id) => this.api.confirmReservation(id, options.context),
+      apiCall: (id) => this.api.confirmReservation(id, options.propId, options.context),
     });
   }
 
@@ -49,7 +55,7 @@ export class ReservationActionService {
       dialogMessage: (name) => `¿Rechazar la reserva de "${name}"?`,
       confirmLabel: 'Rechazar',
       variant: 'danger',
-      apiCall: (id) => this.api.rejectReservation(id, options.context),
+      apiCall: (id) => this.api.rejectReservation(id, options.propId, options.context),
     });
   }
 

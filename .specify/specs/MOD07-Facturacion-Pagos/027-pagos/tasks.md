@@ -12,7 +12,7 @@
 ## Fase 2: Frontend
 
 - [ ] T005 [P] Crear `PaymentsListPage` con tabla de pagos
-- [ ] T006 [P] Botón de registrar pago simulado (método: cash, credit_card, bank_transfer)
+- [ ] T006 [P] Botón de registrar pago (método: cash, credit_card, bank_transfer)
 - [ ] T007 [P] Botón de reembolso con confirmación
 
 ## Fase 3: Validación

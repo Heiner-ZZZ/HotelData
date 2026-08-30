@@ -109,7 +109,7 @@ export class CompetitiveMapComponent implements AfterViewInit {
     this.map = new maplibregl.Map({
       container: el,
       style: cfg.styleUrl,
-      center: [-77.04, -12.05],
+      center: [-78.4678, -0.1807],
       zoom: 12,
       attributionControl: false,
     });

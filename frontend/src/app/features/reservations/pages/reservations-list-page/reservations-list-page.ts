@@ -185,8 +185,8 @@ export class ReservationsListPageComponent {
     'row-pending': (p: RowClassParams<ReservationListItem>) => p.data?.status === 'pending',
   };
   readonly columnDefs = buildColumnDefs({
-    onConfirm: (id, name) => this.runConfirmAction(id, name),
-    onReject: (id, name) => this.runRejectAction(id, name),
+    onConfirm: (id, name, propId) => this.runConfirmAction(id, name, propId),
+    onReject: (id, name, propId) => this.runRejectAction(id, name, propId),
     isStaff: () => this.isStaff(),
   });
   readonly getRowId = (params: GetRowIdParams<ReservationListItem>) => String(params.data?.bookingId ?? '');
@@ -590,10 +590,10 @@ export class ReservationsListPageComponent {
   readonly historyDatesResource = httpResource<DateHistoryEntry[]>(() => {
     if (!this.showHistory()) return undefined;
     const propId = this.calendarPropId();
-    const params = new URLSearchParams();
-    if (propId) params.set('prop_id', String(propId));
-    const query = params.toString();
-    return query ? `/reservations/dates?${query}` : '/reservations/dates';
+    // Sin prop_id el backend responde 400 (require_prop_permission). No
+    // disparar la petición: el historial queda vacío hasta elegir hotel.
+    if (!propId) return undefined;
+    return `/reservations/dates?prop_id=${propId}`;
   }, {
     parse: (dto) => dto as DateHistoryEntry[],
   });
@@ -717,17 +717,18 @@ export class ReservationsListPageComponent {
     });
   }
 
-  private runConfirmAction(bookingId: string, guestName: string): void {
-    this.runAction(bookingId, guestName, 'confirm', this.confirmingId, 'Reserva confirmada');
+  private runConfirmAction(bookingId: string, guestName: string, propId: number): void {
+    this.runAction(bookingId, guestName, propId, 'confirm', this.confirmingId, 'Reserva confirmada');
   }
 
-  private runRejectAction(bookingId: string, guestName: string): void {
-    this.runAction(bookingId, guestName, 'reject', this.rejectingId, 'Reserva rechazada');
+  private runRejectAction(bookingId: string, guestName: string, propId: number): void {
+    this.runAction(bookingId, guestName, propId, 'reject', this.rejectingId, 'Reserva rechazada');
   }
 
   private runAction(
     bookingId: string,
     guestName: string,
+    propId: number,
     type: 'confirm' | 'reject',
     loadingSignal: WritableSignal<string | null>,
     successMsg: string,
@@ -737,8 +738,8 @@ export class ReservationsListPageComponent {
 
     const serviceCall =
       type === 'confirm'
-        ? this.actionService.confirm({ bookingId, guestName })
-        : this.actionService.reject({ bookingId, guestName });
+        ? this.actionService.confirm({ bookingId, guestName, propId })
+        : this.actionService.reject({ bookingId, guestName, propId });
 
     serviceCall.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
@@ -759,8 +760,13 @@ export class ReservationsListPageComponent {
   exportCsv() {
     if (this.exporting()) return;
     this.exporting.set(true);
+    const propId = this.calendarPropId();
+    const params = propId > 0 ? new HttpParams().set('prop_id', String(propId)) : undefined;
     this.http
-      .get('/reservations/export?format=csv', { responseType: 'blob' })
+      .get('/reservations/export?format=csv', {
+        responseType: 'blob',
+        ...(params ? { params } : {}),
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (blob) => {

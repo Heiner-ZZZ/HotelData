@@ -251,18 +251,25 @@ export class RatesCalendarDashboardPageComponent {
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  /** Exporta la grilla actual (día × plan) a CSV con BOM UTF-8. */
+  private formatDateCsv(val: string): string {
+    if (!val) return '';
+    const d = new Date(`${val}T00:00:00`);
+    if (isNaN(d.getTime())) return val;
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  /** Exporta la grilla actual (día × plan) a CSV con BOM UTF-8 — formato profesional. */
   exportGridCsv(): void {
     const rows = this.rows();
     const propLabel = (this.selectedLabel() || `Propiedad #${this.selectedPropId()}`).replace(/\s+/g, '_');
     exportCsv(
       `calendario-tarifas_${propLabel}_${this.dateFrom() || 'all'}_${this.dateTo() || 'all'}`.toLowerCase(),
-      ['Fecha', 'Plan', 'Tarifa', 'Est. mín.', 'Divisa', 'Estado'],
+      ['Fecha', 'Plan tarifario', 'Tarifa (USD)', 'Estancia mínima (noches)', 'Divisa', 'Estado'],
       rows.map((r) => [
-        r.date,
+        this.formatDateCsv(r.date),
         r.planName,
-        r.rateAmount,
-        r.minStayNights,
+        typeof r.rateAmount === 'number' ? r.rateAmount.toFixed(2) : String(r.rateAmount ?? ''),
+        String(r.minStayNights ?? ''),
         r.currency,
         r.isClosed ? 'Cerrado' : 'Abierto',
       ]),

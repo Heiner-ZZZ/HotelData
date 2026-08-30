@@ -72,11 +72,11 @@ def special_requests_update_api(
     query_prop_id: int | None = Query(default=None, ge=1, alias="prop_id"),
     current_user: dict = Depends(require_prop_permission("amenities.manage")),
 ):
-    """Replace the hotel's special-requests catalog + high_floor_from threshold.
+    """Replace the hotel's special-requests catalog.
 
-    Body: ``{"prop_id", "special_requests": [{label, unit_price, flags}],
-    "high_floor_from"}``. Returns the normalized catalog + threshold.
-    Migración E: prop_id por QUERY + consistencia query↔body.
+    Body: ``{"prop_id", "special_requests": [{label, unit_price, flags}]}``.
+    Returns the normalized catalog. Migración E: prop_id por QUERY + consistencia
+    query↔body.
     """
     from src.app.modules.partner.services.content.save import save_special_requests
     from src.app.modules.partner.services.content.special_requests import (
@@ -97,7 +97,6 @@ def special_requests_update_api(
         saved = save_special_requests(
             prop_id,
             special_requests=raw,
-            high_floor_from=payload.get("high_floor_from"),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
@@ -106,7 +105,6 @@ def special_requests_update_api(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return {
         "special_requests": special_requests_payload_for_prop(prop_id),
-        "high_floor_from": int(saved.get("high_floor_from") or 3),
     }
 
 

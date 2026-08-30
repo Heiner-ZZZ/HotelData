@@ -30,10 +30,6 @@ def partner_hotel_content(prop_id: int, room_type_id: str = "") -> dict[str, Any
     detail["amenities"] = amenities_payload_for_prop(prop_id, room_type_id=room_type_id)
     from src.app.modules.partner.services.content.special_requests import special_requests_payload_for_prop
     detail["special_requests"] = special_requests_payload_for_prop(prop_id)
-    try:
-        detail["high_floor_from"] = int(content_page.get("high_floor_from") or 3)
-    except (ValueError, TypeError):
-        detail["high_floor_from"] = 3
     from src.app.modules.partner.services.rooms import _room_types_for_prop
     detail["room_types"] = _room_types_for_prop(prop_id)
     detail["room_amenities"] = content_page.get("room_amenities", {})

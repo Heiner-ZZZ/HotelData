@@ -59,6 +59,33 @@ export class ClientInvoiceDetailPageComponent {
   readonly paying = signal(false);
   readonly paymentStep = signal<'idle' | 'card' | 'processing' | 'confirm' | 'done'>('idle');
   readonly paymentReference = signal('');
+
+  /** Saldo pendiente de la factura (total − pagado), para pagos parciales. */
+  readonly remainingAmount = computed(() => {
+    const inv = this.invoice();
+    if (!inv) return 0;
+    return Math.max(0, (inv.total ?? 0) - (inv.totalPaidAmount ?? 0));
+  });
+  /** Monto elegido por el huésped (string del input). Vacío = saldo completo. */
+  readonly paymentAmount = signal('');
+  /** Monto efectivo a pagar (parseado, default = saldo pendiente). */
+  readonly paymentAmountValue = computed(() => {
+    const raw = parseFloat(this.paymentAmount());
+    return Number.isNaN(raw) || raw <= 0 ? this.remainingAmount() : Math.min(raw, this.remainingAmount());
+  });
+  readonly paymentAmountError = computed(() => {
+    const inv = this.invoice();
+    if (!inv) return null;
+    const raw = this.paymentAmount().trim();
+    if (!raw) return null; // vacío = paga el saldo pendiente
+    const num = parseFloat(raw);
+    if (Number.isNaN(num) || num <= 0) return 'El monto debe ser mayor a cero.';
+    if (num > this.remainingAmount() + 0.001) {
+      return `El monto no puede superar el saldo pendiente (${this.remainingAmount().toFixed(2)}).`;
+    }
+    return null;
+  });
+
   readonly today = signal(new Date().toLocaleDateString('es-MX', {
     year: 'numeric', month: 'long', day: 'numeric',
   }));
@@ -117,7 +144,15 @@ export class ClientInvoiceDetailPageComponent {
     // vencimiento, CVV) — el pago NO puede confirmarse sin ingresarlos.
     this.actionError.set(null);
     this.actionMessage.set(null);
+    // Default del monto: saldo pendiente completo (editable para pagos parciales).
+    if (!this.paymentAmount()) {
+      this.paymentAmount.set(this.remainingAmount().toFixed(2));
+    }
     this.paymentStep.set('card');
+  }
+
+  onPaymentAmountInput(value: string): void {
+    this.paymentAmount.set(value);
   }
 
   onCardNumberInput(value: string): void {
@@ -171,12 +206,12 @@ export class ClientInvoiceDetailPageComponent {
 
   confirmPayment() {
     const inv = this.invoice();
-    if (!inv) return;
+    if (!inv || this.paymentAmountError()) return;
 
     this.paying.set(true);
     this.actionError.set(null);
 
-    this.billingApi.payMyInvoice(inv.id).subscribe({
+    this.billingApi.payMyInvoice(inv.id, this.paymentAmountValue()).subscribe({
       next: (result) => {
         this.paymentReference.set(result.payment?.['reference'] as string || '');
         this.paymentStep.set('done');

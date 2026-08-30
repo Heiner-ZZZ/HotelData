@@ -21,10 +21,10 @@ export function mapTileStyleUrl(): string {
     </div>
   `,
   styles: [`
-    :host { display: block; width: 100%; min-width: 0; }
-    .location-picker-wrap { display: grid; gap: 0.5rem; }
-    .map-container { height: clamp(320px, 46vh, 560px); width: 100%; border-radius: 8px; border: 1px solid var(--app-border); z-index: 1; }
-    .coords-display { display: flex; gap: 1rem; font-size: 0.8125rem; }
+    :host { display: flex; flex-direction: column; width: 100%; min-width: 0; flex: 1 1 auto; align-self: stretch; }
+    .location-picker-wrap { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; flex: 1 1 auto; min-width: 0; min-height: 380px; align-self: stretch; }
+    .map-container { flex: 1 1 auto; min-height: 380px; height: clamp(380px, 48vh, 600px); width: 100%; min-width: 0; border-radius: 8px; border: 1px solid var(--app-border); z-index: 1; align-self: stretch; }
+    .coords-display { display: flex; gap: 1rem; font-size: 0.8125rem; flex-shrink: 0; }
     .coord-label { color: var(--muted-text); }
     .coord-label strong { color: var(--app-text); font-weight: 600; }
     .picker-pin .material-symbols-outlined {
@@ -50,7 +50,7 @@ export class LocationPickerComponent implements AfterViewInit {
   private map: maplibregl.Map | null = null;
   private marker: maplibregl.Marker | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  private defaultCoords: [number, number] = [19.4326, -99.1332]; // Mexico City center
+  private defaultCoords: [number, number] = [-0.1807, -78.4678]; // Quito, Ecuador
 
   constructor() {
     effect(() => {

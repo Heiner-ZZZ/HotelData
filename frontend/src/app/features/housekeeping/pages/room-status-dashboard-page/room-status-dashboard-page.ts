@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { EMPTY } from 'rxjs';
 import { DecimalPipe } from '@angular/common';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
@@ -76,11 +77,17 @@ export class RoomStatusDashboardPageComponent {
         status: this.statusFilter() || undefined,
       };
     },
-    stream: ({ params }) => this.api.getRoomStatusAnalytics(
-      (params as any).propId,
-      (params as any).status,
-      (params as any).page,
-    ),
+    stream: ({ params }) => {
+      const propId = (params as any).propId;
+      // Sin prop_id el backend responde 400 (require_prop_permission). No
+      // disparar la petición: recurso idle → viewState 'empty' (sin error).
+      if (!propId) return EMPTY;
+      return this.api.getRoomStatusAnalytics(
+        (params as any).propId,
+        (params as any).status,
+        (params as any).page,
+      );
+    },
   });
 
   readonly data = computed(() => this.dashboardResource.value() ?? null);
@@ -228,24 +235,32 @@ export class RoomStatusDashboardPageComponent {
     if (!val) return '—';
     const d = new Date(val);
     if (isNaN(d.getTime())) return val;
-    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) + ' ' +
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
       d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   }
 
-  /** Exporta la grilla actual de habitaciones a CSV con BOM UTF-8. */
+  private formatDateCsv(val: string): string {
+    if (!val) return '';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return val;
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+      d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /** Exporta la grilla actual de habitaciones a CSV con BOM UTF-8 — formato profesional. */
   exportGridCsv(): void {
     const rows = this.rows();
     const propLabel = (this.selectedLabel() || `Propiedad #${this.selectedPropId()}`).replace(/\s+/g, '_');
     exportCsv(
       `matriz-habitaciones_${propLabel}_${this.statusFilter() || 'todas'}`.toLowerCase(),
-      ['Habitación', 'Tipo', 'Estado', 'Piso', 'Nota', 'Actualizado'],
+      ['Habitación', 'Tipo habitación', 'Estado', 'Piso', 'Nota', 'Actualizado'],
       rows.map((r) => [
         r.roomLabel,
-        r.roomTypeId,
+        (r as any).roomTypeLabel ?? r.roomTypeId,
         this.statusLabel(r.status),
         r.floor ?? '',
-        r.note,
-        r.updatedAt ? this.formatDateTime(r.updatedAt) : this.formatDateTime(r.createdAt),
+        r.note ?? '',
+        this.formatDateCsv(r.updatedAt ?? r.createdAt),
       ]),
     );
   }

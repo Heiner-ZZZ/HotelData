@@ -2,15 +2,25 @@
 .bento-gallery {
   display: grid;
   grid-template-columns: 1fr;
+  grid-template-rows: auto;
   gap: 3px;
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 24px;
-  max-height: 400px;
+  width: 100%;
+  /* Marco UNIFORME (estilo Booking.com/Expedia): la altura del hero se deriva
+     de su ancho por aspect-ratio, así TODAS las celdas recortan igual con
+     object-fit: cover sin importar el tamaño/aspecto natural de cada foto
+     (fotos reales del dueño vs placeholders loremflickr 400x250). Sin esto,
+     las filas 1fr se dimensionan al alto natural de cada imagen y las fotos
+     quedan desparejas hasta volverse ilegibles. */
+  aspect-ratio: 4 / 3;
+  max-height: 460px;
 
   @media (min-width: 768px) {
     grid-template-columns: 2fr 1fr;
     grid-template-rows: 1fr 1fr;
+    aspect-ratio: 16 / 9;
     max-height: 500px;
   }
 }
@@ -202,5 +212,5 @@
   color: var(--outline, var(--muted-text));
 }
 
-.img-placeholder-lg { height: 400px; .material-symbols-outlined { font-size: 64px; } }
+.img-placeholder-lg { height: 100%; .material-symbols-outlined { font-size: 64px; } }
 .img-placeholder-sm { height: 100%; min-height: 100px; .material-symbols-outlined { font-size: 32px; } }

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { EMPTY } from 'rxjs';
 
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -89,16 +90,23 @@ export class HousekeepingDashboardPageComponent {
       const { propId } = params as any;
       if (propId) {
         this.propertyCtx.setProperty(propId, this.selectedLabel() || `Propiedad #${propId}`);
-      } else {
-        this.propertyCtx.clear();
+        return this.api.getDashboard(propId);
       }
-      return propId ? this.api.getDashboard(propId) : this.api.getDashboard();
+      // Sin prop_id el backend responde 400 (require_prop_permission). No
+      // disparar la petición: dejar el recurso idle y mostrar el bloque
+      // "Selecciona una propiedad" (sin error de prop_id).
+      this.propertyCtx.clear();
+      return EMPTY;
     },
   });
 
   readonly dashboard = computed(() => this.dashboardResource.value() ?? null);
 
   readonly viewState = computed(() => {
+    // Sin hotel seleccionado: caer al @default (bloque "Selecciona una
+    // propiedad") en vez de disparar una petición que el backend responde
+    // con 400 por falta de prop_id.
+    if (!this.selectedPropId()) return 'success' as const;
     const r = this.dashboardResource;
     if (r.isLoading() || r.status() === 'idle') return 'loading' as const;
     if (r.error()) return 'error' as const;

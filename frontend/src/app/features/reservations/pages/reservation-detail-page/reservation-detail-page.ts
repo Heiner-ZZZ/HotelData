@@ -109,7 +109,7 @@ export class ReservationDetailPageComponent {
     if (!vm || this.fulfillmentUpdating()) return;
     this.fulfillmentUpdating.set(true);
     this.errorMessage.set('');
-    this.reservationsApi.updateSpecialRequestStatus(vm.bookingId, label, status, kind)
+    this.reservationsApi.updateSpecialRequestStatus(vm.bookingId, label, status, kind, vm.propId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
@@ -253,14 +253,20 @@ export class ReservationDetailPageComponent {
   readonly cancelPreviewTrigger = signal('');
   readonly cancelPreviewResource = httpResource<any>(() => {
     const id = this.cancelPreviewTrigger();
-    return id ? `/reservations/${id}/cancel-preview` : undefined;
+    if (!id) return undefined;
+    const vm = this.detailResource.value();
+    // El backend exige prop_id (require_prop_permission → 400 sin él). Se usa
+    // el prop_id de la propia reserva.
+    return `/reservations/${id}/cancel-preview?prop_id=${vm?.propId ?? ''}`;
   });
 
   // Available rooms for assignment — on-demand httpResource via trigger signal
   readonly availableRoomsTrigger = signal('');
   readonly availableRoomsResource = httpResource<AvailableRoomsResponse>(() => {
     const id = this.availableRoomsTrigger();
-    return id ? `/management/bookings/${id}/available-rooms` : undefined;
+    if (!id) return undefined;
+    const vm = this.detailResource.value();
+    return `/management/bookings/${id}/available-rooms?prop_id=${vm?.propId ?? ''}`;
   });
 
   // Room assignment modal
@@ -599,7 +605,7 @@ export class ReservationDetailPageComponent {
     this.confirmPending.set(true);
     this.successMessage.set('');
 
-    this.actionService.confirm({ bookingId: current.bookingId }).pipe(
+    this.actionService.confirm({ bookingId: current.bookingId, propId: current.propId }).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
@@ -618,7 +624,7 @@ export class ReservationDetailPageComponent {
     this.rejectPending.set(true);
     this.successMessage.set('');
 
-    this.actionService.reject({ bookingId: current.bookingId }).pipe(
+    this.actionService.reject({ bookingId: current.bookingId, propId: current.propId }).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {

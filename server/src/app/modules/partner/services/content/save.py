@@ -59,22 +59,21 @@ def save_partner_hotel_content(
     return document
 
 
-_VALID_REQUEST_FLAGS = {"pet_related", "high_floor", "late_arrival", "chargeable"}
+_VALID_REQUEST_FLAGS = {"pet_related", "late_arrival", "chargeable"}
 
 
 def save_special_requests(
     prop_id: int,
     *,
     special_requests: list[dict[str, Any]],
-    high_floor_from: int | None = None,
     changed_by: str = "angular_api",
 ) -> dict[str, Any] | None:
     """Replace the hotel's special-requests catalog (labels/prices/flags).
 
     The Amenities page tab sends the FULL configured list; this upserts it on
-    ``hotel_content_pages`` together with the ``high_floor_from`` threshold
-    used by the booking-time high-floor guard. Entries are validated and
-    deduplicated by normalized label.
+    ``hotel_content_pages``. Entries are validated and deduplicated by
+    normalized label. (El umbral ``high_floor_from`` se eliminó 2026-08: las
+    peticiones ya no se validan contra el piso.)
 
     Returns the updated content-page document (or None if the property
     doesn't exist). Raises ``ValueError`` on invalid entries.
@@ -124,12 +123,6 @@ def save_special_requests(
         if normalize_label(d["label"]).lower() not in sent_keys
     )
 
-    try:
-        threshold = int(high_floor_from) if high_floor_from is not None else 3
-    except (ValueError, TypeError):
-        threshold = 3
-    threshold = max(threshold, 1)
-
     db = get_database()
     document = db.hotel_content_pages.find_one_and_update(
         {"prop_id": prop_id},
@@ -137,7 +130,6 @@ def save_special_requests(
             "$set": {
                 "special_requests": clean,
                 "removed_requests": removed_requests,
-                "high_floor_from": threshold,
                 "updated_at": now_utc(),
             },
             "$setOnInsert": {"created_at": now_utc()},
@@ -148,7 +140,7 @@ def save_special_requests(
     )
     register_content_change(
         prop_id, "hotel_content_pages", "upsert_special_requests",
-        {"count": len(clean), "high_floor_from": threshold},
+        {"count": len(clean)},
         changed_by=changed_by,
     )
     register_action(
@@ -158,7 +150,7 @@ def save_special_requests(
         action="update",
         summary=f"Catálogo de peticiones especiales actualizado: {len(clean)} peticiones",
         changed_by=changed_by,
-        metadata={"count": len(clean), "high_floor_from": threshold},
+        metadata={"count": len(clean)},
     )
     return document
 

@@ -82,7 +82,7 @@ class TestAmenitiesUpdatePropGate:
 
 class TestSpecialRequestsPropGate:
     _PATH = "/api/management/amenities/special-requests"
-    _BODY: ClassVar[dict[str, object]] = {"prop_id": 1, "special_requests": [], "high_floor_from": 3}
+    _BODY: ClassVar[dict[str, object]] = {"prop_id": 1, "special_requests": []}
 
     @pytest.mark.asyncio
     async def test_put_403_global_role_without_hotel_assignment(self, client, db):
